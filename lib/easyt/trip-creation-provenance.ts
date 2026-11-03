@@ -145,12 +145,14 @@ export async function readReservedTripCreation(storage:EasyTBrowserStorage,drive
   if(!token||token.operationId!==operationId)return null;
   const body=await createTwoStoreTripPersistence(storage,driver,context).read(tripId);
   if(!context.isCurrent())return null;
-  if(body.kind==='missing')return {token,trip:prepareTripDocumentForWrite(JSON.parse(token.initialTripRaw))};
+  if(body.kind==='missing')return {token,pendingCreation:token,trip:prepareTripDocumentForWrite(JSON.parse(token.initialTripRaw))};
   if(body.kind!=='found'||!body.recovery)return null;
   const continuation=await readTripCreationContinuation(storage,driver,context,body.trip,body.recovery.writeId);
   // A retained reservation URL remains a useful way back after the checkpoint
-  // completed too. It grants neither sign-in nor replacement of later edits.
-  return context.isCurrent()&&(continuation.kind==='pending'||continuation.kind==='complete')?{token,trip:body.trip}:null;
+  // completed too. Only an unfinished checkpoint may replay initialTripRaw;
+  // completed proof locates the current body without rearming its old creation.
+  return context.isCurrent()&&(continuation.kind==='pending'||continuation.kind==='complete')
+    ?{token,pendingCreation:continuation.kind==='pending'?token:null,trip:body.trip}:null;
 }
 export async function loadReservedTripCreation(tripId:string,operationId:string,ownerId:string|null,isCurrent:()=>boolean) {
   const {browserRecoveryDriver,browserRecoveryGuard,browserRecoveryStorage}=await import('./browser-recovery-persistence.ts');

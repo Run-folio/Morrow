@@ -104,3 +104,32 @@ test('fresh creation requires reservation before body and does not bless existin
   const refused=await prepareTripCreationCheckpoint(storage,driver,context,other,createTripCreationToken(other,null,'curated-route','retroactive'));
   assert.equal(refused.ok,false);assert.deepEqual(values,before);
 });
+
+test('a completed creation locator opens later edits without reauthorizing the original creation', async () => {
+  const f = fixture();
+  const created = await f.checkpoint();
+  const edited = structuredClone(f.trip); edited.title = 'Later traveller edit';
+  const saved = await f.broker.save(edited, { replace: created.handle, expectedRecoverySource: f.trip, writeId: 'later-traveller-edit' });
+  assert.equal(saved.stored, true);
+  const before = { values: new Map(f.values), generations: new Map(f.driver.generations), heads: new Map(f.driver.heads) };
+  const opened = await readReservedTripCreation(f.storage, f.driver, f.context, f.trip.id, f.token.operationId);
+  assert.ok(opened);
+  assert.equal(opened.trip.title, 'Later traveller edit');
+  assert.equal(opened.pendingCreation, null, 'completed receipt is a locator, not authority to replay initialTripRaw');
+  const { createBuilderEntrySession } = await import('../lib/easyt/trip-builder-entry-session.ts');
+  const { requireReadableTripDocument } = await import('../lib/easyt/trip-document.ts');
+  const entry = createBuilderEntrySession({ key: 'completed-reservation-reload', ownerId: null, candidate: requireReadableTripDocument(opened.trip), receipt: null,
+    creation: opened.pendingCreation, initialCanonical: opened.trip, openedRecovery: saved.handle, isCurrent: () => true });
+  assert.equal(await entry.verifyReadback(async id => { const read = await f.broker.read(id); return read.kind === 'found' ? read.recovery : null; }), true);
+  assert.equal(entry.claimSeed()?.initialTrip.title, 'Later traveller edit');
+  assert.deepEqual({ values: f.values, generations: f.driver.generations, heads: f.driver.heads }, before, 'reopening cannot rewrite or adopt any copy');
+});
+
+test('an uncompleted creation locator retains the exact pending checkpoint token', async () => {
+  const f = fixture();
+  const reservation = await prepareTripCreationCheckpoint(f.storage, f.driver, f.context, f.trip, f.token);
+  assert.equal(reservation.ok, true);
+  const opened = await readReservedTripCreation(f.storage, f.driver, f.context, f.trip.id, f.token.operationId);
+  assert.ok(opened);
+  assert.deepEqual(opened.pendingCreation, f.token);
+});

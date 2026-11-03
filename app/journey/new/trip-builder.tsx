@@ -1628,7 +1628,7 @@ function TripBuilderDocument() {
         if(!requestedTrip&&params.get("creation")) {
           const reserved=await loadReservedTripCreation(tripIdFromUrl,params.get("creation")!,ownerScope,()=>active&&activeBrowserOwnerIdRef.current===ownerScope);
           if(!active)return;
-          if(reserved){builderCreationTokenRef.current=reserved.token;requestedTrip=reserved.trip;}
+          if(reserved){builderCreationTokenRef.current=reserved.pendingCreation;requestedTrip=reserved.trip;}
         }
         if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
         if (requestedTrip) {
