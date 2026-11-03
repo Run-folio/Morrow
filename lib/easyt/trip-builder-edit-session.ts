@@ -31,7 +31,7 @@ export type BuilderEditSessionSnapshot = {
   routeWorkBlocked?: boolean;
   transferAssessments: TransferAssessment[];
   historicalRecovery: boolean; browserOwnerId: string | null;
-  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome; rejectedEditMessage?: string } | null;
+  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome; rejectedEditMessage?: string; retryableEdit?: boolean; retryingEdit?: boolean } | null;
 };
 export type BuilderEditSessionOptions = {
   initialTrip: EasyTTrip; initialRecovery?: TripRecoveryRecord | null; initialCanonicalTrip?: EasyTTrip | null;

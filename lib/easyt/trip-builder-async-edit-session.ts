@@ -111,6 +111,12 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   let deviceTail = Promise.resolve(), devicePending = 0, canonicalPending = 0;
   let commandSequence = 0, lastCommand: CommandRecord | null = null;
   const issuedCommands = new Set<CommandRecord>();
+  // One tab-local, uncommitted explicit change. Never stored as a saved trip.
+  type QuotaChange = { candidate: CanonicalEasyTTrip; base: CanonicalEasyTTrip; draft: BuilderInputDraft;
+    authoredFrom: CanonicalEasyTTrip; guard: BuilderAsyncOperationGuard; sequence: number; epoch: number };
+  let quotaChange: QuotaChange | null = null, quotaRetryRunning = false;
+  const quotaChangeCurrent = (value: QuotaChange | null) => Boolean(value && active() && value.guard.isCurrent()
+    && value.sequence === commandSequence && value.epoch === rawInputEpoch);
   // Session-local field intent distinguishes unrelated typing from a newer edit
   // to the discard target, including changing away and back to identical bytes.
   const rawFieldEpochs = new Map<string, number>();
@@ -152,7 +158,9 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       saveState: error ? 'error' : devicePending || draftNeedsWrite ? 'device-saving' : draft.fields.length && canonicalSaveState === 'cloud' ? 'local' : canonicalSaveState,
       projectionState, pendingUnits, failedUnits, conflictUnits, routeWorkBlocked,
       transferAssessments: assessmentFeedback?.inputKey === routeProjectionInputKey(trip) ? assessmentFeedback.assessments : [],
-      historicalRecovery, browserOwnerId: ownerId, recovery, error }));
+      historicalRecovery, browserOwnerId: ownerId, recovery,
+      error: error ? { ...error, ...(quotaRetryRunning ? { retryableEdit: true, retryingEdit: true }
+        : quotaChangeCurrent(quotaChange) ? { retryableEdit: true } : {}) } : null }));
     listeners.forEach(listener => listener());
   }
   function ownedSourceGuard(): BuilderAsyncOperationGuard {
@@ -242,7 +250,21 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         || result.recoveryDurable === false || result.readbackConfirmed === false || result.pointerAcknowledged === false) {
         if (continuation?.command) continuation.command.disposition = result.writeAttempted === false ? 'refused' : 'uncertain';
         const scopeMatches = result.handle.ownerId === ownerId && result.handle.tripId === tripId;
+        // A native setter quota exception committed no body. Readback/pointer
+        // failures and unknown/possibly committed writes never qualify.
+        const quotaRefused = scopeMatches && !result.stored && !result.blockedByExistingRecovery
+          && Boolean(result.handle.writeId) && result.failureReason === 'device-unavailable'
+          && result.writeAttempted === true && result.nativeFailure === 'quota' && result.failureBoundary === 'recovery-write'
+          && result.readbackConfirmed !== true && result.recoveryDurable !== true && result.pointerAcknowledged !== true;
+        if (continuation?.command && quotaRefused && lastCommand === continuation.command && rawInputEpoch === reservedEpoch) {
+          continuation.command.disposition = 'refused';
+          quotaChange = { candidate: frozen, base: freeze(structuredClone(canonicalBase)), draft: metadata.draft,
+            authoredFrom: metadata.authoredFrom, guard, sequence: continuation.command.sequence, epoch: reservedEpoch };
+        }
         if (scopeMatches && result.blockedByExistingRecovery) saveFailure('protected', 'Another device recovery is protected. Reopen it before editing.', 'protected-conflict');
+        else if (quotaRefused) saveFailure('storage', continuation?.command
+          ? 'Device storage is full. This change is not saved. Keep this tab open and retry this change.'
+          : 'Device storage is full. This edit is not saved. Keep this tab open.', recoveryPersistenceOutcome(result));
         else if (scopeMatches && result.failureReason === 'device-unavailable') saveFailure('storage', 'This edit could not be saved on this device. Your current trip remains unchanged.', recoveryPersistenceOutcome(result));
         else saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', recoveryPersistenceOutcome({ ...result, stored: false }));
         return false;
@@ -541,15 +563,20 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   }
   function acceptEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
     acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[]) {
-    let finish!: () => void;
-    const done = new Promise<void>(resolve => { finish = resolve; });
-    const command: CommandRecord = { sequence: ++commandSequence, rawInputEpoch, disposition: 'issued', done, finish };
-    issuedCommands.add(command); lastCommand = command;
+    quotaChange = null;
+    const command = issueCommand();
     return performAcceptedEdits(edits, expectedInputRevision, acceptedInputs, command).then(result => {
       if (command.disposition === 'issued') command.disposition = !result.ok && result.reason === 'stale-source' ? 'retired' : 'refused';
       return result;
     }, cause => { command.disposition = command.disposition === 'reserved' ? 'uncertain' : 'refused'; throw cause; })
       .finally(() => { issuedCommands.delete(command); command.finish(); });
+  }
+  function issueCommand() {
+    let finish!: () => void;
+    const done = new Promise<void>(resolve => { finish = resolve; });
+    const command: CommandRecord = { sequence: ++commandSequence, rawInputEpoch, disposition: 'issued', done, finish };
+    issuedCommands.add(command); lastCommand = command;
+    return command;
   }
   function captureCommandBarrier(): BuilderCommandBarrier {
     const sequence = commandSequence, epoch = rawInputEpoch, precedingDevice = deviceTail;
@@ -589,10 +616,27 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       undoFrame = { snapshot: captured, stopIds: new Map(captured.stops.map(stop => [stop.id, stop.id])) }; return true;
     },
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    async retryRejectedEdit(): Promise<BuilderCommandReceipt | null> {
+      const retained = quotaChange;
+      if (quotaRetryRunning || !quotaChangeCurrent(retained) || !retained || draftProtected || error?.category === 'protected') return null;
+      quotaRetryRunning = true; quotaChange = null;
+      const command = issueCommand();
+      try {
+        const stored = await storeCanonical(retained.candidate, retained.base, retained.draft, retained.guard,
+          { command, authoredFrom: retained.authoredFrom });
+        if (!stored) return null;
+        if (!paused) error = null;
+        else error = { category: pauseReason ?? 'unknown', message: 'This change is saved on this device. Account sync needs attention.' };
+        assessmentFeedback = null; scheduleCloud(); scheduleWork(); return command.receipt!;
+      } finally {
+        quotaRetryRunning = false; issuedCommands.delete(command); command.finish(); if (active()) publish();
+      }
+    },
     async updateDraft(patch: { binding: BuilderInputBinding; raw: string }) {
       if (!active() || draftProtected) return false;
       const next = updateBuilderInputDraft(draft, trip, patch.binding, patch.raw, ownerId);
       if (next.inputRevision === draft.inputRevision) return !draftNeedsWrite && !devicePending;
+      quotaChange = null;
       draft = next; inputRevision = draft.inputRevision; rawInputEpoch++; draftNeedsWrite = true;
       rawFieldEpochs.set(rawFieldKey(patch.binding), rawInputEpoch);
       scheduleWork(); publish();
@@ -667,7 +711,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       }
       return active() && !pending && !draftNeedsWrite && !error;
     },
-    dispose() { disposed = true; cancelCloud?.(); cancelWork?.(); workAbort?.abort(); workAbort = null; work = null; listeners.clear(); queue.reset(); },
+    dispose() { disposed = true; quotaChange = null; cancelCloud?.(); cancelWork?.(); workAbort?.abort(); workAbort = null; work = null; listeners.clear(); queue.reset(); },
   };
 }
 export type AsyncBuilderEditSession = Awaited<ReturnType<typeof createAsyncBuilderEditSession>>;

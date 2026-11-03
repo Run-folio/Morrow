@@ -33,7 +33,7 @@ import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } f
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
 import type { BuilderReconciliationRequest } from "@/lib/easyt/trip-builder-edit-session";
-import type { AsyncBuilderEditSession as BuilderEditSession, AsyncBuilderEditSessionOptions as BuilderEditSessionOptions } from "@/lib/easyt/trip-builder-async-edit-session";
+import type { AsyncBuilderEditSession as BuilderEditSession, AsyncBuilderEditSessionOptions as BuilderEditSessionOptions, BuilderCommandReceipt } from "@/lib/easyt/trip-builder-async-edit-session";
 import { useBuilderEditSession } from "./use-builder-edit-session";
 import { createBuilderEntrySession, type BuilderEntrySession } from "@/lib/easyt/trip-builder-entry-session";
 import { requireReadableTripDocument } from "@/lib/easyt/trip-document";
@@ -1019,6 +1019,7 @@ function TripBuilderDocument() {
   const [initialDecisionSelections, setDecisionSelections] = useState<TripDecisionSelections>({ transportByLeg: {} });
   const decisionSelections = canonicalBuilder ? (canonicalBuilder.brief.decisionSelections ?? {transportByLeg:{}}) : initialDecisionSelections;
   const [lastStructuralChange, setLastStructuralChange] = useState<StructuralSnapshot | null>(null);
+  const quotaFeedbackRef = useRef<{ editor: BuilderEditSession; frame: StructuralSnapshot | null } | null>(null);
   const [structuralNoticeVersion, setStructuralNoticeVersion] = useState(0);
   const builderActionRef = useRef<HTMLDivElement | null>(null);
 
@@ -1485,6 +1486,16 @@ function TripBuilderDocument() {
     setHasPromptContext(true);
   };
 
+  const completeAcceptedBuilderEdit = (editor: BuilderEditSession, receipt: BuilderCommandReceipt, frame: StructuralSnapshot | null) => {
+    if (!builderMountedRef.current || builderEditSessionRef.current !== editor
+      || editor.getSnapshot().browserOwnerId !== activeBrowserOwnerIdRef.current || !editor.isCommandReceiptCurrent(receipt)) return false;
+    if (frame && editor.retainStructuralSnapshot(frame.canonical!, receipt.acceptedRevision)) {
+      publishStructuralChange({ ...frame, canonicalSession: editor, acceptedRevision: editor.getSnapshot().acceptedRevision });
+    }
+    applyAcceptedBuilderDocument(receipt.trip);
+    setEditNeedsReview(false); setCloudSaveError(""); setSaveState(editor.getSnapshot().saveState);
+    return true;
+  };
   const dispatchAcceptedBuilderEdits = async (edits: readonly BuilderAcceptedEdit[], options?: {
     expectedInputRevision?: number; acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[];
   }) => {
@@ -1495,10 +1506,12 @@ function TripBuilderDocument() {
     // a success notice in a handler that may subsequently reject or return early.
     const summary = builderStructuralFeedback(edits)?.summary;
     const frame = summary ? captureStructuralChange(summary, editor.captureStructuralSnapshot(false)) : null;
+    quotaFeedbackRef.current = null;
     const result = await editor.acceptBatch(edits, options?.expectedInputRevision ?? editor.getSnapshot().inputRevision, options?.acceptedInputs);
     if (!builderMountedRef.current || builderEditSessionRef.current !== editor
       || editor.getSnapshot().browserOwnerId !== activeBrowserOwnerIdRef.current) return false;
     if (!result.ok) {
+      if (editor.getSnapshot().error?.retryableEdit) quotaFeedbackRef.current = { editor, frame };
       setEditNeedsReview(!editor.getSnapshot().error);
       setCloudSaveError(result.reason === "stale-source"
         ? "The trip changed while this edit was being checked. Review the latest trip and try again."
@@ -1507,15 +1520,7 @@ function TripBuilderDocument() {
     }
     // A verified earlier command may finish while later raw input remains
     // visible. Its completion must not publish stale success, Undo or enrichment.
-    if (!editor.isCommandReceiptCurrent(result.receipt)) return false;
-    if (frame && editor.retainStructuralSnapshot(frame.canonical!, result.receipt.acceptedRevision)) {
-      publishStructuralChange({ ...frame, canonicalSession: editor, acceptedRevision: editor.getSnapshot().acceptedRevision });
-    }
-    applyAcceptedBuilderDocument(result.trip);
-    setEditNeedsReview(false);
-    setCloudSaveError("");
-    setSaveState(editor.getSnapshot().saveState);
-    return true;
+    return completeAcceptedBuilderEdit(editor, result.receipt, frame);
   };
   const dispatchAcceptedBuilderEdit = async (edit: BuilderAcceptedEdit | null, options?: {
     expectedInputRevision?: number; acceptedInput?: { binding: BuilderInputBinding; raw: string };
@@ -5963,6 +5968,13 @@ function TripBuilderDocument() {
               : "Changes not synced to your account";
   const recoverFromSaveError = async () => {
     if(builderEditSessionRef.current) {
+      if (mountedBuilder?.snapshot.error?.retryableEdit) {
+        const editor = builderEditSessionRef.current, feedback = quotaFeedbackRef.current;
+        const receipt = await editor.retryRejectedEdit();
+        if (receipt && completeAcceptedBuilderEdit(editor, receipt, feedback?.editor === editor ? feedback.frame : null)
+          && quotaFeedbackRef.current === feedback) quotaFeedbackRef.current = null;
+        return;
+      }
       if (mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)) {
         openSummaryEditor("stops");
         return;
@@ -6029,7 +6041,9 @@ function TripBuilderDocument() {
     }
     openBuiltTrip();
   };
-  const recoveryActionLabel = mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)
+  const recoveryActionLabel = mountedBuilder?.snapshot.error?.retryableEdit
+    ? (language === "es" ? "Reintentar este cambio" : "Retry this change")
+    : mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)
     ? (language === "es" ? "Revisar e intentar de nuevo" : "Review and try again")
     : syncAction === "reload-cloud"
     ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy")
@@ -7471,6 +7485,8 @@ function TripBuilderDocument() {
           ? mountedBuilder?.snapshot.routeWorkBlocked
             ? (language === "es" ? "Tu viaje y tus datos introducidos se conservan. Mantén esta pestaña abierta mientras los revisas." : "Your current trip and input remain preserved. Keep this tab open while you review them.")
             : (language === "es" ? "Mantén esta pestaña abierta mientras revisas los cambios y terminas de guardar." : "Keep this tab open while you review changes and saving finishes.")
+          : mountedBuilder?.snapshot.error?.retryableEdit
+          ? (language === "es" ? "El cambio se conserva solo en esta pestaña hasta que se pueda guardar." : "This change is held only in this tab until it can be saved.")
           : mountedBuilder?.snapshot.error?.deviceOutcome
           ? (language === "es" ? "Este cambio no se aplicó. Revísalo y vuelve a aplicarlo; mantén esta pestaña abierta." : "This change was not applied. Review and reapply it; keep this tab open.")
           : devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete"
@@ -7480,7 +7496,7 @@ function TripBuilderDocument() {
           : cloudConflictTrip
             ? (language === "es" ? "Tus cambios del dispositivo siguen conservados y no sustituyeron la copia de la cuenta." : "Your device edits remain preserved and did not replace the account copy.")
             : (language === "es" ? "Tus últimos cambios siguen seguros en este dispositivo." : "Your latest edits are still safe on this device.")}
-        actions={<EasyTButton variant="secondary" onClick={(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? () => { setBuildNeedsReview(false); setEditNeedsReview(false); setCloudSaveError(""); } : recoverFromSaveError}>{(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? (language === "es" ? "Revisar viaje" : "Review trip") : recoveryActionLabel}</EasyTButton>}
+        actions={<EasyTButton variant="secondary" disabled={mountedBuilder?.snapshot.error?.retryingEdit} onClick={(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? () => { setBuildNeedsReview(false); setEditNeedsReview(false); setCloudSaveError(""); } : recoverFromSaveError}>{(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? (language === "es" ? "Revisar viaje" : "Review trip") : recoveryActionLabel}</EasyTButton>}
       /></div> : null}
       {hasRouteSkeleton && <div ref={builderActionRef} className={styles.wizardFoot}>
         <div className={styles.footRight}>
