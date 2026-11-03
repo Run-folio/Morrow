@@ -23,9 +23,9 @@ test('batch bounds reject malformed, empty and oversized schedules',async()=>{
 
 test('resume rejects weaker smoke evidence, changed strictness and runner changes', async () => {
   const { requireResumeWitness } = await import('../scripts/storybook-current-contract.mjs');
-  const witness = { qualification: { mode: 'core', cases: [{ id: 'a', strict: true }], runnerSha256: 'runner-1' }, indexSha256: 'index', buildFingerprint: 'build', sourceCommit: 'source', caseKeys: ['a:1440:900'] };
+  const witness = { qualification: { mode: 'core', all: false, memoryOnly: true, cases: [{ id: 'a', strict: true }], runnerSha256: 'runner-1' }, indexSha256: 'index', buildFingerprint: 'build', sourceCommit: 'source', caseKeys: ['a:1440:900'] };
   assert.doesNotThrow(() => requireResumeWitness(witness, structuredClone(witness)));
-  for (const patch of [{ mode: 'smoke' }, { cases: [{ id: 'a', strict: false }] }, { runnerSha256: 'runner-2' }]) {
+  for (const patch of [{ all: true }, { mode: 'smoke' }, { cases: [{ id: 'a', strict: false }] }, { runnerSha256: 'runner-2' }]) {
     assert.throws(() => requireResumeWitness({ ...witness, qualification: { ...witness.qualification, ...patch } }, witness), /Resume/);
   }
 });

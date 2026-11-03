@@ -56,7 +56,7 @@ const workers = Number(argumentsMap.workers ?? 2);
 if (!Number.isInteger(workers) || workers < 1 || workers > 3) throw new Error('Workers must be 1–3');
 const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const mode = memoryOnly ? 'memory-only-fixtures' : all ? 'catalogue-smoke' : 'core-responsive-interaction-a11y';
-const qualification = { mode, cases: selected.map(({ id, width, height, strict }) => ({ id, width, height, strict })), runnerSha256: createHash('sha256').update(await readFile(new URL(import.meta.url))).update(await readFile(new URL('./storybook-current-contract.mjs', import.meta.url))).digest('hex') };
+const qualification = { mode, all, memoryOnly, cases: selected.map(({ id, width, height, strict }) => ({ id, width, height, strict })), runnerSha256: createHash('sha256').update(await readFile(new URL(import.meta.url))).update(await readFile(new URL('./storybook-current-contract.mjs', import.meta.url))).digest('hex') };
 const results = [];
 if (argumentsMap.resume) {
   const prior = JSON.parse(await readFile(join(output, 'results.json'), 'utf8'));
