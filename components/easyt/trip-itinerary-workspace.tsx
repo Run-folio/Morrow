@@ -897,6 +897,10 @@ export default function TripItineraryWorkspace({
   }, [active, dayComposition, workingTrip]);
   const itineraryDaysOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-days");
   const itineraryPlannerOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-planner");
+  const setPlannerElement = useCallback((element: HTMLDivElement | null) => {
+    plannerElementRef.current = element;
+    itineraryPlannerOrientationTarget(element);
+  }, [itineraryPlannerOrientationTarget]);
   const itinerarySuggestionsOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-suggestions");
   useWorkspaceOrientationReady(
     "itinerary",
@@ -1798,7 +1802,7 @@ export default function TripItineraryWorkspace({
 
 
 
-        {dayComposition ? <div ref={(element) => { plannerElementRef.current = element; itineraryPlannerOrientationTarget(element); }} className={styles.details} aria-busy={dayPending || undefined}>
+        {dayComposition ? <div ref={setPlannerElement} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
             composition={dayComposition}
             compactMobile={mobile}

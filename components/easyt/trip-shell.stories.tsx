@@ -114,7 +114,7 @@ export const CleanTrip: Story = Overview;
 
 export const InlineNameCancel: Story = {
   ...Overview,
-  args: { ...Overview.args, orientationAutoStart: false },
+  args: { ...Overview.args, trip: { ...trip, id: "interaction-inline-cancel", ownerId: null }, orientationAutoStart: false, cacheTrip: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Edit trip name" }));
@@ -124,6 +124,17 @@ export const InlineNameCancel: Story = {
     await userEvent.type(field, "Sample draft");
     await userEvent.keyboard("{Escape}");
     await expect(canvas.queryByRole("form", { name: "Edit trip name" })).not.toBeInTheDocument();
+  },
+};
+/** Device-only sample: no account session, API or recovery fixture is required. */
+export const InteractionReview: Story = {
+  ...Overview,
+  args: {
+    ...Overview.args,
+    trip: { ...trip, id: "interaction-review-name", ownerId: null },
+    orientationAutoStart: false,
+    cacheTrip: false,
+    children: <p style={{ padding: 24 }}>Try Edit name, Save name, and Cancel or Escape. This synthetic trip is stored only in this preview’s browser.</p>,
   },
 };
 export const GenuineHistoricalDeviceDivergence: Story = { ...Overview, render: () => <HistoricalRecoveryShell /> };

@@ -417,6 +417,11 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+/** An editable device-only review; never connects to an account trip. */
+export const InteractionReview: Story = {
+  args: { trip: { ...trip, id: "interaction-review-itinerary", ownerId: null } },
+};
+
 export const FoodAndCultureRecommendations: Story = {
   args: { trip: tripWithInterests(["food", "culture"]), initialSuggestions: { 1: interestSuggestionPool } },
 };

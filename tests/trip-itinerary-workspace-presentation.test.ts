@@ -431,3 +431,11 @@ test("Logistics keeps transfer and other bookings while accommodation moves to t
   assert.match(itinerary, /Arrival into your first overnight destination/);
   assert.doesNotMatch(itinerary, /arrivalLabel \?[^:]+: `~\$\{formatTripDuration\(durationMinutes\)\}`/);
 });
+
+// Regression: a new composed ref on every render unregisters/registers the
+// orientation target, whose registry update renders again (React error 185).
+test("Planner focus handoff keeps its orientation ref stable across registry renders", () => {
+  assert.match(itinerary, /const setPlannerElement = useCallback\(\(element: HTMLDivElement \| null\) => \{\s*plannerElementRef.current = element;\s*itineraryPlannerOrientationTarget\(element\);\s*\}, \[itineraryPlannerOrientationTarget\]\);/);
+  assert.match(itinerary, /<div ref=\{setPlannerElement\}/);
+  assert.doesNotMatch(itinerary, /ref=\{\(element\) => \{ plannerElementRef.current/);
+});
