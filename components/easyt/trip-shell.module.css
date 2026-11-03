@@ -75,6 +75,10 @@
   min-width: 0;
 }
 
+.inlineNameTrigger { justify-self: start; min-height: 44px; }
+.inlineNameForm { display: grid; min-width: 0; gap: 10px; }
+.inlineNameForm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--morrovia-signal);

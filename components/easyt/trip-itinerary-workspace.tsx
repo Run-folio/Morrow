@@ -676,6 +676,9 @@ export default function TripItineraryWorkspace({
   const [railNoteError, setRailNoteError] = useState("");
   const noteInputRef = useRef<HTMLInputElement>(null);
   const selectedItemOriginRef = useRef<HTMLButtonElement | null>(null);
+  const sequenceEditorRef = useRef<HTMLDetailsElement>(null);
+  const plannerElementRef = useRef<HTMLDivElement>(null);
+  const activityEditHandoffRef = useRef<{ dayId: string; trigger: HTMLButtonElement; noteIndex: number; editorWasOpen: boolean } | null>(null);
   const detailScrollRef = useRef<{ page: number; surface: HTMLElement | null; top: number } | null>(null);
   const detailPointerScrollRef = useRef<{ page: number; surface: HTMLElement | null; top: number; origin: HTMLButtonElement; at: number } | null>(null);
   const detailWasOpenRef = useRef(false);
@@ -777,6 +780,7 @@ export default function TripItineraryWorkspace({
 
   useEffect(() => {
     setDayPickerOpen(false); setAddChooserOpen(false); mobileAddIntent.current = null;
+    activityEditHandoffRef.current = null;
     const requestedCalendarItem = calendarItemRequestRef.current;
     setSelectedItemId(requestedCalendarItem);
     calendarItemRequestRef.current = null;
@@ -1340,6 +1344,18 @@ export default function TripItineraryWorkspace({
     setEditDraft("");
     setEditError("");
     setNotice(copy.activityUpdated);
+    returnFromActivityEdit();
+  };
+
+  const returnFromActivityEdit = () => {
+    const handoff = activityEditHandoffRef.current;
+    activityEditHandoffRef.current = null;
+    if (!handoff || handoff.dayId !== active.id) return;
+    if (sequenceEditorRef.current) sequenceEditorRef.current.open = handoff.editorWasOpen;
+    window.requestAnimationFrame(() => {
+      if (handoff.trigger.isConnected) handoff.trigger.focus();
+      else plannerElementRef.current?.querySelector<HTMLButtonElement>(`[data-activity-note-index="${handoff.noteIndex}"] button`)?.focus();
+    });
   };
 
   const removeComposedActivity = async (activity: ComposedItineraryActivity) => {
@@ -1782,12 +1798,21 @@ export default function TripItineraryWorkspace({
 
 
 
-        {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
+        {dayComposition ? <div ref={(element) => { plannerElementRef.current = element; itineraryPlannerOrientationTarget(element); }} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
             composition={dayComposition}
             compactMobile={mobile}
             ideasHref={mapIdeasHref}
             language={language}
+            onEditActivity={(activity, trigger) => {
+              if (activity.noteIndex === null) return;
+              activityEditHandoffRef.current = { dayId: active.id, trigger, noteIndex: activity.noteIndex, editorWasOpen: sequenceEditorRef.current?.open ?? false };
+              if (sequenceEditorRef.current) sequenceEditorRef.current.open = true;
+              setAddFlow(null);
+              beginActivityEdit({ dayNumber: active.dayNumber, noteIndex: activity.noteIndex, title: activity.title });
+              setSelectedItemId(null); setSelectedRecommendation(null);
+              window.requestAnimationFrame(() => sequenceEditorRef.current?.querySelector<HTMLInputElement>("form input")?.focus());
+            }}
             onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart)}
             onSeeSuggestions={() => {
               const suggestions = document.getElementById(`${tabIdPrefix}-ideas`);
@@ -1838,7 +1863,7 @@ export default function TripItineraryWorkspace({
           </div> : null}
         </div> : null}
 
-        {workspaceView === "days" && reorderableEditorNotes > 1 ? <details key={active.id} className={styles.sequenceEditor}>
+        {workspaceView === "days" && reorderableEditorNotes > 0 ? <details key={active.id} ref={sequenceEditorRef} className={styles.sequenceEditor}>
           <summary>{copy.editActivityOrder}</summary>
         <div className={styles.details} aria-label={`${stop?.name ?? active.title} activity editing controls`} aria-busy={dayPending || undefined} data-selected-item={selectedItemId ?? undefined}>
           {!incomingLeg ? <InsertionControl
@@ -1883,7 +1908,7 @@ export default function TripItineraryWorkspace({
                 onBeginEdit={() => beginActivityEdit(target)}
                 onEditDraftChange={(value) => { setEditDraft(value); setEditError(""); }}
                 onSaveEdit={saveActivityEdit}
-                onCancelEdit={() => { setEditingActivity(null); setEditDraft(""); setEditError(""); }}
+                onCancelEdit={() => { setEditingActivity(null); setEditDraft(""); setEditError(""); returnFromActivityEdit(); }}
                 onToggleMenu={() => setOpenMenuId((current) => current === itemId ? null : itemId)}
                 onRemove={() => { setRemoveTarget(target); setRemoveError(""); setOpenMenuId(null); }}
                 onMoveEarlier={() => moveActivityTo(target, previous?.sourceIndex ?? sourceIndex)}
@@ -3202,7 +3227,9 @@ function TimelineRow({
     return (
       <article className={`${styles.detailRow} ${styles.customRow} ${styles.editingRow} ${selected ? styles.selectedRow : ""}`} data-itinerary-item={itemId}>
         <span className={styles.detailIcon}><Icon aria-hidden="true" /></span>
-        <form className={styles.rowEditor} onSubmit={(event) => { event.preventDefault(); onSaveEdit(); }}>
+        <form className={styles.rowEditor} onSubmit={(event) => { event.preventDefault(); onSaveEdit(); }} onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCancelEdit(); }
+        }}>
           <EasyTField autoFocus label={copy.activityName} value={editDraft} error={editError || undefined} onChange={(event) => onEditDraftChange(event.target.value)} />
           <span><EasyTButton type="submit" size="small" disabled={!editDraft.trim()}>{copy.save}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onCancelEdit}>{copy.cancel}</EasyTButton></span>
         </form>

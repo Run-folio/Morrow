@@ -8,9 +8,11 @@ import {
   CalendarDays,
   CalendarRange,
   CirclePlus,
+  ChevronDown,
   Clock3,
   GripVertical,
   MoreHorizontal,
+  Pencil,
   Route,
   Trash2,
 } from "lucide-react";
@@ -33,6 +35,7 @@ import styles from "./rich-itinerary-day-planner.module.css";
 
 type RichItineraryDayPlannerProps = {
   composition: ItineraryDayComposition;
+  onEditActivity?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   compactMobile?: boolean;
   addComposerDayPart?: ItineraryDayPart | null;
   addComposerOpen?: boolean;
@@ -176,6 +179,7 @@ function ActivityRow({
   selected,
   onSelect,
   warnings,
+  onEditActivity,
 }: {
   activity: ComposedItineraryActivity;
   language: "en" | "es";
@@ -195,6 +199,7 @@ function ActivityRow({
   selected: boolean;
   onSelect?: (trigger: HTMLButtonElement) => void;
   warnings: string[];
+  onEditActivity?: RichItineraryDayPlannerProps["onEditActivity"];
 }) {
   const copy = copyFor(language);
   const duration = activityDurationLabel(activity.providerMetadata?.duration);
@@ -215,7 +220,7 @@ function ActivityRow({
     activity.area,
   ].filter(Boolean).join(" · ");
   return (
-    <ItineraryDraggableCard className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id} draggable={draggable && !pending && !activity.booking && (allowsDayPart || fullDay)} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <ItineraryDraggableCard className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id} data-activity-note-index={activity.noteIndex ?? undefined} draggable={draggable && !pending && !activity.booking && (allowsDayPart || fullDay)} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <EasyTButton className={styles.activitySelect} data-itinerary-drag-surface variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
         <ItineraryActivityIdentity
           title={activity.title}
@@ -237,10 +242,19 @@ function ActivityRow({
         tabIndex={-1}
         aria-hidden="true"
       >{copy.dragActivity}: {activity.title}</EasyTButton> : null}
-      {activity.dayPartEditable && (allowsDayPart || fullDay) ? <details className={styles.activityMenu}>
-        <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
+      <details className={styles.activityExpansion} onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault(); event.stopPropagation();
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector("summary")?.focus();
+        }
+      }}>
+        <summary aria-label={`Details and actions for ${activity.title}`}>{language === "es" ? "Detalles y acciones" : "Details and actions"}<ChevronDown aria-hidden="true" /></summary>
         <div>
-          {allowsDayPart ? <EasyTSelect
+          {activity.booking?.confirmation ? <p>{language === "es" ? "Confirmación" : "Confirmation"}: {activity.booking.confirmation}</p> : null}
+          {onSelect ? <EasyTButton size="small" variant="secondary" onClick={(event) => onSelect(event.currentTarget)}>{language === "es" ? "Abrir detalles" : "Open details"}</EasyTButton> : null}
+          {onEditActivity && activity.source === "authored-activity" && activity.dayPartEditable && !activity.booking && activity.noteIndex !== null ? <EasyTButton size="small" icon={Pencil} variant="quiet" disabled={pending} onClick={(event) => onEditActivity(activity, event.currentTarget)}>{language === "es" ? "Editar actividad" : "Edit activity"}</EasyTButton> : null}
+          {activity.dayPartEditable && allowsDayPart ? <EasyTSelect
             id={controlId}
             fieldClassName={styles.dayPartField}
             label={`${copy.choosePeriod}: ${activity.title}`}
@@ -256,7 +270,7 @@ function ActivityRow({
               <option value={part} key={part}>{dayPartLabels[language][part]}</option>
             ))}
           </EasyTSelect> : <p className={styles.fullDayMenuLabel}>{fullDayScheduleLabel}</p>}
-          {activity.dayPart !== null && onMoveActivity ? <div className={styles.activityMoveActions}>
+          {activity.dayPartEditable && activity.dayPart !== null && onMoveActivity ? <div className={styles.activityMoveActions}>
         <EasyTButton
           icon={ArrowUp}
           iconOnly
@@ -274,7 +288,7 @@ function ActivityRow({
           onClick={() => { onBeforeDayPartChange(activity.id); onMoveActivity(activity, "later"); }}
         >{copy.moveLater} {dayPartLabels[language][activity.dayPart]}: {activity.title}</EasyTButton>
           </div> : null}
-          {onMoveToDay ? <EasyTButton
+          {activity.dayPartEditable && onMoveToDay ? <EasyTButton
             icon={CalendarRange}
             size="small"
             variant="quiet"
@@ -293,13 +307,14 @@ function ActivityRow({
             }}
           >{copy.remove}</EasyTButton> : null}
         </div>
-      </details> : null}
+      </details>
     </ItineraryDraggableCard>
   );
 }
 
 export default function RichItineraryDayPlanner({
   composition,
+  onEditActivity,
   addComposerDayPart = null,
   addComposerOpen = false,
   addDraft = "",
@@ -363,6 +378,8 @@ export default function RichItineraryDayPlanner({
     if (!activityId) return;
     const control = document.getElementById(`${controlPrefix}-${activityId}`);
     if (control instanceof HTMLSelectElement) {
+      const disclosure = control.closest("details");
+      if (disclosure) disclosure.open = true;
       control.focus();
       focusAfterMoveRef.current = null;
     }
@@ -413,6 +430,7 @@ export default function RichItineraryDayPlanner({
                 onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
+                onEditActivity={onEditActivity}
                 onMoveToDay={onMoveToDay}
                 onRemoveActivity={onRemoveActivity}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
@@ -509,6 +527,7 @@ export default function RichItineraryDayPlanner({
               onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
               onDayPartChange={onDayPartChange}
               onMoveActivity={onMoveActivity}
+              onEditActivity={onEditActivity}
               onMoveToDay={onMoveToDay}
               onRemoveActivity={onRemoveActivity}
               draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
@@ -573,6 +592,7 @@ export default function RichItineraryDayPlanner({
                 onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
+                onEditActivity={onEditActivity}
                 onMoveToDay={onMoveToDay}
                 onRemoveActivity={onRemoveActivity}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
