@@ -1,0 +1,758 @@
+(node:83086) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/rich-itinerary-day-planner-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ empty day exposes the same three direct planning slots as a populated day (0.579541ms)
+✔ populated day shows all three periods and saved unslotted rows (0.136791ms)
+✔ direct Add uses the controlled composer and canonical daypart intent (0.096167ms)
+✔ mobile populated plan removes surplus section gap without shrinking activity controls (0.113125ms)
+✔ travel card copy can wrap inside the shared quiet button at mobile widths (0.061541ms)
+✔ the production itinerary owner consumes canonical composition and persists period changes through its mutation path (0.106209ms)
+✔ broad periods use semantic headings, canonical controls, and a keyboard-accessible clear state (0.265042ms)
+✔ native drag uses a canonical pointer source while preserving every canonical placement path (0.914625ms)
+✔ whole, empty, populated, and insertion drop targets retain native acceptance semantics (0.733625ms)
+✔ entering native drag mode never changes period geometry (0.339958ms)
+✔ mobile hides pointer drag without removing the explicit scheduling and reorder controls (0.210459ms)
+✔ mobile keeps the same three slot actions and narrow one-column rhythm (0.107ms)
+✔ slot Add composer, first-class travel, and tonight context stay distinct (0.766709ms)
+✔ long names and compact breakpoints remain contained without a parallel mobile data path (0.46575ms)
+✔ day parts use the canonical calm surface and heading typography at every width (0.211291ms)
+✔ the scheduled card is the primary selection target and editing chrome is secondary (0.12425ms)
+✔ the rendered planner follows Travel, full-day band, chronological day parts, unslotted context, then Tonight (0.109166ms)
+✔ Storybook uses the production component for composed planner and responsive states (0.2765ms)
+✔ full-day activities render once as a day-level band with only verified period overlaps (0.099959ms)
+✔ full-day period drops announce day-level placement and keep mobile and keyboard alternatives (0.118333ms)
+✔ saved full-day ideas expose a dedicated day-level drag handle (0.080084ms)
+✔ ranked full-day suggestions remain draggable to the day-level band (0.060667ms)
+✔ ranked rows for already-planned ideas cannot create a duplicate no-op drag source (0.036667ms)
+✔ dropping an already-planned full-day activity on a period reports the unchanged placement clearly (0.072292ms)
+✔ planned full-day drag shows its valid route and periods are not marked as drop targets (0.037875ms)
+(node:83087) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ date metadata omits only the open-day question mark while preserving day navigation and item status (0.71475ms)
+✖ Itinerary map handoffs preserve the selected day as the return destination (0.773167ms)
+✔ the itinerary restores the day rail beside the agenda without a second selection owner (0.345375ms)
+✔ destination context is a separate route-level control that drives the canonical selected day (0.551042ms)
+✔ in-page orientation uses the established numeric day query (0.194375ms)
+✔ the selected day timeline uses canonical content and the shared Map persistence architecture (0.210375ms)
+✔ day header keeps only canonical day context and navigation (0.77175ms)
+✔ selected day photo and consolidated route sources retain exact image ownership (0.585375ms)
+✔ Explore remains the canonical discovery handoff without a second header action (0.331666ms)
+✔ Map attraction Add schedules the canonical activity instead of only toggling selectedPlaces (0.312541ms)
+✔ device-copy recovery is calm, explicit, and links to the protected review path (0.092292ms)
+✔ the contextual rail renders canonical map, booking, recommendation, and note data (0.495083ms)
+✖ Itinerary uses embedded selection while full Map uses the shared workspace policy (0.604959ms)
+✔ Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook (0.397375ms)
+✔ day suggestions lead retained cross-destination intentions with a three-result preview (0.366125ms)
+✔ day navigation is owned by the toolbar and precedes planner content (0.208583ms)
+✔ tablet and mobile retain the one horizontal day scroller (0.403917ms)
+✔ mobile composition keeps the plan before Saved Ideas and secondary discovery (0.322625ms)
+✖ Calendar keeps its items in day cards alongside the shared day context rail (0.47925ms)
+✖ Calendar preserves trip title, date and timeline while naming selected-day details (0.732875ms)
+✔ scheduled cards open one reusable detail owner without introducing another persistence model (0.245083ms)
+✔ activity, restaurant, and accommodation detail stay truthful and omit absent facts (0.095375ms)
+✔ long canonical and provider content stays inside the timeline and planning rail (0.426916ms)
+✔ saved ideas have one shared stop-scoped unscheduled owner in the planning rail (0.312542ms)
+✔ Notes is the only note-entry owner and stays inside the Day-by-day context body (0.204667ms)
+✔ Viator inventory uses compact disclosure and suppresses the generic fallback when a live product is visible (1.659083ms)
+✔ recommendation cards use canonical day scoring, an accessible itinerary menu, and separate Add and Save actions (3.096416ms)
+✔ selected-day deep links do not override a traveller's later day choice after local mutations (0.149042ms)
+✔ suggestion requests use the shared stale-result and cancellation guard (0.317417ms)
+✔ planner drag ownership survives native pointer timing and is cleared at workspace boundaries (0.425084ms)
+✔ day placement menus escape the scroll owner through a viewport-positioned portal (0.238291ms)
+✔ an unavailable or incomplete Suggestions lane is compact, resets active drag, and retries without overlap (0.541667ms)
+✔ Itinerary keeps stay management in the canonical Stay owner (0.10975ms)
+✔ Logistics keeps transfer and other bookings while accommodation moves to the day context (0.240708ms)
+✔ Planner focus handoff keeps its orientation ref stable across registry renders (0.466083ms)
+(node:83088) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-shell-rename-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ inline naming uses the existing scoped mutation and preserves itinerary data on acceptance (69.034709ms)
+✔ Escape cancels an inline draft without invoking persistence (30.780375ms)
+✔ refused inline persistence retains the draft for retry (35.846875ms)
+✔ the actual shared mutation rejects an unchanged canonical rename before persistence (6.447833ms)
+✔ Save of the exact current canonical title closes as a verified no-op without invoking persistence (27.980833ms)
+✔ a normalized exact-current title is a pre-submit no-op rather than a false acknowledgement (31.675042ms)
+✔ rename waits for literal true, then closes its current dialog after the source title prop updates (16.777917ms)
+✔ a matching later source title cannot turn a refused mutation into accepted dialog completion (18.736542ms)
+✔ rename preserves its exact current draft on false acceptance (22.916625ms)
+✔ rename preserves its exact current draft on rejection acceptance (14.717584ms)
+✔ rename preserves its exact current draft on object acceptance (25.441208ms)
+✔ rename preserves its exact current draft on string acceptance (18.656167ms)
+✔ rename preserves its exact current draft on number acceptance (17.31425ms)
+✔ rename preserves its exact current draft on undefined acceptance (15.778667ms)
+✔ typing a newer title before React applies the state queue retires an old accepted rename (19.621833ms)
+✔ queued old rename does not apply after a newer raw edit before render (19.699875ms)
+✔ same raw text is a no-op during rename acceptance (28.35725ms)
+✔ a changed raw value remains newer even when it normalizes to the submitted title (16.287958ms)
+✔ cancel and reopen creates a new dialog session that old acceptance and old input callbacks cannot close or replace (17.47175ms)
+✔ rename session cannot revive after a owner scope transition (19.167042ms)
+✔ rename session cannot revive after a document scope transition (30.928084ms)
+✔ rename session cannot revive after a view scope transition (21.1815ms)
+✔ rename session cannot revive after a owner-cycle scope transition (17.059291ms)
+✔ rename session cannot revive after a view-cycle scope transition (25.290792ms)
+✔ rename rejects an unmounted continuation and a pending continuation revived by effect replay (32.344125ms)
+✔ a fresh rename after effect replay stays pending when the obsolete request finishes (18.264458ms)
+✔ rename deduplicates immediate submissions and releases its own pending state on refusal (16.335416ms)
+✔ rename validation retains Unicode raw text and never starts an overlong mutation (21.329709ms)
+✔ shared header hides personal route while retaining planning controls for guest (13.56775ms)
+✔ shared header hides personal route while retaining planning controls for owner-a (14.071208ms)
+ℹ tests 90
+ℹ suites 0
+ℹ pass 86
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1098.105167
+
+✖ failing tests:
+
+test at tests/trip-itinerary-workspace-presentation.test.ts:27:1
+✖ Itinerary map handoffs preserve the selected day as the return destination (0.773167ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /const mapReturnHref = itineraryWorkspaceHref\(workingTrip\.id, active\.dayNumber\)/. Input:
+  
+  '"use client";\n' +
+    "import {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';\n" +
+    "import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';\n" +
+    '\n' +
+    'import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";\n' +
+    '\n' +
+    'import {\n' +
+    '  ArrowRight,\n' +
+    '  BedDouble,\n' +
+    '  BookOpenText,\n' +
+    '  CalendarDays,\n' +
+    '  CarFront,\n' +
+    '  CheckCircle2,\n' +
+    '  ChevronDown,\n' +
+    '  ChevronLeft,\n' +
+    '  ChevronRight,\n' +
+    '  CircleHelp,\n' +
+    '  CirclePlus,\n' +
+    '  Clock3,\n' +
+    '  ExternalLink,\n' +
+    '  GripVertical,\n' +
+    '  Lightbulb,\n' +
+    '  Map as MapIcon,\n' +
+    '  MapPin,\n' +
+    '  MoreHorizontal,\n' +
+    '  Pencil,\n' +
+    '  Plane,\n' +
+    '  Route,\n' +
+    '  Ship,\n' +
+    '  Sparkles,\n' +
+    '  TrainFront,\n' +
+    '  Trash2,\n' +
+    '  Utensils,\n' +
+    '  X,\n' +
+    '  type LucideIcon,\n' +
+    '} from "lucide-react";\n' +
+    'import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";\n' +
+    'import { createPortal } from "react-dom";\n' +
+    'import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripBooking, type TripLeg, type TripStop } from "@/lib/easyt/trip";\n' +
+    'import { tripDisplayTitle } from "@/lib/easyt/trip-display";\n' +
+    'import type { JourneyImage } from "@/lib/journey";\n' +
+    'import { itineraryImageFor } from "@/lib/easyt/itinerary-media";\n' +
+    'import { itineraryDaySubtitle, itineraryNotesWithSourceIndexesForDisplay, semanticSamePlaceArrival } from "@/lib/easyt/itinerary-presentation";\n' +
+    'import {\n' +
+    '  addItineraryDayNote,\n' +
+    '  assignItineraryActivityDayPart,\n' +
+    '  itineraryActivityProtection,\n' +
+    '  moveItineraryActivity,\n' +
+    '  moveItineraryIdeaActivity,\n' +
+    '  renameItineraryActivity,\n' +
+    '  type ItineraryActivityLocation,\n' +
+    '} from "@/lib/easyt/itinerary-mutations";\n' +
+    'import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";\n' +
+    'import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";\n' +
+    'import { trackEvent } from "@/lib/analytics";\n' +
+    'import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";\n' +
+    'import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";\n' +
+    'import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";\n' +
+    'import { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";\n' +
+    'import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";\n' +
+    'import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";\n' +
+    'import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";\n' +
+    'import { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";\n' +
+    'import { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";\n' +
+    'import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";\n' +
+    'import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";\n' +
+    'import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";\n' +
+    'import {\n' +
+    '  itineraryDayLegs,\n' +
+    '  itineraryDayMapContext,\n' +
+    '  itineraryDayMiniMapContext,\n' +
+    '  itineraryDayMapSelection,\n' +
+    '  itinerarySuggestionCandidates,\n' +
+    '  type ItineraryDiscoveryPlace,\n' +
+    '} from "@/lib/easyt/itinerary-day-context";\n' +
+    'import { activityCooldownKey, useActivityClientCooldown } from "@/lib/easyt/activity-client-cooldown";\n' +
+    'import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";\n' +
+    'import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";\n' +
+    'import { itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";\n' +
+    'import { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";\n' +
+    'import { itineraryStayPresentation } from "@/lib/easyt/itinerary-stay-presentation";\n' +
+    'import {\n' +
+    '  addItineraryActivityWithUndo,\n' +
+    '  moveItineraryActivityAcrossDays,\n' +
+    '  placeItineraryActivity,\n' +
+    '  preferredItineraryDayPart,\n' +
+    '  removeItineraryActivityWithUndo,\n' +
+    '  scheduleItineraryIdeaAtPositionWithUndo,\n' +
+    '  scheduleItineraryIdeaWithUndo,\n' +
+    '  undoItineraryItemAction,\n' +
+    '  type ItineraryItemUndoReceipt,\n' +
+    '} from "@/lib/easyt/itinerary-activity-placement";\n' +
+    'import { MorroviaMapPreview } from "./morrovia-map-preview";\n' +
+    'import { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";\n' +
+    'import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";\n' +
+    'import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";\n' +
+    'import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";\n' +
+    'import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";\n' +
+    'import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";\n' +
+    'import ResilientImage from "@/components/easyt/resilient-image";\n' +
+    'import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";\n' +
+    'import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";\n' +
+    'import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";\n' +
+    'import { ContextualFeedbackSlot } from "./contextual-feedback-controller";\n' +
+    'import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";\n' +
+    'import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";\n' +
+    'import ItineraryDraggableCard from "./itinerary-draggable-card";\n' +
+    'import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";\n' +
+    'import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";\n' +
+    'import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";\n' +
+    'import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";\n' +
+    'import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";\n' +
+    "import type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';\n" +
+    "import { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from '@/lib/easyt/planning-evidence-presentation';\n" +
+    'import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";\n' +
+    'import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";\n' +
+    'import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";\n' +
+    'import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";\n' +
+    'import { activityAllowsDayPart, activityDayPartFit, fullDayActivityTiming, isFullDayActivity, type ActivityDuration } from "@/lib/easyt/itinerary-schedule-awareness";\n' +
+    'import { CalendarExportAction } from "./calendar-export-dialog";\n' +
+    'import { hasCalendarArrivalEvent, itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";\n' +
+    'import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";\n' +
+    'import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";\n' +
+    'import legacyStyles from "@/app/journey/new/trip-builder.module.css";\n' +
+    'import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";\n' +
+    'import { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";\n' +
+    'import styles from "./trip-itinerary-workspace.module.css";\n' +
+    '\n' +
+    'type ItineraryWorkspaceProps = {\n' +
+    '  trip: EasyTTrip;\n' +
+    '  presentation?: "shell" | "legacy";\n' +
+    '  language?: "en" | "es";\n' +
+    '  selectedPlaceCount?: number;\n' +
+    '  onEditBrief?: () => void;\n' +
+    '  onOpenMap?: () => void;\n' +
+    '  selectedDayNumber?: number | null;\n' +
+    '  /** Deterministic Storybook/test discovery payloads; production uses the shared discovery endpoint. */\n' +
+    '  initialSuggestions?: Record<number, ItineraryDiscoveryPlace[]>;\n' +
+    '  /** Storybook/test override; production resolves the current approved activity partner centrally. */\n' +
+    '  activityAction?: ResolvedAffiliateAction | null;\n' +
+    '  /** Storybook/test override; production loads the server-only provider route. */\n' +
+    '  initialActivityInventory?: Record<number, ActivityInventoryItem[]>;\n' +
+    '};\n' +
+    '\n' +
+    'type AddFlow = {\n' +
+    '  dayNumber: number;\n' +
+    '  noteIndex: number;\n' +
+    '  kind: "activity" | "note";\n' +
+    '  dayPart?: ItineraryDayPart;\n' +
+    '};\n' +
+    '\n' +
+    'type ActivityTarget = ItineraryActivityLocation & { title: string };\n' +
+    'type PlannerDragItem =\n' +
+    '  | { kind: "activity"; activity: ComposedItineraryActivity; sourceDayId: string; sourceStopId: string }\n' +
+    '  | { kind: "suggestion"; idea: ItineraryIdea };\n' +
+    '\n' +
+    'type MoveFlow = {\n' +
+    '  activity: ComposedItineraryActivity;\n' +
+    '  sourceDayId: string;\n' +
+    '  targetDayId: string;\n' +
+    '  targetDayPart: ItineraryDayPart | null;\n' +
+    '};\n' +
+    '\n' +
+    '/** A completion may affect only the mounted owner, document and editor input it began in. */\n' +
+    'function useItineraryActionScope(identity: string) {\n' +
+    '  const scopeRef = useRef({ identity, revision: 0 });\n' +
+    '  if (scopeRef.current.identity !== identity) scopeRef.current = { identity, revision: scopeRef.current.revision + 1 };\n' +
+    '  const mountedRef = useRef(true);\n' +
+    '  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);\n' +
+    '  return useCallback(() => {\n' +
+    '    const scope = scopeRef.current;\n' +
+    '    return () => mountedRef.current && scopeRef.current === scope;\n' +
+    '  }, []);\n' +
+    '}\n' +
+    '\n' +
+    'const itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {\n' +
+    '  en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" },\n' +
+    '  es: { morning: "Mañana", midday: "Mediodía", afternoon: "Tarde", evening: "Noche" },\n' +
+    '};\n' +
+    '\n' +
+    'function addedToDayNotice(languag'... 191097 more characters
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts:28:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: `"use client";\nimport {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';\nimport {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';\n\nimport { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";\n\nimport {\n  ArrowRight,\n  BedDouble,\n  BookOpenText,\n  CalendarDays,\n  CarFront,\n  CheckCircle2,\n  ChevronDown,\n  ChevronLeft,\n  ChevronRight,\n  CircleHelp,\n  CirclePlus,\n  Clock3,\n  ExternalLink,\n  GripVertical,\n  Lightbulb,\n  Map as MapIcon,\n  MapPin,\n  MoreHorizontal,\n  Pencil,\n  Plane,\n  Route,\n  Ship,\n  Sparkles,\n  TrainFront,\n  Trash2,\n  Utensils,\n  X,\n  type LucideIcon,\n} from "lucide-react";\nimport { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";\nimport { createPortal } from "react-dom";\nimport { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripBooking, type TripLeg, type TripStop } from "@/lib/easyt/trip";\nimport { tripDisplayTitle } from "@/lib/easyt/trip-display";\nimport type { JourneyImage } from "@/lib/journey";\nimport { itineraryImageFor } from "@/lib/easyt/itinerary-media";\nimport { itineraryDaySubtitle, itineraryNotesWithSourceIndexesForDisplay, semanticSamePlaceArrival } from "@/lib/easyt/itinerary-presentation";\nimport {\n  addItineraryDayNote,\n  assignItineraryActivityDayPart,\n  itineraryActivityProtection,\n  moveItineraryActivity,\n  moveItineraryIdeaActivity,\n  renameItineraryActivity,\n  type ItineraryActivityLocation,\n} from "@/lib/easyt/itinerary-mutations";\nimport { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";\nimport { formatIsoDate } from "@/lib/easyt/trip-lifecycle";\nimport { trackEvent } from "@/lib/analytics";\nimport { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";\nimport { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";\nimport { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";\nimport { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";\nimport { routeEndpointForLeg } from "@/lib/easyt/trip-legs";\nimport { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";\nimport { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";\nimport { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";\nimport { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";\nimport { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";\nimport { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";\nimport { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";\nimport {\n  itineraryDayLegs,\n  itineraryDayMapContext,\n  itineraryDayMiniMapContext,\n  itineraryDayMapSelection,\n  itinerarySuggestionCandidates,\n  type ItineraryDiscoveryPlace,\n} from "@/lib/easyt/itinerary-day-context";\nimport { activityCooldownKey, useActivityClientCooldown } from "@/lib/easyt/activity-client-cooldown";\nimport { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";\nimport { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";\nimport { itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";\nimport { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";\nimport { itineraryStayPresentation } from "@/lib/easyt/itinerary-stay-presentation";\nimport {\n  addItineraryActivityWithUndo,\n  moveItineraryActivityAcrossDays,\n  placeItineraryActivity,\n  preferredItineraryDayPart,\n  removeItineraryActivityWithUndo,\n  scheduleItineraryIdeaAtPositionWithUndo,\n  scheduleItineraryIdeaWithUndo,\n  undoItineraryItemAction,\n  type ItineraryItemUndoReceipt,\n} from "@/lib/easyt/itinerary-activity-placement";\nimport { MorroviaMapPreview } from "./morrovia-map-preview";\nimport { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";\nimport { JourneyRouteStopTrack } from "@/components/journey-planner-strip";\nimport MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";\nimport { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";\nimport { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";\nimport { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";\nimport ResilientImage from "@/components/easyt/resilient-image";\nimport { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";\nimport { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";\nimport RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";\nimport { ContextualFeedbackSlot } from "./contextual-feedback-controller";\nimport ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";\nimport ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";\nimport ItineraryDraggableCard from "./itinerary-draggable-card";\nimport { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";\nimport { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";\nimport TripExplicitPlans from "@/components/easyt/trip-explicit-plans";\nimport { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";\nimport type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";\nimport type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';\nimport { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from '@/lib/easyt/planning-evidence-presentation';\nimport { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";\nimport { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";\nimport { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";\nimport { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";\nimport { activityAllowsDayPart, activityDayPartFit, fullDayActivityTiming, isFullDayActivity, type ActivityDuration } from "@/lib/easyt/itinerary-schedule-awareness";\nimport { CalendarExportAction } from "./calendar-export-dialog";\nimport { hasCalendarArrivalEvent, itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";\nimport { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";\nimport { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";\nimport legacyStyles from "@/app/journey/new/trip-builder.module.css";\nimport legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";\nimport { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";\nimport styles from "./trip-itinerary-workspace.module.css";\n\ntype ItineraryWorkspaceProps = {\n  trip: EasyTTrip;\n  presentation?: "shell" | "legacy";\n  language?: "en" | "es";\n  selectedPlaceCount?: number;\n  onEditBrief?: () => void;\n  onOpenMap?: () => void;\n  selectedDayNumber?: number | null;\n  /** Deterministic Storybook/test discovery payloads; production uses the shared discovery endpoint. */\n  initialSuggestions?: Record<number, ItineraryDiscoveryPlace[]>;\n  /** Storybook/test override; production resolves the current approved activity partner centrally. */\n  activityAction?: ResolvedAffiliateAction | null;\n  /** Storybook/test override; production loads the server-only provider route. */\n  initialActivityInventory?: Record<number, ActivityInventoryItem[]>;\n};\n\ntype AddFlow = {\n  dayNumber: number;\n  noteIndex: number;\n  kind: "activity" | "note";\n  dayPart?: ItineraryDayPart;\n};\n\ntype ActivityTarget = ItineraryActivityLocation & { title: string };\ntype PlannerDragItem =\n  | { kind: "activity"; activity: ComposedItineraryActivity; sourceDayId: string; sourceStopId: string }\n  | { kind: "suggestion"; idea: ItineraryIdea };\n\ntype MoveFlow = {\n  activity: ComposedItineraryActivity;\n  sourceDayId: string;\n  targetDayId: string;\n  targetDayPart: ItineraryDayPart | null;\n};\n\n/** A completion may affect only the mounted owner, document and editor input it began in. */\nfunction useItineraryActionScope(identity: string) {\n  const scopeRef = useRef({ identity, revision: 0 });\n  if (scopeRef.current.identity !== identity) scopeRef.current = { identity, revision: scopeRef.current.revision + 1 };\n  const mountedRef = useRef(true);\n  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);\n  return useCallback(() => {\n    const scope = scopeRef.current;\n    return () => mountedRef.current && scopeRef.current === scope;\n  }, []);\n}\n\nconst itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {\n  en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" },\n  es: { morning: "Mañana", midday: "Mediodía", afternoon: "Tarde", evening: "Noche" },\n};\n\nfunction addedToDayNotice(languag`... 191097 more characters,
+    expected: /const mapReturnHref = itineraryWorkspaceHref\(workingTrip\.id, active\.dayNumber\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/trip-itinerary-workspace-presentation.test.ts:142:1
+✖ Itinerary uses embedded selection while full Map uses the shared workspace policy (0.604959ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /map\.remove\(\);\s*map\.off\("error", handleMapError\)/. Input:
+  
+  '"use client";\n' +
+    '\n' +
+    'import { MapTransferPreview } from "./map-transfer-preview";\n' +
+    '\n' +
+    'import * as maplibregl from "maplibre-gl";\n' +
+    'import type { GeoJSONSource, LineLayerSpecification } from "maplibre-gl";\n' +
+    'import { BedDouble, Landmark, Utensils } from "lucide-react";\n' +
+    'import { useEffect, useMemo, useRef, useState } from "react";\n' +
+    'import { renderToStaticMarkup } from "react-dom/server";\n' +
+    'import { mapRouteCasing, mapRouteLine, mapRoutePlanning, mapRouteSelected, mapRouteSubdued } from "./easyt/morrovia-map-presentation";\n' +
+    'import { createMorroviaStopMarker, setMorroviaStopMarkerState } from "./easyt/morrovia-map-markers";\n' +
+    'import { installMorroviaMapAttribution, installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./easyt/morrovia-map-runtime";\n' +
+    'import { createMorroviaLegPreview } from "./easyt/morrovia-map-leg-preview";\n' +
+    'import { EasyTButton } from "./easyt/easyt-controls";\n' +
+    'import { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-transport-icons";\n' +
+    'import mapPresentation from "./easyt/morrovia-map-presentation.module.css";\n' +
+    'import type { JourneyLeg, JourneyStop } from "@/lib/journey";\n' +
+    'import type { PlannerMapPin } from "@/lib/easyt/trip";\n' +
+    'import type { MapResultPlace } from "@/lib/easyt/map-result-selection";\n' +
+    'import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";\n' +
+    'import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";\n' +
+    'import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";\n' +
+    'import { createMapRenderer } from "@/lib/easyt/map-renderer-lifecycle";\n' +
+    'import { createMorroviaMapDiagnostics } from "@/lib/easyt/map-runtime-diagnostics";\n' +
+    'import { bindMapMarkerActivation, canonicalMapTransportMode, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";\n' +
+    '\n' +
+    'export type JourneyMapDestinationCard = {\n' +
+    '  stopId: string;\n' +
+    '  name: string;\n' +
+    '  dayLabel: string;\n' +
+    '  image?: string;\n' +
+    '  imageAlt?: string;\n' +
+    '};\n' +
+    '\n' +
+    'type JourneyPlannerMapProps = {\n' +
+    '  surface: MorroviaMapSurface;\n' +
+    '  stops: JourneyStop[];\n' +
+    '  legs: MapRouteLeg[] | JourneyLeg[];\n' +
+    '  comparisonLegs?: readonly MapRouteLeg[];\n' +
+    '  comparisonLabel?: string;\n' +
+    '  onLifecycleChange?: (state: "ready" | "unavailable") => void;\n' +
+    '  selectedId: string;\n' +
+    '  featuredStopId?: string;\n' +
+    '  destinationCards?: JourneyMapDestinationCard[];\n' +
+    "  /** Builder's destination-only selection uses the action colour; other map domains keep their semantics. */\n" +
+    '  destinationSelectionTone?: "action";\n' +
+    '  selectedLegId?: string | null;\n' +
+    '  contextCardsHidden?: boolean;\n' +
+    '  plannerPins: PlannerMapPin[];\n' +
+    '  /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */\n' +
+    '  selectedPlannerPinId?: string | null;\n' +
+    '  /** Restrict interaction where only some projected pins have a detail owner. */\n' +
+    '  interactivePlannerPinIds?: readonly string[];\n' +
+    '  stopSelectionEnabled?: boolean;\n' +
+    '  mapResults?: MapResultPlace[];\n' +
+    '  selectedMapResult?: MapResultPlace | null;\n' +
+    '  previewedMapResultId?: string | null;\n' +
+    '  focusOffset?: [number, number];\n' +
+    '  focusZoom?: number;\n' +
+    '  /** Optional local bounds for an embedded map; the full route owns its usual camera. */\n' +
+    '  cameraFitCoordinates?: readonly [number, number][];\n' +
+    '  focusCoordinates: [number, number] | null;\n' +
+    '  draftPinCoordinates: [number, number] | null;\n' +
+    '  pinPlacementMode: boolean;\n' +
+    '  /** Show the whole route on first load rather than opening at the selected city. */\n' +
+    '  overviewMode?: boolean;\n' +
+    '  /** Accessible name for a scoped preview; the whole-route label remains the default. */\n' +
+    '  previewLabel?: string;\n' +
+    '  cameraSafeEdge?: number;\n' +
+    '  cameraOcclusions?: Partial<MorroviaMapInsets>;\n' +
+    '  /** Keep a traveller-adjusted camera when the TripShell map changes size. */\n' +
+    '  preserveCameraOnResize?: boolean;\n' +
+    '  /** Changes whenever surrounding Map UI should interrupt in-flight camera movement. */\n' +
+    '  cameraInteractionKey?: string;\n' +
+    '  /** Refocus at a discrete overlay boundary, such as opening the mobile drawer. */\n' +
+    '  cameraLayoutKey?: string;\n' +
+    '  onMapPinDrop: (coordinates: [number, number]) => void;\n' +
+    '  onPlannerPinSelect: (pin: PlannerMapPin) => void;\n' +
+    '  onMapResultSelect?: (place: MapResultPlace) => void;\n' +
+    '  onPreviewMapResult?: (place: MapResultPlace | null) => void;\n' +
+    '  onLegSelect?: (leg: MapRouteLeg) => void;\n' +
+    '  onSelect: (id: string) => void;\n' +
+    '};\n' +
+    '\n' +
+    'const pinSymbols: Record<PlannerMapPin["category"], string> = {\n' +
+    '  restaurant: "⌁",\n' +
+    '  stay: "⌂",\n' +
+    '  activity: "✦",\n' +
+    '  transport: "→",\n' +
+    '  custom: "+",\n' +
+    '};\n' +
+    '\n' +
+    'function isMapRouteLeg(leg: MapRouteLeg | JourneyLeg): leg is MapRouteLeg {\n' +
+    '  return "fromStopId" in leg;\n' +
+    '}\n' +
+    '\n' +
+    'function resolvedCameraInsets(\n' +
+    '  map: maplibregl.Map,\n' +
+    '  safe: number,\n' +
+    '  occlusions?: Partial<MorroviaMapInsets>,\n' +
+    ') {\n' +
+    '  const container = map.getContainer();\n' +
+    '  return resolveMapInsets({ width: container.clientWidth, height: container.clientHeight, safe, occlusions });\n' +
+    '}\n' +
+    '\n' +
+    'function setRouteLinePaint(\n' +
+    '  map: maplibregl.Map,\n' +
+    '  paint: NonNullable<LineLayerSpecification["paint"]>,\n' +
+    ') {\n' +
+    '  map.setPaintProperty("trip-route-line", "line-color", paint["line-color"]);\n' +
+    '  map.setPaintProperty("trip-route-line", "line-width", paint["line-width"]);\n' +
+    '  map.setPaintProperty("trip-route-line", "line-opacity", paint["line-opacity"]);\n' +
+    '}\n' +
+    '\n' +
+    'const overviewMaxZoom = 5.2;\n' +
+    'const emptyComparisonLegs: readonly MapRouteLeg[] = [];\n' +
+    'const embeddedPinClearance = 14;\n' +
+    '\n' +
+    'function fitInsetsForPins(map: maplibregl.Map, safe: number, occlusions?: Partial<MorroviaMapInsets>) {\n' +
+    '  const insets = resolvedCameraInsets(map, safe, occlusions);\n' +
+    '  return {\n' +
+    '    top: insets.top + embeddedPinClearance,\n' +
+    '    right: insets.right + embeddedPinClearance,\n' +
+    '    bottom: insets.bottom + embeddedPinClearance,\n' +
+    '    left: insets.left + embeddedPinClearance,\n' +
+    '  };\n' +
+    '}\n' +
+    '\n' +
+    '\n' +
+    'export function JourneyPlannerMap({\n' +
+    '  surface,\n' +
+    '  stops,\n' +
+    '  legs,\n' +
+    '  comparisonLegs = emptyComparisonLegs,\n' +
+    '  comparisonLabel,\n' +
+    '  onLifecycleChange,\n' +
+    '  selectedId,\n' +
+    '  featuredStopId,\n' +
+    '  destinationCards = [],\n' +
+    '  destinationSelectionTone,\n' +
+    '  selectedLegId,\n' +
+    '  contextCardsHidden = false,\n' +
+    '  plannerPins,\n' +
+    '  selectedPlannerPinId = null,\n' +
+    '  interactivePlannerPinIds,\n' +
+    '  stopSelectionEnabled = true,\n' +
+    '  mapResults = [],\n' +
+    '  selectedMapResult = null,\n' +
+    '  previewedMapResultId = null,\n' +
+    '  focusOffset,\n' +
+    '  focusZoom,\n' +
+    '  cameraFitCoordinates,\n' +
+    '  focusCoordinates,\n' +
+    '  draftPinCoordinates,\n' +
+    '  pinPlacementMode,\n' +
+    '  overviewMode = false,\n' +
+    '  previewLabel,\n' +
+    '  cameraSafeEdge = 48,\n' +
+    '  cameraOcclusions,\n' +
+    '  preserveCameraOnResize = false,\n' +
+    '  cameraInteractionKey,\n' +
+    '  cameraLayoutKey,\n' +
+    '  onMapPinDrop,\n' +
+    '  onPlannerPinSelect,\n' +
+    '  onMapResultSelect,\n' +
+    '  onPreviewMapResult,\n' +
+    '  onLegSelect,\n' +
+    '  onSelect,\n' +
+    '}: JourneyPlannerMapProps) {\n' +
+    '  const policy = resolveMapSurfacePolicy(surface);\n' +
+    '  const presentationOnly = surface.variant === "preview";\n' +
+    '  const domainSelection = policy.domainSelection;\n' +
+    '  const panZoom = policy.panZoom;\n' +
+    '  const containerRef = useRef<HTMLDivElement>(null);\n' +
+    '  const mapRef = useRef<maplibregl.Map | null>(null);\n' +
+    '  const basemapLifecycleRef = useRef<MorroviaBasemapLifecycle | null>(null);\n' +
+    '  const stopMarkersRef = useRef<maplibregl.Marker[]>([]);\n' +
+    '  const legMarkersRef = useRef<maplibregl.Marker[]>([]);\n' +
+    '  const pinMarkersRef = useRef<maplibregl.Marker[]>([]);\n' +
+    '  const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);\n' +
+    '  const draftPinRef = useRef<maplibregl.Marker | null>(null);\n' +
+    '  const hasInitialisedViewRef = useRef(false);\n' +
+    '  const lastCameraRequestKeyRef = useRef<string | null>(null);\n' +
+    '  const lastCameraTargetKeyRef = useRef<string | null>(null);\n' +
+    '  const currentCameraRequestRef = useRef<string | null>(null);\n' +
+    '  const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);\n' +
+    '  const [mapUnavailable, setMapUnavailable] = useState(false);\n' +
+    '  const [basemapStatus, setBasemapStatus] = useState<MorroviaBasemapStatus>("loading");\n' +
+    '  const [basemapStyleRevision, setBasemapStyleRevision] = useState(0);\n' +
+    '  const [cameraViewportKey, setCameraViewportKey] = useState("unmeasured");\n' +
+    '  const selectedLegIdRef = useRef(selectedLegId);\n' +
+    '  const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);\n' +
+    '  const onLegSelectRef = useRef(onLegSelect);\n' +
+    '  const onSelectRef = useRef(onSelect);\n' +
+    '  const onPlannerPinSelectRef = useRef(onPlannerPinSelect);\n' +
+    '  const onMapResultSelectRef = useRef(onMapResultSelect);\n' +
+    '  const onPreviewMapResultRef = useRef(onPreviewMapResult);\n' +
+    '  const onLifecycleChangeRef = useRef(onLifecycleChange);\n' +
+    '  onLegSelectRef.current = onLegSelect;\n' +
+    '  onSelectRef.current = onSelect;\n' +
+    '  onPlannerPinSelectRef.current = onPlannerPinSelect;\n' +
+    '  onMapResultSelectRef.current = onMapResultSelect;\n' +
+    '  onPreviewMapResultRef.current = onPreviewMapResult;\n' +
+    '  onLifecycleChangeRef.current = onLifecycleChange;\n' +
+    '  selectedLegIdRef.current = selectedLegId;\n' +
+    '  selectedPlannerPinIdRef.current = selectedPlannerPinId;\n' +
+    '  const routeFocusKey = presentationOnly ? null : focusCoordinates;\n' +
+    '  const routeSelectionKey = presentationOnly ? null : selectedLegId;\n' +
+    '  const spatialLegs = useMemo<MapRouteLeg[]>(() => {\n' +
+    '    const stopById = new Map(stops.map((stop) => [stop.id, stop]));\n' +
+    '    return legs.flatMap((leg, index) => {\n' +
+    '      if (isMapRouteLeg(leg)) {\n' +
+    '        const mode = canonicalMapTransportMode(leg.mode);\n' +
+    '        const routeSegments = leg.routeSegments?.map((segment) => {\n' +
+    '          const segmentMode = canonicalMapTransportMode(segment.mode);\n' +
+    '          return { ...segment, mode: segmentMode === "mixed" ? "unknown" as const : segmentMode };\n' +
+    '        });\n' +
+    '        return [{ ...leg, mode, ...(routeSegments ? { routeSegments } : {}) }];\n' +
+    '      }\n' +
+    '      const from = stopById.get(leg.from);\n' +
+    '      const to = stopById.get(leg.to);\n' +
+    '      if (!from?.coordinates || !to?.coordinates) return [];\n' +
+    '      const mode = canonicalMapTransportMode(leg.mode);\n' +
+    '      return [{\n' +
+    '        id: `${leg.from}-${leg.to}-${index}`,\n' +
+    '        fromStopId: leg.from,\n' +
+    '        toStopId: '... 41182 more characters
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts:148:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '"use client";\n\nimport { MapTransferPreview } from "./map-transfer-preview";\n\nimport * as maplibregl from "maplibre-gl";\nimport type { GeoJSONSource, LineLayerSpecification } from "maplibre-gl";\nimport { BedDouble, Landmark, Utensils } from "lucide-react";\nimport { useEffect, useMemo, useRef, useState } from "react";\nimport { renderToStaticMarkup } from "react-dom/server";\nimport { mapRouteCasing, mapRouteLine, mapRoutePlanning, mapRouteSelected, mapRouteSubdued } from "./easyt/morrovia-map-presentation";\nimport { createMorroviaStopMarker, setMorroviaStopMarkerState } from "./easyt/morrovia-map-markers";\nimport { installMorroviaMapAttribution, installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./easyt/morrovia-map-runtime";\nimport { createMorroviaLegPreview } from "./easyt/morrovia-map-leg-preview";\nimport { EasyTButton } from "./easyt/easyt-controls";\nimport { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-transport-icons";\nimport mapPresentation from "./easyt/morrovia-map-presentation.module.css";\nimport type { JourneyLeg, JourneyStop } from "@/lib/journey";\nimport type { PlannerMapPin } from "@/lib/easyt/trip";\nimport type { MapResultPlace } from "@/lib/easyt/map-result-selection";\nimport { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";\nimport { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";\nimport { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";\nimport { createMapRenderer } from "@/lib/easyt/map-renderer-lifecycle";\nimport { createMorroviaMapDiagnostics } from "@/lib/easyt/map-runtime-diagnostics";\nimport { bindMapMarkerActivation, canonicalMapTransportMode, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";\n\nexport type JourneyMapDestinationCard = {\n  stopId: string;\n  name: string;\n  dayLabel: string;\n  image?: string;\n  imageAlt?: string;\n};\n\ntype JourneyPlannerMapProps = {\n  surface: MorroviaMapSurface;\n  stops: JourneyStop[];\n  legs: MapRouteLeg[] | JourneyLeg[];\n  comparisonLegs?: readonly MapRouteLeg[];\n  comparisonLabel?: string;\n  onLifecycleChange?: (state: "ready" | "unavailable") => void;\n  selectedId: string;\n  featuredStopId?: string;\n  destinationCards?: JourneyMapDestinationCard[];\n  /** Builder\'s destination-only selection uses the action colour; other map domains keep their semantics. */\n  destinationSelectionTone?: "action";\n  selectedLegId?: string | null;\n  contextCardsHidden?: boolean;\n  plannerPins: PlannerMapPin[];\n  /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */\n  selectedPlannerPinId?: string | null;\n  /** Restrict interaction where only some projected pins have a detail owner. */\n  interactivePlannerPinIds?: readonly string[];\n  stopSelectionEnabled?: boolean;\n  mapResults?: MapResultPlace[];\n  selectedMapResult?: MapResultPlace | null;\n  previewedMapResultId?: string | null;\n  focusOffset?: [number, number];\n  focusZoom?: number;\n  /** Optional local bounds for an embedded map; the full route owns its usual camera. */\n  cameraFitCoordinates?: readonly [number, number][];\n  focusCoordinates: [number, number] | null;\n  draftPinCoordinates: [number, number] | null;\n  pinPlacementMode: boolean;\n  /** Show the whole route on first load rather than opening at the selected city. */\n  overviewMode?: boolean;\n  /** Accessible name for a scoped preview; the whole-route label remains the default. */\n  previewLabel?: string;\n  cameraSafeEdge?: number;\n  cameraOcclusions?: Partial<MorroviaMapInsets>;\n  /** Keep a traveller-adjusted camera when the TripShell map changes size. */\n  preserveCameraOnResize?: boolean;\n  /** Changes whenever surrounding Map UI should interrupt in-flight camera movement. */\n  cameraInteractionKey?: string;\n  /** Refocus at a discrete overlay boundary, such as opening the mobile drawer. */\n  cameraLayoutKey?: string;\n  onMapPinDrop: (coordinates: [number, number]) => void;\n  onPlannerPinSelect: (pin: PlannerMapPin) => void;\n  onMapResultSelect?: (place: MapResultPlace) => void;\n  onPreviewMapResult?: (place: MapResultPlace | null) => void;\n  onLegSelect?: (leg: MapRouteLeg) => void;\n  onSelect: (id: string) => void;\n};\n\nconst pinSymbols: Record<PlannerMapPin["category"], string> = {\n  restaurant: "⌁",\n  stay: "⌂",\n  activity: "✦",\n  transport: "→",\n  custom: "+",\n};\n\nfunction isMapRouteLeg(leg: MapRouteLeg | JourneyLeg): leg is MapRouteLeg {\n  return "fromStopId" in leg;\n}\n\nfunction resolvedCameraInsets(\n  map: maplibregl.Map,\n  safe: number,\n  occlusions?: Partial<MorroviaMapInsets>,\n) {\n  const container = map.getContainer();\n  return resolveMapInsets({ width: container.clientWidth, height: container.clientHeight, safe, occlusions });\n}\n\nfunction setRouteLinePaint(\n  map: maplibregl.Map,\n  paint: NonNullable<LineLayerSpecification["paint"]>,\n) {\n  map.setPaintProperty("trip-route-line", "line-color", paint["line-color"]);\n  map.setPaintProperty("trip-route-line", "line-width", paint["line-width"]);\n  map.setPaintProperty("trip-route-line", "line-opacity", paint["line-opacity"]);\n}\n\nconst overviewMaxZoom = 5.2;\nconst emptyComparisonLegs: readonly MapRouteLeg[] = [];\nconst embeddedPinClearance = 14;\n\nfunction fitInsetsForPins(map: maplibregl.Map, safe: number, occlusions?: Partial<MorroviaMapInsets>) {\n  const insets = resolvedCameraInsets(map, safe, occlusions);\n  return {\n    top: insets.top + embeddedPinClearance,\n    right: insets.right + embeddedPinClearance,\n    bottom: insets.bottom + embeddedPinClearance,\n    left: insets.left + embeddedPinClearance,\n  };\n}\n\n\nexport function JourneyPlannerMap({\n  surface,\n  stops,\n  legs,\n  comparisonLegs = emptyComparisonLegs,\n  comparisonLabel,\n  onLifecycleChange,\n  selectedId,\n  featuredStopId,\n  destinationCards = [],\n  destinationSelectionTone,\n  selectedLegId,\n  contextCardsHidden = false,\n  plannerPins,\n  selectedPlannerPinId = null,\n  interactivePlannerPinIds,\n  stopSelectionEnabled = true,\n  mapResults = [],\n  selectedMapResult = null,\n  previewedMapResultId = null,\n  focusOffset,\n  focusZoom,\n  cameraFitCoordinates,\n  focusCoordinates,\n  draftPinCoordinates,\n  pinPlacementMode,\n  overviewMode = false,\n  previewLabel,\n  cameraSafeEdge = 48,\n  cameraOcclusions,\n  preserveCameraOnResize = false,\n  cameraInteractionKey,\n  cameraLayoutKey,\n  onMapPinDrop,\n  onPlannerPinSelect,\n  onMapResultSelect,\n  onPreviewMapResult,\n  onLegSelect,\n  onSelect,\n}: JourneyPlannerMapProps) {\n  const policy = resolveMapSurfacePolicy(surface);\n  const presentationOnly = surface.variant === "preview";\n  const domainSelection = policy.domainSelection;\n  const panZoom = policy.panZoom;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const mapRef = useRef<maplibregl.Map | null>(null);\n  const basemapLifecycleRef = useRef<MorroviaBasemapLifecycle | null>(null);\n  const stopMarkersRef = useRef<maplibregl.Marker[]>([]);\n  const legMarkersRef = useRef<maplibregl.Marker[]>([]);\n  const pinMarkersRef = useRef<maplibregl.Marker[]>([]);\n  const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);\n  const draftPinRef = useRef<maplibregl.Marker | null>(null);\n  const hasInitialisedViewRef = useRef(false);\n  const lastCameraRequestKeyRef = useRef<string | null>(null);\n  const lastCameraTargetKeyRef = useRef<string | null>(null);\n  const currentCameraRequestRef = useRef<string | null>(null);\n  const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);\n  const [mapUnavailable, setMapUnavailable] = useState(false);\n  const [basemapStatus, setBasemapStatus] = useState<MorroviaBasemapStatus>("loading");\n  const [basemapStyleRevision, setBasemapStyleRevision] = useState(0);\n  const [cameraViewportKey, setCameraViewportKey] = useState("unmeasured");\n  const selectedLegIdRef = useRef(selectedLegId);\n  const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);\n  const onLegSelectRef = useRef(onLegSelect);\n  const onSelectRef = useRef(onSelect);\n  const onPlannerPinSelectRef = useRef(onPlannerPinSelect);\n  const onMapResultSelectRef = useRef(onMapResultSelect);\n  const onPreviewMapResultRef = useRef(onPreviewMapResult);\n  const onLifecycleChangeRef = useRef(onLifecycleChange);\n  onLegSelectRef.current = onLegSelect;\n  onSelectRef.current = onSelect;\n  onPlannerPinSelectRef.current = onPlannerPinSelect;\n  onMapResultSelectRef.current = onMapResultSelect;\n  onPreviewMapResultRef.current = onPreviewMapResult;\n  onLifecycleChangeRef.current = onLifecycleChange;\n  selectedLegIdRef.current = selectedLegId;\n  selectedPlannerPinIdRef.current = selectedPlannerPinId;\n  const routeFocusKey = presentationOnly ? null : focusCoordinates;\n  const routeSelectionKey = presentationOnly ? null : selectedLegId;\n  const spatialLegs = useMemo<MapRouteLeg[]>(() => {\n    const stopById = new Map(stops.map((stop) => [stop.id, stop]));\n    return legs.flatMap((leg, index) => {\n      if (isMapRouteLeg(leg)) {\n        const mode = canonicalMapTransportMode(leg.mode);\n        const routeSegments = leg.routeSegments?.map((segment) => {\n          const segmentMode = canonicalMapTransportMode(segment.mode);\n          return { ...segment, mode: segmentMode === "mixed" ? "unknown" as const : segmentMode };\n        });\n        return [{ ...leg, mode, ...(routeSegments ? { routeSegments } : {}) }];\n      }\n      const from = stopById.get(leg.from);\n      const to = stopById.get(leg.to);\n      if (!from?.coordinates || !to?.coordinates) return [];\n      const mode = canonicalMapTransportMode(leg.mode);\n      return [{\n        id: `${leg.from}-${leg.to}-${index}`,\n        fromStopId: leg.from,\n        toStopId: '... 41182 more characters,
+    expected: /map\.remove\(\);\s*map\.off\("error", handleMapError\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/trip-itinerary-workspace-presentation.test.ts:220:1
+✖ Calendar keeps its items in day cards alongside the shared day context rail (0.47925ms)
+  AssertionError [ERR_ASSERTION]: Calendar overlays preserve the underlying sidebar
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts:232:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: `"use client";\nimport {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';\nimport {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';\n\nimport { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";\n\nimport {\n  ArrowRight,\n  BedDouble,\n  BookOpenText,\n  CalendarDays,\n  CarFront,\n  CheckCircle2,\n  ChevronDown,\n  ChevronLeft,\n  ChevronRight,\n  CircleHelp,\n  CirclePlus,\n  Clock3,\n  ExternalLink,\n  GripVertical,\n  Lightbulb,\n  Map as MapIcon,\n  MapPin,\n  MoreHorizontal,\n  Pencil,\n  Plane,\n  Route,\n  Ship,\n  Sparkles,\n  TrainFront,\n  Trash2,\n  Utensils,\n  X,\n  type LucideIcon,\n} from "lucide-react";\nimport { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";\nimport { createPortal } from "react-dom";\nimport { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripBooking, type TripLeg, type TripStop } from "@/lib/easyt/trip";\nimport { tripDisplayTitle } from "@/lib/easyt/trip-display";\nimport type { JourneyImage } from "@/lib/journey";\nimport { itineraryImageFor } from "@/lib/easyt/itinerary-media";\nimport { itineraryDaySubtitle, itineraryNotesWithSourceIndexesForDisplay, semanticSamePlaceArrival } from "@/lib/easyt/itinerary-presentation";\nimport {\n  addItineraryDayNote,\n  assignItineraryActivityDayPart,\n  itineraryActivityProtection,\n  moveItineraryActivity,\n  moveItineraryIdeaActivity,\n  renameItineraryActivity,\n  type ItineraryActivityLocation,\n} from "@/lib/easyt/itinerary-mutations";\nimport { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";\nimport { formatIsoDate } from "@/lib/easyt/trip-lifecycle";\nimport { trackEvent } from "@/lib/analytics";\nimport { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";\nimport { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";\nimport { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";\nimport { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";\nimport { routeEndpointForLeg } from "@/lib/easyt/trip-legs";\nimport { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";\nimport { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";\nimport { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";\nimport { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";\nimport { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";\nimport { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";\nimport { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";\nimport {\n  itineraryDayLegs,\n  itineraryDayMapContext,\n  itineraryDayMiniMapContext,\n  itineraryDayMapSelection,\n  itinerarySuggestionCandidates,\n  type ItineraryDiscoveryPlace,\n} from "@/lib/easyt/itinerary-day-context";\nimport { activityCooldownKey, useActivityClientCooldown } from "@/lib/easyt/activity-client-cooldown";\nimport { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";\nimport { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";\nimport { itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";\nimport { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";\nimport { itineraryStayPresentation } from "@/lib/easyt/itinerary-stay-presentation";\nimport {\n  addItineraryActivityWithUndo,\n  moveItineraryActivityAcrossDays,\n  placeItineraryActivity,\n  preferredItineraryDayPart,\n  removeItineraryActivityWithUndo,\n  scheduleItineraryIdeaAtPositionWithUndo,\n  scheduleItineraryIdeaWithUndo,\n  undoItineraryItemAction,\n  type ItineraryItemUndoReceipt,\n} from "@/lib/easyt/itinerary-activity-placement";\nimport { MorroviaMapPreview } from "./morrovia-map-preview";\nimport { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";\nimport { JourneyRouteStopTrack } from "@/components/journey-planner-strip";\nimport MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";\nimport { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";\nimport { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";\nimport { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";\nimport ResilientImage from "@/components/easyt/resilient-image";\nimport { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";\nimport { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";\nimport RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";\nimport { ContextualFeedbackSlot } from "./contextual-feedback-controller";\nimport ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";\nimport ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";\nimport ItineraryDraggableCard from "./itinerary-draggable-card";\nimport { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";\nimport { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";\nimport TripExplicitPlans from "@/components/easyt/trip-explicit-plans";\nimport { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";\nimport type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";\nimport type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';\nimport { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from '@/lib/easyt/planning-evidence-presentation';\nimport { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";\nimport { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";\nimport { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";\nimport { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";\nimport { activityAllowsDayPart, activityDayPartFit, fullDayActivityTiming, isFullDayActivity, type ActivityDuration } from "@/lib/easyt/itinerary-schedule-awareness";\nimport { CalendarExportAction } from "./calendar-export-dialog";\nimport { hasCalendarArrivalEvent, itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";\nimport { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";\nimport { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";\nimport legacyStyles from "@/app/journey/new/trip-builder.module.css";\nimport legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";\nimport { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";\nimport styles from "./trip-itinerary-workspace.module.css";\n\ntype ItineraryWorkspaceProps = {\n  trip: EasyTTrip;\n  presentation?: "shell" | "legacy";\n  language?: "en" | "es";\n  selectedPlaceCount?: number;\n  onEditBrief?: () => void;\n  onOpenMap?: () => void;\n  selectedDayNumber?: number | null;\n  /** Deterministic Storybook/test discovery payloads; production uses the shared discovery endpoint. */\n  initialSuggestions?: Record<number, ItineraryDiscoveryPlace[]>;\n  /** Storybook/test override; production resolves the current approved activity partner centrally. */\n  activityAction?: ResolvedAffiliateAction | null;\n  /** Storybook/test override; production loads the server-only provider route. */\n  initialActivityInventory?: Record<number, ActivityInventoryItem[]>;\n};\n\ntype AddFlow = {\n  dayNumber: number;\n  noteIndex: number;\n  kind: "activity" | "note";\n  dayPart?: ItineraryDayPart;\n};\n\ntype ActivityTarget = ItineraryActivityLocation & { title: string };\ntype PlannerDragItem =\n  | { kind: "activity"; activity: ComposedItineraryActivity; sourceDayId: string; sourceStopId: string }\n  | { kind: "suggestion"; idea: ItineraryIdea };\n\ntype MoveFlow = {\n  activity: ComposedItineraryActivity;\n  sourceDayId: string;\n  targetDayId: string;\n  targetDayPart: ItineraryDayPart | null;\n};\n\n/** A completion may affect only the mounted owner, document and editor input it began in. */\nfunction useItineraryActionScope(identity: string) {\n  const scopeRef = useRef({ identity, revision: 0 });\n  if (scopeRef.current.identity !== identity) scopeRef.current = { identity, revision: scopeRef.current.revision + 1 };\n  const mountedRef = useRef(true);\n  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);\n  return useCallback(() => {\n    const scope = scopeRef.current;\n    return () => mountedRef.current && scopeRef.current === scope;\n  }, []);\n}\n\nconst itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {\n  en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" },\n  es: { morning: "Mañana", midday: "Mediodía", afternoon: "Tarde", evening: "Noche" },\n};\n\nfunction addedToDayNotice(languag`... 191097 more characters,
+    expected: /<div className=\{styles\.contextRailBody\} hidden=\{workspaceView === "days" && Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/trip-itinerary-workspace-presentation.test.ts:240:1
+✖ Calendar preserves trip title, date and timeline while naming selected-day details (0.732875ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /<h1 id="trip-shell-title">\{isOverview \? tripOverviewDisplayTitle\(mutation\.trip\) : tripDisplayTitle\(mutation\.trip\)\}/. Input:
+  
+  '"use client";\n' +
+    '\n' +
+    'import Link from "next/link";\n' +
+    'import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";\n' +
+    'import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Pencil, Route, Sparkles } from "lucide-react";\n' +
+    'import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";\n' +
+    'import { authClient } from "@/lib/auth-client";\n' +
+    'import { trackEvent } from "@/lib/analytics";\n' +
+    'import {\n' +
+    '  BrowserRecoveryReadError,\n' +
+    '  cacheCanonicalTrip,\n' +
+    '  classifyTripRecovery,\n' +
+    '  discardTripRecovery,\n' +
+    '  EASYT_ACTIVE_TRIP_CHANGE_EVENT,\n' +
+    '  loadCachedTrip,\n' +
+    '  loadTripRecovery,\n' +
+    '  resolveCanonicalEquivalentTripRecovery,\n' +
+    '  subscribeToTripStorage,\n' +
+    '  tripRecoveryIsAwaitingCanonicalSave,\n' +
+    '  type TripRecoveryRecord,\n' +
+    '  EASYT_LAST_OWNER_KEY,\n' +
+    '  loadRememberedOwner, observeRememberedOwner,\n' +
+    '} from "@/lib/easyt/storage";\n' +
+    'import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";\n' +
+    'import ResilientImage from "@/components/easyt/resilient-image";\n' +
+    'import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";\n' +
+    'import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";\n' +
+    'import { isTripMapPathname, tripWorkspaceMapActionHref, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";\n' +
+    'import { EasyTButton, EasyTLinkButton } from "./easyt-controls";\n' +
+    'import { EasyTField } from "./easyt-controls";\n' +
+    'import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";\n' +
+    'import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";\n' +
+    'import { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";\n' +
+    'import { TripOverviewLibraryActions } from "./trip-overview-library-actions";\n' +
+    'import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";\n' +
+    'import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";\n' +
+    'import { overnightAccommodationStops } from "@/lib/easyt/accommodation";\n' +
+    'import { tripCoverImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";\n' +
+    'import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates } from "@/lib/easyt/route-photo-cache";\n' +
+    'import CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";\n' +
+    'import MorroviaPhotoCredit from "./morrovia-photo-credit";\n' +
+    'import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";\n' +
+    'import { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";\n' +
+    'import { useTripMapReturn } from "./use-trip-map-return";\n' +
+    'import styles from "./trip-shell.module.css";\n' +
+    '\n' +
+    'const TripShellTripContext = createContext<EasyTTrip | null>(null);\n' +
+    'const TripShellMutationContext = createContext<TripMutationPersistence | null>(null);\n' +
+    '\n' +
+    'export function TripShellCanonicalMutationProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {\n' +
+    '  const mutation = useTripMutationPersistence(trip, true);\n' +
+    '  return <TripShellMutationContext.Provider value={mutation}>{children}</TripShellMutationContext.Provider>;\n' +
+    '}\n' +
+    '\n' +
+    'export function useTripShellMutation() {\n' +
+    '  const mutation = useContext(TripShellMutationContext);\n' +
+    '  if (!mutation) throw new Error("useTripShellMutation must be used inside TripShell");\n' +
+    '  return mutation;\n' +
+    '}\n' +
+    '\n' +
+    'export function useOptionalTripShellMutation() {\n' +
+    '  return useContext(TripShellMutationContext);\n' +
+    '}\n' +
+    '\n' +
+    '/** @param {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} state @param {"pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle"} action @returns {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} */\n' +
+    'function reduceTripTitleDisclosure(state: { expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }, action: "pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle") {\n' +
+    '  if (action === "pointer-enter") return { ...state, hovered: true, dismissed: false };\n' +
+    '  if (action === "pointer-leave") return { ...state, hovered: false, dismissed: state.focused ? state.dismissed : false };\n' +
+    '  if (action === "focus") return { ...state, focused: true, dismissed: false };\n' +
+    '  if (action === "blur") return { ...state, focused: false, dismissed: state.hovered ? state.dismissed : false };\n' +
+    '  return state.expanded ? { ...state, expanded: false, dismissed: true } : { ...state, expanded: true, dismissed: false };\n' +
+    '}\n' +
+    '\n' +
+    'export function TripShellIdentityAndActions() {\n' +
+    '  const mutation = useTripShellMutation();\n' +
+    '  const trip = mutation.trip;\n' +
+    '  const pathname = usePathname();\n' +
+    '  const mobile = useMobileTripWorkspace();\n' +
+    '  const [detailsOpen, setDetailsOpen] = useState(false);\n' +
+    '  useEffect(() => setDetailsOpen(false), [pathname, trip.id, trip.ownerId]);\n' +
+    '  const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";\n' +
+    '  const displayTitle = tripOverviewDisplayTitle(mutation.trip);\n' +
+    '  const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });\n' +
+    '  const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;\n' +
+    '  const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });\n' +
+    '  const duration = dateFacts.durationDays;\n' +
+    '  const overnightPlaceCount = overnightAccommodationStops(trip).length;\n' +
+    '  const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";\n' +
+    '  const editHref = tripBuilderHref(trip.id, trip.ownerId);\n' +
+    '  const renameRequestRef = useRef(0);\n' +
+    '  const renameIdentity = JSON.stringify([trip.id, trip.ownerId, pathname]);\n' +
+    '  const renameScopeRef = useRef({ identity: renameIdentity });\n' +
+    '  const renameMountedRef = useRef(true);\n' +
+    '  const renameMountGenerationRef = useRef(0);\n' +
+    '  const renamePendingRef = useRef<{ scope: object; operation: object } | null>(null);\n' +
+    '  if (renameScopeRef.current.identity !== renameIdentity) {\n' +
+    '    renameScopeRef.current = { identity: renameIdentity };\n' +
+    '    renameRequestRef.current += 1;\n' +
+    '    renamePendingRef.current = null;\n' +
+    '  }\n' +
+    '  const renderScope = renameScopeRef.current;\n' +
+    '  const renameIntentRef = useRef({ scope: renderScope, session: {}, open: false, draft: "", error: "" });\n' +
+    '  if (renameIntentRef.current.scope !== renderScope) renameIntentRef.current = { scope: renderScope, session: {}, open: false, draft: "", error: "" };\n' +
+    '  const [renameState, setRenameState] = useState(() => renameIntentRef.current);\n' +
+    '  const [renamePending, setRenamePending] = useState<object | null>(null);\n' +
+    '  const [inlineRenameSession, setInlineRenameSession] = useState<object | null>(null);\n' +
+    '  const inlineRenameTriggerRef = useRef<HTMLButtonElement>(null);\n' +
+    '  const visibleRename = renameState.scope === renderScope ? renameState : renameIntentRef.current;\n' +
+    '  const { open: renameOpen, draft, error: validationError, session: renderSession } = visibleRename;\n' +
+    '  const inlineRename = renameOpen && inlineRenameSession === renderSession;\n' +
+    '  useEffect(() => {\n' +
+    '    renameMountedRef.current = true;\n' +
+    '    return () => { renameMountedRef.current = false; renameMountGenerationRef.current += 1; renameRequestRef.current += 1; renamePendingRef.current = null; };\n' +
+    '  }, []);\n' +
+    '  useWorkspaceOrientationBlocker(renameOpen);\n' +
+    '  const scopeIsCurrent = () => renameMountedRef.current && renameScopeRef.current === renderScope\n' +
+    '    && mutation.trip.id === trip.id && mutation.trip.ownerId === trip.ownerId;\n' +
+    '  const sessionIsCurrent = () => scopeIsCurrent() && renameIntentRef.current.session === renderSession && renameIntentRef.current.open;\n' +
+    '  const updateRenameIntent = (next: typeof renameIntentRef.current) => { renameIntentRef.current = next; setRenameState(next); };\n' +
+    '\n' +
+    '  const openRename = () => {\n' +
+    '    if (!scopeIsCurrent() || renameIntentRef.current.open) return;\n' +
+    '    renameRequestRef.current += 1;\n' +
+    '    updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });\n' +
+    '  };\n' +
+    '  const cancelRename = () => {\n' +
+    '    if (!sessionIsCurrent()) return;\n' +
+    '    renameRequestRef.current += 1;\n' +
+    '    updateRenameIntent({ ...renameIntentRef.current, open: false });\n' +
+    '    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());\n' +
+    '  };\n' +
+    '  const returnInlineFocus = () => {\n' +
+    '    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());\n' +
+    '  };\n' +
+    '  const saveRename = async () => {\n' +
+    '    if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;\n' +
+    '    const request = ++renameRequestRef.current;\n' +
+    '    const mountGeneration = renameMountGenerationRef.current;\n' +
+    '    const normalizedTitle = renameIntentRef.current.draft.trim().replace(/\\s+/g, " ");\n' +
+    '    const isCurrent = () => sessionIsCurrent() && request === renameRequestRef.current && mountGeneration === renameMountGenerationRef.current;\n' +
+    '    if (Array.from(normalizedTitle).length > 80) {\n' +
+    '      updateRenameIntent({ ...renameIntentRef.current, error: "Use 80 characters or fewer." });\n' +
+    '      return false;\n' +
+    '    }\n' +
+    '    if (isCurrent() && normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) {\n' +
+    '      updateRenameIntent({ ...renameIntentRef.current, open: false });\n' +
+    '      returnInlineFocus();\n' +
+    '      return true;\n' +
+    '    }\n' +
+    '    const operation = {};\n' +
+    '    renamePendingRef.current = { scope: renderScope, operation }; setRenamePending(operation);\n' +
+    '    try {\n' +
+    '      const changed = await mutation.mutateTrip((current) => isCurrent() && current.id === trip.id && current.ownerId === trip.ownerId\n' +
+    '        ? renameTripIdentity(current, normalizedTitle) : current, "trip-title");\n' +
+    '      if (changed !== true || !isCurrent()) return false;\n' +
+    '      updateRenameIntent({ .'... 34574 more characters
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts:242:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '"use client";\n\nimport Link from "next/link";\nimport { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";\nimport { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Pencil, Route, Sparkles } from "lucide-react";\nimport { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";\nimport { authClient } from "@/lib/auth-client";\nimport { trackEvent } from "@/lib/analytics";\nimport {\n  BrowserRecoveryReadError,\n  cacheCanonicalTrip,\n  classifyTripRecovery,\n  discardTripRecovery,\n  EASYT_ACTIVE_TRIP_CHANGE_EVENT,\n  loadCachedTrip,\n  loadTripRecovery,\n  resolveCanonicalEquivalentTripRecovery,\n  subscribeToTripStorage,\n  tripRecoveryIsAwaitingCanonicalSave,\n  type TripRecoveryRecord,\n  EASYT_LAST_OWNER_KEY,\n  loadRememberedOwner, observeRememberedOwner,\n} from "@/lib/easyt/storage";\nimport { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";\nimport ResilientImage from "@/components/easyt/resilient-image";\nimport { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";\nimport { ownerBoundaryState } from "@/lib/easyt/private-browser-context";\nimport { isTripMapPathname, tripWorkspaceMapActionHref, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";\nimport { EasyTButton, EasyTLinkButton } from "./easyt-controls";\nimport { EasyTField } from "./easyt-controls";\nimport { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";\nimport { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";\nimport { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";\nimport { TripOverviewLibraryActions } from "./trip-overview-library-actions";\nimport { deriveTripDateFacts } from "@/lib/easyt/trip-facts";\nimport { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";\nimport { overnightAccommodationStops } from "@/lib/easyt/accommodation";\nimport { tripCoverImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";\nimport { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates } from "@/lib/easyt/route-photo-cache";\nimport CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";\nimport MorroviaPhotoCredit from "./morrovia-photo-credit";\nimport { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";\nimport { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";\nimport { useTripMapReturn } from "./use-trip-map-return";\nimport styles from "./trip-shell.module.css";\n\nconst TripShellTripContext = createContext<EasyTTrip | null>(null);\nconst TripShellMutationContext = createContext<TripMutationPersistence | null>(null);\n\nexport function TripShellCanonicalMutationProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {\n  const mutation = useTripMutationPersistence(trip, true);\n  return <TripShellMutationContext.Provider value={mutation}>{children}</TripShellMutationContext.Provider>;\n}\n\nexport function useTripShellMutation() {\n  const mutation = useContext(TripShellMutationContext);\n  if (!mutation) throw new Error("useTripShellMutation must be used inside TripShell");\n  return mutation;\n}\n\nexport function useOptionalTripShellMutation() {\n  return useContext(TripShellMutationContext);\n}\n\n/** @param {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} state @param {"pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle"} action @returns {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} */\nfunction reduceTripTitleDisclosure(state: { expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }, action: "pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle") {\n  if (action === "pointer-enter") return { ...state, hovered: true, dismissed: false };\n  if (action === "pointer-leave") return { ...state, hovered: false, dismissed: state.focused ? state.dismissed : false };\n  if (action === "focus") return { ...state, focused: true, dismissed: false };\n  if (action === "blur") return { ...state, focused: false, dismissed: state.hovered ? state.dismissed : false };\n  return state.expanded ? { ...state, expanded: false, dismissed: true } : { ...state, expanded: true, dismissed: false };\n}\n\nexport function TripShellIdentityAndActions() {\n  const mutation = useTripShellMutation();\n  const trip = mutation.trip;\n  const pathname = usePathname();\n  const mobile = useMobileTripWorkspace();\n  const [detailsOpen, setDetailsOpen] = useState(false);\n  useEffect(() => setDetailsOpen(false), [pathname, trip.id, trip.ownerId]);\n  const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";\n  const displayTitle = tripOverviewDisplayTitle(mutation.trip);\n  const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });\n  const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;\n  const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });\n  const duration = dateFacts.durationDays;\n  const overnightPlaceCount = overnightAccommodationStops(trip).length;\n  const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";\n  const editHref = tripBuilderHref(trip.id, trip.ownerId);\n  const renameRequestRef = useRef(0);\n  const renameIdentity = JSON.stringify([trip.id, trip.ownerId, pathname]);\n  const renameScopeRef = useRef({ identity: renameIdentity });\n  const renameMountedRef = useRef(true);\n  const renameMountGenerationRef = useRef(0);\n  const renamePendingRef = useRef<{ scope: object; operation: object } | null>(null);\n  if (renameScopeRef.current.identity !== renameIdentity) {\n    renameScopeRef.current = { identity: renameIdentity };\n    renameRequestRef.current += 1;\n    renamePendingRef.current = null;\n  }\n  const renderScope = renameScopeRef.current;\n  const renameIntentRef = useRef({ scope: renderScope, session: {}, open: false, draft: "", error: "" });\n  if (renameIntentRef.current.scope !== renderScope) renameIntentRef.current = { scope: renderScope, session: {}, open: false, draft: "", error: "" };\n  const [renameState, setRenameState] = useState(() => renameIntentRef.current);\n  const [renamePending, setRenamePending] = useState<object | null>(null);\n  const [inlineRenameSession, setInlineRenameSession] = useState<object | null>(null);\n  const inlineRenameTriggerRef = useRef<HTMLButtonElement>(null);\n  const visibleRename = renameState.scope === renderScope ? renameState : renameIntentRef.current;\n  const { open: renameOpen, draft, error: validationError, session: renderSession } = visibleRename;\n  const inlineRename = renameOpen && inlineRenameSession === renderSession;\n  useEffect(() => {\n    renameMountedRef.current = true;\n    return () => { renameMountedRef.current = false; renameMountGenerationRef.current += 1; renameRequestRef.current += 1; renamePendingRef.current = null; };\n  }, []);\n  useWorkspaceOrientationBlocker(renameOpen);\n  const scopeIsCurrent = () => renameMountedRef.current && renameScopeRef.current === renderScope\n    && mutation.trip.id === trip.id && mutation.trip.ownerId === trip.ownerId;\n  const sessionIsCurrent = () => scopeIsCurrent() && renameIntentRef.current.session === renderSession && renameIntentRef.current.open;\n  const updateRenameIntent = (next: typeof renameIntentRef.current) => { renameIntentRef.current = next; setRenameState(next); };\n\n  const openRename = () => {\n    if (!scopeIsCurrent() || renameIntentRef.current.open) return;\n    renameRequestRef.current += 1;\n    updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });\n  };\n  const cancelRename = () => {\n    if (!sessionIsCurrent()) return;\n    renameRequestRef.current += 1;\n    updateRenameIntent({ ...renameIntentRef.current, open: false });\n    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());\n  };\n  const returnInlineFocus = () => {\n    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());\n  };\n  const saveRename = async () => {\n    if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;\n    const request = ++renameRequestRef.current;\n    const mountGeneration = renameMountGenerationRef.current;\n    const normalizedTitle = renameIntentRef.current.draft.trim().replace(/\\s+/g, " ");\n    const isCurrent = () => sessionIsCurrent() && request === renameRequestRef.current && mountGeneration === renameMountGenerationRef.current;\n    if (Array.from(normalizedTitle).length > 80) {\n      updateRenameIntent({ ...renameIntentRef.current, error: "Use 80 characters or fewer." });\n      return false;\n    }\n    if (isCurrent() && normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) {\n      updateRenameIntent({ ...renameIntentRef.current, open: false });\n      returnInlineFocus();\n      return true;\n    }\n    const operation = {};\n    renamePendingRef.current = { scope: renderScope, operation }; setRenamePending(operation);\n    try {\n      const changed = await mutation.mutateTrip((current) => isCurrent() && current.id === trip.id && current.ownerId === trip.ownerId\n        ? renameTripIdentity(current, normalizedTitle) : current, "trip-title");\n      if (changed !== true || !isCurrent()) return false;\n      updateRenameIntent({ .'... 34574 more characters,
+    expected: /<h1 id="trip-shell-title">\{isOverview \? tripOverviewDisplayTitle\(mutation\.trip\) : tripDisplayTitle\(mutation\.trip\)\}/,
+    operator: 'match',
+    diff: 'simple'
+  }

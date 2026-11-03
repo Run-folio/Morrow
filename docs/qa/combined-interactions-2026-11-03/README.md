@@ -131,3 +131,63 @@ The generated offline manifest from the app build was restored to its source
 version after validation rather than committing a machine-specific build output.
 `build-provenance.json` records the exact source commit, build ID and offline
 asset count validated by the successful build.
+
+
+## Review repair after user feedback
+
+Current static review source: `7758e44c`, incorporating production repairs
+`2d646b4f` and `8aa0590b`. Draft deploy: `6aea67ae5fee7a22f53122d0`.
+Use the same review URL, starting with `#itinerary`.
+
+The failed full-itinerary story was a real integration bug: the inline composed
+planner ref changed every render. React detached/reattached it, orientation target
+registration incremented state, and that repeated until React error 185. A stable
+`useCallback` now owns the composed ref. A successful card edit also selected the
+existing detail panel, whose focus effect stole focus from the card; card-originated
+edits now preserve their focus handoff rather than selecting that panel.
+
+The original name example used an account-owned fixture without a matching session.
+The review now uses guest/device-only fixtures with fresh synthetic IDs on every
+load. This avoids both sign-in refusal and conflicts with an earlier sample edit
+when restarting. No recovery data was cleared. Fixture persistence exercises only
+the unique draft origin and never an account API.
+
+Navigation now highlights the current example, provides precise before/after text,
+restart and separate-example links, and distinguishes regression fixtures from new
+interaction changes. “Protected arrival” is a simulated lock on Sacred Valley, not
+a new date design. “320px” is the same card expansion in an actual 320 CSS pixel
+iframe, not a separate design. Builder already had keyboard/menu reorder; this
+candidate hardens touch, async focus and announcements. It does not add a new
+reorder mode. Before/after text is based on source comparison; no fabricated before
+screenshots are shown. Workspace links within samples remain illustrative.
+
+Hosted HTTPS browser verification completed through the supported in-app browser:
+full itinerary renders; card edit saves and returns focus to its card; Escape keeps
+the accepted title and focuses Edit activity; a fresh restart permits another save;
+inline name Save and Escape work; Builder Space/ArrowUp/Enter accepts a move,
+announces position and retains grip focus; protected Sacred Valley grip is disabled;
+320px width is measured and expanded controls visually inspected. Browser error
+logs contain only the original pre-repair errors, with no new rendering errors.
+Screenshots and a final DOM snapshot are stored beside this note.
+
+Current typecheck and strict UI audit pass. Storybook build passes. Production
+`build:check` passes at production-code commit `8aa0590b`, build ID
+`aMJYXX_8GgDyoxeZRqyn5`, with 227 offline assets; later changes are only Storybook
+fixtures and review text. Generated offline manifest was restored afterward.
+A focused rename/card run passes 55/55. Expanded presentation+rename/card run:
+86/90 pass, including the new stable-ref regression. The four failures in
+`trip-itinerary-workspace-presentation.test.ts` reproduce identically on pristine
+662 staging (30/34 pass): Map return destination, embedded selection policy,
+calendar shared-context layout and calendar trip-title presentation. These are in
+addition to the nine previously documented baseline failures, bringing the observed
+baseline failure set across both runs to 13. Checks were not weakened or skipped.
+
+Only static branch-deploy aliases were uploaded; no functions or edge functions
+were uploaded, and `published_at` is null for the current draft. Published staging
+changed independently during this run from `6aea475869734d93efb59ccc` to
+`6aea668052f1a5901c9fb6da`, commit `57757a7abc40bd16c18e32faebbd0653e1185278`,
+“Prevent capability URLs from entering analytics context”, published 22:58:34 UTC.
+That is a separate staging publication, not one of this worker’s draft deploys;
+it was not altered or reverted. No production action or Git push was performed.
+Real-device touch, screen-reader, reduced-motion, account save/error and broader
+recovery QA remain pending; the synthetic review is not release approval.
