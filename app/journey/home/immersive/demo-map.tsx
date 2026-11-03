@@ -12,6 +12,7 @@ import { MORROVIA_MAP_WORKER_URL, installMorroviaMapControls } from "@/component
 import { mapTransportIcon } from "@/components/easyt/morrovia-transport-icons";
 import { fitMapCamera, focusMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { formatTripDuration } from "@/lib/easyt/trip-facts";
+import { createMapRenderer } from "@/lib/easyt/map-renderer-lifecycle";
 import { previewConnections, previewStops } from "./product-preview-data";
 import presentation from "@/components/easyt/morrovia-map-presentation.module.css";
 import styles from "./product-preview.module.css";
@@ -34,6 +35,7 @@ export default function DemoMap({ selected, onSelect, es }: { selected: { id: st
     setState("loading");
     let disposed = false;
     let map: MapLibreMap | undefined;
+    let disposeRenderer: (() => unknown) | undefined;
     let observer: ResizeObserver | undefined;
     const ownedMarkers: Marker[] = [];
     const listeners: Array<() => void> = [];
@@ -42,13 +44,17 @@ export default function DemoMap({ selected, onSelect, es }: { selected: { id: st
       listeners.splice(0).forEach(remove => remove());
       ownedMarkers.splice(0).forEach(marker => marker.remove());
       markers.current = [];
-      map?.remove(); map = undefined; mapRef.current = null;
+      mapRef.current = null;
+      disposeRenderer?.(); disposeRenderer = undefined; map = undefined;
     };
-    const fail = () => { if (disposed) return; disposeMap(); setState("unavailable"); };
+    const fail = () => { if (disposed) return; window.clearTimeout(timeout); disposeMap(); setState("unavailable"); };
     const timeout = window.setTimeout(fail, 12000);
     try {
       maplibregl.setWorkerUrl(MORROVIA_MAP_WORKER_URL);
-      map = new maplibregl.Map({ container: container.current, style: createMorroviaFallbackMapStyle(), attributionControl: { compact: false }, dragRotate: false, pitchWithRotate: false, scrollZoom: false, cooperativeGestures: true });
+      const renderer = createMapRenderer(container.current, presentation.canvas, host => new maplibregl.Map({ container: host, style: createMorroviaFallbackMapStyle(), attributionControl: { compact: false }, dragRotate: false, pitchWithRotate: false, scrollZoom: false, cooperativeGestures: true }));
+      if (renderer.kind === "unavailable") { fail(); return () => { disposed = true; window.clearTimeout(timeout); disposeMap(); }; }
+      map = renderer.map;
+      disposeRenderer = renderer.dispose;
       mapRef.current = map;
       map.getCanvas().setAttribute("aria-label", es ? "Mapa del ejemplo; conexiones esquemáticas, no vías reales" : "Sample map; schematic connections, not actual transport routes");
       installMorroviaMapControls(map, maplibregl, { variant: "embedded", interaction: "pan-zoom" });

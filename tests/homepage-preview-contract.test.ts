@@ -19,3 +19,11 @@ test("the featured-route action labels the fixed preview without changing the re
   assert.match(source, /<RoutePlanLink draft=\{route.planDraft\}/);
   assert.match(read("immersive-home.tsx"), /<HomeTripStarter \/>/);
 });
+
+test("the homepage admits and disposes only the capability-checked map renderer", () => {
+  const source = read("demo-map.tsx");
+  assert.match(source, /createMapRenderer\(container\.current/);
+  assert.match(source, /renderer\.kind === "unavailable"/);
+  assert.match(source, /disposeRenderer\?\.\(\)/);
+  assert.doesNotMatch(source, /map\?\.remove\(\)/);
+});
