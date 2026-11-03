@@ -1343,7 +1343,7 @@ export default function TripItineraryWorkspace({
       setEditError(mutationReason || "This change could not be stored safely.");
       return;
     }
-    setSelectedItemId(`${active.id}-activity-${normalized(editDraft)}`);
+    if (!activityEditHandoffRef.current) setSelectedItemId(`${active.id}-activity-${normalized(editDraft)}`);
     setEditingActivity(null);
     setEditDraft("");
     setEditError("");

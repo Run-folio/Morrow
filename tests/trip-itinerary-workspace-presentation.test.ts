@@ -437,5 +437,6 @@ test("Logistics keeps transfer and other bookings while accommodation moves to t
 test("Planner focus handoff keeps its orientation ref stable across registry renders", () => {
   assert.match(itinerary, /const setPlannerElement = useCallback\(\(element: HTMLDivElement \| null\) => \{\s*plannerElementRef.current = element;\s*itineraryPlannerOrientationTarget\(element\);\s*\}, \[itineraryPlannerOrientationTarget\]\);/);
   assert.match(itinerary, /<div ref=\{setPlannerElement\}/);
+  assert.match(itinerary, /if \(!activityEditHandoffRef.current\) setSelectedItemId/);
   assert.doesNotMatch(itinerary, /ref=\{\(element\) => \{ plannerElementRef.current/);
 });
