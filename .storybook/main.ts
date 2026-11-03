@@ -23,6 +23,8 @@ const config: StorybookConfig = {
 
     return {
       ...viteConfig,
+      // staticDirs owns the public copy; avoid concurrent Vite/Storybook writes.
+      build: { ...viteConfig.build, copyPublicDir: false },
       resolve: {
         ...viteConfig.resolve,
         alias: [

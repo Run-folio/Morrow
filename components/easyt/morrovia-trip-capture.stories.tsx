@@ -178,7 +178,7 @@ export const WideHomepageCapture: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /Lisbon · Seville/ }));
-    const first = canvas.getByRole("textbox", { name: "First stop" });
+    const first = await canvas.findByRole("textbox", { name: "First stop" }, { timeout: 5000 });
     await expect(first).toHaveValue("Lisbon");
     await expect(canvas.getByRole("textbox", { name: "Next stop" })).toHaveValue("Seville");
     await userEvent.click(first);

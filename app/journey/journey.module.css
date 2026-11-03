@@ -263,6 +263,7 @@
 .localCandidates .finderWhy{color:#766f7b;font:600 7px/1.25 var(--morrovia-meta);white-space:normal}
 .localCandidates .localCandidate{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;justify-content:initial;gap:9px;min-height:58px;padding:8px 2px;border-top:1px solid var(--hairline)}
 .localCandidates .localCandidate>span{display:grid;gap:3px;min-width:0}
+.localCandidates .localCandidate>span:only-child{grid-column:1/-1}
 .localCandidates .localCandidate strong{white-space:normal;line-height:1.25}
 .localCandidates .localCandidate small{font:var(--morrovia-type-fine-print);white-space:normal;line-height:1.3}
 .localCandidateImage,.localCandidateImageFallback{width:46px;height:42px;object-fit:cover;border-radius:var(--morrovia-control-radius);background:var(--mist)}

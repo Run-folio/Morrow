@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, waitFor } from "storybook/test";
 import { useState } from "react";
 import TripBuilder from "@/app/journey/new/trip-builder";
 import type { JourneyCalendarDay, JourneyStop } from "@/lib/journey";
@@ -7,6 +8,7 @@ import { JourneyItineraryRefinement } from "./journey-itinerary-refinement";
 import { JourneyLocalFinder, type JourneyLocalPlace } from "./journey-local-finder";
 import { PlanWorkspace, type PlanWorkspaceCopy } from "./journey-plan-workspace";
 import { JourneyTripQuality } from "./journey-trip-quality";
+import journeyStyles from "@/app/journey/journey.module.css";
 
 const planCopy: PlanWorkspaceCopy = {
   addActivity: "Add activity", add: "Add", cancel: "Cancel",
@@ -124,6 +126,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const assertFinderTextWidth: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+  await waitFor(() => {
+    const candidates = canvasElement.getElementsByClassName(journeyStyles.localCandidate);
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const candidate of candidates) {
+      const text = candidate.querySelector<HTMLElement>(":scope > span:only-child");
+      expect(text).not.toBeNull();
+      const style = getComputedStyle(candidate);
+      const availableWidth = candidate.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      expect(text!.getBoundingClientRect().width).toBeGreaterThanOrEqual(availableWidth - 1);
+      expect(text!.getBoundingClientRect().width).toBeGreaterThan(46);
+      expect(style.getPropertyValue("--accent").trim()).not.toBe("");
+    }
+  });
+};
+
 export const BuilderStart: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/new", query: {} } } },
   render: () => <TripBuilder />,
@@ -141,50 +159,52 @@ export const ShapeTheDayPlan: Story = {
 };
 
 export const ShapeTheDayStay: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} /></div>,
 };
 
 export const StayBaseLoading: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-loading" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [], coreLoading: true, accommodationInventoryStatus: "not-requested" }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-loading" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [], coreLoading: true, accommodationInventoryStatus: "not-requested" }} /></div>,
 };
 
 export const StayPhotonFallbackReady: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-photon" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [photonTokyoStay], accommodationInventoryStatus: "not-requested" }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-photon" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [photonTokyoStay], accommodationInventoryStatus: "not-requested" }} /></div>,
 };
 
 export const StayCoreReadyCommercialLoading: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-progressive" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "loading" }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-progressive" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "loading" }} /></div>,
 };
 
 export const StayBookingReadyAfterBase: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-booking-ready" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], commercialPlaces: [liveTokyoStay], accommodationInventoryStatus: "live" }} /></div>,
+  play: assertFinderTextWidth,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-booking-ready" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], commercialPlaces: [liveTokyoStay], accommodationInventoryStatus: "live" }} /></div>,
 };
 
 export const StayCoreReadyProviderUnavailableMobile390: Story = {
+  play: assertFinderTextWidth,
   globals: { viewport: { value: "morrovia390", isRotated: false } },
-  render: () => <div style={{ maxWidth: 390 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-provider-failed" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "unavailable" }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 390 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-provider-failed" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "unavailable" }} /></div>,
 };
 
 export const ShapeTheDayEat: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="restaurant" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder kind="restaurant" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} /></div>,
 };
 
 export const EatAntiguaNamedFallbackReady: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-ready" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [antiguaRestaurant] }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-ready" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [antiguaRestaurant] }} /></div>,
 };
 
 export const EatPartialProviderFailureUseful: Story = EatAntiguaNamedFallbackReady;
 
 export const EatAllProvidersUnavailable: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-failed" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: true }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-failed" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: true }} /></div>,
 };
 
 export const EatValidEmpty: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-empty" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: false }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-empty" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: false }} /></div>,
 };
 
 export const StayBaseReadyBookingLoadingAntigua: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="stay" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-stay" coordinates={[-90.7339, 14.5586]} staySearch={{ checkIn: "2026-10-03", checkOut: "2026-10-05", adults: 2 }} initialState={{ corePlaces: [{ ...mappedTokyoStay, id: "antigua-stay", name: "Casa del Arco", address: "Antigua Guatemala, Guatemala", coordinates: [-90.7328, 14.5574] }], accommodationInventoryStatus: "loading" }} /></div>,
+  render: () => <div className={journeyStyles.journey} style={{ height: "auto", minHeight: 0, overflow: "visible", padding: 0, maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="stay" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-stay" coordinates={[-90.7339, 14.5586]} staySearch={{ checkIn: "2026-10-03", checkOut: "2026-10-05", adults: 2 }} initialState={{ corePlaces: [{ ...mappedTokyoStay, id: "antigua-stay", name: "Casa del Arco", address: "Antigua Guatemala, Guatemala", coordinates: [-90.7328, 14.5574] }], accommodationInventoryStatus: "loading" }} /></div>,
 };
 
 export const ShapeTheDaySee: Story = {

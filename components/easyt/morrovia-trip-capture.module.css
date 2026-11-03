@@ -316,7 +316,7 @@
 }
 
 /* The expanded disclosure already names this destination editor. */
-.wideDestinationEditor [data-morrovia-field-label] { display: none; }
+.wideDestinationEditor [data-morrovia-field-label] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 /* Compact Home composition; shared field and action behavior stays with its owner. */
 @media (max-width: 700px) {
   .plannerCard { gap: 0; }

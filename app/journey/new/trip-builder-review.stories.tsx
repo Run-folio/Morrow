@@ -341,8 +341,13 @@ export const BuilderClarification: Story = {
   tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="clarification" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("dialog", { name: /Thailand/ }, { timeout: 15000 })).toBeVisible();
+    const dialog = await canvas.findByRole("dialog", { name: "Explore places" }, { timeout: 15000 });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAccessibleDescription("Thailand");
+    await expect(within(dialog).getByRole("heading", { name: "Bangkok" })).toBeVisible();
+    await expect(within(dialog).getByRole("heading", { name: "Chiang Mai" })).toBeVisible();
     await expect(canvasElement.querySelector("[data-builder-root] #builder-summary")).toBeInTheDocument();
+    await expect(canvas.getByText("14 days", { exact: true })).toBeVisible();
     await expect(canvas.queryByText(/This trip is not available to the current browser account/)).toBeNull();
   },
 };

@@ -61,7 +61,7 @@ export const WideCompositionContract: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /Choose destinations/ }));
-    const field = canvas.getByRole("textbox", { name: "First stop" });
+    const field = await canvas.findByRole("textbox", { name: "First stop" }, { timeout: 5000 });
     await userEvent.click(field);
     await expect(field).toHaveFocus();
     await expect(field.closest("button")).toBeNull();
