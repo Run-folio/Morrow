@@ -51,6 +51,7 @@ for (const fixture of [
   test(`calendar exposes date cells inside week rows for ${fixture.value.slice(0, 7)}`, () => {
     const elements = renderPicker({ mode: "single", label: "Trip date", value: fixture.value });
     const grid = elements.find(element => element.props.role === "grid")!;
+    assert.equal(grid.props["aria-colcount"], 7);
     const rows = [grid.props.children].flat(Infinity).filter(Boolean) as Element[];
     assert.ok(rows.every(row => row.props.role === "row"), "a calendar grid must own week rows");
     const weeks = rows.map(row => [row.props.children].flat(Infinity).filter(Boolean) as Element[]);
@@ -60,6 +61,10 @@ for (const fixture of [
     assert.equal(dates.length, fixture.total);
     assert.ok(dates.every(cell => cell.type === "button" && cell.props.role === "gridcell"));
     assert.equal(weeks[0].findIndex(cell => cell.props["data-date"]), fixture.firstDayColumn);
+    assert.equal(dates[0].props["aria-colindex"], fixture.firstDayColumn + 1);
+    for (const week of weeks) week.forEach((cell, index) => {
+      if (cell.props["data-date"]) assert.equal(cell.props["aria-colindex"], index + 1, `${cell.props["data-date"]} must expose its visual weekday column`);
+    });
     assert.ok(cells.filter(cell => !cell.props["data-date"]).every(cell => cell.props["aria-hidden"] === "true"));
     assert.deepEqual(dates.filter(cell => cell.props.tabIndex === 0).map(cell => cell.props["data-date"]), [fixture.value]);
     assert.deepEqual(dates.filter(cell => cell.props["aria-selected"]).map(cell => cell.props["data-date"]), [fixture.value]);

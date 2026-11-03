@@ -179,7 +179,7 @@ function CalendarPanel({
     <div className={styles.calendarWeekdays} aria-hidden="true">
       {weekdays.map((day) => <span key={day.long} title={day.long}>{day.short}</span>)}
     </div>
-    <div className={styles.calendarGrid} role="grid" aria-label={new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(monthDate)} ref={gridRef}>
+    <div className={styles.calendarGrid} role="grid" aria-colcount={7} aria-label={new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(monthDate)} ref={gridRef}>
       {weeks.map((week, weekIndex) => <div className={styles.calendarRow} role="row" key={`week-${weekIndex}`}>
         {week.map((day, index) => day ? (() => {
           const disabled = !isWithin(day, min, max);
@@ -192,6 +192,7 @@ function CalendarPanel({
           return <button
             type="button"
             role="gridcell"
+            aria-colindex={index + 1}
             key={day}
             data-date={day}
             disabled={disabled}
