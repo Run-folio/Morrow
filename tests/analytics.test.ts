@@ -367,3 +367,11 @@ test("homepage route impressions carry only catalogue metadata and respect conse
     } finally { restore(); }
   }
 });
+
+
+test("gift analytics paths cannot retain a capability while public and private route shapes stay usable", () => {
+  assert.equal(normalizeAnalyticsPath("/journey/gift/PRIVATE_CAPABILITY?email=PRIVATE_EMAIL#claim"), "/journey/gift/[token]");
+  assert.equal(sanitizeAnalyticsDestination("/journey/gift/PRIVATE_CAPABILITY", "https://morrovia.com"), "/journey/gift/[token]");
+  assert.equal(normalizeAnalyticsPath("/journey/my-routes/PRIVATE_TRIP/itinerary?day=2"), "/journey/my-routes/[tripId]/itinerary");
+  assert.equal(normalizeAnalyticsPath("/journey/routes/andean-highlands"), "/journey/routes/andean-highlands");
+});
