@@ -47,6 +47,7 @@ import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-n
 import { projectBuilderCalendar } from "@/lib/easyt/trip-builder-calendar";
 import { resolveBuilderRecommendation, loadBuilderDiscoveryPlaces, builderDiscoveryInputKey, currentBuilderDiscoveredPlaces, type BuilderDiscoveryCache } from "@/lib/easyt/trip-builder-recommendations";
 import { readDurableHomepageState, pendingDurableReceiptStillCurrent } from "@/lib/easyt/homepage-persistence";
+import { builderHydrationFeedback, builderHydrationIssueFor, type BuilderHydrationIssue } from "@/lib/easyt/builder-hydration-feedback";
 import {InterruptedInputReview} from '@/components/easyt/interrupted-input-review';
 import {readInterruptedBuilderInputs, retainInterruptedBuilderInput, type InterruptedBuilderInput} from '@/lib/easyt/interrupted-builder-input';
 import {browserRecoveryStorage} from '@/lib/easyt/browser-recovery-persistence';
@@ -765,6 +766,7 @@ function TripBuilderDocument() {
   const [entryKind, setEntryKind] = useState<NewTripEntryState["kind"]>("loading");
   const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
+  const [hydrationIssue, setHydrationIssue] = useState<BuilderHydrationIssue | null>(null);
   const [guestSaveRequired, setGuestSaveRequired] = useState<{tripId:string;ownerId:string}|null>(null);
   const [pendingContinuationNeedsReview, setPendingContinuationNeedsReview] = useState(false);
   const [initialSaveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
@@ -1584,6 +1586,7 @@ function TripBuilderDocument() {
     setEntryKind("loading");
     setResumedQuerylessDraft(false);
     setTripUnavailable(false);
+    setHydrationIssue(null);
     setGuestSaveRequired(null);
     setPendingContinuationNeedsReview(false);
     let active = true;
@@ -1951,7 +1954,7 @@ function TripBuilderDocument() {
           ? error.kind === "protected" ? "recovery-read-protected" : "recovery-read-unavailable"
           : "entry-exception");
         reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale",guardReason:active ? failureReason : undefined,homepageReadReason:active ? homepageReadReason ?? undefined : undefined});
-        if(active && builderMountedRef.current){hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
+        if(active && builderMountedRef.current){setHydrationIssue(builderHydrationIssueFor(failureReason));hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
       }
     };
     void hydrate();
@@ -6086,6 +6089,7 @@ function TripBuilderDocument() {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
   }
   if (tripUnavailable) {
+    if (hydrationIssue) return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback {...builderHydrationFeedback(hydrationIssue, language)} /></div>;
     if (guestSaveRequired && guestSaveRequired.ownerId === authenticatedOwnerId
       && guestSaveRequired.ownerId === activeBrowserOwnerId) {
       return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback
