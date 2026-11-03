@@ -410,7 +410,8 @@ test("the MapLibre owner rehydrates overlays after style recovery without touchi
   assert.match(source, /data-basemap-status=\{basemapStatus\}/);
   assert.match(source, /hasMorroviaActiveStyle/);
   assert.match(source, /ownerActive && mapRef\.current === map/);
-  assert.match(source, /map\.remove\(\);\s*map\.off\("error", handleMapError\);\s*if \(mapRef\.current === map\) mapRef\.current = null/);
+  assert.match(source, /if \(mapRef\.current === map\) mapRef\.current = null;\s*const disposed = renderer\.dispose\(\)/);
+  assert.doesNotMatch(source, /map\.remove\(\)/, "only the admitted renderer owns safe disposal");
   assert.doesNotMatch(source, /removalTimerRef/);
   assert.doesNotMatch(source, /setStyle\([^)]*zoom/);
   const snapshot = inspectMorroviaBasemap(new FakeBasemap(), "loading");

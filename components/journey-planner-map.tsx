@@ -20,6 +20,7 @@ import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
+import { createMapRenderer } from "@/lib/easyt/map-renderer-lifecycle";
 import { createMorroviaMapDiagnostics } from "@/lib/easyt/map-runtime-diagnostics";
 import { bindMapMarkerActivation, canonicalMapTransportMode, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 
@@ -283,36 +284,37 @@ export function JourneyPlannerMap({
       nodeEnv: process.env.NODE_ENV,
       buildCommit: process.env.MORROVIA_BUILD_COMMIT,
     });
-    if (!mapRef.current) {
-      maplibregl.setWorkerUrl(MORROVIA_MAP_WORKER_URL);
-      const firstStop = selectedResult?.coordinates
-        ?? mapResults[0]?.coordinates
-        ?? stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
-        ?? stops.find((stop) => stop.coordinates)?.coordinates
-        ?? focusCoordinates
-        ?? [-90.5069, 14.6349];
-      let map: maplibregl.Map;
-      try {
-        map = new maplibregl.Map({
-          container: containerRef.current,
-          ...morroviaMapOptions(surface, "compact"),
-          center: firstStop,
-          zoom: (presentationOnly || surface.variant === "embedded") && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
-        });
-      } catch (error) {
-        setMapUnavailable(true);
-        mapDiagnostics.error("initialization-error", error);
-        mapDiagnostics.dispose();
-        onLifecycleChangeRef.current?.("unavailable");
-        console.error("Morrovia could not initialise the route map.", error);
-        return;
-      }
-      installMorroviaMapControls(map, maplibregl, surface);
-      mapRef.current = map;
+    maplibregl.setWorkerUrl(MORROVIA_MAP_WORKER_URL);
+    const firstStop = selectedResult?.coordinates
+      ?? mapResults[0]?.coordinates
+      ?? stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
+      ?? stops.find((stop) => stop.coordinates)?.coordinates
+      ?? focusCoordinates
+      ?? [-90.5069, 14.6349];
+    const renderer = createMapRenderer(containerRef.current, mapPresentation.canvas, (container) => new maplibregl.Map({
+      container,
+      ...morroviaMapOptions(surface, "compact"),
+      center: firstStop,
+      zoom: (presentationOnly || surface.variant === "embedded") && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
+    }));
+    if (renderer.kind === "unavailable") {
+      setMapUnavailable(true);
+      mapDiagnostics.error("initialization-error", renderer.error);
+      mapDiagnostics.dispose();
+      onLifecycleChangeRef.current?.("unavailable");
+      return;
     }
-
-    const map = mapRef.current;
-    if (!map) return;
+    const map = renderer.map;
+    try { installMorroviaMapControls(map, maplibregl, surface); }
+    catch (error) {
+      renderer.dispose();
+      setMapUnavailable(true);
+      mapDiagnostics.error("initialization-error", error);
+      mapDiagnostics.dispose();
+      onLifecycleChangeRef.current?.("unavailable");
+      return;
+    }
+    mapRef.current = map;
     const disposeAttribution = installMorroviaMapAttribution(map);
     let ownerActive = true;
     let removing = false;
@@ -376,9 +378,9 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       draftPinRef.current?.remove();
       removing = true;
-      map.remove();
-      map.off("error", handleMapError);
       if (mapRef.current === map) mapRef.current = null;
+      const disposed = renderer.dispose();
+      if (disposed.kind === "failed") console.warn("Morrovia map cleanup could not complete.", disposed.error);
     };
   }, []);
 
@@ -1047,7 +1049,7 @@ export function JourneyPlannerMap({
   return <div className={`planner-map ${mapPresentation.surface}`} data-destination-selection-tone={destinationSelectionTone} data-basemap-status={basemapStatus} aria-busy={!mapUnavailable && basemapStatus === "loading" || undefined} aria-label={presentationOnly ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
     <div ref={containerRef} className={mapPresentation.canvas} />
     {comparisonLegs.length && comparisonLabel ? <span className="sr-only">{comparisonLabel}</span> : null}
-    {mapUnavailable ? <div className={mapPresentation.basemapStatus} role="alert"><strong>Map unavailable</strong><span>Your trip is still available. Reload to try the map again.</span></div> : null}
+    {mapUnavailable ? <div className={mapPresentation.basemapStatus} role="alert"><strong>Map unavailable</strong><span>This browser cannot display the interactive map. Your trip and editing controls are still available.</span></div> : null}
     {!mapUnavailable && basemapStatus !== "detailed" ? <div className={mapPresentation.basemapStatus} role={basemapStatus === "fallback" ? "alert" : "status"}>
       <strong>{basemapStatus === "fallback" ? "Detailed map unavailable" : "Opening detailed map"}</strong>
       <span>{basemapStatus === "fallback" ? "Showing local route geography instead." : "Loading roads, places and labels."}</span>
