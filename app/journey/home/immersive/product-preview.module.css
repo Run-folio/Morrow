@@ -1,7 +1,5 @@
-.product { min-height: 0; max-width: 1440px; margin: auto; padding-top: 48px; padding-bottom: 64px; }
+.product { min-height: 0; width: min(1400px, calc(100% - 48px)); margin: auto; padding: 48px 0 64px; }
 .product h2 { font-size: clamp(46px, 5vw, 72px); }
-.sampleHeading { padding: 20px 24px; border-bottom: 1px solid var(--morrovia-line); }
-.sampleHeading h3 { margin: 0; font-family: var(--morrovia-display); font-size: 26px; font-weight: 500; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
 .mapSlot { min-width: 0; position: relative; }
 .map { height: 100%; min-height: 620px; }
@@ -12,10 +10,6 @@
 .mapConnection { display: flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink); font-size: 11px; pointer-events: none; }
 .mapConnection svg { width: 16px; height: 16px; }
 .sidebar { border-left: 1px solid var(--morrovia-line); display: flex; flex-direction: column; min-width: 0; }
-.photo { height: 140px; position: relative; overflow: hidden; background: var(--morrovia-ink); }
-.photo > img { width: 100%; height: 100%; object-fit: cover; opacity: .72; }
-.photo > span { position: absolute; bottom: 24px; left: 20px; color: var(--morrovia-paper); font: italic 28px var(--morrovia-display); }
-.photo > a { position: absolute; bottom: 4px; right: 8px; color: var(--morrovia-paper); font-size: 11px; }
 .stops { list-style: none; padding: 12px; margin: 0; }
 .stop { display: flex; justify-content: flex-start; gap: 12px; width: 100%; padding: 10px; text-align: left; min-height: 64px; }
 .stop[aria-pressed="true"] { background: var(--morrovia-lilac); border-color: var(--morrovia-action); }
@@ -26,12 +20,13 @@
 .connection svg { width: 16px; height: 16px; flex-shrink: 0; }
 .cta { margin-top: auto; padding: 12px 22px 22px; }
 @media(max-width: 760px) {
- .product { padding: 32px 16px 48px; }
+ .product { padding: 32px 0 48px; }
  .layout { grid-template-columns: minmax(0, 1fr); }
  .map { height: 400px; min-height: 400px; }
  .sidebar { border-left: 0; border-top: 1px solid var(--morrovia-line); }
- .photo { height: 100px; }
  .mapName { font-size: 12px; left: 40px; }
  .mapConnection { font-size: 10px; padding: 4px; }
- .sampleHeading { padding: 16px; }
+}
+@media(max-width: 700px) {
+ .product { width: calc(100% - 32px); }
 }

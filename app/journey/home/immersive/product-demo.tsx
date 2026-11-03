@@ -25,14 +25,12 @@ export default function ProductDemo() {
     return () => observer.disconnect();
   }, []);
 
-  return <section id="product" ref={section} className={`${page.product} ${styles.product}`} aria-labelledby="product-preview-title">
-    <header className={page.chapterHeading}><div><span className={page.eyebrow}>{es ? "Todo el viaje a la vista" : "The whole trip, in view"}</span><h2 id="product-preview-title">{es ? "Todo tu viaje." : "Your whole trip."}<em>{es ? "Conectado." : "Connected."}</em></h2></div></header>
+  return <section id="product" ref={section} className={styles.product} aria-labelledby="product-preview-title">
+    <header className={page.chapterHeading}><h2 id="product-preview-title">{es ? "Todo tu viaje a la vista" : "Your whole trip in view"}</h2></header>
     <div className={page.demo}>
-      <header className={styles.sampleHeading}><h3>{es ? "Un poco más de Japón." : "A little more Japan."}</h3></header>
       <div className={styles.layout}>
         <div className={styles.mapSlot}>{mapReady ? <DemoMap selected={selected} onSelect={(id) => setSelected({ id })} es={es} /> : <div className={styles.mapLoading} role="status">{es ? "Abriendo el mapa…" : "Opening the route map…"}</div>}</div>
         <aside className={styles.sidebar} aria-label={es ? "Paradas del ejemplo" : "Sample route stops"}>
-          <div className={styles.photo}><img src="/journey/immersive/hero-japan-480.webp" alt="" loading="lazy" /><span>{es ? "Espacio para explorar." : "Room to explore."}</span><a href="/journey/immersive/credits.html" aria-label={es ? "Créditos de las imágenes; paisaje imaginado" : "Image credits; imagined landscape"}>{es ? "Créditos" : "Credits"}</a></div>
           <ol className={styles.stops}>{previewStops.map((stop, index) => {
             const incoming = previewConnections[index - 1];
             const Icon = mapTransportIcon(incoming?.mode);
