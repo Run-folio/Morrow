@@ -226,9 +226,10 @@
  rgba(83,94,162,.12)); }
 .story h2 { font-size: clamp(66px,6.2vw,116px); margin: 28px 0; max-width: 15ch; }
 .story h2:focus { outline: none; }
+.story h2[data-long-title] { font-size: clamp(40px,4vw,72px); max-width: 24ch; overflow-wrap: anywhere; }
 .theme { font: var(--morrovia-type-metadata); margin-bottom: 24px!important; }
 .storyIdea { max-width: 610px; font-size: 18px; }
-.sequence { margin-top: 44px!important; font: var(--morrovia-type-supporting-body); }
+.sequence { margin: 0 0 28px!important; font: var(--morrovia-type-supporting-body); overflow-wrap: anywhere; }
 .storyActions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 28px; }
 .storyActions a:first-child { color: var(--morrovia-ink); background: var(--morrovia-paper); }
 .storyActions a:last-child { color: var(--morrovia-paper); }
@@ -239,10 +240,10 @@
 .alternativeRoute { width: 100%; min-height: 68px; justify-content: flex-start; gap: 18px; padding: 18px 0; color: var(--morrovia-paper)!important; border-radius: 0; border-bottom: 1px solid color-mix(in srgb,var(--morrovia-paper) 38%,transparent); text-align: left; white-space: normal; font-size: clamp(24px,1.55vw,28px); font-weight: 500; line-height: 1.2; }
 .alternativeRoute span { flex: 1; }
 .alternativeRoute svg,.alternativesAll svg { order: 2; flex: 0 0 auto; transition: transform 180ms ease; }
-.alternativeRoute:hover { color: var(--morrovia-paper)!important; background: transparent; transform: none; border-bottom-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
+.alternativeRoute:hover,.alternativeRoute:focus-visible { color: var(--morrovia-ink)!important; background: var(--morrovia-lilac)!important; transform: none; border-bottom-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
 .alternativeRoute:hover svg,.alternativesAll:hover svg { transform: translateX(4px); }
 .alternativesAll { width: 100%; min-height: 60px; justify-content: space-between; padding: 18px 0 0; color: var(--morrovia-paper)!important; border-top: 1px solid color-mix(in srgb,var(--morrovia-paper) 38%,transparent); border-radius: 0; font-size: 17px; }
-.alternativesAll:hover { color: var(--morrovia-paper)!important; background: transparent; transform: none; border-top-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
+.alternativesAll:hover,.alternativesAll:focus-visible { color: var(--morrovia-ink)!important; background: var(--morrovia-lilac)!important; transform: none; border-top-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
 @media(max-width:840px) {
  .routeCollectionIntro { grid-template-columns:1fr; gap:14px; padding-bottom:20px; margin-bottom:24px; }
  .routeCollectionIntro h2 { font-size:34px; }

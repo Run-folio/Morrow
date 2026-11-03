@@ -6,7 +6,7 @@ import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls"
 import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import type { RoutePhotoRecord } from "@/lib/easyt/route-images";
-import { routeScrollCorrection, homepageJourneyLabel, nextHomepageRoute } from "@/lib/easyt/homepage-navigation";
+import { routeScrollCorrection, homepageJourneyLabel, homepageStoryPresentation, nextHomepageRoute } from "@/lib/easyt/homepage-navigation";
 import RoutePlanLink from "../../routes/[slug]/route-plan-link";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
@@ -39,14 +39,14 @@ export default function RouteChapters({ routes, index, onChange, children }: {
       if (chapter === "route-story") anchor?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
     });
   };
-  const story = homepageJourneyLabel(route.key, route.title);
+  const story = homepageStoryPresentation(route);
   const editorialPhotoIndex = route.photos.findIndex(photo => photo?.key === routeEditorialImagery[route.key]?.hero);
   const storyPhotoIndex = editorialPhotoIndex >= 0 ? editorialPhotoIndex : route.stops.length - 1;
   return <>
     <section id="route-story" className={styles.story}>
       <div className={styles.storyPhoto}><DestinationPhoto route={route} index={storyPhotoIndex} landscape /></div>
       <div className={styles.storyShade} />
-      <div className={styles.storyMain}><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2 tabIndex={-1}>{story.title}<em>{story.line}</em></h2><p className={styles.theme}>{story.theme || route.interestLabel}</p><p className={styles.storyIdea}>{route.summary}</p><p className={styles.sequence}>{route.stops.map((stop) => stop.name).join(" → ")}</p><div className={styles.storyActions}><RoutePlanLink draft={route.planDraft} placement="hero">{es ? "Empezar con esta ruta" : "Start with this route"}</RoutePlanLink><EasyTLinkButton href="#product" variant="quiet" icon={ArrowDown}>{es ? "Ver todo el viaje" : "See whole journey"}</EasyTLinkButton></div></div>
+      <div className={styles.storyMain}><span className={styles.eyebrow}>{story.eyebrow}</span><h2 tabIndex={-1} data-long-title={story.title.length > 30 || undefined}>{story.title}</h2><p className={styles.sequence}>{story.stops}</p><p className={styles.storyIdea}>{route.summary}</p><div className={styles.storyActions}><RoutePlanLink draft={route.planDraft} placement="hero">{es ? "Empezar con esta ruta" : "Start with this route"}</RoutePlanLink><EasyTLinkButton href="#product" variant="quiet" icon={ArrowDown}>{es ? "Probar el ejemplo" : "Try the planner preview"}</EasyTLinkButton></div></div>
       <aside className={styles.alternatives} aria-label={es ? "Otros viajes" : "Other journeys"}><span className={styles.eyebrow}>{es ? "Otra forma de viajar" : "Another way to go"}</span><div className={styles.alternativeRoutes}>{routes.map((other, i) => i === index ? null : <EasyTButton className={styles.alternativeRoute} key={other.key} variant="quiet" icon={ArrowRight} onClick={() => change(i, "route-story")}><span>{homepageJourneyLabel(other.key, other.title).short}</span></EasyTButton>)}</div><EasyTLinkButton className={styles.alternativesAll} href="/journey/discover" variant="quiet" icon={ArrowRight}>{es ? "Ver todas las rutas" : "View all routes"}</EasyTLinkButton></aside>
     </section>
     {children?.(route, change, index)}
