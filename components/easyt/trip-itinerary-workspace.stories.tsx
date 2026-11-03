@@ -416,13 +416,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// Native recovery initialization/writes are asynchronous; retain exact predicates with a bounded budget.
+function waitForItineraryUpdate<T>(assertion: () => T | Promise<T>) {
+  return waitFor(assertion, { timeout: 5000 });
+}
+
 /** Wait for the existing account-action eligibility gate without bypassing recovery hydration. */
 async function waitForItineraryFixtureReady(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   const calendarWasOpen = Boolean(canvasElement.querySelector("#itinerary-calendar"));
   if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Calendar" }));
   // This public action enables only after owner, scope and recovery classification settle.
-  await waitFor(() => expect(canvas.getByRole("button", { name: "Add to calendar" })).toBeEnabled());
+  await waitForItineraryUpdate(() => expect(canvas.getByRole("button", { name: "Add to calendar" })).toBeEnabled());
   if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Day by day" }));
 }
 
@@ -722,7 +727,7 @@ export const FullDaySuggestionTopAreaDrop: Story = {
     const transfer = new DataTransfer();
     card.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
     card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-    const target = await waitFor(() => {
+    const target = await waitForItineraryUpdate(() => {
       const node = canvasElement.querySelector<HTMLElement>("[data-full-day-drop-zone]");
       if (!node) throw new Error("Missing top-area full-day target");
       return node;
@@ -732,7 +737,7 @@ export const FullDaySuggestionTopAreaDrop: Story = {
     if (!over.defaultPrevented) throw new Error("The top area must accept the full-day drag");
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => {
+    await waitForItineraryUpdate(() => {
       const cards = [...canvasElement.querySelectorAll("[data-full-day-band] strong")].filter(node => node.textContent === storyCommercialInventory[0].title);
       if (cards.length !== 1) throw new Error("The full-day drop must create one band above the slots");
       if (canvasElement.querySelectorAll("section[data-day-part]").length !== 3) throw new Error("Normal planning slots must remain available");
@@ -822,7 +827,7 @@ export const ClickAddAutomaticallyPlaced: Story = {
     const title = card?.querySelector('strong')?.textContent;
     if (!title) throw new Error("Missing suggestion title");
     await userEvent.click(add);
-    await waitFor(() => {
+    await waitForItineraryUpdate(() => {
       if ([...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title).length !== 1) throw new Error("Add must create exactly one canonical planned activity");
     });
   },
@@ -850,7 +855,7 @@ export const PlannedActivityWholeCardDrag: Story = {
     const canvas = within(canvasElement);
     // Route restoration can select Day 1 before play; choose the fixture's populated day.
     await userEvent.click(await canvas.findByRole("tab", { name: /^Day 2 ·/ }));
-    await waitFor(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
+    await waitForItineraryUpdate(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
     const card = canvasElement.querySelector<HTMLElement>('[data-day-part="morning"] [data-itinerary-activity-id][draggable="true"]');
     const body = card?.querySelector<HTMLElement>("[data-itinerary-drag-surface] strong");
     const target = canvasElement.querySelector<HTMLElement>('section[data-day-part="evening"]');
@@ -859,11 +864,11 @@ export const PlannedActivityWholeCardDrag: Story = {
     const transfer = new DataTransfer();
     body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
     card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-    await waitFor(() => expect(target).toHaveAttribute("data-drop-zone", "ready"));
+    await waitForItineraryUpdate(() => expect(target).toHaveAttribute("data-drop-zone", "ready"));
     target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => {
+    await waitForItineraryUpdate(() => {
       const moved = [...canvasElement.querySelectorAll<HTMLElement>("[data-itinerary-activity-id]")].filter(node => node.dataset.itineraryActivityId === id);
       if (moved.length !== 1 || moved[0].closest("[data-day-part]")?.getAttribute("data-day-part") !== "evening") throw new Error("Dragging the body must move the canonical activity once");
     });
@@ -1011,13 +1016,13 @@ export const CalendarActivityDrag: Story = {
     if (!sourceDayLabel || !targetDayLabel) throw new Error('Missing canonical calendar day labels');
     const transfer = new DataTransfer();
     source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => expect(target).toHaveAttribute('data-drop-eligible', 'true'));
+    await waitForItineraryUpdate(() => expect(target).toHaveAttribute('data-drop-eligible', 'true'));
     const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer });
     target.dispatchEvent(over);
     if (!over.defaultPrevented) throw new Error('Calendar day must accept the activity drag');
     target.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
     source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => {
+    await waitForItineraryUpdate(() => {
       const canvas = within(canvasElement);
       const currentSource = canvas.getByRole('button', { name: sourceDayLabel }).closest('article');
       const currentTarget = canvas.getByRole('button', { name: targetDayLabel }).closest('article');
@@ -1474,7 +1479,7 @@ export const CalendarAddOutcome: Story = {
     const add = [...(card?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(button => button.textContent?.includes('Add to Day'));
     if (!add || !title) throw new Error('Missing calendar Add fixture');
     await userEvent.click(add);
-    await waitFor(() => {
+    await waitForItineraryUpdate(() => {
       const planned = [...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title);
       if (planned.length !== 1) throw new Error('Calendar Add must create exactly one activity in the selected day');
       const previews = [...canvasElement.querySelectorAll('#itinerary-calendar [data-selected="true"] button strong')].filter(node => node.textContent === title);
