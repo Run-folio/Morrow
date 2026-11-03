@@ -21,6 +21,8 @@ Storybook renders the current production owners; it is not a substitute for host
 | Shared controls / feedback / structure | Existing numbered foundations, controls, feedback, structure and product catalogues | Canonical components/tokens; static demonstrations are not persistence acceptance |
 | Gated / unpublished features | Calendar-export review components and legacy proposal states | Component references only; Storybook does not enable app feature gates |
 
+The installed Vite plugin aliases Next Link to a mock that cancels the event before invoking the app callback. A Storybook-only post-config alias uses the installed framework's callback-first Link mock instead, preserving app cancellation guards and avoiding production/shared-dependency edits. The actual Home route-preview story remains the integration regression; modifier-click/native-navigation behavior is not a hosted-browser claim.
+
 Next App Router fixtures must set both `pathname` and `segments` when a surface reads `useSelectedLayoutSegment`. Setting only the URL can incorrectly highlight Overview while showing another workspace. The runner checks actual current navigation labels.
 
 ## Truthful fixture rules

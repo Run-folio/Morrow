@@ -1,5 +1,9 @@
 import type { StorybookConfig } from "@storybook/nextjs-vite";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const callbackFirstLinkMock = require.resolve("@storybook/nextjs-vite/link.mock");
 
 const config: StorybookConfig = {
   stories: [
@@ -36,6 +40,16 @@ const config: StorybookConfig = {
       },
       plugins: [
         ...(viteConfig.plugins ?? []),
+        {
+          // vite-plugin-storybook-nextjs pre-cancels Link clicks before the app callback.
+          // Use the installed framework mock, which calls the app first and respects cancellation.
+          // This runs after the framework's normal mock alias hook; shared dependencies stay untouched.
+          name: "morrovia-storybook-link-callback-order",
+          enforce: "post",
+          config: () => ({ resolve: { alias: [
+            "next/link", "@storybook/nextjs/link.mock", "@storybook/nextjs-vite/link.mock", "@storybook/experimental-nextjs-vite/link.mock",
+          ].map(find => ({ find, replacement: callbackFirstLinkMock })) } }),
+        },
         {
           name: "storybook-json-import-attributes",
           enforce: "post",
