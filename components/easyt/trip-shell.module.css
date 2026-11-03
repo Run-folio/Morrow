@@ -369,9 +369,9 @@
 @media (max-width: 760px) {
   .resolverNotice { width: calc(100% - 24px); margin-top: 12px; }
   .deviceOnlyNotice { padding: 0 16px 6px; }
-  .deviceOnlyNotice aside { min-height: 44px; gap: 8px; padding: 4px 8px; border-radius: var(--morrovia-control-radius); }
-  .deviceOnlyNotice aside > div:not(:last-child) span { display: none; }
-  .deviceOnlyNotice aside > svg { width: 16px; height: 16px; }
+  .deviceOnlyNotice aside, .deviceOnlyNotice [data-morrovia-status-banner] { min-height: 44px; gap: 8px; padding: 4px 8px; border-radius: var(--morrovia-control-radius); }
+  .deviceOnlyNotice aside > div:not(:last-child) span, .deviceOnlyNotice [data-morrovia-status-banner] > div:not(:last-child) span { display: none; }
+  .deviceOnlyNotice aside > svg, .deviceOnlyNotice [data-morrovia-status-banner] > svg { width: 16px; height: 16px; }
   .workspace {
     width: 100%;
     padding-top: 0;

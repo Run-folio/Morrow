@@ -165,8 +165,9 @@ export function MorroviaStatusBanner({
 }) {
   const Icon = tone === "success" ? Check : tone === "danger" ? AlertCircle : tone === "warning" ? CircleAlert : Info;
   return (
-    <aside
+    <div
       className={`${styles.statusBanner} ${className}`}
+      data-morrovia-status-banner="true"
       data-tone={tone}
       role={role ?? (tone === "danger" || tone === "warning" ? "alert" : "status")}
       aria-atomic="true"
@@ -177,7 +178,7 @@ export function MorroviaStatusBanner({
         {detail ? <span>{detail}</span> : null}
       </div>
       {actions ? <div className={styles.statusBannerActions}>{actions}</div> : null}
-    </aside>
+    </div>
   );
 }
 

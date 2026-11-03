@@ -206,7 +206,7 @@
 .mapDetail { padding:28px 24px; border-left:1px solid var(--morrovia-line); display:flex; flex-direction:column; gap:22px; }
 .mapContext h3 { font:30px/1.15 var(--morrovia-display); letter-spacing:-.04em; margin:15px 0 20px; }
 .mapContext > p:not(.eyebrow) { font:var(--morrovia-type-supporting-body); color:var(--morrovia-ink-soft); }
-.mapContext > aside { margin-top:20px; }
+.mapContext > aside, .mapContext > [data-morrovia-status-banner] { margin-top:20px; }
 @media(min-width:1700px) { .mapLayout { grid-template-columns:minmax(0,1fr) 400px; min-height:740px; } .mapDetail { padding:36px; } }
 @media(max-width:1080px) { .mapLayout { grid-template-columns:minmax(0,1fr) 310px; } .mapDetail { padding:22px 16px; } }
 @media(max-width:700px) { .mapLayout { display:flex; flex-direction:column; min-height:0; } .mapShell { height:440px; } .mapDetail { padding:24px 18px; border-left:0; border-top:1px solid var(--morrovia-line); } .mapToolbar { align-items:flex-start; flex-wrap:wrap; } }
@@ -256,7 +256,7 @@
 .mapFacts div { padding:15px 0; border-top:1px solid var(--morrovia-line); }
 .mapFacts dt { color:var(--morrovia-muted); font:var(--morrovia-type-fine-print); }
 .mapFacts dd { margin:5px 0 0; font:var(--morrovia-type-supporting-body); }
-.mapContext > aside { margin-top:24px; }
+.mapContext > aside, .mapContext > [data-morrovia-status-banner] { margin-top:24px; }
 .mapDetail > label { margin-top:auto; }
 .geographyReasons { display:grid; grid-template-columns:repeat(3,1fr); gap:30px; margin:30px 0 0; padding:0; list-style:none; }
 .geographyReasons li { padding-top:18px; border-top:1px solid var(--morrovia-line); color:var(--morrovia-ink-soft); font:var(--morrovia-type-supporting-body); }

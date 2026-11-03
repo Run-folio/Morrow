@@ -71,8 +71,8 @@ test("the rendered interaction play verifies canonical card content and ordinary
   assert.match(stories, /card\.textContent\?\.includes\(route\.title\)/);
   assert.match(stories, /route\.dayRange\.min === route\.dayRange\.max/);
   assert.match(stories, /route\.stops\.length/);
-  assert.match(stories, /new MouseEvent\("click", \{ bubbles: true, cancelable: true, button: 0 \}\)/);
-  assert.match(stories, /ordinaryClick\.defaultPrevented/);
+  assert.match(stories, /await userEvent\.click\(cards\[0\]\)/);
+  assert.match(stories, /observed\.event\?\.defaultPrevented/);
   assert.match(stories, /Hydrated card click must intercept native navigation/);
   assert.match(stories, /Card click changed the selected Route Story/);
 });

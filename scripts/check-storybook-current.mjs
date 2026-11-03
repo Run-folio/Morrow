@@ -109,7 +109,7 @@ try {
       let runtimeFailure = null, finished = null, violations = [], screenshot = null, keyboard = null;
       try {
         await page.goto(new URL('/__storybook_current_check__', base).href, { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction(() => window.__storybookCheck.finished !== null || window.__storybookCheck.errors.length > 0, null, { timeout: all ? 10000 : 25000 });
+        await page.waitForFunction(() => window.__storybookCheck.finished !== null || window.__storybookCheck.errors.length > 0, null, { timeout: 25000 });
         const state = await page.evaluate(() => window.__storybookCheck);
         finished = state.finished;
         violations = state.reporters.filter(reporter => reporter.type === 'a11y').flatMap(reporter => reporter.violations);

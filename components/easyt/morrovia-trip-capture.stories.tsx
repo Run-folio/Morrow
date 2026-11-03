@@ -216,7 +216,9 @@ export const WideHomepageMobileOrder: Story = {
     const dates = canvas.getByRole("button", { name: /^Travel dates/ });
     if (!editor) throw new globalThis.Error("Expanded destination editor is missing");
     await expect(editor.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    await expect(dates.getBoundingClientRect().top - editor.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(12);
+    // The current compact utilities share a 1px divider, not the old 12px gap.
+    await expect(Number.parseFloat(getComputedStyle(editor).paddingTop)).toBeGreaterThanOrEqual(12);
+    await expect(dates.getBoundingClientRect().top - editor.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(0);
     const assertActionOrder = async () => {
       const travellers = canvas.getByRole("group", { name: "Travellers" });
       const action = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;

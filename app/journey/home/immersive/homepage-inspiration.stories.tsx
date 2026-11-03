@@ -57,9 +57,12 @@ export const InteractionBoundary: Story = {
       card.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
       if (root?.dataset.selectedStoryKey !== before) throw new Error("Card focus or hover changed the selected Route Story");
     });
-    const ordinaryClick = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
-    cards[0]?.dispatchEvent(ordinaryClick);
-    if (!ordinaryClick.defaultPrevented) throw new Error("Hydrated card click must intercept native navigation for the shared preview");
+    const observed: { event: MouseEvent | null } = { event: null };
+    const observe = (event: MouseEvent) => { observed.event = event; };
+    canvasElement.ownerDocument.addEventListener("click", observe, { once: true });
+    try { await userEvent.click(cards[0]); }
+    finally { canvasElement.ownerDocument.removeEventListener("click", observe); }
+    if (!observed.event?.defaultPrevented) throw new Error("Hydrated card click must intercept native navigation for the shared preview");
     await waitFor(() => {
       const preview = canvasElement.ownerDocument.querySelector<HTMLDialogElement>("dialog:modal");
       if (!preview || !preview.querySelector("#atlas-title")) throw new Error("Homepage inspiration card must open the shared route preview");
