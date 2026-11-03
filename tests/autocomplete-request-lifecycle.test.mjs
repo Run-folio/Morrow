@@ -11,7 +11,7 @@ function visit(n){if(ts.isCallExpression(n)&&n.expression.getText(ast)==='useEff
 const run=new Function('scope',`with(scope){${ts.transpileModule('return ('+code+');',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`);
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
 function harness(fetchImpl,state={searching:false,failed:false,suggestions:[]}){
- const scope={deferredValue:'kuta',parentConstraint:{canonicalPlaceId:'bali',canonicalName:'Bali',placeType:'island',parentCountries:['Indonesia']},contextCountries:['Indonesia'],nearbyAnchor:undefined,searchIntent:'route-stop',allowedPlaceTypes:['city','town'],referenceGeographicAcceptanceMatches,createAbortableEffectScope,withProviderTimeout,URLSearchParams,
+ const scope={providerContextKey:'synthetic-context',setProviderQueryKey:()=>{},deferredValue:'kuta',parentConstraint:{canonicalPlaceId:'bali',canonicalName:'Bali',placeType:'island',parentCountries:['Indonesia']},contextCountries:['Indonesia'],nearbyAnchor:undefined,searchIntent:'route-stop',allowedPlaceTypes:['city','town'],referenceGeographicAcceptanceMatches,createAbortableEffectScope,withProviderTimeout,URLSearchParams,
   setProviderSearching:v=>state.searching=v,setProviderFailed:v=>state.failed=v,setProviderSuggestions:v=>state.suggestions=v,
   window:{setTimeout:(fn,ms)=>setTimeout(fn,ms),clearTimeout:id=>clearTimeout(id)},fetch:fetchImpl};
  return{state,start:()=>run(scope)()};

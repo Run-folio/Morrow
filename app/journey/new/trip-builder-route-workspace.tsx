@@ -21,7 +21,7 @@ import { transportBookingForLeg } from "@/lib/easyt/booking-readiness";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useCompactBuilderRows } from "./use-compact-builder-rows";
-import { useBuilderStopReorder } from "./use-builder-stop-reorder";
+import { completeBuilderMenuMove, useBuilderStopReorder } from "./use-builder-stop-reorder";
 import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 import { tripNightsBetween } from "@/lib/easyt/night-allocation";
 import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates} from '@/lib/easyt/geographic-binding';
@@ -95,6 +95,9 @@ export function TripBuilderRouteWorkspace({
   onRemoveStop,
   onTransportChoiceChange,
 }: TripBuilderRouteWorkspaceProps) {
+  const scopeKey = `${canonicalTrip.ownerId ?? "guest"}:${canonicalTrip.id}`;
+  const currentScopeRef = useRef(scopeKey);
+  currentScopeRef.current = scopeKey;
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [mapLifecycle, setMapLifecycle] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -122,6 +125,8 @@ export function TripBuilderRouteWorkspace({
   const stopIds = useMemo(() => canonicalTrip.stops.map((stop) => stop.id), [canonicalTrip.stops]);
   const reorder = useBuilderStopReorder({
     stopIds,
+    scopeKey: `${canonicalTrip.ownerId ?? "guest"}:${canonicalTrip.id}`,
+    stopLabels: Object.fromEntries(canonicalTrip.stops.map(stop => [stop.id, stop.name])),
     lockedStopIds,
     fixedOrder,
     onPreview: onPreviewOrder,
@@ -148,10 +153,10 @@ export function TripBuilderRouteWorkspace({
 
   const selectStop = (stopId: string, reveal = false) => {
     onSelectStop(stopId);
-    if (reveal) rowRefs.current.get(stopId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (reveal) rowRefs.current.get(stopId)?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
 
-  return <section data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
+  return <section data-builder-reorder-surface data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <header className={styles.builderRouteHeader}>
       <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
         <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
@@ -235,15 +240,15 @@ export function TripBuilderRouteWorkspace({
                 <strong>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>
                 {usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
               </div>
-              <details className={styles.builderRouteActions} onClick={(event) => event.stopPropagation()}>
+              <details className={styles.builderRouteActions} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onClick={(event) => event.stopPropagation()}>
                 <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
                 <div>
                   <dl className={styles.builderStopFacts}><dt>Country</dt><dd>{stop.country || "To confirm"}</dd><dt>Usable time</dt><dd>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</dd></dl>
                   <strong>Move stop</strong>
                   {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                  <button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button>
+                  <button type="button" aria-disabled={!reorder.canMoveFromMenu(stop.id, index - 1)} onClick={(event) => { if (!reorder.canMoveFromMenu(stop.id, index - 1)) return; return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index - 1), () => currentScopeRef.current === scopeKey); }}>Earlier</button>
                   {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                  <button type="button" disabled={isLocked || index === presentedTrip.stops.length - 1} onClick={() => reorder.moveFromMenu(stop.id, index + 1)}>Later</button>
+                  <button type="button" aria-disabled={!reorder.canMoveFromMenu(stop.id, index + 1)} onClick={(event) => { if (!reorder.canMoveFromMenu(stop.id, index + 1)) return; return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index + 1), () => currentScopeRef.current === scopeKey); }}>Later</button>
                   {/* morrovia-ui-audit-allow-next-line native-control -- Stop removal reuses this row's existing action menu and the Builder's guarded mutation owner. */}
                   <button type="button" disabled={locked.has(stop.id)} onClick={() => onRemoveStop(stop.id)}>Remove stop</button>
                 </div>
@@ -315,6 +320,6 @@ export function TripBuilderRouteWorkspace({
       </section>
     </div>
 
-    <p className="sr-only" aria-live="polite">{reorder.draggingId ? `Moving stop ${reorder.draggingId}` : ""}</p>
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{reorder.announcement || (reorder.draggingId ? `Moving ${canonicalTrip.stops.find(stop => stop.id === reorder.draggingId)?.name ?? "stop"} to position ${(reorder.previewIds ?? stopIds).indexOf(reorder.draggingId) + 1}. Use arrow keys, then Enter to apply; Escape to cancel.` : "")}</p>
   </section>;
 }

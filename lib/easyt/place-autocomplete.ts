@@ -158,8 +158,12 @@ export function placeAutocompleteKeyAction(
   key: string,
   activeIndex: number,
   resultCount: number,
+  context: { open?: boolean; composing?: boolean } = {},
 ): PlaceAutocompleteKeyResult {
-  if (key === "Escape") return { activeIndex: -1, choose: false, close: true };
+  if (context.composing) return { activeIndex, choose: false, close: false };
+  if (context.open === false) activeIndex = -1;
+  if (!resultCount) activeIndex = -1;
+  if (key === "Escape") return { activeIndex: -1, choose: false, close: context.open !== false };
   if (key === "ArrowDown" && resultCount) return {
     activeIndex: activeIndex < 0 ? 0 : (activeIndex + 1) % resultCount,
     choose: false,
@@ -170,7 +174,7 @@ export function placeAutocompleteKeyAction(
     choose: false,
     close: false,
   };
-  if (key === "Enter" && resultCount) return {
+  if (key === "Enter" && resultCount && context.open !== false) return {
     activeIndex: activeIndex >= 0 && activeIndex < resultCount ? activeIndex : 0,
     choose: true,
     close: true,

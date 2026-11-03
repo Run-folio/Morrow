@@ -1821,3 +1821,11 @@
   .builderStopFacts dt { color: var(--morrovia-muted); }
   .builderStopFacts dd { margin: 0 0 4px; overflow-wrap: anywhere; }
 }
+
+/* Allocation is supporting status; warnings retain their semantic treatment. */
+.builderRouteHeader .builderRouteNightStatus h2 { font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); letter-spacing: 0; line-height: 1.5; }
+.builderRouteHeader .builderRouteNightStatus h2.builderRouteAllocationWarning { color: var(--morrovia-warning); }
+.builderRouteGrip { min-width: 44px; min-height: 44px; }
+@media (prefers-reduced-motion: reduce) { .builderRouteRow, .builderRouteGrip { transition: none; animation: none; } }
+
+.builderRouteActions button[aria-disabled="true"] { color: var(--morrovia-muted); opacity: .5; cursor: not-allowed; }
