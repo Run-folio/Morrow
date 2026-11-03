@@ -125,7 +125,7 @@ test("visual Discovery uses the modal title and secondary geography without dupl
     scope.baseTitle=evaluate('baseTitle',scope);
     assert.equal(evaluate('title',scope),title);assert.equal(evaluate('description',scope),description);
   }
-  assert.doesNotMatch(steps, /<h3>|styles\.eyebrow\}>\{copy\.steps/);
+  assert.doesNotMatch(steps, /<h[1-6][^>]*>\{copy\.steps|styles\.eyebrow\}>\{copy\.steps/);
   assert.doesNotMatch(steps, /<p className=\{styles\.truth\}>/);
 });
 

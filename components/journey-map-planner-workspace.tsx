@@ -3031,7 +3031,7 @@ export function JourneyMapPlannerWorkspace({
           <div className={styles.grain} />
         </>
       )}
-      {hasCanonicalPlanner && !isShellPresentation && mapCoachVisible ? <aside className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></aside> : null}
+      {hasCanonicalPlanner && !isShellPresentation && mapCoachVisible ? <div className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></div> : null}
 
       {hasCanonicalPlanner && customTrip ? <JourneyPlannerStrip
         containerRef={mapStopOrientationTarget}

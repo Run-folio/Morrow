@@ -163,7 +163,8 @@ const wideHomepageArgs = {
   homepageEntry: {
     mode: "stops",
     onModeChange: () => undefined,
-    destinationEntry: wideDestinationEntry,
+    destinationEntry: "Lisbon · Seville",
+    destinationEditor: wideDestinationEntry,
     travellersOnly: true,
     budget: null,
     onBudgetChange: () => undefined,
@@ -172,7 +173,19 @@ const wideHomepageArgs = {
   },
 } satisfies NonNullable<Story["args"]>;
 
-export const WideHomepageCapture: Story = { args: wideHomepageArgs };
+export const WideHomepageCapture: Story = {
+  args: wideHomepageArgs,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Lisbon · Seville/ }));
+    const first = canvas.getByRole("textbox", { name: "First stop" });
+    await expect(first).toHaveValue("Lisbon");
+    await expect(canvas.getByRole("textbox", { name: "Next stop" })).toHaveValue("Seville");
+    await userEvent.click(first);
+    await expect(first).toHaveFocus();
+    await expect(first.closest("button")).toBeNull();
+  },
+};
 
 function ResponsiveHomepageStops({ language = "en" }: { language?: "en" | "es" } = {}) {
   const [entries, setEntries] = useState<HomepageDestinationEntry[]>([{ id: "mobile-stop-1", text: "Lisbon", selection: null }]);

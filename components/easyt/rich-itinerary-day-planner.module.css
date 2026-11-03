@@ -348,9 +348,10 @@
   border-top: 1px solid var(--morrovia-line);
 }
 
-.activityDragging {
-  opacity: .45;
+.activity.activityDragging {
   background: var(--morrovia-lilac);
+  outline: 2px solid var(--morrovia-action);
+  outline-offset: -2px;
   transform: scale(.985);
   user-select: none;
 }

@@ -154,7 +154,7 @@ const populatedStamps = [
 ];
 const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore: "Restore", archive: "Archive", duplicate: "Duplicate", gift: "Share", delete: "Delete" };
 
-const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onPhotoError={() => undefined} onRemove={() => undefined} />)}</div>;
+const renderCardGrid = () => <><h2 className={styles.srOnly}>Your trips</h2><div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onPhotoError={() => undefined} onRemove={() => undefined} />)}</div></>;
 
 const sharedOriginTrips = [
   storyTrip({ id: "tokyo-shared-1", title: "Tokyo to Kyoto", status: "planned", startDate: "2027-03-01", endDate: "2027-03-12", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }, { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 6 }] }),

@@ -2796,7 +2796,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   if (!results.length && unsettled) return <><div className={styles.suggestionStatus}>{suggestionStatus}</div>{experienceFallback}{contextualDialog}</>;
   if (!results.length) return <><p className={styles.suggestionEmpty}>{missingDestination ? emptyAddMessage : places.length || inventory.length || filteredAtAdmission ? (language === "es" ? "Las ideas encontradas no coinciden con este día o ya están planificadas." : "The returned ideas do not match this day or are already planned.") : (language === "es" ? "No se encontraron ideas locales para este día." : "No local ideas were found for this day.")}</p>{experienceFallback}{contextualDialog}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
-    <h4>Shortlist for {stop?.name}</h4>
+    <h3>Shortlist for {stop?.name}</h3>
     <div className={styles.discoveryList}>{displayedResults.map((result) => {
       const idea = result.idea;
       const pending = isPending(idea.placeId);

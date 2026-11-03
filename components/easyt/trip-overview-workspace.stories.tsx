@@ -252,6 +252,7 @@ export const ActivePlanning: Story = {};
 export const ThirdPartyPhotoCredits: Story = { args: { trip: creditedPhotoTrip } };
 export const CompactPhotoCreditCard: Story = {
   render: () => <div className={workspaceStyles.routeList} style={{ width: 220 }}>
+    <h2 className="sr-only">Your route</h2>
     <OverviewStepMedia image={overviewStopImage(creditedPhotoTrip, creditedPhotoTrip.stops[0])} name="Tokyo" meta="3 nights" number={1} href="/journey/trip/cusco-sacred-valley-arequipa" />
   </div>,
   play: async ({ canvasElement }) => {

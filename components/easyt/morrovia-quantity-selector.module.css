@@ -81,5 +81,6 @@
 .plannerStepper button svg { width: 20px; height: 20px; }
 .plannerStepper button:hover:not(:disabled) { background: var(--morrovia-lilac); }
 .plannerStepper button:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
-.plannerStepper button:disabled { color: var(--morrovia-muted); cursor: not-allowed; }
-.planner[data-disabled] { opacity: .62; background: var(--morrovia-disabled); }
+.plannerStepper button:disabled { opacity: .62; color: var(--morrovia-muted); cursor: not-allowed; }
+.planner[data-disabled] { background: var(--morrovia-disabled); }
+.planner.planner[data-disabled] [data-morrovia-field-label], .planner.planner[data-disabled] [data-morrovia-field-secondary] { color: var(--morrovia-ink-soft); }

@@ -1,4 +1,4 @@
-import { userEvent, waitFor } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import HomeTripStarter from "./home-trip-starter";
@@ -50,13 +50,22 @@ export const WideCompositionContract: Story = {
     homepageEntry={{
       mode: "stops",
       onModeChange: () => undefined,
-      destinationEntry: <EasyTField label="First stop" placeholder="City, country or region" />,
+      destinationEntry: "Choose destinations",
+      destinationEditor: <EasyTField label="First stop" placeholder="City, country or region" />,
       budget: null,
       onBudgetChange: () => undefined,
       datesChosen: false,
       onDatesClear: () => undefined,
     }}
   />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Choose destinations/ }));
+    const field = canvas.getByRole("textbox", { name: "First stop" });
+    await userEvent.click(field);
+    await expect(field).toHaveFocus();
+    await expect(field.closest("button")).toBeNull();
+  },
 };
 
 function storyEntry(id: string, name: string): HomepageDestinationEntry {

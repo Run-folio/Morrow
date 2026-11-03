@@ -6113,7 +6113,7 @@ function TripBuilderDocument() {
         actions={<EasyTLinkButton href={tripSaveContinuationHref(guestSaveRequired.tripId)} variant="secondary">{language === "es" ? "Guardar viaje en mi cuenta" : "Save trip to my account"}</EasyTLinkButton>}
       /></div>;
     }
-    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></aside></div>;
+    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><div className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></div></div>;
   }
 
   if (generated && buildInvariant.canBuildTrip) {

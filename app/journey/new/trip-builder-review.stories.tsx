@@ -1,18 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, waitFor, within } from "storybook/test";
 import { useEffect, useState } from "react";
 import TripBuilder from "./trip-builder";
 import { currentTripStorageKey } from "@/lib/easyt/storage";
-import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, homepageReceiptForProjection, projectHomepageInput, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, homepageReceiptForProjection, projectHomepageInput, type HomeTripDraft, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
-import { extractStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
 import { AlertTriangle, CarFront, Check, CheckCircle2, ChevronRight, MapPin, Route, TrainFront, X } from "lucide-react";
 import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
 import { TOUR_TRIP_ROUTE, tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
 import styles from "./trip-builder.module.css";
+import { resolveNewTripEntryState } from "./new-trip-entry-state";
 
 type ReviewState = "unresolved" | "partial" | "resolved" | "inline-base" | "broad-area" | "route-shapes" | "route-shape-review" | "route-shape-applied" | "interest-guidance" | "low-knowledge" | "anchor-guidance" | "reorder" | "accepted" | "normal" | "compressed" | "unknown" | "arrival" | "road" | "rail" | "mixed" | "tour";
 
@@ -216,6 +217,33 @@ export const TourCapture: Story = { args: { state: "tour" } };
 
 // Mount the production document: fixtures seed only its existing handoff
 // boundary, never a parallel route, capture, or persistence implementation.
+function reviewHandoffFixture(entry: "populated" | "clarification", routeKey: string) {
+  const payload = entry === "populated"
+    ? routePlannerPayload(publicRouteDetailFor(routeKey)!.planDraft, new Date(2027, 3, 2, 12))
+    : null;
+  const snapshot: HomepageInputSnapshot = {
+    version: 1, ownerId: null, revision: 1, mode: "describe", entries: [],
+    prompt: payload?.brief ?? "Two weeks in Thailand",
+    dates: { state: "untouched" }, budget: { state: "untouched" }, interests: { state: "untouched" },
+    travellers: { state: "untouched" }, origin: { state: "untouched" }, journeyEnd: { state: "untouched" },
+  };
+  const handoffId = `storybook-review-${entry}-${routeKey}`;
+  const projected = projectHomepageInput({ snapshot, profile: null, handoffId });
+  if (!projected.ok) throw new Error("Invalid Builder review fixture input");
+  // Keep the curated route's existing stops, dates, allocations and intent.
+  // Only its old unversioned Storybook envelope needs the current receipt boundary.
+  const draft: HomeTripDraft = payload
+    ? { ...payload, handoffId, homepage: projected.draft.homepage }
+    : projected.draft;
+  const receipt = homepageReceiptForProjection(snapshot, draft, `storybook-trip-review-${entry}-${routeKey}`);
+  draft.homepage = { ...draft.homepage!, receipt };
+  const storedInput = { snapshot, receipt };
+  if (resolveNewTripEntryState({ hydrated: true, ownerId: null, homeDraft: true, handoff: handoffId, storedInput, draft }).kind !== "home-handoff") {
+    throw new Error("Builder review fixture must enter the real home handoff");
+  }
+  return { draft, storedInput, handoffId };
+}
+
 function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail", snapshot }: { entry: "empty" | "populated" | "clarification" | "pending" | "partial" | "failed" | "repeated"; language?: "en" | "es"; routeKey?: string; snapshot?: HomepageInputSnapshot }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -274,12 +302,12 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
       window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } }));
       url.searchParams.set("homeDraft", "1");
       url.searchParams.set("handoff", handoffId);
-    } else {
+    } else if (entry === "populated" || entry === "clarification") {
+      const handoff = reviewHandoffFixture(entry, routeKey);
       url.searchParams.set("homeDraft", "1");
-      const brief = "Two weeks in Thailand";
-      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(entry === "populated"
-        ? routePlannerPayload(publicRouteDetailFor(routeKey)!.planDraft, new Date(2027, 3, 2, 12))
-        : { brief, structuredBrief: extractStructuredTripBrief(brief) }));
+      url.searchParams.set("handoff", handoff.handoffId);
+      window.localStorage.setItem(inputKey, JSON.stringify(handoff.storedInput));
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(handoff.draft));
     }
     window.history.replaceState(window.history.state, "", url);
     setReady(true);
@@ -300,8 +328,24 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
 }
 
 export const DirectEmptyEntry: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="empty" /> };
-export const PopulatedHandoff: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="populated" /> };
-export const BuilderClarification: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="clarification" /> };
+export const PopulatedHandoff: Story = {
+  tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="populated" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("table", { name: "Route stops" }, { timeout: 15000 })).toBeVisible();
+    await waitFor(() => expect(canvasElement.querySelectorAll("[data-builder-stop-id]").length).toBeGreaterThan(0));
+    await expect(canvas.queryByText(/This trip is not available to the current browser account/)).toBeNull();
+  },
+};
+export const BuilderClarification: Story = {
+  tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="clarification" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("dialog", { name: /Thailand/ }, { timeout: 15000 })).toBeVisible();
+    await expect(canvasElement.querySelector("[data-builder-root] #builder-summary")).toBeInTheDocument();
+    await expect(canvas.queryByText(/This trip is not available to the current browser account/)).toBeNull();
+  },
+};
 export const PendingDescribeInterpretation: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="pending" /> };
 export const PartialPlaceChecks: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="partial" /> };
 export const FailedPlaceCheck: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="failed" /> };
