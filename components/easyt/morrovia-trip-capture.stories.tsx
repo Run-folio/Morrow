@@ -164,6 +164,7 @@ const wideHomepageArgs = {
     mode: "stops",
     onModeChange: () => undefined,
     destinationEntry: wideDestinationEntry,
+    travellersOnly: true,
     budget: null,
     onBudgetChange: () => undefined,
     datesChosen: true,
@@ -212,35 +213,28 @@ export const WideHomepageMobileOrder: Story = {
     await expect(canvasElement.querySelectorAll("[data-home-destination-entry]")).toHaveLength(2);
 
     const editor = form.querySelector<HTMLElement>('[class*="wideDestinationEditor"]');
-    const dates = form.querySelector<HTMLElement>('[class*="wideDatePicker"]');
-    if (!editor || !dates) throw new globalThis.Error("Expanded destination editor and Travel dates must both be present");
-    const spacing = dates.getBoundingClientRect().top - editor.getBoundingClientRect().bottom;
-    await expect(spacing).toBeGreaterThanOrEqual(12);
-
-    const checkOrder = async () => {
-      const toggle = canvas.getByRole("button", { name: "Personalize" });
-      const panelId = toggle.getAttribute("aria-controls");
-      const panel = panelId ? form.querySelector<HTMLElement>(`#${CSS.escape(panelId)}`) : null;
-      const currentSubmit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-      if (!panel) throw new globalThis.Error("Expanded Personalize controls are missing");
-      if (!currentSubmit) throw new globalThis.Error("Homepage submit action is missing");
-      await expect(panel.compareDocumentPosition(currentSubmit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      await expect(currentSubmit.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom);
-      const finalPanelControl = Array.from(panel.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]'))
-        .filter((element) => element.tabIndex >= 0).at(-1);
-      if (!finalPanelControl) throw new globalThis.Error("Personalize panel must have keyboard controls");
-      await userEvent.click(finalPanelControl);
+    const dates = canvas.getByRole("button", { name: /^Travel dates/ });
+    if (!editor) throw new globalThis.Error("Expanded destination editor is missing");
+    await expect(editor.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(dates.getBoundingClientRect().top - editor.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(12);
+    const assertActionOrder = async () => {
+      const travellers = canvas.getByRole("group", { name: "Travellers" });
+      const action = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      await expect(travellers.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await expect(action.getBoundingClientRect().top).toBeGreaterThanOrEqual(travellers.getBoundingClientRect().bottom);
+      const finalControl = within(travellers).getByRole("button", { name: /Increase travellers/ });
+      finalControl.focus();
       await userEvent.tab();
-      await expect(currentSubmit).toHaveFocus();
+      await expect(action).toHaveFocus();
     };
-
-    await userEvent.click(canvas.getByRole("button", { name: "Personalize" }));
-    await checkOrder();
+    const group = canvas.getByRole("group", { name: "Travellers" });
+    await userEvent.click(within(group).getByRole("button", { name: /Increase travellers/ }));
+    await expect(group.querySelector("output")).toHaveTextContent("3 travellers");
+    await assertActionOrder();
     await userEvent.click(canvas.getByRole("tab", { name: "Describe my trip" }));
-    const describePersonalize = canvas.getByRole("button", { name: "Personalize" });
-    if (await describePersonalize.getAttribute("aria-expanded") === "true") await userEvent.click(describePersonalize);
-    await userEvent.click(describePersonalize);
-    await checkOrder();
+    await expect(canvas.getByRole("group", { name: "Travellers" }).querySelector("output")).toHaveTextContent("3 travellers");
+    await expect(canvas.queryByRole("button", { name: /Personalize/ })).toBeNull();
+    await assertActionOrder();
 
     const root = canvasElement.ownerDocument.documentElement;
     await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
@@ -267,28 +261,12 @@ export const WideHomepageInteraction: Story = {
     await settle();
     if (canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[0].getAttribute("aria-selected") !== "true") throw new globalThis.Error("Click must restore Stops mode");
 
-    const personalize = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"]');
-    if (!personalize) throw new globalThis.Error("Personalize control is missing");
-    personalize.click();
-    await settle();
-    const highBudget = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Luxury");
-    if (!highBudget) throw new globalThis.Error("Budget choice is missing from Personalize");
-    highBudget.click();
-    await settle();
-    const hide = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"][aria-expanded="true"]');
-    if (!hide) throw new globalThis.Error("Hide personalization control is missing");
-    const personalizePanelId = hide.getAttribute("aria-controls");
-    if (!personalizePanelId || !canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not open");
-    hide.click();
-    await settle();
-    if (canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not close");
-    const reopen = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"]');
-    if (!reopen) throw new globalThis.Error("Personalize reopen control is missing");
-    reopen.click();
-    await settle();
-    if (!canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not reopen");
-    const retainedBudget = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Luxury");
-    if (retainedBudget?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained budget after closing Personalize");
+    const group = within(canvasElement).getByRole("group", { name: "Travellers" });
+    await userEvent.click(within(group).getByRole("button", { name: /Increase travellers/ }));
+    await expect(group.querySelector("output")).toHaveTextContent("3 travellers");
+    await userEvent.click(within(canvasElement).getByRole("tab", { name: "Describe my trip" }));
+    await userEvent.click(within(canvasElement).getByRole("tab", { name: "Plan with stops" }));
+    await expect(within(canvasElement).getByRole("group", { name: "Travellers" }).querySelector("output")).toHaveTextContent("3 travellers");
     const retainedDates = canvasElement.textContent?.includes("8–22 Apr 2027");
     if (!retainedDates) throw new globalThis.Error("Expected retained dates after closing Personalize");
   },
@@ -304,6 +282,7 @@ export const WideHomepageDescribeSpanish: Story = {
       mode: "describe",
       onModeChange: () => undefined,
       destinationEntry: wideDestinationEntry,
+    travellersOnly: true,
       budget: null,
       onBudgetChange: () => undefined,
       datesChosen: false,

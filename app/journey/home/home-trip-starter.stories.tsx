@@ -1,3 +1,4 @@
+import { userEvent, waitFor } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import HomeTripStarter from "./home-trip-starter";
@@ -121,13 +122,17 @@ export const DestinationSixthOccurrence: Story = {
     if (entries[4]?.getAttribute("data-home-destination-entry") !== "entry-5") throw new Error("Caller must allocate a fresh occurrence ID");
     const addedInput = entries[4]?.querySelector<HTMLInputElement>('input[role="combobox"]');
     if (!addedInput) throw new Error("Added destination input is missing");
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(addedInput, "Tok");
-    addedInput.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((resolve) => window.setTimeout(resolve, 50));
-    addedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    addedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    if (entries[4]?.getAttribute("data-home-destination-entry") !== "entry-5" || !entries[4]?.textContent?.includes("Tokyo")) throw new Error("Adding the same place must retain its fresh occurrence ID");
+    await userEvent.type(addedInput, "Tokyo");
+    const city = await waitFor(() => {
+      const option = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[role="option"]')).find(node => node.querySelector("b")?.textContent === "Tokyo" && node.textContent?.includes("Japan"));
+      if (!option) throw new Error("Tokyo city option has not arrived");
+      return option;
+    });
+    await userEvent.click(city);
+    await waitFor(() => {
+      const selected = canvasElement.querySelector('[data-home-destination-entry="entry-5"]');
+      if (!selected?.textContent?.includes("Tokyo")) throw new Error("Adding the same place must retain its fresh occurrence ID");
+    });
     const firstFiveIds = Array.from(entries).map((entry) => entry.getAttribute("data-home-destination-entry"));
     canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add destination"]')?.click();
     await new Promise((resolve) => window.setTimeout(resolve, 0));

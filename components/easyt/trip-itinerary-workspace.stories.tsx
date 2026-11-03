@@ -690,10 +690,13 @@ export const ContextualAddPanel: Story = {
   play: async ({ canvasElement }) => {
     const add = canvasElement.querySelector<HTMLButtonElement>('section[data-day-part="afternoon"] button[aria-label^="Add plan"]');
     if (!add) throw new Error("Afternoon Add must be available");
-    add.click();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const dialog = canvasElement.querySelector<HTMLDialogElement>("dialog:modal");
-    if (!dialog?.textContent?.includes("Add a plan") || !dialog.textContent.includes("Add your own")) throw new Error("Contextual Add panel must open with discovery and manual entry");
+    await userEvent.click(add);
+    // The production Add flow portals its dialog outside the story canvas.
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Add to Afternoon on Day 1" });
+    await expect(dialog).toBeVisible();
+    await expect(within(dialog).getByRole("heading", { name: "Add a plan" })).toBeVisible();
+    await expect(within(dialog).getByRole("textbox", { name: "Search ideas" })).toBeVisible();
+    await expect(within(dialog).getByRole("textbox", { name: "Add your own" })).toBeVisible();
   },
 };
 
@@ -830,6 +833,10 @@ export const PlannedActivityWholeCardDrag: Story = {
   ...RichDayPlannerIntegrated,
   play: async ({ canvasElement }) => {
     const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const canvas = within(canvasElement);
+    // Route restoration can select Day 1 before play; choose the fixture's populated day.
+    await userEvent.click(await canvas.findByRole("tab", { name: /^Day 2 ·/ }));
+    await waitFor(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
     await settle();
     const card = canvasElement.querySelector<HTMLElement>('[data-day-part="morning"] [data-itinerary-activity-id][draggable="true"]');
     const body = card?.querySelector<HTMLElement>("[data-itinerary-drag-surface] strong");
@@ -1204,29 +1211,41 @@ const repeatedTokyoTrip = tripFromBuilder({
 export const RepeatedDestinationSecondOccurrence: Story = {
   args: { trip: repeatedTokyoTrip, selectedDayNumber: 2 },
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
-  play: async ({ canvasElement }) => {
-    const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const assertSelectedDay = (dayNumber: number) => {
+      const day = args.trip.planItems.find(item => item.dayNumber === dayNumber);
+      if (!day) throw new Error(`Missing canonical Day ${dayNumber}`);
+      const select = canvas.queryByRole("combobox", { name: "Jump to date / destination" });
+      if (select) expect(select).toHaveValue(day.id);
+      else expect(canvas.getByRole("button", { name: "Choose a day" })).toHaveAccessibleDescription(new RegExp(`· Day ${dayNumber} ·`));
+    };
     const destinations = canvasElement.querySelectorAll<HTMLButtonElement>('nav[aria-label="Route destinations"] button');
     if (destinations.length !== 3) throw new Error("Expected three canonical stop occurrences");
-    destinations[2]!.click();
-    await settle();
-    if (new URL(window.location.href).searchParams.get("day") !== "5") throw new Error("The second Tokyo occurrence must write its canonical day deep link");
-    if (destinations[2]!.getAttribute("aria-current") !== "step" || canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 5)?.id) {
-      throw new Error("The second Tokyo occurrence must remain active at its first canonical day");
-    }
-    const nextDay = canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[5];
-    if (!nextDay) throw new Error("Missing later day for the second Tokyo occurrence");
-    nextDay.click();
-    await settle();
-    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("The later Tokyo day must use the existing day query");
-    if (destinations[2]!.getAttribute("aria-current") !== "step") throw new Error("The second Tokyo occurrence must remain active on later days");
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
-    await settle();
-    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
-    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("Calendar changed the selected day deep link");
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Day by day")?.click();
-    await settle();
-    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('nav[aria-label="Route destinations"] button[aria-current="step"]')) throw new Error("Day by day lost the selected occurrence");
+    await userEvent.click(destinations[2]!);
+    await waitFor(() => {
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("5");
+      expect(destinations[2], "The second Tokyo occurrence must remain active at its first canonical day").toHaveAttribute("aria-current", "step");
+      assertSelectedDay(5);
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Next day" }));
+    await waitFor(() => {
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+      expect(destinations[2]).toHaveAttribute("aria-current", "step");
+      assertSelectedDay(6);
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Calendar" }));
+    await waitFor(() => {
+      assertSelectedDay(6);
+      expect(canvas.getByRole("button", { name: /^Day 6,/ })).toHaveAttribute("aria-pressed", "true");
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Day by day" }));
+    await waitFor(() => {
+      assertSelectedDay(6);
+      expect(canvasElement.querySelector('nav[aria-label="Route destinations"] button[aria-current="step"]')).toBe(destinations[2]);
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+    });
   },
 };
 
@@ -1376,6 +1395,10 @@ export const CalendarDenseTwelveActivities: Story = {
     }, selectedDayNumber: 2,
   },
   play: async context => {
+    const canvas = within(context.canvasElement);
+    // Select Day 2 explicitly rather than relying on selectedDayNumber after route restoration.
+    await userEvent.click(await canvas.findByRole("tab", { name: /^Day 2 ·/ }));
+    await waitFor(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
     await Calendar.play?.(context);
     const { canvasElement } = context;
     const selected = canvasElement.querySelector('#itinerary-calendar [data-selected="true"]');
@@ -1476,7 +1499,7 @@ export const CalendarLandmarks: Story = {
   play: async context => {
     await Calendar.play!(context);
     await waitFor(() => {
-      const panel = context.canvasElement.querySelector('[data-dialog-presentation="inline"]');
+      const panel = context.canvasElement.querySelector('dialog[class*="calendarDaySheet"][data-dialog-presentation="inline"]');
       if (context.canvasElement.ownerDocument.defaultView!.innerWidth >= 1100) expect(panel).not.toBeNull();
       if (panel) {
         expect(panel.tagName).toBe("DIALOG");

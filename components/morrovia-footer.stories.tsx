@@ -50,7 +50,11 @@ export const SectionFooter: Story = {
   render: () => <main><h1>Trip planning</h1><section aria-label="Next journey"><MorroviaFooter /></section></main>,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("contentinfo")).toBeNull();
+    // Testing Library's implicit-role lookup does not account for footer nesting.
+    // Browser axe additionally checks the actual landmark hierarchy.
+    const footer = canvasElement.querySelector("main section footer")!;
+    await expect(footer).toBeVisible();
+    await expect(footer.getAttribute("role")).toBeNull();
     await expect(canvas.getByRole("link", { name: "Privacy" })).toBeVisible();
   },
 };

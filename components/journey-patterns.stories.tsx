@@ -125,10 +125,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const BuilderStart: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/new", query: {} } } },
   render: () => <TripBuilder />,
 };
 
 export const BuilderAt390: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/new", query: {} } } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: () => <div style={{ width: 390, maxWidth: "100%" }}><TripBuilder /></div>,
 };

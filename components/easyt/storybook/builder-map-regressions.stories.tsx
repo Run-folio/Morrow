@@ -22,7 +22,7 @@ function MapRegression({route}: {route: Route}) {
  const allocated=trip.stops.reduce((sum,stop)=>sum+(stop.nights??0),0);
  return <div className={builderStyles.shellWide}><TripBuilderRouteWorkspace canonicalTrip={trip} previewStopIds={null} selectedStopId={selected} lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null} nightStatus={{total:route==='peru'?14:18,allocated,complete:true,language:'en'}} onSelectStop={setSelected} onPreviewOrder={()=>{}} onCommitOrder={()=>false} onEditNights={(id,nights)=>setTrip(current=>({...current,stops:current.stops.map(stop=>stop.id===id?{...stop,nights}:stop)}))} onRemoveStop={()=>{}} onTransportChoiceChange={()=>{}} /></div>;
 }
-const meta = {title:'Morrovia/05 Product Patterns/Builder map regressions',component:MapRegression,args:{route:'japan-korea'},decorators:[(Story)=><main className="morrovia-editorial-page"><Story /></main>],parameters:{layout:'fullscreen'}} satisfies Meta<typeof MapRegression>;
+const meta = {title:'Morrovia/05 Product Patterns/Builder map regressions',component:MapRegression,excludeStories:['regressionTrip'],args:{route:'japan-korea'},decorators:[(Story)=><main className="morrovia-editorial-page"><Story /></main>],parameters:{layout:'fullscreen'}} satisfies Meta<typeof MapRegression>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const JapanKorea: Story = {};

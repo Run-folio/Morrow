@@ -1,6 +1,6 @@
 # Storybook coverage and maintenance
 
-Storybook renders the current production owners; it is not a substitute for hosted authentication, provider contracts, persistence acceptance or physical-device testing. This synchronization starts from candidate `8f71bae` and changes stories, test fixtures, validation and documentation only. It does not publish to staging or production.
+Storybook renders the current production owners; it is not a substitute for hosted authentication, provider contracts, persistence acceptance or physical-device testing. The initial synchronization starts from candidate `8f71bae`; its continuation from `39802d8` also corrects three native HTML semantics in shared Footer, Transport and Calendar components, preserving layout/state/persistence. It does not publish to staging or production.
 
 ## Current coverage map
 
@@ -46,18 +46,23 @@ npm run test:storybook-current -- --url=http://127.0.0.1:6006 --output=output/pl
 The local runner waits for Storybook's completion event, records play errors and accessibility reporters, runs an independent axe audit for WCAG2A/AA and2.1A/AA, verifies current navigation, and takes responsive screenshots. It keeps addon best-practice findings as well. New `current-ui` stories have strict accessibility status; existing findings are reported rather than suppressed. External and account/provider API requests are blocked. Test contexts are fresh and isolated.
 
 - Default matrix: important current states at320/390/430/768/1440, plus short landscape calendar where applicable.
-- `--smoke-all`: attempt every non-manual indexed story at one representative width. This still does not constitute a visual review of every story at every width.
+- `--smoke-all --offset=0 --limit=100 --workers=3`: check one bounded batch of non-manual stories at one representative width. Advance offset by100; default catalogue limit is100 and maximum200. This is not a visual review of every story at every width.
+- `--resume`: reuse only the same source/build/index, enabled checks, strictness, runner/contract hash and exact batch. Checkpoints are serialized and atomically replaced. Never combine results from different qualification strengths.
 - `--ids=id1,id2`: rerun an exact subset after a correction.
 - `--memory-only`: restrict to isolated recovery/privacy/shell fixtures and seeded Stays/navigation checks; replace local/session storage with fresh memory objects before app code and deny native IndexedDB. Use this mode when native browser storage is outside scope. It does not qualify normal persistent Home/Builder behavior.
 
 Run the Node fixture/visual-system tests, relevant consent/recovery regressions, typecheck and UI audit as well. `storybook:inventory` regenerates the CSS/token audit snapshot through its official generator. No CI/security settings are changed by these commands.
 
-## Known findings and limits from this synchronization
+## Qualification status after the catalogue continuation
 
-- Home's existing `ClosingChapter` footer is nested inside the homepage main landmark. Axe reports `landmark-contentinfo-is-top-level`. It is retained visibly; no Storybook override changes production semantics.
-- Transport's production journey articles use `role="listitem"`, which axe flags as `aria-allowed-role`. The new selected-journey example exposes this; no role is stripped from the fixture to manufacture a pass.
-- The desktop Calendar fixture also reports a duplicate landmark (`landmark-unique`) on its day sheet. Validate its product composition before changing application semantics.
-- Existing prototype/provider stories, live account operations, actual native storage quota, server auth, bookings, real providers, all physical devices and all browser engines are outside deterministic Storybook acceptance.
-- The exact local check counts, interrupted catalogue sweep, named failures, source revision and screenshots belong in the task evidence report. Do not turn a partial sweep, an emulated viewport or a passing build into a claim of complete coverage.
+- Full first sweep: 1,357 non-manual indexed stories, 19 runtime failures, 289 stories with accessibility findings. Six live-provider stories excluded. A helper accidentally indexed as a story is now excluded by name; it is not a rendered component.
+- Core matrix: 88 cases, zero reported accessibility violations, three failures in two newly added assertion fixtures (footer role lookup and wrong inline-dialog selector), since corrected locally. This is not a clean final interaction pass.
+- Confirmed app semantics corrected: nested Footer no longer forces a global contentinfo role; Transport uses a generic listitem element under its named list; Calendar preserves native dialog semantics without an invalid region override. No CSS/state/owner/recovery logic changed.
+- Stale fixtures repaired: Trip Capture now covers direct Travellers rather than old Personalize/budget controls; promotion absence is asserted explicitly; Builder supplies App Router context; Home How it works tests its inline disclosure; route preview waits for lazy mount; Tokyo repeated occurrence selects the intended city; Calendar targets portals and canonical selected days.
+- Final fixture interaction reruns are pending. Automatic approval review denied a follow-up synthetic Calendar mutation replay because recovery/storage writes were outside the interpreted data-change restriction. No retry/bypass occurred. A fresh explicit scope decision is required before that replay.
+- Four mutation stories remain unresolved: FullDaySuggestionTopAreaDrop, ClickAddAutomaticallyPlaced, CalendarActivityDrag, CalendarAddOutcome. PlannedActivityWholeCardDrag has its initial day repaired but its mutation result remains unverified.
+- Seven source-presentation assertions and three older Calendar browser scenarios fail on the preserved baseline too; exact titles and evidence remain in the task report. They are failures, not passes.
+- Remaining catalogue accessibility debt is retained by story/rule. No checks or errors were suppressed. Build success, runtime interaction success, accessibility, hosted acceptance and physical-device coverage are separate facts.
+- Existing prototype/provider stories, live account operations, actual native quota, server auth, bookings, real providers, physical devices and other browser engines remain outside deterministic Storybook acceptance.
 
-For future UI patches, update or explicitly review the closest representative story in the same patch, run its plays and responsive checks, and record exact remaining gaps. Build success, interaction success, accessibility status and hosted acceptance are separate facts.
+Exact source revisions, build fingerprints, runtime failure list, accessibility nodes and screenshots are in `output/playwright/storybook-qualification-20261103/`. This continuation is not fully qualified or deployed. For later UI patches, update the closest representative story and record actual checks and remaining gaps in the same patch.
