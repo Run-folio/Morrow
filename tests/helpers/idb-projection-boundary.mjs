@@ -21,6 +21,7 @@ const {routePlannerPayload}=await load('lib/easyt/public-route-handoff.ts');
 const {tripFromBuilder}=await load('lib/easyt/trip.ts');
 const {reconcileBuilderDependencies,mergeBuilderProjectionResponse}=await load('lib/easyt/trip-builder-reconciliation.ts');
 const {transferAssessmentForLeg}=await load('lib/easyt/planning-evidence-presentation.ts');
+const {completedTransferResolutionLeg}=await load('lib/easyt/transfer-resolution-client.ts');
 const source=fs.readFileSync(repo+'/app/journey/new/trip-builder.tsx','utf8');
 const turn=()=>new Promise(resolve=>setImmediate(resolve));
 class Storage {
@@ -40,18 +41,18 @@ function fixture(){
  return requireReadableTripDocument(tripFromBuilder({...payload,id:'isolated-japan-liveness',stops:payload.destinations,
   picks:{},mustDo:payload.brief,pace:'slow',hotels:'few',budget:'value',draft:[],createdAt:'2026-10-19T00:00:00.000Z'}));
 }
-function actualReconciler(trace){
+function actualReconciler(trace,control){
  const snippet=source.slice(source.indexOf('async function reconcileAcceptedBuilderRequest('),source.indexOf('\nfunction TripBuilderDocument()'));
- const scope={reconcileBuilderDependencies,transferAssessmentForLeg,
+ const scope={reconcileBuilderDependencies,transferAssessmentForLeg,completedTransferResolutionLeg,
   geographicallyReady:()=>true,stopGeographicPlace:stop=>stop,guardTripRoutingGeometry:trip=>trip,
   resolveBuilderRecommendation:()=>{throw Error('Optional recommendation must not be dispatched');},
-  requestCanonicalTransferResolution:async legs=>{trace.providerCalls++;return {ok:true,legs,assessments:[],failedLegIds:[]};}};
+  requestCanonicalTransferResolution:async legs=>{trace.providerCalls++;return {ok:true,legs,assessments:control.missingAssessment?[]:legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'insufficient',retryable:false}})),failedLegIds:[]};}};
  return new Function('scope',`with(scope){${ts.transpileModule(snippet+'\nreturn reconcileAcceptedBuilderRequest;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
 }
 async function harness(mode,browserOwner=null){
  const storage=new Storage(),model=new IndexedDbModel(),driver=await openIndexedDbRecoveryDriver(model.factory());
  const initial=fixture(),ownerId=browserOwner;initial.ownerId=ownerId;let owner=ownerId;
- const control={gate:null,providerError:false,storageError:false,noResults:false,beforeProjectionSave:null};
+ const control={gate:null,providerError:false,storageError:false,noResults:false,beforeProjectionSave:null,missingAssessment:false};
  const context=isCurrent=>({ownerId,isCurrent,overflowEnabled:true,accountOverflowQualified:true});
  const broker=guard=>createTwoStoreTripPersistence(storage,driver,context(guard));
  if(mode==='indexeddb-body'){
@@ -71,7 +72,7 @@ async function harness(mode,browserOwner=null){
  }
  const read=await broker(()=>true).read(initial.id);assert.equal(read.kind,'found');
  const trace={providerCalls:0,reconcileCalls:0,merges:[],writes:[],candidates:[],timers:[],accountWrites:0};let writeId=0;
- const reconcile=actualReconciler(trace);
+ const reconcile=actualReconciler(trace,control);
  const session=await createAsyncBuilderEditSession({initialTrip:read.trip,initialRecovery:read.recovery,getOwnerId:()=>owner,allowRecoverySync:ownerId!==null,
   readDraft:(trip)=>input(trip,()=>true).read(),
   writeDraft:(trip,draft,_owner,guard)=>input(trip,guard?.isCurrent??(()=>true)).write(draft),

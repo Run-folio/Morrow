@@ -129,3 +129,20 @@ for(const boundary of ['before-pointer-cas','after-pointer-cas','lost-pointer-re
   generationsRetained(h,before);assert.equal(h.trace.accountWrites,0);
  }finally{h.close();}
 });
+
+
+for(const owner of [null,'isolated-account'])
+ test(`a missing transfer assessment cannot falsely settle route work for ${owner??'guest'}`,async()=>{
+  const h=await harness('indexeddb-input',owner);
+  try{
+   await accepted(h);h.control.missingAssessment=true;const before=copies(h);
+   await h.run();await h.session.waitForDeviceWrites();
+   const next=h.session.getSnapshot();
+   assert.equal(next.routeWorkBlocked,false,'provider refusal does not imply device-write failure');
+   assert.ok(next.failedUnits.some(unit=>unit.kind==='leg'));
+   assert.deepEqual(next.draft,before.draft);
+   generationsRetained(h,before);
+   const cold=await coldRead(h);assert.equal(cold.kind,'found');assert.deepEqual(cold.trip,next.trip);
+   assert.equal(h.trace.accountWrites,0);
+  }finally{h.close();}
+ });
