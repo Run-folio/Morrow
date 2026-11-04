@@ -731,3 +731,10 @@
 .planner[data-compact-mobile] .transfer { border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 10px 12px; background: var(--morrovia-lilac); }
 .planner[data-compact-mobile] .transferSelect { padding: 0; border-left: 0; }
 .planner[data-compact-mobile] .periodGrid:empty { display: none; }
+
+/* Keep returned card focus clear of shared sticky navigation. */
+.activitySelect,
+.activityExpansion > summary,
+.activityExpansion button {
+  scroll-margin-block: var(--morrovia-sticky-content-offset);
+}

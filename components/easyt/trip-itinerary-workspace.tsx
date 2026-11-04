@@ -1357,8 +1357,11 @@ export default function TripItineraryWorkspace({
     if (!handoff || handoff.dayId !== active.id) return;
     if (sequenceEditorRef.current) sequenceEditorRef.current.open = handoff.editorWasOpen;
     window.requestAnimationFrame(() => {
-      if (handoff.trigger.isConnected) handoff.trigger.focus();
-      else plannerElementRef.current?.querySelector<HTMLButtonElement>(`[data-activity-note-index="${handoff.noteIndex}"] button`)?.focus();
+      const target = handoff.trigger.isConnected ? handoff.trigger
+        : plannerElementRef.current?.querySelector<HTMLButtonElement>(`[data-activity-note-index="${handoff.noteIndex}"] button`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     });
   };
 
