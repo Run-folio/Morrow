@@ -908,6 +908,25 @@ export default function TripItineraryWorkspace({
     mutation.saveState === "error" || Boolean(removeTarget),
   );
 
+  const returnFromActivityEdit = () => {
+    const handoff = activityEditHandoffRef.current;
+    activityEditHandoffRef.current = null;
+    if (!handoff || handoff.dayId !== activeDayId) return;
+    window.requestAnimationFrame(() => {
+      // Restore the disclosure before measuring and revealing the returned card.
+      if (sequenceEditorRef.current) sequenceEditorRef.current.open = handoff.editorWasOpen;
+      const target = handoff.trigger.isConnected ? handoff.trigger
+        : plannerElementRef.current?.querySelector<HTMLButtonElement>(`[data-activity-note-index="${handoff.noteIndex}"] button`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (editingActivity === null) returnFromActivityEdit();
+  }, [editingActivity]);
+
   if (!active || !mapContext) {
     const emptyState = (
       <div className={styles.empty} aria-live="polite">
@@ -1348,21 +1367,6 @@ export default function TripItineraryWorkspace({
     setEditDraft("");
     setEditError("");
     setNotice(copy.activityUpdated);
-    returnFromActivityEdit();
-  };
-
-  const returnFromActivityEdit = () => {
-    const handoff = activityEditHandoffRef.current;
-    activityEditHandoffRef.current = null;
-    if (!handoff || handoff.dayId !== active.id) return;
-    if (sequenceEditorRef.current) sequenceEditorRef.current.open = handoff.editorWasOpen;
-    window.requestAnimationFrame(() => {
-      const target = handoff.trigger.isConnected ? handoff.trigger
-        : plannerElementRef.current?.querySelector<HTMLButtonElement>(`[data-activity-note-index="${handoff.noteIndex}"] button`);
-      if (!target) return;
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
-    });
   };
 
   const removeComposedActivity = async (activity: ComposedItineraryActivity) => {
@@ -1915,7 +1919,7 @@ export default function TripItineraryWorkspace({
                 onBeginEdit={() => beginActivityEdit(target)}
                 onEditDraftChange={(value) => { setEditDraft(value); setEditError(""); }}
                 onSaveEdit={saveActivityEdit}
-                onCancelEdit={() => { setEditingActivity(null); setEditDraft(""); setEditError(""); returnFromActivityEdit(); }}
+                onCancelEdit={() => { setEditingActivity(null); setEditDraft(""); setEditError(""); }}
                 onToggleMenu={() => setOpenMenuId((current) => current === itemId ? null : itemId)}
                 onRemove={() => { setRemoveTarget(target); setRemoveError(""); setOpenMenuId(null); }}
                 onMoveEarlier={() => moveActivityTo(target, previous?.sourceIndex ?? sourceIndex)}
