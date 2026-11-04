@@ -65,3 +65,20 @@ test("uncredited assigned photo falls back; selection is stable without trip mut
   assert.deepEqual(itineraryPresentationImages(input), first);
   assert.equal(JSON.stringify(input), before);
 });
+
+test('reviewed-only day photos reject arbitrary provider URLs without mutating saved content', () => {
+  const input = trip([stop('kyoto', 'Kyoto', 'Japan', 0)], [day('day-1', 'kyoto', 1, 'https://provider.example/photo.jpg', 'https://provider.example/activity')]);
+  const before = JSON.stringify(input);
+  const images = itineraryPresentationImages(input, { reviewedOnly: true });
+  assert.notEqual(images.dayById['day-1']?.src, 'https://provider.example/photo.jpg');
+  assert.equal(images.dayById['day-1']?.sourceUrl, routeDestinationPhoto('Kyoto', 'Japan')?.sourceUrl);
+  assert.ok(images.dayById['day-1']?.licenseUrl);
+  assert.equal(JSON.stringify(input), before);
+});
+
+test('reviewed-only mode repeats a relevant cover and leaves uncovered places empty', () => {
+  const input = trip([stop('kyoto', 'Kyoto', 'Japan', 0), stop('unknown', 'Uncovered Place', 'Japan', 1)], [day('a', 'kyoto', 1), day('b', 'kyoto', 2), day('c', 'unknown', 3)]);
+  const images = itineraryPresentationImages(input, { reviewedOnly: true });
+  assert.equal(images.dayById.a?.src, images.dayById.b?.src);
+  assert.equal(images.dayById.c, null);
+});

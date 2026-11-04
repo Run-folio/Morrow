@@ -98,6 +98,8 @@ import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedCo
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
+import ItineraryDayPhoto from "./itinerary-day-photo";
+import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
 import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
@@ -624,7 +626,6 @@ export default function TripItineraryWorkspace({
     return () => query.removeEventListener("change", update);
   }, []);
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
-  const [dayHeroDisplayed, setDayHeroDisplayed] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<ExploreResult | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlow | null>(null);
@@ -714,7 +715,7 @@ export default function TripItineraryWorkspace({
     const accepted = await mutation.mutateTrip((current) => isCurrent() ? update(current) : current, key, feedbackAction).catch(() => false);
     return accepted && isCurrent();
   };
-  const presentationImages = useMemo(() => itineraryPresentationImages(workingTrip), [workingTrip]);
+  const presentationImages = useMemo(() => itineraryPresentationImages(workingTrip, { reviewedOnly: true }), [workingTrip]);
   const destinations = useMemo(() => itineraryRouteTrackStops(workingTrip, activeDayId, presentationImages.stopById, language), [workingTrip, activeDayId, presentationImages, language]);
   useEffect(() => {
     if (presentation !== "shell") return;
@@ -951,10 +952,6 @@ export default function TripItineraryWorkspace({
 
   const stop = stopForDay(workingTrip, active);
   const dayHero = presentationImages.dayById[active.id] ?? null;
-  useEffect(() => setDayHeroDisplayed(false), [dayHero?.src]);
-  const dayHeroCredit = dayHero?.sourceLabel && dayHeroDisplayed
-    ? <MorroviaPhotoCredit ownership={dayHero.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} />
-    : null;
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForPlanItem(workingTrip, active);
   const scheduledIdeaTitles = new Set((legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
@@ -1713,6 +1710,7 @@ export default function TripItineraryWorkspace({
       </nav> : null}
       {workspaceView === "calendar" ? <ItineraryCalendar
         tripId={workingTrip.id}
+        dayImages={presentationImages.dayById}
         onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); focusCalendarDayDetails(day.id); }}
         weeks={calendarWeeks}
         selectedDayId={active.id}
@@ -1767,19 +1765,15 @@ export default function TripItineraryWorkspace({
         aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
         <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
-          {dayHero ? <div className={styles.dayHeaderMedia}>
-            <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} />
-            {dayHeroCredit}
-          </div> : null}
           <div className={styles.dayHeaderContent}>
             <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
-            <h2 data-calendar-sheet-heading tabIndex={-1}>{stop?.name ?? active.title}</h2>
+            <h2 data-calendar-sheet-heading tabIndex={-1}>{mobile && incomingLeg ? `${workingTrip.stops.find(candidate => candidate.id === incomingLeg.fromStopId)?.name ?? incomingLeg.fromEndpoint?.name ?? ""} → ${stop?.name ?? active.title}` : stop?.name ?? active.title}</h2>
             {itineraryDaySubtitle(active.title, stop?.name) && stop
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
           {mobile ? <EasyTLinkButton className={styles.mobileDayMap} href={mapPlanHref} icon={MapIcon} size="small" variant="secondary">{language === "es" ? "Ver mapa" : "Explore map"}</EasyTLinkButton> : null}
+          <ItineraryDayPhoto image={dayHero} destination={stop?.name ?? active.title} language={language} className={styles.dayHeaderMedia} />
         </header>
-
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
@@ -1872,11 +1866,13 @@ export default function TripItineraryWorkspace({
             showHeader={false}
             showTonight={false}
           />
-          {mobile ? <div className={styles.mobileAddPlan}>
+
+        </div> : null}
+
+          {mobile && dayComposition ? <div className={styles.mobileAddPlan}>
             {!itineraryDayParts.some(part => dayComposition.planned[part].some(item => item.source !== "day-note")) && !dayComposition.unslotted.some(item => item.source !== "day-note") ? <p>{language === "es" ? "Aún no hay planes." : "No plans added yet."}</p> : null}
             <EasyTButton ref={mobileAddTrigger} icon={CirclePlus} onClick={() => { setMobileSavedOpen(false); setMobileAddError(""); setAddChooserOpen(true); }}>{language === "es" ? "Añadir plan" : "Add plan"}</EasyTButton>
           </div> : null}
-        </div> : null}
 
         {workspaceView === "days" && reorderableEditorNotes > 0 ? <details key={active.id} ref={sequenceEditorRef} className={styles.sequenceEditor}>
           <summary>{copy.editActivityOrder}</summary>
@@ -2345,8 +2341,9 @@ function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "act
   return copy.flexible;
 }
 
-function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
+function ItineraryCalendar({ tripId, dayImages, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
   tripId: string;
+  dayImages: Readonly<Record<string, OverviewPlaceImage | null>>;
   onOpenDay: (day: ItineraryCalendarDay) => void;
   weeks: ItineraryCalendarWeek[];
   selectedDayId: string | null;
@@ -2396,6 +2393,7 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
             {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
+          <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id] ?? null} destination={day.stop?.name ?? day.day.title} language={language} /></div>
           {previewItems.length ? <ul className={styles.calendarItems}>
             {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
             {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}
