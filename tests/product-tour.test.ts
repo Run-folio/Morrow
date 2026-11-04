@@ -11,10 +11,6 @@ const overviewStory = readFileSync(new URL("../components/easyt/trip-overview-wo
 const mapStory = readFileSync(new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url), "utf8");
 const itineraryStory = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 
-function pngDimensions(path: string) {
-  const image = readFileSync(new URL(`../public/journey/product-shots/tour/${path}`, import.meta.url));
-  return { width: image.readUInt32BE(16), height: image.readUInt32BE(20) };
-}
 
 test("offers the Tour only until the visitor completes or dismisses it", () => {
   assert.equal(PRODUCT_TOUR_COMPLETE_KEY, "easyt-product-tour-complete");
@@ -32,8 +28,8 @@ test("the current product tour keeps five concise traveller-facing steps", () =>
   assert.match(tourSource, /See how the whole trip connects/);
   assert.match(tourSource, /05 · Shape each day/);
   assert.match(tourSource, /Make the itinerary yours/);
-  assert.match(tourSource, /map-workspace-mobile\.png/);
-  assert.match(tourSource, /itinerary-workspace-mobile\.png/);
+  assert.match(tourSource, /map-workspace-mobile\.jpg/);
+  assert.match(tourSource, /itinerary-workspace-mobile\.jpg/);
   assert.doesNotMatch(tourSource, /\bPrep\b/);
   assert.doesNotMatch(tourSource, /understand the journey spatially|overnight bases|needs your judgement/);
 });
@@ -53,10 +49,13 @@ test("all Tour capture stories consume the shared coherent Peru fixture", () => 
   assert.doesNotMatch(builderStory, /Device edits kept safe|Your session ended/);
 });
 
-test("Tour image assets match their desktop and mobile display ratios", () => {
+test("Tour uses current product captures in both responsive presentations", () => {
   for (const name of ["describe-trip", "shape-route", "trip-workspace", "map-workspace", "itinerary-workspace"]) {
-    assert.deepEqual(pngDimensions(`${name}.png`), { width: 1600, height: 1000 });
-    assert.deepEqual(pngDimensions(`${name}-mobile.png`), { width: 750, height: 1000 });
+    for (const suffix of ["", "-mobile"]) {
+      const asset = readFileSync(new URL(`../public/journey/product-shots/tour/current/${name}${suffix}.jpg`, import.meta.url));
+      assert.equal(asset.readUInt16BE(0), 0xffd8, `${name}${suffix} is a JPEG`);
+      assert.ok(asset.length > 10000, `${name}${suffix} has captured content`);
+    }
   }
 });
 

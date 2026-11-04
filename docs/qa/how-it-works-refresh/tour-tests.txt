@@ -1,0 +1,18 @@
+(node:13616) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/product-tour.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ offers the Tour only until the visitor completes or dismisses it (0.663666ms)
+✔ the current product tour keeps five concise traveller-facing steps (0.245167ms)
+✔ desktop uses landscape product media and mobile keeps a dedicated compact crop (0.098667ms)
+✔ all Tour capture stories consume the shared coherent Peru fixture (0.098666ms)
+✔ Tour uses current product captures in both responsive presentations (3.771666ms)
+✔ Tour dialog keyboard and focus behaviour remains in place (0.056792ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.829958

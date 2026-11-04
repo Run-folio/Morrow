@@ -14,8 +14,8 @@ function OpenConfirmation() {
   return <div style={{ minHeight: 420 }}><MorroviaConfirmationDialog open={open} title="Remove Sacred Valley?" detail="This changes the route and the days attached to this stop." consequences={["Two itinerary days will be removed.", "The following transfer will need checking again."]} confirmLabel="Remove stop" onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)} /></div>;
 }
 
-function OpenProductTour({ initialStep = 0 }: { initialStep?: number }) {
-  useEffect(() => { window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); }, []);
+function OpenProductTour({ initialStep = 0, language = "en" }: { initialStep?: number; language?: "en" | "es" }) {
+  useEffect(() => { window.dispatchEvent(new CustomEvent("easyt-language-change", { detail: language })); window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); }, [language]);
   return <div style={{ minHeight: 620 }}><EasyTProductTour showTrigger={false} listenForOpen initialStep={initialStep} /></div>;
 }
 
@@ -28,8 +28,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ConsequentialDialog: Story = { render: () => <OpenConfirmation /> };
+export const ProductTourTrigger: Story = { render: () => <EasyTProductTour triggerLabel="How it works" /> };
 export const ProductTourDialog: Story = { render: () => <OpenProductTour /> };
 export const ProductTourDialogMobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <OpenProductTour /> };
+export const ProductTourSpanish: Story = { render: () => <OpenProductTour language="es" /> };
 export const ProductTourSlide01: Story = { render: () => <OpenProductTour initialStep={0} /> };
 export const ProductTourSlide02: Story = { render: () => <OpenProductTour initialStep={1} /> };
 export const ProductTourSlide03: Story = { render: () => <OpenProductTour initialStep={2} /> };

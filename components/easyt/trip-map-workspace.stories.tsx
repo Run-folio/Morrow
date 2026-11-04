@@ -509,7 +509,7 @@ type Story = StoryObj<typeof meta>;
 export const ActivePlanning: Story = {};
 
 export const TourCapture: Story = {
-  args: { storyTrip: tourTripFixture, presentation: "focused", storyState: { mapMode: "overview", destinationExpanded: true } },
+  args: { storyTrip: tourTripFixture, storyState: { mapMode: "overview", destinationExpanded: true } },
 };
 
 const scheduledResultHandoffParameters = {

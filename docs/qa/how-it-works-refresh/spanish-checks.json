@@ -1,0 +1,37 @@
+[
+  {
+    "currentSrc": "describe-trip-mobile.jpg",
+    "imageLoaded": true,
+    "overflowX": false,
+    "title": "Unas paradas. O unas palabras.",
+    "width": 320
+  },
+  {
+    "currentSrc": "shape-route-mobile.jpg",
+    "imageLoaded": true,
+    "overflowX": false,
+    "title": "Empieza con una ruta que tenga sentido.",
+    "width": 320
+  },
+  {
+    "currentSrc": "trip-workspace-mobile.jpg",
+    "imageLoaded": true,
+    "overflowX": false,
+    "title": "Ten claro qué necesita atención.",
+    "width": 320
+  },
+  {
+    "currentSrc": "map-workspace-mobile.jpg",
+    "imageLoaded": true,
+    "overflowX": false,
+    "title": "Ve cómo se conecta todo el viaje.",
+    "width": 320
+  },
+  {
+    "currentSrc": "itinerary-workspace-mobile.jpg",
+    "imageLoaded": true,
+    "overflowX": false,
+    "title": "Haz tuyo el itinerario.",
+    "width": 320
+  }
+]

@@ -1,0 +1,292 @@
+✖ Morrovia-controlled product copy does not introduce em dashes (53.583875ms)
+✔ desktop navigation protects the founder-approved hierarchy and hides beta language controls (1.804458ms)
+✔ beta profile rendering does not replace an existing account language preference (0.191208ms)
+✔ the canonical homepage route story and global home links remain intact (0.18725ms)
+✔ mobile uses only the compact header menu and retains safe-area-aware workspace offsets (0.786208ms)
+✔ the navigation Storybook fixture exercises the App Router and compact mobile state (0.111583ms)
+✖ dashboard offers the map as contextual preview rather than a workspace tab (0.814625ms)
+✔ the route map keeps ordinary entry at the top and scrolls only for selection or deep links (0.338792ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 6
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.640625
+
+✖ failing tests:
+
+test at ../../../../../../../private/tmp/morrovia-tour-baseline/tests/morrovia-copy.test.ts:22:1
+✖ Morrovia-controlled product copy does not introduce em dashes (53.583875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'app/journey/my-routes/[tripId]/personal-route-view.stories.tsx:26',
+  +   'app/journey/my-routes/[tripId]/personal-route-view.stories.tsx:27',
+  +   'app/journey/my-routes/[tripId]/personal-route-view.tsx:52',
+  +   'app/journey/my-routes/[tripId]/personal-route-view.tsx:53',
+  +   'app/journey/my-routes/[tripId]/personal-route-view.tsx:87',
+  +   'app/journey/new/trip-builder-route-workspace.tsx:164',
+  +   'app/journey/new/trip-builder-route-workspace.tsx:287',
+  +   'app/journey/new/trip-builder-route-workspace.tsx:288',
+  +   'app/journey/new/trip-builder.tsx:6636',
+  +   'components/easyt/calendar-export-dialog.stories.tsx:5',
+  +   'components/easyt/calendar-export-dialog.stories.tsx:10',
+  +   'components/easyt/calendar-export-dialog.stories.tsx:11',
+  +   'components/easyt/calendar-export-dialog.tsx:48',
+  +   'components/easyt/calendar-export-dialog.tsx:217',
+  +   'components/easyt/trip-map-workspace.stories.tsx:1201',
+  +   'components/easyt/trip-shell.stories.tsx:297',
+  +   'components/easyt/trip-transport-choice-control.tsx:158',
+  +   'lib/easyt/calendar-export-view.ts:8',
+  +   'lib/easyt/calendar-export.ts:90',
+  +   'lib/easyt/destination-knowledge.ts:582',
+  +   'lib/easyt/destination-knowledge.ts:590',
+  +   'lib/easyt/destination-knowledge.ts:591',
+  +   'lib/easyt/place-intelligence.ts:1373',
+  +   'lib/easyt/place-intelligence.ts:2132',
+  +   'lib/easyt/place-intelligence.ts:2258',
+  +   'lib/easyt/place-intelligence.ts:2259',
+  +   'lib/easyt/reviewed-air-journeys.ts:33',
+  +   'lib/easyt/reviewed-air-journeys.ts:34',
+  +   'lib/easyt/reviewed-air-journeys.ts:35',
+  +   'lib/easyt/reviewed-air-journeys.ts:36',
+  +   'lib/easyt/reviewed-air-journeys.ts:37',
+  +   'lib/easyt/trip-builder-edit.ts:112',
+  +   'lib/easyt/trip-route-intent.ts:47',
+  +   'lib/easyt/trip-route-intent.ts:48'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-tour-baseline/tests/morrovia-copy.test.ts:33:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'app/journey/my-routes/[tripId]/personal-route-view.stories.tsx:26', 'app/journey/my-routes/[tripId]/personal-route-view.stories.tsx:27', 'app/journey/my-routes/[tripId]/personal-route-view.tsx:52', 'app/journey/my-routes/[tripId]/personal-route-view.tsx:53', 'app/journey/my-routes/[tripId]/personal-route-view.tsx:87', 'app/journey/new/trip-builder-route-workspace.tsx:164', 'app/journey/new/trip-builder-route-workspace.tsx:287', 'app/journey/new/trip-builder-route-workspace.tsx:288', 'app/journey/new/trip-builder.tsx:6636', 'components/easyt/calendar-export-dialog.stories.tsx:5', 'components/easyt/calendar-export-dialog.stories.tsx:10', 'components/easyt/calendar-export-dialog.stories.tsx:11', 'components/easyt/calendar-export-dialog.tsx:48', 'components/easyt/calendar-export-dialog.tsx:217', 'components/easyt/trip-map-workspace.stories.tsx:1201', 'components/easyt/trip-shell.stories.tsx:297', 'components/easyt/trip-transport-choice-control.tsx:158', 'lib/easyt/calendar-export-view.ts:8', 'lib/easyt/calendar-export.ts:90', 'lib/easyt/destination-knowledge.ts:582', 'lib/easyt/destination-knowledge.ts:590', 'lib/easyt/destination-knowledge.ts:591', 'lib/easyt/place-intelligence.ts:1373', 'lib/easyt/place-intelligence.ts:2132', 'lib/easyt/place-intelligence.ts:2258', 'lib/easyt/place-intelligence.ts:2259', 'lib/easyt/reviewed-air-journeys.ts:33', 'lib/easyt/reviewed-air-journeys.ts:34', 'lib/easyt/reviewed-air-journeys.ts:35', 'lib/easyt/reviewed-air-journeys.ts:36', 'lib/easyt/reviewed-air-journeys.ts:37', 'lib/easyt/trip-builder-edit.ts:112', 'lib/easyt/trip-route-intent.ts:47', 'lib/easyt/trip-route-intent.ts:48' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../../../../private/tmp/morrovia-tour-baseline/tests/navigation-information-architecture.test.ts:102:1
+✖ dashboard offers the map as contextual preview rather than a workspace tab (0.814625ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /className=\{styles\.currentMap\} href=\{mapWorkspaceHref\(featuredTrip\.id, null, "plan", null, null, null, "\/journey\/dashboard"\)\}/. Input:
+  
+  '"use client";\n' +
+    '\n' +
+    'import FirstTripGuide from "./first-trip-guide";\n' +
+    '\n' +
+    'import Link from "next/link";\n' +
+    'import {\n' +
+    '  Archive,\n' +
+    '  ArrowRight,\n' +
+    '  Copy,\n' +
+    '  Gift,\n' +
+    '  Globe2,\n' +
+    '  Grid2X2,\n' +
+    '  MapPin,\n' +
+    '  MoreHorizontal,\n' +
+    '  RotateCcw,\n' +
+    '  Trash2,\n' +
+    '} from "lucide-react";\n' +
+    'import { useRouter } from "next/navigation";\n' +
+    'import { useCallback, useEffect, useMemo, useRef, useState } from "react";\n' +
+    'import { authClient } from "@/lib/auth-client";\n' +
+    'import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";\n' +
+    'import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";\n' +
+    'import { MorroviaBriefNotice, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";\n' +
+    'import ResilientImage from "@/components/easyt/resilient-image";\n' +
+    'import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";\n' +
+    'import CountryVisualFallback, { CountryIllustrationLabel } from "@/components/easyt/country-visual-fallback";\n' +
+    'import { useDashboardTripPhotos } from "@/components/easyt/use-dashboard-trip-photos";\n' +
+    'import {\n' +
+    '  cacheCanonicalTrip,\n' +
+    '  classifyTripRecovery,\n' +
+    '  EASYT_TRIP_STORAGE_CHANGE_EVENT,\n' +
+    '  loadCachedTrip,\n' +
+    '  listTripRecoveries,\n' +
+    '  loadTripRecovery,\n' +
+    '  resolveCanonicalEquivalentTripRecovery,\n' +
+    '  tripRecoveryIsAwaitingCanonicalSave,\n' +
+    '  EASYT_LAST_OWNER_KEY,\n' +
+    '  loadRememberedOwner, observeRememberedOwner,\n' +
+    '} from "@/lib/easyt/storage";\n' +
+    'import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";\n' +
+    'import { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";\n' +
+    'import { trackEvent } from "@/lib/analytics";\n' +
+    'import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";\n' +
+    'import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";\n' +
+    'import { summarizeStampRows } from "@/lib/easyt/stamps";\n' +
+    'import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";\n' +
+    'import { tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";\n' +
+    'import { routeDestinationPhoto } from "@/lib/easyt/route-images";\n' +
+    'import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";\n' +
+    'import { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";\n' +
+    'import {useTripLibraryActions} from "@/components/easyt/use-trip-library-actions";\n' +
+    'import {TripLibraryActionDialogs} from "@/components/easyt/trip-library-action-dialogs";\n' +
+    'import styles from "./dashboard.module.css";\n' +
+    '\n' +
+    'type StampSummary = { countryId: string; status: "visited" | "want" };\n' +
+    'type DashboardRecoveryIssue = {\n' +
+    '  tripId: string;\n' +
+    '  tripTitle: string;\n' +
+    '  detail: string;\n' +
+    '};\n' +
+    'function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {\n' +
+    '  if (!parseIsoDate(trip.startDate) || !parseIsoDate(trip.endDate)) return language === "es" ? "Fechas por confirmar" : "Dates to confirm";\n' +
+    '  const locale = language === "es" ? "es" : "en-GB";\n' +
+    '  const startText = formatIsoDate(trip.startDate, locale, { month: "short", day: "numeric" });\n' +
+    '  const endText = formatIsoDate(trip.endDate, locale, { month: "short", day: "numeric", year: "numeric" });\n' +
+    '  return `${startText} – ${endText}`;\n' +
+    '}\n' +
+    '\n' +
+    'function statusLabel(status: TripStatus, language: EasyTLanguage) {\n' +
+    '  if (language === "es") return status === "draft" ? "Activo" : status === "planned" ? "Planificado" : "Archivado";\n' +
+    '  return status === "draft" ? "Active" : status === "planned" ? "Planned" : "Archived";\n' +
+    '}\n' +
+    '\n' +
+    'function trackTripReopened(trip: EasyTTrip) {\n' +
+    '  // Dashboard rows are owner-scoped cloud documents. Cache that exact\n' +
+    '  // revision for later device access. The account document already authorises Open.\n' +
+    '  // Storage and analytics are both best effort: neither may block Open.\n' +
+    '  void cacheCanonicalTrip(trip).catch(() => undefined);\n' +
+    '  try { trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length }); } catch { /* Navigation remains primary. */ }\n' +
+    '}\n' +
+    '\n' +
+    'export default function DashboardClient({ trips, stamps, ownerId }: { trips: EasyTTrip[]; stamps: StampSummary[]; ownerId: string }) {\n' +
+    '  const router = useRouter();\n' +
+    '  const { data: session, isPending: sessionPending } = authClient.useSession();\n' +
+    '  const authenticatedOwnerRef = useRef<string | null>(ownerId);\n' +
+    '  if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;\n' +
+    '  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);\n' +
+    '  const [view, setView] = useState<DashboardLibraryView>("all");\n' +
+    '  const [sort, setSort] = useState<DashboardSortMode>("updated");\n' +
+    '  const [query, setQuery] = useState("");\n' +
+    '  const [language, setLanguage] = useState<EasyTLanguage>("en");\n' +
+    '  const [storedRecoveryIssues, setRecoveryIssues] = useState<Record<string, DashboardRecoveryIssue>>({});\n' +
+    '  const [recoveryIssuesScope, setRecoveryIssuesScope] = useState<string | null>(null);\n' +
+    '  const [storedRecoveryState, setRecoveryState] = useState<"checking" | "none" | "syncing" | "issue" | "unavailable">("checking");\n' +
+    '  const [recoveryVersion, setRecoveryVersion] = useState(0);\n' +
+    '  const recoverySourceRevisionRef = useRef(0);\n' +
+    '  const mountedRef = useRef(true);\n' +
+    '  const ownerScopeRef = useRef("");\n' +
+    '  const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);\n' +
+    '  const [closingImageDisplayed, setClosingImageDisplayed] = useState(false);\n' +
+    '  const copy = easytCopy[language].dashboard;\n' +
+    '\n' +
+    '  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    setLanguage(languageFromStorage());\n' +
+    '    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);\n' +
+    '    window.addEventListener("easyt-language-change", updateLanguage);\n' +
+    '    return () => window.removeEventListener("easyt-language-change", updateLanguage);\n' +
+    '  }, []);\n' +
+    '\n' +
+    '  const boundary = ownerBoundaryState({\n' +
+    '    renderedOwnerId: ownerId,\n' +
+    '    sessionOwnerId: session?.user?.id,\n' +
+    '    rememberedOwnerId,\n' +
+    '    sessionPending,\n' +
+    '    previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,\n' +
+    '  });\n' +
+    '\n' +
+    '  const ownerScope = JSON.stringify([ownerId, session?.user?.id ?? null, sessionPending, boundary]);\n' +
+    '  ownerScopeRef.current = ownerScope;\n' +
+    '  const libraryActions = useTripLibraryActions({ownerId,ownerScope,boundary,language,refresh: () => router.refresh()});\n' +
+    '  const {working,workingAction,actionError,failedAction,actionNotice,setActionNotice,runAction,openGift,requestDelete}=libraryActions;\n' +
+    '  const recoveryIssues = recoveryIssuesScope === ownerScope ? storedRecoveryIssues : {};\n' +
+    '  const recoveryState = recoveryIssuesScope === ownerScope ? storedRecoveryState : "checking";\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    const observer = observeRememberedOwner(setRememberedOwnerId);\n' +
+    '    const refreshOwner = observer.refresh;\n' +
+    '    const onStorage = (event: StorageEvent) => {\n' +
+    '      if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();\n' +
+    '    };\n' +
+    '    window.addEventListener("storage", onStorage);\n' +
+    '    return () => { observer.dispose(); window.removeEventListener("storage", onStorage); };\n' +
+    '  }, []);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    if (boundary === "mismatch") router.refresh();\n' +
+    '  }, [boundary, router]);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    const refreshRecoveries = () => {\n' +
+    '      recoverySourceRevisionRef.current += 1;\n' +
+    '      setRecoveryVersion((version) => version + 1);\n' +
+    '    };\n' +
+    '    window.addEventListener(EASYT_TRIP_STORAGE_CHANGE_EVENT, refreshRecoveries);\n' +
+    '    window.addEventListener("storage", refreshRecoveries);\n' +
+    '    return () => {\n' +
+    '      window.removeEventListener(EASYT_TRIP_STORAGE_CHANGE_EVENT, refreshRecoveries);\n' +
+    '      window.removeEventListener("storage", refreshRecoveries);\n' +
+    '    };\n' +
+    '  }, []);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    let active = true;\n' +
+    '    const sourceRevision = recoverySourceRevisionRef.current;\n' +
+    '    const isCurrent = () => active && mountedRef.current && ownerScopeRef.current === ownerScope\n' +
+    '      && recoverySourceRevisionRef.current === sourceRevision;\n' +
+    '    setRecoveryState("checking");\n' +
+    '    if (boundary !== "current") return () => { active = false; };\n' +
+    '    void (async () => {\n' +
+    '      const nextIssues: Record<string, DashboardRecoveryIssue> = {};\n' +
+    '      const recoveries = await listTripRecoveries(ownerId);\n' +
+    '      if (!isCurrent()) return;\n' +
+    '      for (const recovery of recoveries) {\n' +
+    '        if (tripRecoveryIsAwaitingCanonicalSave(recovery)) continue;\n' +
+    '        const canonicalTrip = trips.find((candidate) => candidate.id === recovery.tripId);\n' +
+    '        if (canonicalTrip) {\n' +
+    '          const previousCanonicalTrip = await loadCachedTrip(recovery.tripId, ownerId);\n' +
+    '          if (!isCurrent()) return;\n' +
+    '          const classification = classifyTripRecovery({ recovery, canonicalTrip, previousCanonicalTrip });\n' +
+    '          if (classification === "equivalent") await resolveCanonicalEquivalentTripRecovery(canonicalTrip, recovery);\n' +
+    '          else if (classification === "historical-superseded") await cacheCanonicalTrip(canonicalTrip);\n' +
+    '          if (!isCurrent()) return;\n' +
+    '          const remaining = await loadTripRecovery(recovery.tripId, ownerId);\n' +
+    '          if (!isCurrent()) return;\n' +
+    '          if (!remaining) continue;\n' +
+    '          nextIssues[recovery.tripId] = {\n' +
+    '            tripId: recovery.tripId,\n' +
+    '            tripTitle: tripDisplayTitle(canonicalTrip),\n' +
+    '            detail: "This cloud trip is saved. A separate device copy has traveller changes that still need review.",\n' +
+    '          };\n' +
+    '          continue;\n' +
+    '        }\n' +
+    '        nextIssues[recovery.tripId] = {\n' +
+    '          tripId: recovery.tripId,\n' +
+    '          tripTitle: tripDisplayTitle(recovery.trip),\n' +
+    '          detail: recovery.conflictReason === "cloud-deleted"\n' +
+    '            ? "This trip was previously reported as deleted from your account. Its device copy is available to review."\n' +
+    '            : "This trip is not in this dashboard. Its account save status is unconfirmed. Review the device copy.",\n' +
+    '        };\n' +
+    '      }\n' +
+    '      if (!isCurrent()) return;\n' +
+    '      setRecoveryIssuesScope(ownerScope);\n' +
+    '      setRecoveryIssues(nextIssues);\n' +
+    '      setRecoveryState(Object.keys(nextIssues).length ? "issue" : "none");\n' +
+    '    })().catch(() => {\n' +
+    '      if (isCurrent()) { setRecoveryIssues'... 20541 more characters
+  
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-tour-baseline/tests/navigation-information-architecture.test.ts:105:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '"use client";\n\nimport FirstTripGuide from "./first-trip-guide";\n\nimport Link from "next/link";\nimport {\n  Archive,\n  ArrowRight,\n  Copy,\n  Gift,\n  Globe2,\n  Grid2X2,\n  MapPin,\n  MoreHorizontal,\n  RotateCcw,\n  Trash2,\n} from "lucide-react";\nimport { useRouter } from "next/navigation";\nimport { useCallback, useEffect, useMemo, useRef, useState } from "react";\nimport { authClient } from "@/lib/auth-client";\nimport type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";\nimport { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";\nimport { MorroviaBriefNotice, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";\nimport ResilientImage from "@/components/easyt/resilient-image";\nimport MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";\nimport CountryVisualFallback, { CountryIllustrationLabel } from "@/components/easyt/country-visual-fallback";\nimport { useDashboardTripPhotos } from "@/components/easyt/use-dashboard-trip-photos";\nimport {\n  cacheCanonicalTrip,\n  classifyTripRecovery,\n  EASYT_TRIP_STORAGE_CHANGE_EVENT,\n  loadCachedTrip,\n  listTripRecoveries,\n  loadTripRecovery,\n  resolveCanonicalEquivalentTripRecovery,\n  tripRecoveryIsAwaitingCanonicalSave,\n  EASYT_LAST_OWNER_KEY,\n  loadRememberedOwner, observeRememberedOwner,\n} from "@/lib/easyt/storage";\nimport { ownerBoundaryState } from "@/lib/easyt/private-browser-context";\nimport { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";\nimport { trackEvent } from "@/lib/analytics";\nimport { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";\nimport { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";\nimport { summarizeStampRows } from "@/lib/easyt/stamps";\nimport { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";\nimport { tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";\nimport { routeDestinationPhoto } from "@/lib/easyt/route-images";\nimport { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";\nimport { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";\nimport {useTripLibraryActions} from "@/components/easyt/use-trip-library-actions";\nimport {TripLibraryActionDialogs} from "@/components/easyt/trip-library-action-dialogs";\nimport styles from "./dashboard.module.css";\n\ntype StampSummary = { countryId: string; status: "visited" | "want" };\ntype DashboardRecoveryIssue = {\n  tripId: string;\n  tripTitle: string;\n  detail: string;\n};\nfunction formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {\n  if (!parseIsoDate(trip.startDate) || !parseIsoDate(trip.endDate)) return language === "es" ? "Fechas por confirmar" : "Dates to confirm";\n  const locale = language === "es" ? "es" : "en-GB";\n  const startText = formatIsoDate(trip.startDate, locale, { month: "short", day: "numeric" });\n  const endText = formatIsoDate(trip.endDate, locale, { month: "short", day: "numeric", year: "numeric" });\n  return `${startText} – ${endText}`;\n}\n\nfunction statusLabel(status: TripStatus, language: EasyTLanguage) {\n  if (language === "es") return status === "draft" ? "Activo" : status === "planned" ? "Planificado" : "Archivado";\n  return status === "draft" ? "Active" : status === "planned" ? "Planned" : "Archived";\n}\n\nfunction trackTripReopened(trip: EasyTTrip) {\n  // Dashboard rows are owner-scoped cloud documents. Cache that exact\n  // revision for later device access. The account document already authorises Open.\n  // Storage and analytics are both best effort: neither may block Open.\n  void cacheCanonicalTrip(trip).catch(() => undefined);\n  try { trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length }); } catch { /* Navigation remains primary. */ }\n}\n\nexport default function DashboardClient({ trips, stamps, ownerId }: { trips: EasyTTrip[]; stamps: StampSummary[]; ownerId: string }) {\n  const router = useRouter();\n  const { data: session, isPending: sessionPending } = authClient.useSession();\n  const authenticatedOwnerRef = useRef<string | null>(ownerId);\n  if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;\n  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);\n  const [view, setView] = useState<DashboardLibraryView>("all");\n  const [sort, setSort] = useState<DashboardSortMode>("updated");\n  const [query, setQuery] = useState("");\n  const [language, setLanguage] = useState<EasyTLanguage>("en");\n  const [storedRecoveryIssues, setRecoveryIssues] = useState<Record<string, DashboardRecoveryIssue>>({});\n  const [recoveryIssuesScope, setRecoveryIssuesScope] = useState<string | null>(null);\n  const [storedRecoveryState, setRecoveryState] = useState<"checking" | "none" | "syncing" | "issue" | "unavailable">("checking");\n  const [recoveryVersion, setRecoveryVersion] = useState(0);\n  const recoverySourceRevisionRef = useRef(0);\n  const mountedRef = useRef(true);\n  const ownerScopeRef = useRef("");\n  const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);\n  const [closingImageDisplayed, setClosingImageDisplayed] = useState(false);\n  const copy = easytCopy[language].dashboard;\n\n  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);\n\n  useEffect(() => {\n    setLanguage(languageFromStorage());\n    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);\n    window.addEventListener("easyt-language-change", updateLanguage);\n    return () => window.removeEventListener("easyt-language-change", updateLanguage);\n  }, []);\n\n  const boundary = ownerBoundaryState({\n    renderedOwnerId: ownerId,\n    sessionOwnerId: session?.user?.id,\n    rememberedOwnerId,\n    sessionPending,\n    previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,\n  });\n\n  const ownerScope = JSON.stringify([ownerId, session?.user?.id ?? null, sessionPending, boundary]);\n  ownerScopeRef.current = ownerScope;\n  const libraryActions = useTripLibraryActions({ownerId,ownerScope,boundary,language,refresh: () => router.refresh()});\n  const {working,workingAction,actionError,failedAction,actionNotice,setActionNotice,runAction,openGift,requestDelete}=libraryActions;\n  const recoveryIssues = recoveryIssuesScope === ownerScope ? storedRecoveryIssues : {};\n  const recoveryState = recoveryIssuesScope === ownerScope ? storedRecoveryState : "checking";\n\n  useEffect(() => {\n    const observer = observeRememberedOwner(setRememberedOwnerId);\n    const refreshOwner = observer.refresh;\n    const onStorage = (event: StorageEvent) => {\n      if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();\n    };\n    window.addEventListener("storage", onStorage);\n    return () => { observer.dispose(); window.removeEventListener("storage", onStorage); };\n  }, []);\n\n  useEffect(() => {\n    if (boundary === "mismatch") router.refresh();\n  }, [boundary, router]);\n\n  useEffect(() => {\n    const refreshRecoveries = () => {\n      recoverySourceRevisionRef.current += 1;\n      setRecoveryVersion((version) => version + 1);\n    };\n    window.addEventListener(EASYT_TRIP_STORAGE_CHANGE_EVENT, refreshRecoveries);\n    window.addEventListener("storage", refreshRecoveries);\n    return () => {\n      window.removeEventListener(EASYT_TRIP_STORAGE_CHANGE_EVENT, refreshRecoveries);\n      window.removeEventListener("storage", refreshRecoveries);\n    };\n  }, []);\n\n  useEffect(() => {\n    let active = true;\n    const sourceRevision = recoverySourceRevisionRef.current;\n    const isCurrent = () => active && mountedRef.current && ownerScopeRef.current === ownerScope\n      && recoverySourceRevisionRef.current === sourceRevision;\n    setRecoveryState("checking");\n    if (boundary !== "current") return () => { active = false; };\n    void (async () => {\n      const nextIssues: Record<string, DashboardRecoveryIssue> = {};\n      const recoveries = await listTripRecoveries(ownerId);\n      if (!isCurrent()) return;\n      for (const recovery of recoveries) {\n        if (tripRecoveryIsAwaitingCanonicalSave(recovery)) continue;\n        const canonicalTrip = trips.find((candidate) => candidate.id === recovery.tripId);\n        if (canonicalTrip) {\n          const previousCanonicalTrip = await loadCachedTrip(recovery.tripId, ownerId);\n          if (!isCurrent()) return;\n          const classification = classifyTripRecovery({ recovery, canonicalTrip, previousCanonicalTrip });\n          if (classification === "equivalent") await resolveCanonicalEquivalentTripRecovery(canonicalTrip, recovery);\n          else if (classification === "historical-superseded") await cacheCanonicalTrip(canonicalTrip);\n          if (!isCurrent()) return;\n          const remaining = await loadTripRecovery(recovery.tripId, ownerId);\n          if (!isCurrent()) return;\n          if (!remaining) continue;\n          nextIssues[recovery.tripId] = {\n            tripId: recovery.tripId,\n            tripTitle: tripDisplayTitle(canonicalTrip),\n            detail: "This cloud trip is saved. A separate device copy has traveller changes that still need review.",\n          };\n          continue;\n        }\n        nextIssues[recovery.tripId] = {\n          tripId: recovery.tripId,\n          tripTitle: tripDisplayTitle(recovery.trip),\n          detail: recovery.conflictReason === "cloud-deleted"\n            ? "This trip was previously reported as deleted from your account. Its device copy is available to review."\n            : "This trip is not in this dashboard. Its account save status is unconfirmed. Review the device copy.",\n        };\n      }\n      if (!isCurrent()) return;\n      setRecoveryIssuesScope(ownerScope);\n      setRecoveryIssues(nextIssues);\n      setRecoveryState(Object.keys(nextIssues).length ? "issue" : "none");\n    })().catch(() => {\n      if (isCurrent()) { setRecoveryIssues'... 20541 more characters,
+    expected: /className=\{styles\.currentMap\} href=\{mapWorkspaceHref\(featuredTrip\.id, null, "plan", null, null, null, "\/journey\/dashboard"\)\}/,
+    operator: 'match',
+    diff: 'simple'
+  }

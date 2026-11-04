@@ -1,0 +1,24 @@
+
+> morrovia@1.0.0 audit:ui
+> node scripts/ui-convergence-audit.mjs --strict
+
+Morrovia UI convergence enforcement
+- native-control: 191 accepted debt occurrences
+- native-date-input: 0 accepted debt occurrences
+- native-number-input: 0 accepted debt occurrences
+- native-dialog: 0 accepted debt occurrences
+- native-confirm: 0 accepted debt occurrences
+- legacy-ui-import: 0 accepted debt occurrences
+- deprecated-ui-owner: 0 accepted debt occurrences
+- raw-color: 1875 accepted debt occurrences
+- large-accent-surface: 0 accepted debt occurrences
+- raw-radius: 549 accepted debt occurrences
+- raw-shadow: 167 accepted debt occurrences
+- raw-font-family: 0 accepted debt occurrences
+- page-local-font-role: 0 accepted debt occurrences
+- raw-page-width: 2 accepted debt occurrences
+- inline-color: 55 accepted debt occurrences
+- inline-radius: 14 accepted debt occurrences
+- inline-shadow: 3 accepted debt occurrences
+- inline-font-family: 0 accepted debt occurrences
+- documented local exceptions: 75

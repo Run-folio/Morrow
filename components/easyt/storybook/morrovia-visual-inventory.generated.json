@@ -4681,13 +4681,6 @@
         ]
       },
       {
-        "value": "rgba(244,43,122,.28)",
-        "count": 1,
-        "examples": [
-          "components/easyt/easyt-product-tour.module.css"
-        ]
-      },
-      {
         "value": "rgba(246,40,128,.22)",
         "count": 1,
         "examples": [
@@ -5307,7 +5300,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 623,
+        "count": 624,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5317,7 +5310,7 @@
       },
       {
         "value": "12px",
-        "count": 561,
+        "count": 563,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5367,7 +5360,7 @@
       },
       {
         "value": "16px",
-        "count": 299,
+        "count": 300,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5407,7 +5400,7 @@
       },
       {
         "value": "20px",
-        "count": 245,
+        "count": 246,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5587,7 +5580,7 @@
       },
       {
         "value": "48px",
-        "count": 29,
+        "count": 31,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7695,6 +7688,16 @@
         ]
       },
       {
+        "value": "max-width: 680px",
+        "count": 15,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/journey.module.css",
+          "app/journey/plan-map-docks.module.css",
+          "app/journey/plan-mobile-layout.module.css"
+        ]
+      },
+      {
         "value": "max-width: 900px",
         "count": 15,
         "examples": [
@@ -7702,16 +7705,6 @@
           "app/journey/home/home.module.css",
           "app/journey/home/immersive/product-demo.module.css",
           "app/journey/new/trip-builder.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 680px",
-        "count": 13,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/journey.module.css",
-          "app/journey/plan-map-docks.module.css",
-          "app/journey/plan-mobile-layout.module.css"
         ]
       },
       {
@@ -8054,7 +8047,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1876,
+      "raw-color": 1875,
       "large-accent-surface": 0,
       "raw-radius": 549,
       "raw-shadow": 167,

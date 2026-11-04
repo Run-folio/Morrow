@@ -1,6 +1,6 @@
  .tour :global([class*="overlay"]){overflow:auto;padding:max(20px,env(safe-area-inset-top)) 20px 20px}
  .tour :global([class*="overlay"]){height:100dvh;box-sizing:border-box;align-items:center}
- .tour :global([class*="dialog"]){height:min(760px,calc(100dvh - 40px));min-height:0;max-height:none;overflow:auto}
+ .tour :global([class*="dialog"]){height:auto;max-height:calc(100dvh - 40px);min-height:0;overflow:auto}
 @media(max-width:680px){
   .tour :global([class*="overlay"]){align-items:end;padding:12px;overflow:auto}
   .tour :global([class*="dialog"]){justify-self:stretch;grid-template-columns:minmax(0,1fr);width:auto;min-width:0;max-width:none;box-sizing:border-box;max-height:calc(100svh - 24px);overflow:auto;border-radius:24px}
@@ -17,3 +17,5 @@
 }
 @media(max-width:380px){.tour :global([class*="visual"]){padding:10px}.tour :global([class*="content"]){padding-top:20px}.tour :global([class*="content"] h2){font-size:27px}}
 @media(max-width:520px){.tour :global([class*="overlay"]){padding-bottom:var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom)))}.tour :global([class*="dialog"]){max-height:calc(100svh - var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom))) - 12px)}}
+
+@media(max-width:680px){.tour :global([class*="visual"]){padding-top:48px}.tour :global([class*="mediaFrame"]){width:min(240px,100%)}.tour :global([class*="screen"]){max-height:28svh}.tour :global([class*="content"]){padding-top:20px}}
