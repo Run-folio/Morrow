@@ -1,0 +1,23 @@
+(node:668) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-clarification-focus.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual deferred shell focus cannot blur an already edited combobox and close its menu (35.35225ms)
+✔ actual autocomplete typing retires completed search without changing focus ownership (9.547333ms)
+✔ initial shell entry still focuses its heading when focus remains outside the dialog (4.200375ms)
+✔ deferred shell focus respects a deliberately focused current dialog button (4.724083ms)
+✔ retired shell focus is cancelled and cannot steal restored focus even if its frame is delivered (2.937917ms)
+✔ an old shell frame cannot retarget the heading of a replacement dialog (3.752125ms)
+✔ a closed shell schedules no heading focus (2.764875ms)
+✔ shell Tab wrapping, guarded Escape, scroll lock and return focus keep their actual behavior (5.677417ms)
+✔ actual autocomplete blur still closes its menu when focus leaves its root (5.48325ms)
+✔ actual autocomplete keeps its menu while focus moves to an option inside its root (5.306875ms)
+✔ actual single-area semantic loop waits for the accepted shortlist state before its next click (14.008542ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 255.397875

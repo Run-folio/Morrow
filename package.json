@@ -58,6 +58,7 @@
     "test:model-routing": "node --experimental-strip-types --test tests/model-task-routing.test.ts",
     "test:trip-copilot": "node --experimental-strip-types --test tests/trip-copilot.test.ts tests/trip-copilot-actions.test.ts tests/conversational-replan-gauntlet.test.ts",
     "test:state-preservation": "node --experimental-strip-types --test tests/state-preservation-torture.test.ts tests/trip-mutation-persistence.test.ts tests/trip-copilot-actions.test.ts tests/conversational-replan-gauntlet.test.ts tests/trip-replan.test.ts tests/cascade.test.ts",
+    "test:itinerary-focus": "node --experimental-strip-types --test tests/itinerary-card-focus-return.test.ts",
     "test:builder-gate": "node --experimental-strip-types --test tests/trip-builder-gate.test.ts tests/trip-builder-layout.test.ts tests/builder-seed-coordination.test.ts tests/trip-builder-entry-session.test.ts tests/homepage-async-entry.test.ts tests/trip-builder-async-edit-session.test.ts tests/trip-builder-pending-build.test.ts tests/trip-builder-projection-liveness.test.mjs tests/builder-persistence-lifecycle.test.mjs tests/builder-reorder-input-overflow.test.mjs tests/discovery-direction-coordination.test.ts tests/builder-clarification-focus.test.ts tests/builder-clarification-ownership.test.ts tests/staging-africa-latency-exception.test.ts tests/staging-south-korea-latency-exception.test.ts tests/builder-discovery-canonical-read.test.ts tests/osaka-destination-planning.test.ts tests/osaka-seoul-transport.test.ts tests/reviewed-bali-destinations.test.ts tests/trip-recovery-classification.test.ts tests/search-past-dates.test.ts tests/search-date-picker.test.ts tests/generated-trip-title.test.ts tests/trip-display.test.ts tests/new-search-past-dates.test.ts tests/new-trip-starter.test.ts tests/new-trip-starter-preservation.test.ts",
     "test:constraint-gauntlet": "node --experimental-strip-types --test tests/constraint-gauntlet.test.ts",
     "test:realism-gauntlet": "node --experimental-strip-types --test tests/realism-gauntlet.test.ts",
@@ -93,7 +94,8 @@
     "test:trip-health": "node --experimental-strip-types --test tests/trip-health.test.ts",
     "test:booking-readiness": "node --experimental-strip-types --test tests/booking-readiness.test.ts",
     "test:visa-requirements": "node --experimental-strip-types --test tests/passport-country-registry.test.ts tests/visa-requirements.test.ts tests/passport-result-state.test.ts tests/passport-presentation.test.ts",
-    "import:passport-index": "node --experimental-strip-types scripts/import-passport-index.ts"
+    "import:passport-index": "node --experimental-strip-types scripts/import-passport-index.ts",
+    "test:storybook-current": "node scripts/check-storybook-current.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

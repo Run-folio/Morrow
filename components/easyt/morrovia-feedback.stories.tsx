@@ -1,3 +1,4 @@
+import { expect, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { BedDouble, CalendarDays, Check, Cloud, ExternalLink, GripVertical, HardDrive, MapPin, Minus, Plus, Save } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -239,7 +240,18 @@ export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoti
 export const ItineraryUndoNotice: Story = { render: () => <UndoNoticeContext /> };
 export const ItineraryUndoNoticeMobile390: Story = { ...ItineraryUndoNotice, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const PersistentRouteRecovery: Story = { render: () => <PersistentRecoveryContext /> };
-export const PersistentStatusBanners: Story = { render: () => <StatusBannerContext /> };
+export const PersistentStatusBanners: Story = {
+  tags: ["current-ui"], parameters: { a11y: { test: "error" } },
+  render: () => <StatusBannerContext />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole("status")).toHaveLength(2);
+    await expect(canvas.getAllByRole("alert")).toHaveLength(2);
+    await expect(canvas.getByText("Saved on this device")).toBeVisible();
+    await expect(canvas.getByText("Your session ended")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Sign in again" })).toBeVisible();
+  },
+};
 export const ContextualTransparencyDisclosure: Story = { render: () => <ContextualDisclosureContext /> };
 export const CloudConflictChoice: Story = { render: () => <CloudConflictContext /> };
 export const ConsequentialStopRemoval: Story = { render: () => <RemoveStopContext /> };
@@ -248,7 +260,7 @@ export const AffiliateBoundary: Story = { render: () => <AffiliateBoundaryContex
 export const Mobile320SaveFailure: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, render: () => <TripSaveContext initialState="error" /> };
 export const Mobile390Dialog: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <RemoveStopContext /> };
 export const Mobile390RenameTrip: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <RenameTripContext /> };
-export const Mobile390StatusBanners: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <StatusBannerContext /> };
+export const Mobile390StatusBanners: Story = { ...PersistentStatusBanners, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <StatusBannerContext /> };
 export const Tablet768AffiliateBoundary: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } }, render: () => <AffiliateBoundaryContext /> };
 export const DialogFocusAndRestore: Story = { render: () => <RemoveStopContext startOpen={false} /> };
 export const ContentDialogFocusAndRestore: Story = { render: () => <ContentDialogContext /> };

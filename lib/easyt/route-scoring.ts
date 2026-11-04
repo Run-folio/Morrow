@@ -591,8 +591,18 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
   }
   const scoreable = facts.filter((item) => item.metrics.transferMinutes !== null);
   const bestMinutes = Math.min(...scoreable.map((item) => item.metrics.transferMinutes ?? Number.POSITIVE_INFINITY));
-  const knownDistances = scoreable.map((item) => item.metrics.distanceKm).filter((value): value is number => value !== null);
-  const bestDistance = knownDistances.length ? Math.min(...knownDistances) : null;
+  // An open route ending elsewhere is a different journey, not evidence of
+  // backtracking. A supplied terminal endpoint makes every candidate comparable.
+  const comparisonKey = (item: typeof facts[number]) => JSON.stringify([
+    input.origin.coordinates ? null : item.candidate.stops[0]?.id,
+    input.end?.id ?? item.candidate.stops.at(-1)?.id,
+  ]);
+  const bestDistanceByFinish = new Map<string, number>();
+  for (const item of scoreable) {
+    if (item.metrics.distanceKm === null) continue;
+    const key = comparisonKey(item);
+    bestDistanceByFinish.set(key, Math.min(bestDistanceByFinish.get(key) ?? Infinity, item.metrics.distanceKm));
+  }
   const minimumFlights = scoreable.length ? Math.min(...scoreable.map((item) => item.metrics.flightLegs)) : 0;
 
   const results: RouteCandidateScore[] = facts.map((item) => {
@@ -637,7 +647,8 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
       });
     }
 
-    if (bestDistance !== null && item.metrics.distanceKm !== null) {
+    const bestDistance = bestDistanceByFinish.get(comparisonKey(item));
+    if (bestDistance !== undefined && item.metrics.distanceKm !== null) {
       const excessKm = item.metrics.distanceKm - bestDistance;
       const ratio = bestDistance > 0 ? item.metrics.distanceKm / bestDistance - 1 : 0;
       if (excessKm >= config.thresholds.backtrackingMinimumKm && ratio >= config.thresholds.backtrackingRatio) {
@@ -649,7 +660,7 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
         penalties.push({
           code: "unnecessary-backtracking",
           points: Math.round(config.penalties["unnecessary-backtracking"] * severityMultiplier),
-          reason: `This order adds ${Math.round(excessKm)} km of estimated movement versus the most direct viable geography.`,
+          reason: `This order adds ${Math.round(excessKm)} km of estimated movement versus viable orders with the same journey gateways.`,
           stopIds: item.candidate.stops.map((stop) => stop.id),
           legIndexes: item.legs.map(({ index }) => index),
         });

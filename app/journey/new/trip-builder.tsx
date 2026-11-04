@@ -33,7 +33,7 @@ import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } f
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
 import type { BuilderReconciliationRequest } from "@/lib/easyt/trip-builder-edit-session";
-import type { AsyncBuilderEditSession as BuilderEditSession, AsyncBuilderEditSessionOptions as BuilderEditSessionOptions } from "@/lib/easyt/trip-builder-async-edit-session";
+import type { AsyncBuilderEditSession as BuilderEditSession, AsyncBuilderEditSessionOptions as BuilderEditSessionOptions, BuilderCommandReceipt } from "@/lib/easyt/trip-builder-async-edit-session";
 import { useBuilderEditSession } from "./use-builder-edit-session";
 import { createBuilderEntrySession, type BuilderEntrySession } from "@/lib/easyt/trip-builder-entry-session";
 import { requireReadableTripDocument } from "@/lib/easyt/trip-document";
@@ -47,6 +47,7 @@ import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-n
 import { projectBuilderCalendar } from "@/lib/easyt/trip-builder-calendar";
 import { resolveBuilderRecommendation, loadBuilderDiscoveryPlaces, builderDiscoveryInputKey, currentBuilderDiscoveredPlaces, type BuilderDiscoveryCache } from "@/lib/easyt/trip-builder-recommendations";
 import { readDurableHomepageState, pendingDurableReceiptStillCurrent } from "@/lib/easyt/homepage-persistence";
+import { builderHydrationFeedback, builderHydrationIssueFor, type BuilderHydrationIssue } from "@/lib/easyt/builder-hydration-feedback";
 import {InterruptedInputReview} from '@/components/easyt/interrupted-input-review';
 import {readInterruptedBuilderInputs, retainInterruptedBuilderInput, type InterruptedBuilderInput} from '@/lib/easyt/interrupted-builder-input';
 import {browserRecoveryStorage} from '@/lib/easyt/browser-recovery-persistence';
@@ -765,6 +766,7 @@ function TripBuilderDocument() {
   const [entryKind, setEntryKind] = useState<NewTripEntryState["kind"]>("loading");
   const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
+  const [hydrationIssue, setHydrationIssue] = useState<BuilderHydrationIssue | null>(null);
   const [guestSaveRequired, setGuestSaveRequired] = useState<{tripId:string;ownerId:string}|null>(null);
   const [pendingContinuationNeedsReview, setPendingContinuationNeedsReview] = useState(false);
   const [initialSaveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
@@ -1017,6 +1019,7 @@ function TripBuilderDocument() {
   const [initialDecisionSelections, setDecisionSelections] = useState<TripDecisionSelections>({ transportByLeg: {} });
   const decisionSelections = canonicalBuilder ? (canonicalBuilder.brief.decisionSelections ?? {transportByLeg:{}}) : initialDecisionSelections;
   const [lastStructuralChange, setLastStructuralChange] = useState<StructuralSnapshot | null>(null);
+  const quotaFeedbackRef = useRef<{ editor: BuilderEditSession; frame: StructuralSnapshot | null } | null>(null);
   const [structuralNoticeVersion, setStructuralNoticeVersion] = useState(0);
   const builderActionRef = useRef<HTMLDivElement | null>(null);
 
@@ -1483,6 +1486,16 @@ function TripBuilderDocument() {
     setHasPromptContext(true);
   };
 
+  const completeAcceptedBuilderEdit = (editor: BuilderEditSession, receipt: BuilderCommandReceipt, frame: StructuralSnapshot | null) => {
+    if (!builderMountedRef.current || builderEditSessionRef.current !== editor
+      || editor.getSnapshot().browserOwnerId !== activeBrowserOwnerIdRef.current || !editor.isCommandReceiptCurrent(receipt)) return false;
+    if (frame && editor.retainStructuralSnapshot(frame.canonical!, receipt.acceptedRevision)) {
+      publishStructuralChange({ ...frame, canonicalSession: editor, acceptedRevision: editor.getSnapshot().acceptedRevision });
+    }
+    applyAcceptedBuilderDocument(receipt.trip);
+    setEditNeedsReview(false); setCloudSaveError(""); setSaveState(editor.getSnapshot().saveState);
+    return true;
+  };
   const dispatchAcceptedBuilderEdits = async (edits: readonly BuilderAcceptedEdit[], options?: {
     expectedInputRevision?: number; acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[];
   }) => {
@@ -1493,10 +1506,12 @@ function TripBuilderDocument() {
     // a success notice in a handler that may subsequently reject or return early.
     const summary = builderStructuralFeedback(edits)?.summary;
     const frame = summary ? captureStructuralChange(summary, editor.captureStructuralSnapshot(false)) : null;
+    quotaFeedbackRef.current = null;
     const result = await editor.acceptBatch(edits, options?.expectedInputRevision ?? editor.getSnapshot().inputRevision, options?.acceptedInputs);
     if (!builderMountedRef.current || builderEditSessionRef.current !== editor
       || editor.getSnapshot().browserOwnerId !== activeBrowserOwnerIdRef.current) return false;
     if (!result.ok) {
+      if (editor.getSnapshot().error?.retryableEdit) quotaFeedbackRef.current = { editor, frame };
       setEditNeedsReview(!editor.getSnapshot().error);
       setCloudSaveError(result.reason === "stale-source"
         ? "The trip changed while this edit was being checked. Review the latest trip and try again."
@@ -1505,15 +1520,7 @@ function TripBuilderDocument() {
     }
     // A verified earlier command may finish while later raw input remains
     // visible. Its completion must not publish stale success, Undo or enrichment.
-    if (!editor.isCommandReceiptCurrent(result.receipt)) return false;
-    if (frame && editor.retainStructuralSnapshot(frame.canonical!, result.receipt.acceptedRevision)) {
-      publishStructuralChange({ ...frame, canonicalSession: editor, acceptedRevision: editor.getSnapshot().acceptedRevision });
-    }
-    applyAcceptedBuilderDocument(result.trip);
-    setEditNeedsReview(false);
-    setCloudSaveError("");
-    setSaveState(editor.getSnapshot().saveState);
-    return true;
+    return completeAcceptedBuilderEdit(editor, result.receipt, frame);
   };
   const dispatchAcceptedBuilderEdit = async (edit: BuilderAcceptedEdit | null, options?: {
     expectedInputRevision?: number; acceptedInput?: { binding: BuilderInputBinding; raw: string };
@@ -1584,6 +1591,7 @@ function TripBuilderDocument() {
     setEntryKind("loading");
     setResumedQuerylessDraft(false);
     setTripUnavailable(false);
+    setHydrationIssue(null);
     setGuestSaveRequired(null);
     setPendingContinuationNeedsReview(false);
     let active = true;
@@ -1625,7 +1633,7 @@ function TripBuilderDocument() {
         if(!requestedTrip&&params.get("creation")) {
           const reserved=await loadReservedTripCreation(tripIdFromUrl,params.get("creation")!,ownerScope,()=>active&&activeBrowserOwnerIdRef.current===ownerScope);
           if(!active)return;
-          if(reserved){builderCreationTokenRef.current=reserved.token;requestedTrip=reserved.trip;}
+          if(reserved){builderCreationTokenRef.current=reserved.pendingCreation;requestedTrip=reserved.trip;}
         }
         if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
         if (requestedTrip) {
@@ -1951,7 +1959,7 @@ function TripBuilderDocument() {
           ? error.kind === "protected" ? "recovery-read-protected" : "recovery-read-unavailable"
           : "entry-exception");
         reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale",guardReason:active ? failureReason : undefined,homepageReadReason:active ? homepageReadReason ?? undefined : undefined});
-        if(active && builderMountedRef.current){hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
+        if(active && builderMountedRef.current){setHydrationIssue(builderHydrationIssueFor(failureReason));hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
       }
     };
     void hydrate();
@@ -5053,10 +5061,12 @@ function TripBuilderDocument() {
     && recommendedAvoidableCountryReentryCount !== null
     && recommendedAvoidableCountryReentryCount < currentAvoidableCountryReentryCount
     ? (language === "es" ? "Mantiene juntas las paradas del mismo país y reduce reentradas evitables." : "It keeps stops in the same country together, reducing avoidable re-entry.")
-    : backtrackingPenaltyCount !== null
+    : (Boolean(routeIntelligenceInput.origin.coordinates) || stops[0]?.id === routeIntelligence.route.recommendedStopIds[0])
+      && (Boolean(routeJourneyEnd) || stops.at(-1)?.id === routeIntelligence.route.recommendedStopIds.at(-1))
+      && backtrackingPenaltyCount !== null
       && recommendedBacktrackingPenaltyCount !== null
       && recommendedBacktrackingPenaltyCount < backtrackingPenaltyCount
-      ? (language === "es" ? "Reduce los retrocesos innecesarios entre tus paradas." : "It reduces unnecessary backtracking between your stops.")
+      ? (language === "es" ? "Puede reducir los retrocesos según las estimaciones geográficas." : "It may reduce backtracking in the geographic estimates.")
       : canonicalTimingComplete && (routeIntelligence.route.improvementMinutes ?? 0) >= 90
         ? (language === "es" ? "Reduce el tiempo estimado de traslado y deja más tiempo en los destinos." : "It reduces estimated transfer time, leaving more of the trip for your destinations.")
         : (language === "es" ? "Mantiene el viaje avanzando en una dirección geográfica más clara." : "It keeps the trip moving in a clearer geographic direction.");
@@ -5958,6 +5968,13 @@ function TripBuilderDocument() {
               : "Changes not synced to your account";
   const recoverFromSaveError = async () => {
     if(builderEditSessionRef.current) {
+      if (mountedBuilder?.snapshot.error?.retryableEdit) {
+        const editor = builderEditSessionRef.current, feedback = quotaFeedbackRef.current;
+        const receipt = await editor.retryRejectedEdit();
+        if (receipt && completeAcceptedBuilderEdit(editor, receipt, feedback?.editor === editor ? feedback.frame : null)
+          && quotaFeedbackRef.current === feedback) quotaFeedbackRef.current = null;
+        return;
+      }
       if (mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)) {
         openSummaryEditor("stops");
         return;
@@ -6024,7 +6041,9 @@ function TripBuilderDocument() {
     }
     openBuiltTrip();
   };
-  const recoveryActionLabel = mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)
+  const recoveryActionLabel = mountedBuilder?.snapshot.error?.retryableEdit
+    ? (language === "es" ? "Reintentar este cambio" : "Retry this change")
+    : mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)
     ? (language === "es" ? "Revisar e intentar de nuevo" : "Review and try again")
     : syncAction === "reload-cloud"
     ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy")
@@ -6084,6 +6103,7 @@ function TripBuilderDocument() {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
   }
   if (tripUnavailable) {
+    if (hydrationIssue) return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback {...builderHydrationFeedback(hydrationIssue, language)} /></div>;
     if (guestSaveRequired && guestSaveRequired.ownerId === authenticatedOwnerId
       && guestSaveRequired.ownerId === activeBrowserOwnerId) {
       return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback
@@ -6093,7 +6113,7 @@ function TripBuilderDocument() {
         actions={<EasyTLinkButton href={tripSaveContinuationHref(guestSaveRequired.tripId)} variant="secondary">{language === "es" ? "Guardar viaje en mi cuenta" : "Save trip to my account"}</EasyTLinkButton>}
       /></div>;
     }
-    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></aside></div>;
+    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><div className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></div></div>;
   }
 
   if (generated && buildInvariant.canBuildTrip) {
@@ -6265,7 +6285,7 @@ function TripBuilderDocument() {
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
                   onConfirmSavedFinish={()=>{void confirmSavedFinish()}}
-                  onReorder={async ids=>await commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology}
+                  onReorder={async ids=>await commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology} lockedStopIds={protectedBuilderStopIds}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
                   onType={async type=>{
@@ -6717,7 +6737,7 @@ function TripBuilderDocument() {
                     {!gateConflict && transportReviewNotice && <li>{transportReviewNotice}</li>}
                   </ul></section>}
                   {!gateConflict && !routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><button type="button" onClick={async () => await applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</button></article>)}</div></section> : null}
-                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Orden recomendado" : "Recommended order"}</strong>{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
+                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Alternativa estimada" : "Estimated alternative"}</strong><p>{language === "es" ? "Los horarios y las tarifas aún no se han verificado para tus fechas." : "Schedules and fares have not been verified for your dates."}</p>{!routeJourneyEnd && stops.at(-1)?.id !== routeIntelligence.route.recommendedStopIds.at(-1) ? <p>{language === "es" ? `Cambia el final a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} en lugar de ${stops.at(-1)?.name}.` : `Changes the finish to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} instead of ${stops.at(-1)?.name}.`}</p> : null}{!routeIntelligenceInput.origin.coordinates && stops[0]?.id !== routeIntelligence.route.recommendedStopIds[0] ? <p>{language === "es" ? `Cambia el inicio a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} en lugar de ${stops[0]?.name}.` : `Changes the start to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} instead of ${stops[0]?.name}.`}</p> : null}{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
                 </div>}
               </section>}
             </div>
@@ -7465,6 +7485,8 @@ function TripBuilderDocument() {
           ? mountedBuilder?.snapshot.routeWorkBlocked
             ? (language === "es" ? "Tu viaje y tus datos introducidos se conservan. Mantén esta pestaña abierta mientras los revisas." : "Your current trip and input remain preserved. Keep this tab open while you review them.")
             : (language === "es" ? "Mantén esta pestaña abierta mientras revisas los cambios y terminas de guardar." : "Keep this tab open while you review changes and saving finishes.")
+          : mountedBuilder?.snapshot.error?.retryableEdit
+          ? (language === "es" ? "El cambio se conserva solo en esta pestaña hasta que se pueda guardar." : "This change is held only in this tab until it can be saved.")
           : mountedBuilder?.snapshot.error?.deviceOutcome
           ? (language === "es" ? "Este cambio no se aplicó. Revísalo y vuelve a aplicarlo; mantén esta pestaña abierta." : "This change was not applied. Review and reapply it; keep this tab open.")
           : devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete"
@@ -7474,7 +7496,7 @@ function TripBuilderDocument() {
           : cloudConflictTrip
             ? (language === "es" ? "Tus cambios del dispositivo siguen conservados y no sustituyeron la copia de la cuenta." : "Your device edits remain preserved and did not replace the account copy.")
             : (language === "es" ? "Tus últimos cambios siguen seguros en este dispositivo." : "Your latest edits are still safe on this device.")}
-        actions={<EasyTButton variant="secondary" onClick={(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? () => { setBuildNeedsReview(false); setEditNeedsReview(false); setCloudSaveError(""); } : recoverFromSaveError}>{(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? (language === "es" ? "Revisar viaje" : "Review trip") : recoveryActionLabel}</EasyTButton>}
+        actions={<EasyTButton variant="secondary" disabled={mountedBuilder?.snapshot.error?.retryingEdit} onClick={(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? () => { setBuildNeedsReview(false); setEditNeedsReview(false); setCloudSaveError(""); } : recoverFromSaveError}>{(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error ? (language === "es" ? "Revisar viaje" : "Review trip") : recoveryActionLabel}</EasyTButton>}
       /></div> : null}
       {hasRouteSkeleton && <div ref={builderActionRef} className={styles.wizardFoot}>
         <div className={styles.footRight}>

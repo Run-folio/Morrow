@@ -37,4 +37,5 @@ try {
 run("test:prompt-engine");
 run("test:planner-shadow");
 run("test:builder-gate");
+run("test:itinerary-focus");
 run("build");

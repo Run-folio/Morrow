@@ -29,6 +29,7 @@ function fixture(persistence: Promise<boolean>) {
   const bindings: Record<string, any> = {
     get fixedCommitmentLabel() { return label; }, get fixedCommitmentDate() { return date; }, get tripId() { return tripId; },
     get activeBrowserOwnerId() { return bindings.activeBrowserOwnerIdRef.current; },
+    builderEntrySessionRef: { current: null },
     builderEditSessionRef: { current: editor }, builderMountedRef: { current: true }, activeBrowserOwnerIdRef: { current: 'owner-a' },
     useRef: (value: unknown) => ({ current: value }), canonicalPlaceSuggestionFor: () => null, language: 'en',
     setFixedCommitmentLabelState: (value: string) => { label = value; }, setFixedCommitmentDateState: (value: string) => { date = value; },
@@ -39,6 +40,7 @@ function fixture(persistence: Promise<boolean>) {
   for (const name of ['fixedCommitmentInputRef', 'fixedCommitmentSubmissionRef']) {
     const declaration = expression(name); if (declaration) bindings[name] = actual(declaration, bindings);
   }
+  bindings.retireBuilderEntryForInput = actual(expression('retireBuilderEntryForInput')!, bindings);
   for (const name of ['setFixedCommitmentLabel', 'setFixedCommitmentDate']) {
     const declaration = expression(name); if (declaration) bindings[name] = actual(declaration, bindings);
   }

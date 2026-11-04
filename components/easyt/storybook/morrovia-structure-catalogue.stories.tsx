@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within } from "storybook/test";
 import { useEffect, useState } from "react";
 
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import EasyTProductTour, { PRODUCT_TOUR_OPEN_EVENT } from "../easyt-product-tour";
 import { MorroviaConfirmationDialog } from "../morrovia-feedback";
-import { TripShellNavigation } from "../trip-shell-client";
+import { TripShellNavigation, TripShellCanonicalMutationProvider, TripWorkspaceNavigationProvider } from "../trip-shell-client";
+import { WorkspaceOrientationProvider } from "../workspace-orientation";
+import { tourTripFixture } from "./tour-trip.fixture";
 
 function OpenConfirmation() {
   const [open, setOpen] = useState(true);
@@ -33,5 +36,5 @@ export const ProductTourSlide03: Story = { render: () => <OpenProductTour initia
 export const ProductTourSlide04: Story = { render: () => <OpenProductTour initialStep={3} /> };
 export const ProductTourSlide05: Story = { render: () => <OpenProductTour initialStep={4} /> };
 export const GlobalNavigation: Story = { render: () => <EasyTNavigation current="routes" /> };
-export const TripNavigation: Story = { render: () => <div style={{ padding: 24 }}><TripShellNavigation tripId="storybook-trip" /></div> };
+export const TripNavigation: Story = { tags: ["current-ui"], parameters: { a11y: { test: "error" } }, play: async ({ canvasElement }) => { const navigation = await within(canvasElement).findByRole("navigation", { name: "Trip workspace" }); await expect(within(navigation).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page"); }, render: () => <main className="morrovia-editorial-page"><h1>Trip navigation</h1><WorkspaceOrientationProvider ownerId={null} autoStart={false}><TripShellCanonicalMutationProvider trip={{ ...tourTripFixture, id: "storybook-trip", ownerId: null }}><TripWorkspaceNavigationProvider tripId="storybook-trip"><TripShellNavigation tripId="storybook-trip" /></TripWorkspaceNavigationProvider></TripShellCanonicalMutationProvider></WorkspaceOrientationProvider></main> };
 export const MobileCompactHeader390: Story = { parameters: { ...meta.parameters }, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <div style={{ minHeight: 760 }}><EasyTNavigation current="new" /></div> };

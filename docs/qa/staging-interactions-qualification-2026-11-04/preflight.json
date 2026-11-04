@@ -1,0 +1,42 @@
+{
+  "candidate": "6ce583d7378d8584db3f6342f63656853d3568d0",
+  "remoteStagingBefore": "57757a7abc40bd16c18e32faebbd0653e1185278",
+  "mainBefore": "a3ce3a049477b5275afe64ab1cb7207d79790591",
+  "publishedDeployBefore": "6aea668052f1a5901c9fb6da",
+  "otherRelevantTasks": "idle per task listing",
+  "netlifyBuilds": "all five latest ready; none in progress at preflight",
+  "releaseGate": "pass after test-only missing binding repair",
+  "gateChecks": {
+    "total": 650,
+    "pass": 626,
+    "skip": 24,
+    "fail": 0
+  },
+  "baselineFailureComparison": {
+    "sameNames": 9,
+    "sameFailureDetails": true,
+    "missingHarnessBinding": 6,
+    "inputClearingMismatch": 1,
+    "inputDomainMismatch": 2
+  },
+  "privacyReplayPersistenceCore": "unchanged from577",
+  "schemaAuthEnvironmentLockfileCiChanges": [],
+  "netlifyDeploy": "6aea819b30c8a404bdeb9c32",
+  "publishedAt": "2026-11-04T00:54:34.506Z",
+  "publishedCommit": "6ce583d7378d8584db3f6342f63656853d3568d0",
+  "liveHealth": "ok: auth, applicationUrl, database",
+  "mainAfter": "a3ce3a049477b5275afe64ab1cb7207d79790591",
+  "hostedChecks": {
+    "scope": "public About page only; pre-existing draft excluded",
+    "desktopVisual": "pass",
+    "mobile390Visual": "pass after responsive reflow",
+    "horizontalOverflow390": "none (viewport390/document390)",
+    "desktopAccountEnterEscapeFocus": "pass",
+    "mobileMenuEnterEscapeFocus": "pass",
+    "reducedMotion": "not run: browser reports false, no media-emulation control",
+    "tripEditingRecovery": "not run: existing browser draft; no disposable profile API",
+    "physicalTouch": "not run",
+    "screenReader": "not run",
+    "signedInAccountSave": "not run"
+  }
+}

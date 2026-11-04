@@ -139,34 +139,19 @@ test("sample night edits preserve trip duration and published minimums across al
   }
 });
 
-test("homepage product frame follows the live Builder and Itinerary contracts", () => {
+test("homepage product preview reuses map controls and replaces obsolete itinerary switching", () => {
   const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
-  const builder = readFileSync(new URL("../app/journey/home/immersive/demo-builder.tsx", import.meta.url), "utf8");
-  const itinerary = readFileSync(new URL("../app/journey/home/immersive/demo-itinerary.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../app/journey/home/immersive/demo-map.tsx", import.meta.url), "utf8");
-  assert.match(product, /value: "builder", label: "Builder"/);
-  assert.match(product, /value: "itinerary"/);
-  assert.doesNotMatch(product, /value: "map"|See how it fits|More than getting there|A day to be here/);
-  assert.match(builder, /trip-builder\.module\.css/);
-  assert.match(builder, /builderRouteGrid|builderRouteRows|builderRouteNightStatus/);
-  assert.match(builder, /<div className=\{builder\.builderRouteRows\}[^>]*role="table"/);
-  assert.doesNotMatch(builder, /<section className=\{builder\.builderRouteRows\}[^>]*role="table"/);
-  assert.match(builder, /event\.target !== event\.currentTarget/, "row keyboard selection must not cancel nested night-button activation");
-  assert.doesNotMatch(builder, /index === 0 \? \(es \? "Primer destino" : "First stop"\)/);
-  assert.match(itinerary, /trip-itinerary-workspace\.module\.css/);
-  assert.match(itinerary, /workspaceToolbar|dayPanel|dayHeader/);
-  assert.match(itinerary, /className=\{itinerary\.dayList\} role="tablist"/, "the projection keeps the restored production day rail");
-  assert.doesNotMatch(itinerary, /Weather|forecast|Confirmed|booked|Breakfast at your hotel/);
-  assert.match(map, /variant: "preview"/);
-  assert.match(map, /onLifecycleChange=/);
-  assert.match(map, /builderRouteMapFallback/, "Builder's existing map-unavailable treatment remains available in the demo");
-  assert.match(map, /MapRouteLeg/);
-  assert.match(product, /<DemoMap[^>]*es=\{es\}/, "the map receives the homepage locale");
-  assert.match(map, /es \? "Mapa de la ruta no disponible"/, "the Spanish map failure state cannot fall back to English");
-  assert.match(map, /es \? \(nights\[index\] === 1 \? "noche" : "noches"\)/, "map stop metadata follows the homepage locale");
-  assert.doesNotMatch(map, /mapPlacePreview|DestinationPhoto/);
+  assert.doesNotMatch(product, /DemoBuilder|DemoItinerary|homepageDemoReducer|EasyTSegmentedControl/);
+  assert.match(product, /href="#start-building"/);
+  assert.match(product, /data-preview-stop/);
+  assert.match(map, /installMorroviaMapControls/);
+  assert.match(map, /createMorroviaFallbackMapStyle/);
+  assert.match(map, /createMorroviaStopMarker/);
+  assert.match(map, /Map unavailable/);
+  assert.doesNotMatch(map, /JourneyPlannerMap|mapPlacePreview|DestinationPhoto/);
   const stories = readFileSync(new URL("../app/journey/home/immersive/product-demo.stories.tsx", import.meta.url), "utf8");
-  for (const state of ["BuilderDesktop1440", "BuilderMobile390", "ItineraryDesktop1440", "ItineraryMobile390"]) assert.match(stories, new RegExp(state));
+  for (const state of ["PreviewDesktop1440", "PreviewMobile390", "PreviewMobile320"]) assert.match(stories, new RegExp(state));
 });
 
 test("demo has no account, storage, analytics or mutation dependency and lazy-loads the map", () => {
@@ -176,7 +161,7 @@ test("demo has no account, storage, analytics or mutation dependency and lazy-lo
   }
   const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
   assert.match(product, /dynamic\(\(\) => import\("\.\/demo-map"\)/);
-  assert.ok(product.indexOf("styles.canvasNavigation") < product.indexOf("styles.productExamples"));
+  assert.ok(product.indexOf("styles.stops") < product.indexOf("styles.cta"));
 });
 
 test("all sixteen affiliate states have provenance, distinct files and responsive variants", () => {
@@ -246,15 +231,15 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   assert.match(hero, /href="#routes"/);
   assert.doesNotMatch(route, /Nights are a planning guide|Las noches son una guía/);
   assert.match(route, /Start with this route/);
-  assert.match(route, /See whole journey/);
+  assert.match(route, /Try the planner preview/);
   assert.match(route, /className=\{styles\.alternatives\} aria-label=/);
   assert.match(route, /className=\{styles\.alternativeRoute\}/);
   assert.match(route, /className=\{styles\.alternativesAll\}/);
   assert.doesNotMatch(route, /photoSubject|photoContext/);
   assert.doesNotMatch(css, /\.photoSubject/);
   assert.doesNotMatch(product, /The places\. The time between them|route\.stops\.length\} \{es \? "bases" : "overnight bases"\}|nights · interactive sample/);
-  assert.match(product, /Product view/);
-  assert.match(product, /: "Reset"/);
+  assert.match(product, /Sample route stops/);
+  assert.match(product, /Plan your trip/);
   assert.doesNotMatch(closing, /Complex trips, made simple|Viajes complejos, hechos sencillos/);
   assert.match(closing, /href="\/journey\/immersive\/credits\.html"/);
   assert.match(closing, /Image credits/);

@@ -1,0 +1,75 @@
+{
+  "deployedCommit": "6ce583d7378d8584db3f6342f63656853d3568d0",
+  "isolatedOrigin": "https://6aea819b30c8a404bdeb9c32--morrovia-staging.netlify.app",
+  "syntheticGuestTripId": "trip-1fade2b7-0189-4643-99eb-6bbb534252d7",
+  "scope": "new browser origin, blank hydrated inputs, first-visit cookie prompt, optional tracking rejected, guest signup CTA; existing staging origin not accessed or cleared",
+  "hostedVerified": [
+    "template Build opens guest workspace",
+    "inline name Save retains accepted title; Escape discards newer draft",
+    "accepted name survives reload",
+    "authored activity Add and card Edit/Save succeeds",
+    "Save focuses card; Escape focuses originating Edit activity",
+    "remove confirmation and Undo restore activity",
+    "name and restored activity survive reload",
+    "recover=1 Builder continuation retains five stops/night counts",
+    "Space/Down/Enter reorder accepted with announcement and grip focus; reversed to original",
+    "Builder cold reload retains Tokyo4/Kanazawa2/Takayama3/Kyoto4/Osaka2",
+    "reopened itinerary retains edited name and authored activity",
+    "390px document/viewport both390"
+  ],
+  "hostedFinding": {
+    "severity": "P2",
+    "summary": "mobile returned focus is obscured by sticky navigation",
+    "focusedEditButtonRect": {
+      "top": 0.6953125,
+      "bottom": 44.6953125
+    },
+    "navigationRect": {
+      "top": 10.5,
+      "bottom": 54.5
+    },
+    "scrollMarginTop": "0px",
+    "viewport": 390,
+    "status": "unfixed on exact deployed artifact"
+  },
+  "testOnlyReconciliation": {
+    "original": {
+      "total": 28,
+      "pass": 19,
+      "fail": 9
+    },
+    "correctedFullProjectionGroup": {
+      "total": 128,
+      "pass": 128
+    },
+    "independentReview": {
+      "total": 109,
+      "pass": 109
+    },
+    "combinedRegression": {
+      "total": 410,
+      "pass": 410
+    },
+    "missingAssessmentNegativeControls": 2,
+    "productionDiffFromDeployed": "empty"
+  },
+  "reducedMotion": {
+    "browserPreference": false,
+    "forcedHosted": "unsupported: no browser media-emulation capability; native Mac locked",
+    "actualProductionCallbackContract": "three source execution cases pass; reduce=true selects auto, reduce=false selects smooth, reveal=false does not scroll"
+  },
+  "notVerified": [
+    "hosted quota/storage-denial injection",
+    "signed-in/cloud recovery",
+    "physical touch",
+    "screen reader",
+    "forced hosted reduced-motion"
+  ],
+  "newDeployment": false,
+  "productionPromotion": false,
+  "remoteRefsAfter": {
+    "staging": "6ce583d7378d8584db3f6342f63656853d3568d0",
+    "main": "7f34a8b9fe8b7087813c27b0df2f4683f06813d2",
+    "note": "main moved independently from prior a3ce3a0; this task made no main/production push"
+  }
+}

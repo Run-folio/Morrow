@@ -1,0 +1,173 @@
+- main:
+  - link "Morrovia home":
+    - /url: /
+  - navigation "Morrovia navigation":
+    - text: "?"
+    - generic "Open navigation":
+      - generic: Menu
+    - text: ✦
+  - region "Synthetic Japan QA 6ce583d":
+    - heading "Synthetic Japan QA 6ce583d" [level=1]:
+      - button "Synthetic Japan QA 6ce583d":
+        - generic: Synthetic Japan QA 6ce583d
+    - button "Edit trip name":
+      - text: Edit name
+    - term:
+      - generic: Dates
+    - definition: 3 Nov 2026 – 18 Nov 2026
+    - term:
+      - generic: Duration
+    - definition: 16 days
+    - term:
+      - generic: Overnight places
+    - definition: 5 overnight places
+    - term:
+      - generic: Transfers
+    - definition: 4 transfers
+    - button "Trip menu":
+      - generic: More
+    - link "Sign up to keep this route across devices":
+      - /url: /journey/login?mode=sign-up&next=%2Fjourney%2Ftrip-1fade2b7-0189-4643-99eb-6bbb534252d7%3Fcreated%3D1%26saved%3D1
+    - navigation "Trip workspace":
+      - link "Overview":
+        - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7
+        - generic: Overview
+      - link "Itinerary":
+        - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7/itinerary
+        - generic: Itinerary
+      - button "Map":
+        - generic: Map
+      - link "Transport":
+        - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7/transport
+        - generic: Transport
+      - button "More":
+        - generic: More
+  - region "Trip itinerary":
+    - heading "Day by day" [level=2]
+    - button "Previous day" [disabled]:
+      - generic: Previous day
+    - button "Choose a day":
+      - generic: Tue, Nov 3 · Day 1 · Tokyo
+    - button "Next day":
+      - generic: Next day
+    - group "Itinerary view":
+      - button "Day by day" [pressed]
+      - button "Calendar"
+    - 'dialog "Day 1: Tokyo"':
+      - tabpanel "Day 1 · Tue, Nov 3 · Tokyo · Arrive in Tokyo":
+        - heading "Tokyo" [level=2]
+        - generic: Arrive in Tokyo
+        - link "Explore map":
+          - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7/map?stop=seed-tokyo&day=1&returnTo=%2Fjourney%2Ftrip-1fade2b7-0189-4643-99eb-6bbb534252d7%2Fitinerary%3Fday%3D1%26itineraryView%3Ddays
+          - text: Explore map
+        - 'region "Stay: No stay selected"':
+          - strong: No stay selected
+          - link "Plan stay":
+            - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7/stay?stop=seed-tokyo
+        - region "Day 1 planner":
+          - region "Morning":
+            - heading "Morning" [level=3]
+            - generic: "1"
+            - article:
+              - button "Synthetic edited walk QA":
+                - strong: Synthetic edited walk QA
+              - generic "Details and actions for Synthetic edited walk QA":
+                - text: Details and actions
+              - button "Open details"
+              - button "Edit activity" [active]:
+                - text: Edit activity
+              - generic: "Part of day: Synthetic edited walk QA"
+              - 'combobox "Part of day: Synthetic edited walk QA"':
+                - option "Time not set"
+                - option "Morning" [selected]
+                - option "Afternoon"
+                - option "Evening"
+              - 'button "Move earlier in Morning: Synthetic edited walk QA" [disabled]':
+                - generic: "Move earlier in Morning: Synthetic edited walk QA"
+              - 'button "Move later in Morning: Synthetic edited walk QA" [disabled]':
+                - generic: "Move later in Morning: Synthetic edited walk QA"
+              - button "Move to another day":
+                - text: Move to another day
+              - button "Remove":
+                - text: Remove
+        - button "Add plan":
+          - text: Add plan
+        - generic "Edit activities and order"
+      - complementary "Selected day planning context":
+        - generic "Suggestions for this day":
+          - generic: Suggestions for this day
+        - region "Useful ideas for Day 1":
+          - heading "Shortlist for Tokyo" [level=3]
+          - article "Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train Tokyo · Tour · 11h · Viator":
+            - strong: Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train
+            - generic: Tokyo · Tour · 11h · Viator
+            - button "Open details for Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train": Details
+            - button "Add to Day 1":
+              - text: Add to Day 1
+            - button "Choose day for Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train":
+              - generic: Choose placement for Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train
+            - button "Save"
+            - link "View on Viator, opens Viator in a new tab":
+              - /url: https://shop.live.rc.viator.com/tours/Tokyo/Mt-Fuji-and-Hakone-1-Day-Bus-Tour-return-by-Bullet-Train-Shinkansen/d334-28575P41?mcid=42383&pid=P00315646&medium=api&api_version=2.0
+              - text: View on Viator
+            - generic: Partner link · Morrovia may earn a commission at no extra cost to you.
+            - button "About this Viator partner link":
+              - generic: About this Viator partner link
+          - article "Tokyo Shinjuku Sumo Show & Experience with Photo Tokyo · Tour · 1h 30m · Viator":
+            - strong: Tokyo Shinjuku Sumo Show & Experience with Photo
+            - generic: Tokyo · Tour · 1h 30m · Viator
+            - button "Open details for Tokyo Shinjuku Sumo Show & Experience with Photo": Details
+            - button "Add to Day 1":
+              - text: Add to Day 1
+            - button "Choose day and part of day for Tokyo Shinjuku Sumo Show & Experience with Photo":
+              - generic: Choose placement for Tokyo Shinjuku Sumo Show & Experience with Photo
+            - button "Save"
+            - link "View on Viator, opens Viator in a new tab":
+              - /url: https://shop.live.rc.viator.com/tours/Tokyo/Tokyo-Shinjuku-Sumo-Show-Experience-with-Photo-and-Drinks/d334-5610033P1?mcid=42383&pid=P00315646&medium=api&api_version=2.0
+              - text: View on Viator
+            - generic: Partner link · Morrovia may earn a commission at no extra cost to you.
+            - button "About this Viator partner link":
+              - generic: About this Viator partner link
+          - article "Shinjuku Gyo-en Tokyo · Place":
+            - link "Open source for Shinjuku Gyo-en":
+              - /url: https://en.wikipedia.org/?curid=2439479
+            - strong: Shinjuku Gyo-en
+            - generic: Tokyo · Place
+            - button "Open details for Shinjuku Gyo-en": Details
+            - button "Add to Day 1":
+              - text: Add to Day 1
+            - button "Choose day and part of day for Shinjuku Gyo-en":
+              - generic: Choose placement for Shinjuku Gyo-en
+            - button "Save"
+        - link "See more ideas in Explore":
+          - /url: /journey/trip-1fade2b7-0189-4643-99eb-6bbb534252d7/explore?stop=seed-tokyo&day=1
+          - text: See more ideas in Explore
+        - generic "Notes 0":
+          - generic: Notes
+          - generic: "0"
+        - generic: Add day note
+        - textbox "Add day note":
+          - /placeholder: Add a reminder for this day
+        - button "Add note":
+          - text: Add note
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: /journey/contact
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- alert

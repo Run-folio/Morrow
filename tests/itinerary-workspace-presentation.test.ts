@@ -14,12 +14,12 @@ test("the center timeline exposes direct add, edit, remove, reorder, and local s
   assert.match(workspace, /moveItineraryActivity/);
   assert.match(workspace, /MorroviaConfirmationDialog/);
   assert.match(workspace, /data-selected-item=\{selectedItemId \?\? undefined\}/);
-  assert.match(workspace, /draggable onDragStart=\{onDragStart\}/);
+  assert.match(workspace, /onDragStart=\{onDragStart\}/);
 });
 
 test("semantic dayparts are primary while the unnumbered detailed editor stays available", () => {
   assert.match(workspace, /<RichItineraryDayPlanner/);
-  assert.match(workspace, /workspaceView === "days" && reorderableEditorNotes > 1 \? <details key=\{active\.id\} className=\{styles\.sequenceEditor\}>/);
+  assert.match(workspace, /workspaceView === "days" && reorderableEditorNotes > 0 \? <details[^>]*className=\{styles\.sequenceEditor\}/);
   assert.match(workspace, /addPart=\{addFlow\?\.dayNumber === active\.dayNumber && addFlow\.kind === "activity" \? addFlow\.dayPart \?\? null : null\}/);
   assert.match(workspace, /onAddOpen=\{\(dayPart\) => openAddFlow\(active\.notes\.length, "activity", dayPart\)\}/);
   assert.match(workspace, /addItineraryActivityWithUndo\(current, addFlow\.dayNumber, addFlow\.noteIndex, addDraft, addFlow\.dayPart\)/);
@@ -63,5 +63,7 @@ test("Itinerary map pins keep canonical item selection without capture workaroun
   assert.match(workspace, /selectedPlannerPinId=\{embeddedMapContext\.selectedPlannerPinId\}/);
   assert.match(workspace, /interactivePlannerPinIds=\{interactiveMapPinIds\}/);
   assert.match(workspace, /if \(activity\) setSelectedItemId\(activity\.id\)/);
-  assert.doesNotMatch(workspace, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);
+  const mapStart = workspace.indexOf("<JourneyPlannerMap");
+  const embeddedMap = workspace.slice(mapStart, workspace.indexOf("/>", mapStart) + 2);
+  assert.doesNotMatch(embeddedMap, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);
 });

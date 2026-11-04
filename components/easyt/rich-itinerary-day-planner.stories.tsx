@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";
 import { assignItineraryIdeaDayPart } from "@/lib/easyt/itinerary-ideas";
@@ -273,6 +273,29 @@ const threePlannedTrip: EasyTTrip = {
 
 export const FullFourSectionDay: Story = {
   render: () => <StoryFrame trip={baseTrip} dayId="kyoto-2" />,
+};
+
+export const ExpandedActivityActions: Story = {
+  ...FullFourSectionDay,
+  play: async ({ canvasElement }) => {
+    const summary = canvasElement.querySelector<HTMLElement>('summary[aria-label^="Details and actions"]');
+    if (!summary) throw new Error("Activity disclosure missing");
+    await userEvent.click(summary);
+    await expect(summary.closest("details")).toHaveAttribute("open");
+    await userEvent.keyboard("{Escape}");
+    await expect(summary.closest("details")).not.toHaveAttribute("open");
+    await expect(summary).toHaveFocus();
+  },
+};
+
+export const ExpandedActivityMobile320: Story = {
+  ...FullFourSectionDay,
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const summary = canvasElement.querySelector<HTMLElement>('summary[aria-label^="Details and actions"]');
+    if (!summary) throw new Error("Activity disclosure missing");
+    await userEvent.click(summary);
+  },
 };
 
 export const SparseDay: Story = { render: () => <StoryFrame trip={sparseTrip} dayId="kyoto-2" /> };

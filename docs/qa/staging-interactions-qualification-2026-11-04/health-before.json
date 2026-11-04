@@ -1,0 +1,1 @@
+{"state":"ok","checks":{"auth":"ok","applicationUrl":"ok","database":"ok"},"deployment":{"commit":"57757a7abc40bd16c18e32faebbd0653e1185278","context":"production"}}

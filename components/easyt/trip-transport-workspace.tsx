@@ -232,7 +232,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
   const showStatus = !(status === copy.planningEstimate && showsEstimatedTiming);
   const duplicateUnknownMode = status === copy.needsCheckingStatus && leg.mode === "unknown" && durationMinutes === null;
   const Chevron = selected ? ChevronUp : ChevronDown;
-  return <article className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
+  return <div className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
     <div className={styles.summary} data-transport-summary>
       <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
@@ -252,7 +252,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
     <div className={styles.detailWrap} id={`transport-detail-${leg.id}`} hidden={!selected}>
       {selected ? <SelectedJourneyDetail trip={trip} item={item} language={language} copy={copy} /> : null}
     </div>
-  </article>;
+  </div>;
 }
 
 function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip; item: ItineraryTransportAgendaLeg; language: Language; copy: ReturnType<typeof copyFor> }) {
@@ -264,12 +264,11 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const action = item.booking || item.bookingMismatch || !isFutureDate(item.date) ? null : transportAffiliateActionForLeg(trip, leg, new Date(), item.date);
   const detailNotes = [...new Set([noteForJourney(item, copy, language), detailNoteForJourney(item, copy, language)].filter((value): value is string => Boolean(value)))];
   const airportAssumption = item.booking || item.bookingMismatch ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
-  const actionDetail = action?.category === "car_rental" ? null : action?.href === affiliatePartners.omio.transportUrl ? copy.omioDetailsNotCarried : leg.mode === "train" ? copy.omioTrainDetailsCarried : copy.omioFlightDetailsCarried;
   return <section className={styles.selectedDetail} aria-live="polite" aria-label={copy.journeyDetails}>
     {airportAssumption ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
     <div className={styles.connectionActions}>
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
-        label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
+        language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
       {item.bookingMismatch ? null : item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
         pending={mutation.isPending(`transport-booking-${leg.id}`)}
         onMark={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}
@@ -295,7 +294,6 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
     <div id={`journey-estimates-${leg.id}`} hidden={!detailsOpen} className={styles.journeyDetails}>
       {detailNotes.map((note) => <p key={note}>{note}</p>)}
       {leg.provider ? <p>{leg.provider}</p> : null}
-      {action && actionDetail ? <p>{actionDetail}</p> : null}
       {action ? <small>{affiliateDisclosure}</small> : null}
     </div>
   </section>;
@@ -340,8 +338,8 @@ function isFutureDate(value: string | null) {
   return parsed >= todayUtc;
 }
 
-function TransportAffiliateAction({ action, trip, leg, label }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string }) {
+function TransportAffiliateAction({ action, trip, leg, label, language }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string; language: Language }) {
   return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} variant="primary" />
+    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} variant="primary" />
   </div>;
 }

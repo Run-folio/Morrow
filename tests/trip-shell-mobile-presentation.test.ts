@@ -49,11 +49,13 @@ test("ordinary device promotion is one shared shell row while recovery remains p
 
 test("slim trip identity retains status, truncated title disclosure, all stats, save feedback and actions", () => {
   const identity = client.slice(client.indexOf('<div className={styles.tripIdentity}>'), client.indexOf('<div className={styles.headerActions}>'));
-  assert.match(identity, /<p className=\{styles\.eyebrow\}>\{status\}<\/p>[\s\S]*<h1 id="trip-shell-title">[\s\S]*<span className=\{styles\.tripTitleDisclosure\}>[\s\S]*<EasyTButton[\s\S]*aria-expanded=\{titleExpanded\}[\s\S]*onPointerEnter=\{\(\) => dispatchTitleDisclosure\("pointer-enter"\)\}[\s\S]*onPointerLeave=\{\(\) => dispatchTitleDisclosure\("pointer-leave"\)\}[\s\S]*onFocus=\{\(\) => dispatchTitleDisclosure\("focus"\)\}[\s\S]*onBlur=\{\(\) => dispatchTitleDisclosure\("blur"\)\}[\s\S]*onClick=\{\(\) => dispatchTitleDisclosure\("toggle"\)\}[\s\S]*<span>\{displayTitle\}<\/span>[\s\S]*<\/EasyTButton>[\s\S]*<span className=\{styles\.tripTitleFull\} aria-hidden="true" style=\{\{ display: titleExpanded \|\| \(\(titleHovered \|\| titleFocused\) && !titlePreviewDismissed\) \? "block" : "none" \}\}>\{displayTitle\}<\/span>[\s\S]*<\/span>[\s\S]*<\/h1>[\s\S]*<dl className=\{styles\.metadata\}>/);
-  assert.match(identity, /<dd>\{dateFacts\.rangeLabel\}<\/dd>/);
-  assert.match(identity, /<dd>\{duration \? `\$\{duration\}[\s\S]*"Duration to confirm"\}<\/dd>/);
-  assert.match(identity, /overnightPlaceCount/);
-  assert.match(identity, /mutation\.trip\.legs\.length/);
+  assert.match(identity, /<p className=\{styles\.eyebrow\}>\{status\}<\/p>[\s\S]*<h1 id="trip-shell-title">[\s\S]*<span className=\{styles\.tripTitleDisclosure\}>[\s\S]*<EasyTButton[\s\S]*aria-expanded=\{titleExpanded\}[\s\S]*onPointerEnter=\{\(\) => dispatchTitleDisclosure\("pointer-enter"\)\}[\s\S]*onPointerLeave=\{\(\) => dispatchTitleDisclosure\("pointer-leave"\)\}[\s\S]*onFocus=\{\(\) => dispatchTitleDisclosure\("focus"\)\}[\s\S]*onBlur=\{\(\) => dispatchTitleDisclosure\("blur"\)\}[\s\S]*onClick=\{\(\) => dispatchTitleDisclosure\("toggle"\)\}[\s\S]*<span>\{displayTitle\}<\/span>[\s\S]*<\/EasyTButton>[\s\S]*<span className=\{styles\.tripTitleFull\} aria-hidden="true" style=\{\{ display: titleExpanded \|\| \(\(titleHovered \|\| titleFocused\) && !titlePreviewDismissed\) \? "block" : "none" \}\}>\{displayTitle\}<\/span>[\s\S]*<\/span>[\s\S]*<\/h1>[\s\S]*\{metadata\}/);
+  const metadata = client.slice(client.indexOf("const metadata = ("), client.indexOf("const leadingActions ="));
+  assert.match(metadata, /<dl className=\{styles\.metadata\}>/);
+  assert.match(metadata, /<dd>\{dateFacts\.rangeLabel\}<\/dd>/);
+  assert.match(metadata, /<dd>\{duration \? `\$\{duration\}[\s\S]*"Duration to confirm"\}<\/dd>/);
+  assert.match(metadata, /overnightPlaceCount/);
+  assert.match(metadata, /mutation\.trip\.legs\.length/);
   assert.match(client, /<MorroviaSaveStatus state=\{mutation\.saveState\}/);
   assert.match(client, />Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*<TripOverviewLibraryActions/);
   assert.match(css, /\.tripHeader\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto[^}]*min-height:\s*0/);

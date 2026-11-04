@@ -348,9 +348,10 @@
   border-top: 1px solid var(--morrovia-line);
 }
 
-.activityDragging {
-  opacity: .45;
+.activity.activityDragging {
   background: var(--morrovia-lilac);
+  outline: 2px solid var(--morrovia-action);
+  outline-offset: -2px;
   transform: scale(.985);
   user-select: none;
 }
@@ -459,6 +460,16 @@
 .activityMenu {
   position: relative;
 }
+
+.activityExpansion { grid-column: 1 / -1; min-width: 0; }
+.activityExpansion > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; color: var(--morrovia-ink-soft); font: var(--morrovia-type-control); }
+.activityExpansion > summary::-webkit-details-marker { display: none; }
+.activityExpansion > summary:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+.activityExpansion > summary svg { width: 16px; height: 16px; }
+.activityExpansion[open] > summary svg { transform: rotate(180deg); }
+.activityExpansion > div { display: grid; gap: 8px; min-width: 0; padding-top: 8px; }
+.activityExpansion > div > p { margin: 0; overflow-wrap: anywhere; font: var(--morrovia-type-supporting-body); }
+.activityExpansion button { min-height: 44px; white-space: normal; }
 
 .activityMenu > summary {
   width: 44px;
@@ -720,3 +731,10 @@
 .planner[data-compact-mobile] .transfer { border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 10px 12px; background: var(--morrovia-lilac); }
 .planner[data-compact-mobile] .transferSelect { padding: 0; border-left: 0; }
 .planner[data-compact-mobile] .periodGrid:empty { display: none; }
+
+/* Keep returned card focus clear of shared sticky navigation. */
+.activitySelect,
+.activityExpansion > summary,
+.activityExpansion button {
+  scroll-margin-block: var(--morrovia-sticky-content-offset);
+}

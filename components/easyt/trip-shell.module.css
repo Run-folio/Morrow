@@ -75,6 +75,10 @@
   min-width: 0;
 }
 
+.inlineNameTrigger { justify-self: start; min-height: 44px; }
+.inlineNameForm { display: grid; min-width: 0; gap: 10px; }
+.inlineNameForm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--morrovia-signal);
@@ -369,9 +373,9 @@
 @media (max-width: 760px) {
   .resolverNotice { width: calc(100% - 24px); margin-top: 12px; }
   .deviceOnlyNotice { padding: 0 16px 6px; }
-  .deviceOnlyNotice aside { min-height: 44px; gap: 8px; padding: 4px 8px; border-radius: var(--morrovia-control-radius); }
-  .deviceOnlyNotice aside > div:not(:last-child) span { display: none; }
-  .deviceOnlyNotice aside > svg { width: 16px; height: 16px; }
+  .deviceOnlyNotice aside, .deviceOnlyNotice [data-morrovia-status-banner] { min-height: 44px; gap: 8px; padding: 4px 8px; border-radius: var(--morrovia-control-radius); }
+  .deviceOnlyNotice aside > div:not(:last-child) span, .deviceOnlyNotice [data-morrovia-status-banner] > div:not(:last-child) span { display: none; }
+  .deviceOnlyNotice aside > svg, .deviceOnlyNotice [data-morrovia-status-banner] > svg { width: 16px; height: 16px; }
   .workspace {
     width: 100%;
     padding-top: 0;
@@ -493,7 +497,7 @@
   .tripHeader { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 16px; align-items: start; }
   .tripIdentity h1 { font-size: clamp(26px, 7vw, 32px); line-height: 1.1; }
   .tripTitleToggle > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
-  .tripIdentity > .eyebrow, .tripIdentity > .metadata, .headerActions > .editAction { display: none; }
+  .tripIdentity > .eyebrow, .headerActions > .editAction { display: none; }
   .headerActions { grid-column: 2; width: auto; display: flex; flex-direction: column-reverse; align-items: flex-end; }
   .headerActions > [role="status"] { white-space: normal; max-width: 90px; }
   .subnav[data-mobile] { position: fixed; z-index: var(--morrovia-layer-dock); bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; min-height: 64px; padding: 0 4px env(safe-area-inset-bottom); border-top: 1px solid var(--morrovia-line); background: var(--morrovia-control-surface); }

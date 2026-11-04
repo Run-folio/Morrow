@@ -114,14 +114,14 @@ async function accept(h: Awaited<ReturnType<typeof harness>>, edit = budget as P
 }
 function builderDispatch(h: Awaited<ReturnType<typeof harness>>) {
   const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf('  const dispatchAcceptedBuilderEdits =');
+  const start = source.indexOf('  const completeAcceptedBuilderEdit =');
   const end = source.indexOf('  const updateDiscoveryPlanningState =', start);
   const changes: unknown[] = [], applied: unknown[] = [], errors: string[] = [];
   const ref = { current: h.session }, mounted = { current: true };
   const scope = { builderEditSessionRef: ref, builderMountedRef: mounted, activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
     builderStructuralFeedback: () => ({ summary: 'remove_stop' }), captureStructuralChange: (summary: string, canonical: unknown) => ({ summary, canonical }),
     publishStructuralChange: (frame: unknown) => changes.push(frame), applyAcceptedBuilderDocument: (trip: unknown) => applied.push(trip),
-    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {},setEditNeedsReview(){} };
+    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {},setEditNeedsReview(){}, quotaFeedbackRef:{current:null} };
   const script = ts.transpileModule(source.slice(start, end) + '\nreturn dispatchAcceptedBuilderEdit;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const dispatch = new Function('scope', `with(scope){${script}}`)(scope) as (edit: Parameters<typeof h.session.accept>[0]) => Promise<boolean>;
   return { dispatch, changes, applied, errors, mounted, ref };

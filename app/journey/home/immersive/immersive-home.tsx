@@ -71,7 +71,7 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
     </section>
     <HomepageRouteInspiration routes={routes} previewRoutes={previewRoutes} />
     <HomepageHowItWorks />
-    <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
+    <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
     <ClosingChapter />
   </main>;
 }

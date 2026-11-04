@@ -1,0 +1,382 @@
+✔ saved idea list item has a compatible generic root and preserves drag/content attributes (15.771708ms)
+✔ other itinerary cards retain native article semantics (0.25975ms)
+(node:99310) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/analytics.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ analytics paths omit query data and collapse opaque workspace IDs (0.453209ms)
+✔ analytics link destinations never retain query data or external paths (0.082791ms)
+✔ analytics payload cleaning removes empty values without changing safe coarse metadata (0.084667ms)
+✔ save failures are reduced to machine-safe categories (0.184291ms)
+✔ analytics is a safe no-op outside the browser and without configuration (0.117ms)
+✔ route_started emits only coarse public route metadata after consent (0.206792ms)
+✔ route_started is a no-op without analytics consent (0.055583ms)
+✔ recommendation performance emits only coarse bounded lane metadata (0.079625ms)
+✔ workspace orientation analytics stays off before consent (0.054375ms)
+✔ workspace orientation analytics contains only coarse guide metadata (0.727916ms)
+✔ Viator affiliate clicks use the dedicated, privacy-safe event (0.223959ms)
+✔ Omio affiliate clicks carry placement and opaque trip-transfer identifiers only (0.194583ms)
+✔ commercial click reporting maps either established event to one stable KPI record (0.327792ms)
+✔ Overview practical-task affiliate clicks retain their scoped placement (0.092125ms)
+✔ Trip.com category handoffs retain their canonical commercial categories (0.149958ms)
+✔ commercial clicks remain consent-gated (0.115042ms)
+✔ homepage route impressions carry only catalogue metadata and respect consent (0.1755ms)
+✔ gift analytics paths cannot retain a capability while public and private route shapes stay usable (0.113625ms)
+✔ actual closed popup Enter does not choose a retained hidden row (254.361834ms)
+✔ actual IME confirmation does not choose a destination (110.959333ms)
+✔ completed search choices disappear when their geographic context changes (154.035ms)
+✔ an old context lookup cannot leave the new context search button busy (182.880625ms)
+(node:99312) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/lib/easyt/abortable-effect.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual autocomplete settles unavailable after bounded headers wait (1.195834ms)
+✔ actual autocomplete settles unavailable after bounded body wait (0.208417ms)
+✔ late body after deadline cannot install candidates (7.503625ms)
+✔ cancelled old request cannot overwrite a replacement healthy result (0.875875ms)
+✔ actual autocomplete completes empty and retry can finish (0.259791ms)
+✔ actual autocomplete completes http503 and retry can finish (0.189542ms)
+✔ actual autocomplete completes malformed and retry can finish (0.1715ms)
+(node:99313) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-interactions.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ closed search does not select a hidden option on Enter (0.61125ms)
+✔ IME confirmation does not select or dismiss a place (0.066375ms)
+✔ empty result lists clear stale active descendants (0.063583ms)
+✔ Escape from a closed search remains available to its enclosing dialog (0.044791ms)
+(node:99314) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-persistence-acceptance.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ explicit per-stop nights survive Builder trip persistence and reload (42.879791ms)
+✔ an intentionally cleared v2 commitment is not restored from structured-source text on reload (20.807041ms)
+✔ the open-world Builder acceptance trip round-trips every reviewed decision (22.175167ms)
+✔ Builder trip persistence retains an explicit empty Discovery draft through owner canonicalization (3.715541ms)
+✔ Discovery direction, step, base and visit choices resume under the same owner without replacement (2.69075ms)
+✔ Discovery saves canonical progress under the same owner after each action and reload retries only missing IDs (51.037667ms)
+✔ existing Sydney resolves its parent only after durable completion; failed completion retains its saved selection (21.725ms)
+✔ touch release outside this route never commits the previous target (2.906458ms)
+✔ touch release on a blocked target or another reorder surface cancels (1.370417ms)
+✔ lost pointer capture cancels without a mutation (7.587125ms)
+✔ rejected and throwing acceptance never announce success (2.072ms)
+✔ pending acceptance cannot dispatch twice and announces only after acceptance (0.434708ms)
+✔ fixed order and protected-stop barriers never dispatch (0.511667ms)
+✔ an old trip acceptance cannot announce success in a different trip scope (0.327875ms)
+✔ a gesture cannot be dropped into a new trip with the same stop IDs (0.289792ms)
+✔ Escape does not claim to cancel a submitted acceptance (0.353584ms)
+✔ menu completion restores its own focus, but never steals focus from another input (0.556958ms)
+(node:99316) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-return-row-component.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual Builder renders canonical return after overnight stops without endpoint editing controls (257.584042ms)
+✔ return transport preserves pending, failed, unknown and separate road-reference states (338.702417ms)
+✔ one-way or unknown journeys never manufacture a missing departure; actual explicit departure is Finish (281.782459ms)
+✔ the endpoint uses the selected effective mode and the existing canonical choice callback (48.423667ms)
+✔ incoming and return airport assumptions remain conditional, unknown and hidden for booked legs (281.094ms)
+✔ actual Builder shows one estimated total and a short airport tag for resolved Paris to LHR return (73.840792ms)
+✔ Builder table has six ordered headers and only cells as direct body-row children (52.440958ms)
+✔ cell wrappers preserve full names, zero-night limits, selection and existing callback ownership (55.688459ms)
+(node:99317) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/discovery-modal-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one shared dialog owns Escape, scroll lock, focus return and a single scroll body (0.719625ms)
+✔ mobile Discovery has one scroll body and safe-area clearance below the last card (0.230917ms)
+✔ normal typed and sparse entries select Discovery; only recovery selects legacy renderer (1.065167ms)
+✔ Back changes only the draft step and does not route browser history (0.103792ms)
+✔ partial confirmation leaves Discovery open and explains unresolved choices at the commit boundary (0.783167ms)
+✔ canonical search uses stop eligibility and asks before extending the original geography (0.71825ms)
+✔ global visual steps own direction, shortlist, and progressive display without country gates (0.147333ms)
+✔ the adaptive shell has an honest loading and sparse recovery presentation (0.102125ms)
+✔ a genuine zero-result entry renders only the intentional search state (0.143708ms)
+✔ pending unresolved intent uses semantic EN and ES labels (0.624041ms)
+✔ visual Discovery uses the modal title and secondary geography without duplicate step headings (34.975375ms)
+✔ Builder commit locks every Discovery navigation and dismissal path (201.01775ms)
+✔ Builder confirmation uses the same fail-closed review gate and base as Discovery (0.997125ms)
+✔ Discovery exposes one card mutation, reset and reviewed search without early route mutation (48.291291ms)
+(node:99321) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/discovery-modal-loading-render.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ committing Discovery renders native disabled close, Back, reset, finish and confirm controls (27.272667ms)
+✔ idle Discovery retains enabled Back, reset and Finish later rather than permanently locking the UI (32.783042ms)
+(node:99322) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/homepage-inspiration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ homepage inspiration cards retain canonical Route Detail links for pre-hydration navigation (1.131541ms)
+✔ homepage inspiration reuses reviewed route photos with resilient fallback and sibling credits (0.459667ms)
+✔ homepage how it works uses the approved three steps and opens its inline disclosure (0.412458ms)
+✔ homepage inspiration grid keeps seven readable cards on desktop and wraps responsively (0.344916ms)
+✔ homepage inspiration stories cover full, fewer, empty, mobile and interaction states (0.259708ms)
+✔ the rendered interaction play verifies canonical card content and ordinary click behavior (0.186208ms)
+(node:99323) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-workspace-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the center timeline exposes direct add, edit, remove, reorder, and local selection controls (0.878333ms)
+✔ semantic dayparts are primary while the unnumbered detailed editor stays available (0.497583ms)
+✔ activity entry has one planner owner while authored notes remain in the Notes rail (0.31225ms)
+✔ truthful item status never infers confirmation or per-item time from presence (0.422542ms)
+✔ Itinerary uses Map's recovery, queue, CAS, and canonical cache pipeline (0.642791ms)
+✔ Itinerary map pins keep canonical item selection without capture workarounds (0.371916ms)
+(node:99324) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/map-discovery-provider-independence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Google canvas selection changes one map panel without suppressing Morrovia inventory (1.506792ms)
+✔ the beta renderer switch keeps MapLibre immediate and leaves Places availability independent (0.644125ms)
+✔ Google selected-place details keep enrichment identity, save and day actions (0.378625ms)
+✔ Google map See and Stay retain Morrovia provider and affiliate owners (0.141625ms)
+(node:99325) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/map-renderer-owner-cleanup.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual Map owner cleanup contains removal-time aborts and disposes the healthy renderer once (25.481292ms)
+✔ actual Map owner cleanup reports a renderer failure without throwing or leaving its DOM host (7.975083ms)
+(node:99326) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/posthog-replay.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ replay requires an explicit production rollout and exact approved HTTPS origin (182.475458ms)
+✔ missing, rejected, malformed, obsolete and legacy consent never initialize or start replay (3.880792ms)
+✔ current grant starts once across repeat initialization and consent notifications (1.492625ms)
+✔ withdrawal stops replay before reset and prevents later events until a fresh grant (10.504417ms)
+✔ strict replay masking covers text, inputs, attributes and disables extra capture (0.78675ms)
+✔ throwing analytics vendors or identity reset cannot prevent recorder withdrawal and opt-out (2.295958ms)
+✔ replay vendor failure cannot block existing consented product analytics (0.468167ms)
+✔ event sanitization also strips replay-generated session entry URLs and referrers (0.492084ms)
+✔ replay send boundary drops CSSOM, plugin, unknown and compressed payloads (0.359541ms)
+✔ default-off rollout preserves event dispatch and disables all remote config (0.374875ms)
+✔ privacy proposal describes optional masked replay in English and Spanish without activation claims (0.322917ms)
+✔ automatic nested person metadata cannot retain capability URLs or referrers (0.283458ms)
+✔ SDK top-level person context is stripped without mutating the original capture (0.284417ms)
+(node:99327) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/privacy-consent.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fresh visitors have no decision and every optional category defaults off (2.343542ms)
+✔ reject optional stores the current policy version and remains rejected after reload (0.189583ms)
+✔ accept optional enables both explicit categories and survives reload (0.063292ms)
+✔ manage preferences persists granular choices (1.142791ms)
+✔ obsolete or malformed consent fails closed and legacy analytics consent never enables affiliate tracking (0.175ms)
+✔ withdrawal clears only optional analytics state and preserves planner, auth-adjacent and preference data (0.369625ms)
+✔ optional SDK loaders are absent before consent and Omio is owned by the gated client boundary (0.865042ms)
+✔ cookie settings and notice are dedicated, public and use the canonical identity (0.353166ms)
+✔ core planner and authentication owners do not depend on optional consent (0.564708ms)
+✔ stored record has one established key and explicit policy version (0.104625ms)
+✔ a denied browser storage getter returns no consent record and optional preferences off (0.12775ms)
+✔ analytics remains off when the browser storage getter is denied (0.052625ms)
+✔ affiliate tracking remains off when the browser storage getter is denied (0.03975ms)
+✔ an explicit current consent reader does not access denied browser storage (0.073042ms)
+✔ denied consent reads fail closed without attempting a write (0.181666ms)
+✔ a denied consent write cannot be reported as a stored grant or withdrawal (0.572708ms)
+(node:99329) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/private-session-boundary.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ private profile and passport context is namespaced by exact owner (1.476583ms)
+✔ an A to B switch fails closed before stale private props can render (0.159ms)
+✔ session expiry is distinct from an account switch so an open document can remain intact (0.083375ms)
+✔ reauth preserves the exact child Map query and hash (0.256417ms)
+✔ network rejection becomes a deterministic settled mutation result (2.999ms)
+✔ email-verification messaging can use the same configuration predicate as auth (0.323166ms)
+(node:99331) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/rich-itinerary-day-planner-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ empty day exposes the same three direct planning slots as a populated day (0.449042ms)
+✔ populated day shows all three periods and saved unslotted rows (0.107709ms)
+✔ direct Add uses the controlled composer and canonical daypart intent (0.0895ms)
+✔ mobile populated plan removes surplus section gap without shrinking activity controls (0.105875ms)
+✔ travel card copy can wrap inside the shared quiet button at mobile widths (0.060292ms)
+✔ the production itinerary owner consumes canonical composition and persists period changes through its mutation path (0.105042ms)
+✔ broad periods use semantic headings, canonical controls, and a keyboard-accessible clear state (0.118083ms)
+✔ native drag uses a canonical pointer source while preserving every canonical placement path (0.328208ms)
+✔ whole, empty, populated, and insertion drop targets retain native acceptance semantics (0.182708ms)
+✔ entering native drag mode never changes period geometry (0.124458ms)
+✔ mobile hides pointer drag without removing the explicit scheduling and reorder controls (0.12475ms)
+✔ mobile keeps the same three slot actions and narrow one-column rhythm (0.084375ms)
+✔ slot Add composer, first-class travel, and tonight context stay distinct (0.281875ms)
+✔ long names and compact breakpoints remain contained without a parallel mobile data path (0.212875ms)
+✔ day parts use the canonical calm surface and heading typography at every width (0.1065ms)
+✔ the scheduled card is the primary selection target and editing chrome is secondary (0.092667ms)
+✔ the rendered planner follows Travel, full-day band, chronological day parts, unslotted context, then Tonight (0.061583ms)
+✔ Storybook uses the production component for composed planner and responsive states (0.226209ms)
+✔ full-day activities render once as a day-level band with only verified period overlaps (0.073833ms)
+✔ full-day period drops announce day-level placement and keep mobile and keyboard alternatives (0.100291ms)
+✔ saved full-day ideas expose a dedicated day-level drag handle (0.081833ms)
+✔ ranked full-day suggestions remain draggable to the day-level band (0.061083ms)
+✔ ranked rows for already-planned ideas cannot create a duplicate no-op drag source (0.038584ms)
+✔ dropping an already-planned full-day activity on a period reports the unchanged placement clearly (0.073417ms)
+✔ planned full-day drag shows its valid route and periods are not marked as drop targets (0.037958ms)
+(node:99332) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/search-date-picker.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ calendar exposes date cells inside week rows for 2026-02 (24.643ms)
+✔ calendar exposes date cells inside week rows for 2026-09 (2.336375ms)
+✔ calendar exposes date cells inside week rows for 2026-08 (1.585625ms)
+✔ Search picker disables yesterday while today is selectable (1.641042ms)
+✔ Search picker rechecks local today when a previously enabled day is picked after midnight (1.593083ms)
+✔ the shared picker still permits historical trip dates unless Search opts in (1.646458ms)
+✔ complete-range mode does not submit a partial start selection (3.697166ms)
+✔ complete-range end uses the local selected start while canonical props are unchanged (8.615625ms)
+✔ closing a partial complete-range selection makes no submission (4.553125ms)
+✔ complete-range trigger is busy until its submitted range settles (0.818166ms)
+✔ complete-range end permits a valid range before the original start (3.941833ms)
+(node:99334) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-builder-recovery-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ native quota refusal preserves exact source until the production controller retries once (23.585292ms)
+✔ independent quota fixtures retain separate sources and dispose retires pending retry (10.108333ms)
+✔ completed creation cold reopen claims later document without changing any proof bytes (36.001375ms)
+✔ disposed completed-creation fixture cannot claim a new cold seed (14.660667ms)
+✔ unknown story IDs cannot produce a zero-case green qualification (1.029541ms)
+✔ known IDs outside the selected matrix are rejected explicitly (0.154292ms)
+✔ a memory-only matrix cannot silently omit a requested native-backed case (1.819625ms)
+✔ empty matrices fail before launching a browser (0.184166ms)
+✔ an exact requested subset stays qualified (0.837792ms)
+✔ a required workspace landmark cannot disappear without failing the check (0.265709ms)
+✔ wrong active workspace fails while current desktop Stay uses its actual label (0.13425ms)
+✔ mobile Stays requires its actual More current-section affordance (0.067833ms)
+✔ catalogue batches have exact bounded offsets without overlap (0.241666ms)
+✔ batch bounds reject malformed, empty and oversized schedules (0.220291ms)
+✔ resume rejects weaker smoke evidence, changed strictness and runner changes (0.188208ms)
+(node:99336) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-fetch-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ story fixture handles its endpoint and forwards unmatched requests unchanged (15.859083ms)
+✔ unmount cleanup restores native fetch exactly and is repeatable (0.149958ms)
+✔ cleanup cannot replace a newer fetch owner (0.052125ms)
+✔ overlapping managed fixtures never restore or forward to a retired owner (0.197916ms)
+✔ nested managed fixture cleanup retains a still-active predecessor (0.133333ms)
+(node:99337) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-storage-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ isolated getter denial preserves prior storage and restores its descriptor (0.772791ms)
+✔ isolated read denial preserves prior storage and restores its descriptor (0.078208ms)
+✔ isolated write denial preserves prior storage and restores its descriptor (0.067041ms)
+✔ overlapping managed storage fixtures restore the original descriptor after out-of-order cleanup (0.072875ms)
+✔ nested storage cleanup preserves a still-active predecessor and unrelated later owners (0.067333ms)
+(node:99338) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-itinerary-workspace-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ date metadata omits only the open-day question mark while preserving day navigation and item status (0.516333ms)
+✔ Itinerary map handoffs preserve the selected day as the return destination (53.5ms)
+✔ the itinerary restores the day rail beside the agenda without a second selection owner (0.381292ms)
+✔ destination context is a separate route-level control that drives the canonical selected day (0.411459ms)
+✔ in-page orientation uses the established numeric day query (0.09275ms)
+✔ the selected day timeline uses canonical content and the shared Map persistence architecture (0.099042ms)
+✔ day header keeps only canonical day context and navigation (0.516916ms)
+✔ selected day photo and consolidated route sources retain exact image ownership (0.455583ms)
+✔ Explore remains the canonical discovery handoff without a second header action (0.2695ms)
+✔ Map attraction Add schedules the canonical activity instead of only toggling selectedPlaces (0.205084ms)
+✔ device-copy recovery is calm, explicit, and links to the protected review path (0.083166ms)
+✔ the contextual rail renders canonical map, booking, recommendation, and note data (0.386667ms)
+✔ Itinerary uses embedded selection while full Map uses the shared workspace policy (10.79475ms)
+✔ Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook (0.287167ms)
+✔ day suggestions lead retained cross-destination intentions with a three-result preview (0.293ms)
+✔ day navigation is owned by the toolbar and precedes planner content (0.132792ms)
+✔ tablet and mobile retain the one horizontal day scroller (0.376083ms)
+✔ mobile composition keeps the plan before Saved Ideas and secondary discovery (0.3085ms)
+✔ Calendar keeps its items in day cards alongside the shared day context rail (23.712625ms)
+✔ Calendar preserves trip title, date and timeline while naming selected-day details (45.501208ms)
+✔ scheduled cards open one reusable detail owner without introducing another persistence model (0.24425ms)
+✔ activity, restaurant, and accommodation detail stay truthful and omit absent facts (0.088541ms)
+✔ long canonical and provider content stays inside the timeline and planning rail (0.467917ms)
+✔ saved ideas have one shared stop-scoped unscheduled owner in the planning rail (0.316125ms)
+✔ Notes is the only note-entry owner and stays inside the Day-by-day context body (0.205875ms)
+✔ Viator inventory uses compact disclosure and suppresses the generic fallback when a live product is visible (0.226542ms)
+✔ recommendation cards use canonical day scoring, an accessible itinerary menu, and separate Add and Save actions (0.945167ms)
+✔ selected-day deep links do not override a traveller's later day choice after local mutations (0.03425ms)
+✔ suggestion requests use the shared stale-result and cancellation guard (0.126875ms)
+✔ planner drag ownership survives native pointer timing and is cleared at workspace boundaries (0.353375ms)
+✔ day placement menus escape the scroll owner through a viewport-positioned portal (0.201708ms)
+✔ an unavailable or incomplete Suggestions lane is compact, resets active drag, and retries without overlap (0.293917ms)
+✔ Itinerary keeps stay management in the canonical Stay owner (0.12675ms)
+✔ Logistics keeps transfer and other bookings while accommodation moves to the day context (0.240708ms)
+✔ Planner focus handoff keeps its orientation ref stable across registry renders (0.181666ms)
+(node:99339) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-persistence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical origin endpoints do not enter overnight-stop foreign keys (1.150875ms)
+✔ legacy stop-to-stop legs retain normalized stop foreign keys (0.0935ms)
+✔ canonical journey-end endpoints persist without an overnight-stop foreign key (0.062958ms)
+(node:99340) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-shell-canonical-mutation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reproduces the stale header queue after an Explore save (1.232833ms)
+✔ one mounted TripShell has one canonical mutation owner (0.615084ms)
+✔ legacy imported repair waits for classified owner state and uses only the shared mutation owner (0.221625ms)
+✔ a shared queue preserves Explore, itinerary metadata, rename, Map and a second rename (1.197709ms)
+✔ an occupied Afternoon keeps its slot activity while an 11-hour activity stays day-level through Rename and reload (1.750917ms)
+✔ Rename followed by Explore and Itinerary additions keeps the returned revision as each CAS base (0.931333ms)
+✔ a workspace remount uses the acknowledged Explore revision for the next Stay CAS (2.754333ms)
+✔ the hosted Explore to Stay sequence finishes canonical with no stranded recovery (8.02075ms)
+✔ immediate Explore and Stay mutations share the returned canonical revision (1.025375ms)
+✔ canonical baseline selection is owner-scoped, monotonic and accepts normalized output (0.267417ms)
+✔ rename identity preserves normalization, clearing and the destination fallback (0.132958ms)
+✔ clean signed-in rename acknowledges only its exact recovery and reloads canonical B (0.876417ms)
+✔ an older acknowledgement cannot consume a newer same-device recovery (1.304ms)
+✔ guest rename remains device-local without inventing an account conflict (0.506958ms)
+✔ guest promotion preserves the custom title, itinerary additions and provider duration (0.470875ms)
+✔ Map undo reverts only Map-authored paths and retains a later Rename revision (0.371875ms)
+✔ stale server props and storage events cannot reset the canonical queue (0.630958ms)
+(node:99341) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-shell-rename-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ inline naming uses the existing scoped mutation and preserves itinerary data on acceptance (68.647583ms)
+✔ Escape cancels an inline draft without invoking persistence (24.403959ms)
+✔ refused inline persistence retains the draft for retry (21.56275ms)
+✔ the actual shared mutation rejects an unchanged canonical rename before persistence (4.249209ms)
+✔ Save of the exact current canonical title closes as a verified no-op without invoking persistence (16.413208ms)
+✔ a normalized exact-current title is a pre-submit no-op rather than a false acknowledgement (25.376833ms)
+✔ rename waits for literal true, then closes its current dialog after the source title prop updates (15.318291ms)
+✔ a matching later source title cannot turn a refused mutation into accepted dialog completion (15.076792ms)
+✔ rename preserves its exact current draft on false acceptance (17.175583ms)
+✔ rename preserves its exact current draft on rejection acceptance (13.985041ms)
+✔ rename preserves its exact current draft on object acceptance (17.858292ms)
+✔ rename preserves its exact current draft on string acceptance (13.596167ms)
+✔ rename preserves its exact current draft on number acceptance (13.099375ms)
+✔ rename preserves its exact current draft on undefined acceptance (13.469792ms)
+✔ typing a newer title before React applies the state queue retires an old accepted rename (15.93575ms)
+✔ queued old rename does not apply after a newer raw edit before render (14.572917ms)
+✔ same raw text is a no-op during rename acceptance (17.709042ms)
+✔ a changed raw value remains newer even when it normalizes to the submitted title (17.219042ms)
+✔ cancel and reopen creates a new dialog session that old acceptance and old input callbacks cannot close or replace (14.780917ms)
+✔ rename session cannot revive after a owner scope transition (14.875542ms)
+✔ rename session cannot revive after a document scope transition (14.505625ms)
+✔ rename session cannot revive after a view scope transition (14.472958ms)
+✔ rename session cannot revive after a owner-cycle scope transition (15.340208ms)
+✔ rename session cannot revive after a view-cycle scope transition (15.650459ms)
+✔ rename rejects an unmounted continuation and a pending continuation revived by effect replay (29.351292ms)
+✔ a fresh rename after effect replay stays pending when the obsolete request finishes (13.771708ms)
+✔ rename deduplicates immediate submissions and releases its own pending state on refusal (13.581084ms)
+✔ rename validation retains Unicode raw text and never starts an overlong mutation (18.580583ms)
+✔ shared header hides personal route while retaining planning controls for guest (12.4705ms)
+✔ shared header hides personal route while retaining planning controls for owner-a (11.795792ms)
+✔ a representative raw token violation fails and its canonical correction passes (13.419584ms)
+✔ large workspace surfaces reject accent washes while compact accents remain available (9.47275ms)
+✔ token-aware typography and shadow rules ignore canonical values without overlooking raw declarations (3.190166ms)
+✔ page-local font roles and retired UI owners cannot be introduced (5.236708ms)
+✔ a narrow exception needs a substantive reason and applies only to the next matching line (6.561ms)
+✔ Google provider colours have exact mark-only exceptions while Login and other files stay strict (6.305208ms)
+✔ per-file baselines cannot offset new drift and accepted debt can only be lowered (5.0275ms)
+ℹ tests 282
+ℹ suites 0
+ℹ pass 282
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2074.457375

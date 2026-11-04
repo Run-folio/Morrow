@@ -1,0 +1,240 @@
+- main:
+  - link "Morrovia home":
+    - /url: /
+  - navigation "Morrovia navigation":
+    - link "New trip":
+      - /url: /journey/new
+      - generic: New trip
+    - link "Routes":
+      - /url: /journey/discover
+    - link "My Trips":
+      - /url: /journey/dashboard
+    - button "How it works"
+    - generic "Account":
+      - generic: Account
+  - heading "Shape the route." [level=1]
+  - status:
+    - text: Saved on this device
+  - region "Trip understood":
+    - region "Journey details":
+      - group "Trip type":
+        - button "Return to start"
+        - button "One way"
+      - paragraph: This saved trip’s ending is unconfirmed.
+      - generic: Start from
+      - combobox "Start from": Tokyo
+      - button "Clear Start from":
+        - generic: Clear Start from
+      - region "Places you want to visit":
+        - generic: Places you want to visit
+        - list:
+          - button "Reorder Tokyo":
+            - generic: Reorder Tokyo
+          - button "Edit Tokyo":
+            - text: Tokyo
+          - button "Remove Tokyo":
+            - generic: Remove Tokyo
+          - button "Reorder Kanazawa":
+            - generic: Reorder Kanazawa
+          - button "Edit Kanazawa":
+            - text: Kanazawa
+          - button "Remove Kanazawa":
+            - generic: Remove Kanazawa
+          - button "Reorder Takayama":
+            - generic: Reorder Takayama
+          - button "Edit Takayama":
+            - text: Takayama
+          - button "Remove Takayama":
+            - generic: Remove Takayama
+          - button "Reorder Kyoto":
+            - generic: Reorder Kyoto
+          - button "Edit Kyoto":
+            - text: Kyoto
+          - button "Remove Kyoto":
+            - generic: Remove Kyoto
+          - button "Reorder Osaka":
+            - generic: Reorder Osaka
+          - button "Edit Osaka":
+            - text: Osaka
+          - button "Remove Osaka":
+            - generic: Remove Osaka
+        - button "Add destination":
+          - text: Add destination
+      - status
+      - button "Travel dates 3–18 Nov 2026":
+        - generic: Travel dates
+        - generic: 3–18 Nov 2026
+      - group "Travellers":
+        - generic: Travellers
+        - status: 2 travellers
+        - button "Decrease travellers; 2 travellers currently":
+        - button "Increase travellers; 2 travellers currently":
+      - generic: Budget
+      - generic: Budget
+      - generic: Value
+      - combobox "Budget":
+        - option "Value" [selected]
+        - option "Mid-range"
+        - option "High"
+      - generic: 16 days
+      - button "Update route":
+        - text: Update route
+  - status:
+    - strong: Trip updated
+    - button "Undo"
+    - button "Dismiss Trip updated":
+  - 'region "Your route — Nights per stop: 15 nights · All allocated"':
+    - status:
+      - 'heading "Your route — Nights per stop: 15 nights · All allocated" [level=2]':
+        - generic: "Your route — Nights per stop:"
+        - generic: 15 nights · All allocated
+    - status:
+      - text: Details up to date
+    - table "Route stops":
+      - row "Reorder Stop Transfer Nights Usable time Actions":
+        - columnheader "Reorder"
+        - columnheader "Stop"
+        - columnheader "Transfer"
+        - columnheader "Nights"
+        - columnheader "Usable time"
+        - columnheader "Actions"
+      - rowgroup:
+        - row "Reorder Tokyo, stop 1 1 Tokyo Japan Starts here Remove one night from Tokyo; 4 nights currently 4 Add one night to Tokyo; 4 nights currently To confirm" [selected]:
+          - cell "Reorder Tokyo, stop 1":
+            - button "Reorder Tokyo, stop 1":
+          - cell "1 Tokyo Japan":
+            - generic: "1"
+            - strong: Tokyo
+            - generic: Japan
+          - cell "Starts here":
+            - strong: Starts here
+          - cell "Remove one night from Tokyo; 4 nights currently 4 Add one night to Tokyo; 4 nights currently":
+            - button "Remove one night from Tokyo; 4 nights currently": −
+            - strong: "4"
+            - button "Add one night to Tokyo; 4 nights currently": +
+          - cell "To confirm":
+            - strong: To confirm
+          - cell:
+            - generic "Actions for Tokyo":
+        - row "Reorder Kanazawa, stop 2 2 Kanazawa Japan From Tokyo · Rail Estimated · ~3h 15m Remove one night from Kanazawa; 2 nights currently 2 Add one night to Kanazawa; 2 nights currently ~1.75 days":
+          - cell "Reorder Kanazawa, stop 2":
+            - button "Reorder Kanazawa, stop 2" [active]:
+          - cell "2 Kanazawa Japan":
+            - generic: "2"
+            - strong: Kanazawa
+            - generic: Japan
+          - cell "From Tokyo · Rail Estimated · ~3h 15m":
+            - strong: From Tokyo · Rail
+            - generic: Estimated · ~3h 15m
+          - cell "Remove one night from Kanazawa; 2 nights currently 2 Add one night to Kanazawa; 2 nights currently":
+            - button "Remove one night from Kanazawa; 2 nights currently": −
+            - strong: "2"
+            - button "Add one night to Kanazawa; 2 nights currently": +
+          - cell "~1.75 days":
+            - strong: ~1.75 days
+          - cell:
+            - generic "Actions for Kanazawa":
+        - row "Reorder Takayama, stop 3 3 Takayama Japan From Kanazawa · Rail Estimated · ~3h Remove one night from Takayama; 3 nights currently 3 Add one night to Takayama; 3 nights currently ~2.75 days":
+          - cell "Reorder Takayama, stop 3":
+            - button "Reorder Takayama, stop 3":
+          - cell "3 Takayama Japan":
+            - generic: "3"
+            - strong: Takayama
+            - generic: Japan
+          - cell "From Kanazawa · Rail Estimated · ~3h":
+            - strong: From Kanazawa · Rail
+            - generic: Estimated · ~3h
+          - cell "Remove one night from Takayama; 3 nights currently 3 Add one night to Takayama; 3 nights currently":
+            - button "Remove one night from Takayama; 3 nights currently": −
+            - strong: "3"
+            - button "Add one night to Takayama; 3 nights currently": +
+          - cell "~2.75 days":
+            - strong: ~2.75 days
+          - cell:
+            - generic "Actions for Takayama":
+        - row "Reorder Kyoto, stop 4 4 Kyoto Japan From Takayama · Rail Estimated · ~2h 15m–4h Remove one night from Kyoto; 4 nights currently 4 Add one night to Kyoto; 4 nights currently ~3.75 days":
+          - cell "Reorder Kyoto, stop 4":
+            - button "Reorder Kyoto, stop 4":
+          - cell "4 Kyoto Japan":
+            - generic: "4"
+            - strong: Kyoto
+            - generic: Japan
+          - cell "From Takayama · Rail Estimated · ~2h 15m–4h":
+            - strong: From Takayama · Rail
+            - generic: Estimated · ~2h 15m–4h
+          - cell "Remove one night from Kyoto; 4 nights currently 4 Add one night to Kyoto; 4 nights currently":
+            - button "Remove one night from Kyoto; 4 nights currently": −
+            - strong: "4"
+            - button "Add one night to Kyoto; 4 nights currently": +
+          - cell "~3.75 days":
+            - strong: ~3.75 days
+          - cell:
+            - generic "Actions for Kyoto":
+        - row "Reorder Osaka, stop 5 5 Osaka Japan From Kyoto · Rail Estimated · ~1h 15m Remove one night from Osaka; 2 nights currently 2 Add one night to Osaka; 2 nights currently ~2 days":
+          - cell "Reorder Osaka, stop 5":
+            - button "Reorder Osaka, stop 5":
+          - cell "5 Osaka Japan":
+            - generic: "5"
+            - strong: Osaka
+            - generic: Japan
+          - cell "From Kyoto · Rail Estimated · ~1h 15m":
+            - strong: From Kyoto · Rail
+            - generic: Estimated · ~1h 15m
+          - cell "Remove one night from Osaka; 2 nights currently 2 Add one night to Osaka; 2 nights currently":
+            - button "Remove one night from Osaka; 2 nights currently": −
+            - strong: "2"
+            - button "Add one night to Osaka; 2 nights currently": +
+          - cell "~2 days":
+            - strong: ~2 days
+          - cell:
+            - generic "Actions for Osaka":
+    - region "Route map":
+      - generic "Interactive trip map":
+        - region "Map"
+        - 'button "Inspect transfer 1: Tokyo to Kanazawa, Rail"':
+        - 'button "Inspect transfer 2: Kanazawa to Takayama, Rail"':
+        - 'button "Inspect transfer 3: Takayama to Kyoto, Rail"':
+        - 'button "Inspect transfer 4: Kyoto to Osaka, Rail"':
+        - button "Show Tokyo, overnight stop 0" [pressed]:
+          - generic: "01"
+          - strong: Tokyo
+          - generic: Stop 1 · 4 nights
+        - button "Show Kanazawa, overnight stop 1":
+          - generic: "02"
+        - button "Show Takayama, overnight stop 2":
+          - generic: "03"
+        - button "Show Kyoto, overnight stop 3":
+          - generic: "04"
+        - button "Show Osaka, final destination":
+          - generic: "05"
+        - button "Zoom in"
+        - button "Zoom out"
+        - generic "Toggle attribution"
+    - status: Kanazawa moved to position 2 of 5.
+  - 'status "Suggestion: A better route order is available"':
+    - 'button "Suggestion: A better route order is available"':
+      - strong:
+        - generic: "Suggestion:"
+        - text: A better route order is available
+  - button "Build trip →"
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: /journey/contact
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- alert: Morrovia · Travel your way

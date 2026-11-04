@@ -363,7 +363,7 @@ test("Trip Health retains independent backtracking evidence beside country conti
     route: {
       state: "recommendation",
       currentStopIds: trip.stops.map((stop) => stop.id),
-      recommendedStopIds: ["india-north", "india-south", "uae"],
+      recommendedStopIds: ["uae", "india-north", "india-south"],
       currentTransferMinutes: 600,
       recommendedTransferMinutes: 510,
       improvementMinutes: 90,
@@ -379,6 +379,14 @@ test("Trip Health retains independent backtracking evidence beside country conti
   const rules = reviewTrip(trip).map((item) => item.rule);
   assert.equal(rules.includes("post-generation-country-reentry"), true);
   assert.equal(rules.includes("route-backtracking"), true);
+  assert.equal(reviewTrip(trip).find(item => item.rule === "route-backtracking")?.confidence, "medium");
+  trip.brief.routeAssessment.route.recommendedStopIds = ["india-north", "india-south", "uae"];
+  assert.equal(reviewTrip(trip).some(item => item.rule === "route-backtracking"), false, "a persisted old reason must not warn against a different finish");
+  trip.brief.journeyEnd = { mode: "explicit", place: { name: "India South", country: "India", coordinates: [0, 0] } };
+  assert.equal(trip.legs.some(leg => leg.classification === "departure"), false);
+  assert.equal(reviewTrip(trip).some(item => item.rule === "route-backtracking"), true, "explicit terminal equal to overnight stop still makes geography comparable");
+  trip.brief.routeAssessment.route.currentStopIds = ["stale-stop", "uae", "india-south"];
+  assert.equal(reviewTrip(trip).some(item => item.rule === "route-backtracking"), false, "stale assessment must not warn against the current route");
 });
 
 test("treats a fixed commitment outside the trip dates as blocking", () => {

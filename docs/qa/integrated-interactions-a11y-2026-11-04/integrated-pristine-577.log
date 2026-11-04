@@ -1,0 +1,188 @@
+(node:99052) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/morrovia-57757a7-integration-baseline/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual fixed commitment keeps raw input until held false acceptance (43.503958ms)
+✖ actual fixed commitment keeps raw input until held true acceptance (22.692708ms)
+✔ actual fixed commitment handles rejection without clearing input (20.418042ms)
+✖ actual fixed commitment preserves label during accepted persistence (22.141875ms)
+✖ actual fixed commitment preserves date during accepted persistence (20.026666ms)
+✖ actual fixed commitment preserves label-before-render during accepted persistence (19.256667ms)
+✖ actual fixed commitment preserves date-before-render during accepted persistence (20.102083ms)
+✔ actual fixed commitment preserves input-revision during accepted persistence (20.484292ms)
+✔ actual fixed commitment preserves unmount during accepted persistence (20.0375ms)
+✖ actual fixed commitment label A to B to A cannot clear a later scope (22.476042ms)
+✖ actual fixed commitment date A to B to A cannot clear a later scope (20.200667ms)
+✔ actual fixed commitment owner A to B to A cannot clear a later scope (25.766833ms)
+✔ actual fixed commitment trip A to B to A cannot clear a later scope (25.159958ms)
+✔ actual fixed commitment editor A to B to A cannot clear a later scope (29.80275ms)
+✔ actual fixed commitment starts one request for a double click and permits retry after refusal (18.394791ms)
+(node:99053) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/morrovia-57757a7-integration-baseline/lib/easyt/builder-input-persistence.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/morrovia-57757a7-integration-baseline/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ native body with existing input domain completes healthy route work for guest (232.774167ms)
+✔ native body with existing input domain completes failed route work for guest (150.85375ms)
+✖ native body with existing input domain completes healthy route work for isolated-account (155.131541ms)
+✔ native body with existing input domain completes failed route work for isolated-account (142.547709ms)
+✔ mixed input projection refuses owner without changing the observed competing source (125.610708ms)
+✔ mixed input projection refuses new-input without changing the observed competing source (137.507917ms)
+✔ mixed input projection refuses other-branch without changing the observed competing source (131.587459ms)
+✔ mixed input projection refuses clear-current without changing the observed competing source (133.505166ms)
+✔ mixed paired input commit with an uncertain acknowledgement preserves source and target generations (138.92925ms)
+✔ navigation during mixed input commit preserves the predecessor and never acknowledges the old pointer (158.855292ms)
+✔ mixed projection keeps source when before-pointer-cas (148.359125ms)
+✔ mixed projection keeps source when after-pointer-cas (143.089834ms)
+✔ mixed projection keeps source when lost-pointer-readback (144.709ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 19
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2296.317833
+
+✖ failing tests:
+
+test at tests/builder-fixed-commitment-async.test.ts:71:39
+✖ actual fixed commitment keeps raw input until held true acceptance (22.692708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   date: '2026-11-01',
+  +   label: '  Oaxaca  '
+  -   date: '',
+  -   label: ''
+    }
+
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:75:45)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { label: '  Oaxaca  ', date: '2026-11-01' },
+    expected: { label: '', date: '' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label during accepted persistence (22.141875ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date during accepted persistence (20.026666ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label-before-render during accepted persistence (19.256667ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date-before-render during accepted persistence (20.102083ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment label A to B to A cannot clear a later scope (22.476042ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:90:31)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment date A to B to A cannot clear a later scope (20.200667ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-fixed-commitment-async.test.ts:91:30)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for guest (232.774167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for isolated-account (155.131541ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-57757a7-integration-baseline/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

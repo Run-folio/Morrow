@@ -1,0 +1,18 @@
+{
+  "staging": "662a42e520d4db67ee644a2e35973d002c42f89d",
+  "builder": "491055a018c321c7afaa551817c44eb6266aeca2",
+  "failures": [
+    "actual fixed commitment keeps raw input until held true acceptance",
+    "actual fixed commitment preserves label during accepted persistence",
+    "actual fixed commitment preserves date during accepted persistence",
+    "actual fixed commitment preserves label-before-render during accepted persistence",
+    "actual fixed commitment preserves date-before-render during accepted persistence",
+    "actual fixed commitment label A to B to A cannot clear a later scope",
+    "actual fixed commitment date A to B to A cannot clear a later scope",
+    "native body with existing input domain completes healthy route work for guest",
+    "native body with existing input domain completes healthy route work for isolated-account"
+  ],
+  "baselineOnly": [],
+  "candidateOnly": [],
+  "uiBaselineGitBlob": "d80c83217db6b3fae910038d1731bf90577f4265"
+}

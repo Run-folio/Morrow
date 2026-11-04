@@ -1,0 +1,213 @@
+(node:98775) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual fixed commitment keeps raw input until held false acceptance (59.684417ms)
+✖ actual fixed commitment keeps raw input until held true acceptance (26.38175ms)
+✔ actual fixed commitment handles rejection without clearing input (25.039333ms)
+✖ actual fixed commitment preserves label during accepted persistence (23.33825ms)
+✖ actual fixed commitment preserves date during accepted persistence (20.684583ms)
+✖ actual fixed commitment preserves label-before-render during accepted persistence (21.452084ms)
+✖ actual fixed commitment preserves date-before-render during accepted persistence (20.656375ms)
+✔ actual fixed commitment preserves input-revision during accepted persistence (22.69775ms)
+✔ actual fixed commitment preserves unmount during accepted persistence (20.789166ms)
+✖ actual fixed commitment label A to B to A cannot clear a later scope (27.082792ms)
+✖ actual fixed commitment date A to B to A cannot clear a later scope (23.288208ms)
+✔ actual fixed commitment owner A to B to A cannot clear a later scope (27.901791ms)
+✔ actual fixed commitment trip A to B to A cannot clear a later scope (28.271ms)
+✔ actual fixed commitment editor A to B to A cannot clear a later scope (31.3925ms)
+✔ actual fixed commitment starts one request for a double click and permits retry after refusal (18.85275ms)
+(node:98776) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/lib/easyt/builder-input-persistence.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ native body with existing input domain completes healthy route work for guest (244.89625ms)
+✔ native body with existing input domain completes failed route work for guest (160.589958ms)
+✖ native body with existing input domain completes healthy route work for isolated-account (168.821209ms)
+✔ native body with existing input domain completes failed route work for isolated-account (152.107292ms)
+✔ mixed input projection refuses owner without changing the observed competing source (137.090375ms)
+✔ mixed input projection refuses new-input without changing the observed competing source (143.243708ms)
+✔ mixed input projection refuses other-branch without changing the observed competing source (136.479917ms)
+✔ mixed input projection refuses clear-current without changing the observed competing source (138.651208ms)
+✔ mixed paired input commit with an uncertain acknowledgement preserves source and target generations (139.770959ms)
+✔ navigation during mixed input commit preserves the predecessor and never acknowledges the old pointer (160.74425ms)
+✔ mixed projection keeps source when before-pointer-cas (152.245333ms)
+✔ mixed projection keeps source when after-pointer-cas (153.04925ms)
+✔ mixed projection keeps source when lost-pointer-readback (145.258084ms)
+(node:98777) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/signed-in-trip-persistence-regression.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fixture-a-us-west completes signed-in create, route/nights Build, reload, retry and isolation (35.953167ms)
+✔ fixture-b-southern-africa completes signed-in create, route/nights Build, reload, retry and isolation (14.990667ms)
+✔ fixture-c-europe completes signed-in create, route/nights Build, reload, retry and isolation (9.026584ms)
+(node:98778) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-recovery-classification.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ clean canonical trip has no recovery state (0.584042ms)
+✔ only the mounted owner's exact pending handle is a current save (0.097083ms)
+✔ the exact mounted failed write is a current save failure (0.057083ms)
+✔ the same failed record becomes historical after reload (1.380125ms)
+✔ canonical-equivalent recovery is safe to reconcile (0.298708ms)
+✔ the exact ownerless recovery is the active local document after reload (0.19175ms)
+✔ a different ownerless recovery remains protected as genuine divergence (0.101041ms)
+✔ the active ownerless recovery handle permits the next exactly-once local edit (2.535666ms)
+✔ a prior canonical snapshot is historical-superseded only through semantic comparison (0.8695ms)
+✔ a newer timestamp alone never discards unique traveller edits (0.674792ms)
+✔ save header and dashboard source keep historical recovery separate and trip-scoped (0.926584ms)
+✔ dashboard groups detached recoveries behind one calm disclosure while keeping each review path (0.34925ms)
+✔ detached-copy copy distinguishes an unconfirmed account save from a previously reported deletion (0.224584ms)
+✔ detached-copy presentation retains the warning, complete account comparison and individual review links (0.235459ms)
+ℹ tests 45
+ℹ suites 0
+ℹ pass 36
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2517.695584
+
+✖ failing tests:
+
+test at tests/builder-fixed-commitment-async.test.ts:71:39
+✖ actual fixed commitment keeps raw input until held true acceptance (26.38175ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   date: '2026-11-01',
+  +   label: '  Oaxaca  '
+  -   date: '',
+  -   label: ''
+    }
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:75:45)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { label: '  Oaxaca  ', date: '2026-11-01' },
+    expected: { label: '', date: '' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label during accepted persistence (23.33825ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date during accepted persistence (20.684583ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label-before-render during accepted persistence (21.452084ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date-before-render during accepted persistence (20.656375ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment label A to B to A cannot clear a later scope (27.082792ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:90:31)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment date A to B to A cannot clear a later scope (23.288208ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:91:30)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for guest (244.89625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for isolated-account (168.821209ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

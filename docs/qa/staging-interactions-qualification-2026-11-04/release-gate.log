@@ -1,0 +1,1028 @@
+> morrovia@1.0.0 release:gate
+> node scripts/release-gate-smoke.mjs
+
+
+> morrovia@1.0.0 audit:ui
+> node scripts/ui-convergence-audit.mjs --strict
+
+Morrovia UI convergence enforcement
+- native-control: 191 accepted debt occurrences
+- native-date-input: 0 accepted debt occurrences
+- native-number-input: 0 accepted debt occurrences
+- native-dialog: 0 accepted debt occurrences
+- native-confirm: 0 accepted debt occurrences
+- legacy-ui-import: 0 accepted debt occurrences
+- deprecated-ui-owner: 0 accepted debt occurrences
+- raw-color: 1876 accepted debt occurrences
+- large-accent-surface: 0 accepted debt occurrences
+- raw-radius: 549 accepted debt occurrences
+- raw-shadow: 167 accepted debt occurrences
+- raw-font-family: 0 accepted debt occurrences
+- page-local-font-role: 0 accepted debt occurrences
+- raw-page-width: 2 accepted debt occurrences
+- inline-color: 55 accepted debt occurrences
+- inline-radius: 14 accepted debt occurrences
+- inline-shadow: 3 accepted debt occurrences
+- inline-font-family: 0 accepted debt occurrences
+- documented local exceptions: 75
+
+> morrovia@1.0.0 test:ui-convergence
+> node --test tests/ui-convergence-enforcement.test.mjs && node --experimental-strip-types --test tests/ui-convergence.test.ts
+
+✔ a representative raw token violation fails and its canonical correction passes (4.999833ms)
+✔ large workspace surfaces reject accent washes while compact accents remain available (2.455417ms)
+✔ token-aware typography and shadow rules ignore canonical values without overlooking raw declarations (1.280375ms)
+✔ page-local font roles and retired UI owners cannot be introduced (1.742042ms)
+✔ a narrow exception needs a substantive reason and applies only to the next matching line (1.818708ms)
+✔ Google provider colours have exact mark-only exceptions while Login and other files stay strict (2.092667ms)
+✔ per-file baselines cannot offset new drift and accepted debt can only be lowered (1.668875ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48.512583
+(node:797) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/ui-convergence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ persistent account and recovery truth uses the canonical status banner (0.979583ms)
+✔ Storybook covers every persistent status tone at desktop and mobile widths (0.151375ms)
+✔ the convergence guard audits production and shared component roots (0.264208ms)
+✔ Account uses the canonical paper token and Google branding is narrowly documented (0.44475ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.606
+
+> morrovia@1.0.0 test:runtime-health
+> node --experimental-strip-types --test tests/runtime-health.test.ts
+
+(node:837) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/runtime-health.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ health fails closed when critical database, auth, or base-url configuration is absent (0.627459ms)
+✔ health rejects invalid or mismatched public/auth URLs without revealing their values (0.112458ms)
+✔ health does not claim a configured database is unreachable when another critical check prevents probing it (0.058625ms)
+✔ health reports a successful database probe only after complete critical configuration (0.072583ms)
+✔ health exposes a valid hosting commit without changing readiness (0.106625ms)
+✔ empty or malformed hosting metadata reports unknown without exposing its value (0.093667ms)
+✔ build configuration forwards only bounded hosting provenance to the runtime (0.56125ms)
+✔ a database failure is a 503-ready unhealthy state without provider error detail (0.09025ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 65.956333
+
+> morrovia@1.0.0 typecheck
+> tsc --project tsconfig.typecheck.json --noEmit --incremental false
+
+
+> morrovia@1.0.0 typecheck
+> tsc --project tsconfig.typecheck.json --noEmit --incremental false
+
+
+> morrovia@1.0.0 test:prompt-engine
+> node --experimental-strip-types --test tests/prompt-engine-harness.test.ts
+
+(node:984) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/prompt-engine-harness.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ prompt engine gauntlet has 16 complete, reviewable cases (0.331833ms)
+✔ deterministic prompt capture and recorded plan boundary match the baseline (126.418209ms)
+✔ regional traveller intent counts as preserved only when its unresolved scope survives (27.800459ms)
+✔ Spanish aliases retain one origin and the ordered Japanese route intent (2.981625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 322.73675
+
+> morrovia@1.0.0 test:planner-shadow
+> node --experimental-strip-types --test tests/planner-shadow.test.ts
+
+(node:1021) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/planner-shadow.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ shadow mode is opt-in and cannot enable in production (0.391375ms)
+✔ review contract drops invented canonical IDs and unknown enum values (12.083167ms)
+✔ off and failure paths keep deterministic input unchanged and issue one bounded call (3.545667ms)
+✔ API request contract defaults to a deterministic disabled shadow response (1.088583ms)
+✔ shadow configuration without a key remains an unavailable advisory fallback (0.969166ms)
+✔ provider failures are classified without exposing provider messages (2.66525ms)
+✔ Groq client makes one bounded, schema-constrained fixture request (8.815416ms)
+✔ Groq client captures aggregate rate-limit headers without retaining response text (1.263458ms)
+✔ Groq client safely classifies rejected models and malformed provider output (2.112042ms)
+✔ Groq rate limits retain only retry timing and stop the advisory call (1.058917ms)
+✔ Groq client reduces schema errors to a safe category without provider text (0.908167ms)
+✔ provider timeout remains one advisory fallback (6.271542ms)
+✔ prompt gauntlet shadow audit stays aggregate-only and bounded (141.888ms)
+✔ audit records invented geography as a sanitized unsupported-certainty safety concern (5.2725ms)
+✔ an ambiguity already surfaced by the deterministic engine is redundant, not useful signal (19.737209ms)
+✔ live audit pacing is sequential, conservative, and preserves a complete partial report (23.820709ms)
+✔ live pacing waits for a provider token reset before the next advisory call (23.632667ms)
+✔ live audit ends cleanly after a rate-limit response and does not present it as complete (4.701041ms)
+✔ live pacing environment can only reduce the conservative default (0.064417ms)
+✔ hybrid evaluation replays sanitized fixtures and never uses a live provider (168.733459ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 597.76725
+
+> morrovia@1.0.0 test:builder-gate
+> node --experimental-strip-types --test tests/trip-builder-gate.test.ts tests/trip-builder-layout.test.ts tests/builder-seed-coordination.test.ts tests/trip-builder-entry-session.test.ts tests/homepage-async-entry.test.ts tests/trip-builder-async-edit-session.test.ts tests/trip-builder-pending-build.test.ts tests/trip-builder-projection-liveness.test.mjs tests/builder-persistence-lifecycle.test.mjs tests/builder-reorder-input-overflow.test.mjs tests/discovery-direction-coordination.test.ts tests/builder-clarification-focus.test.ts tests/builder-clarification-ownership.test.ts tests/staging-africa-latency-exception.test.ts tests/staging-south-korea-latency-exception.test.ts tests/builder-discovery-canonical-read.test.ts tests/osaka-destination-planning.test.ts tests/osaka-seoul-transport.test.ts tests/reviewed-bali-destinations.test.ts tests/trip-recovery-classification.test.ts tests/search-past-dates.test.ts tests/search-date-picker.test.ts tests/generated-trip-title.test.ts tests/trip-display.test.ts tests/new-search-past-dates.test.ts tests/new-trip-starter.test.ts tests/new-trip-starter-preservation.test.ts
+
+(node:1058) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-clarification-focus.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual deferred shell focus cannot blur an already edited combobox and close its menu (126.420833ms)
+✔ actual autocomplete typing retires completed search without changing focus ownership (27.508375ms)
+✔ initial shell entry still focuses its heading when focus remains outside the dialog (6.044625ms)
+✔ deferred shell focus respects a deliberately focused current dialog button (3.953291ms)
+✔ retired shell focus is cancelled and cannot steal restored focus even if its frame is delivered (13.794875ms)
+✔ an old shell frame cannot retarget the heading of a replacement dialog (3.453958ms)
+✔ a closed shell schedules no heading focus (5.050416ms)
+✔ shell Tab wrapping, guarded Escape, scroll lock and return focus keep their actual behavior (6.183625ms)
+✔ actual autocomplete blur still closes its menu when focus leaves its root (22.988625ms)
+✔ actual autocomplete keeps its menu while focus moves to an option inside its root (13.074666ms)
+✔ actual single-area semantic loop waits for the accepted shortlist state before its next click (33.783417ms)
+(node:1059) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-clarification-ownership.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ earlier accepted choice cannot advance a dismissed and reopened two-item chooser (287.8075ms)
+✔ current accepted first choice advances exactly once to the next mention (42.087917ms)
+✔ current accepted final choice completes the legitimate session (74.040666ms)
+✔ rejected acceptance leaves the active chooser unchanged (59.729291ms)
+✔ late accepted choice cannot navigate after dismiss (178.837542ms)
+✔ late accepted choice cannot navigate after same-mention-reopen (286.147375ms)
+✔ late accepted choice cannot navigate after owner (82.532417ms)
+✔ late accepted choice cannot navigate after document (113.178333ms)
+✔ late accepted choice cannot navigate after editor (112.280042ms)
+✔ late accepted choice cannot navigate after unmount (100.934417ms)
+✔ late accepted choice cannot navigate after mention (101.658958ms)
+(node:1060) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-discovery-canonical-read.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ durable multi-base Discovery completes with held rendered publication (513.979708ms)
+✔ durable multi-base Discovery completes with held rendered publication and reviewed order (365.614625ms)
+✔ Discovery refuses an undurable second base despite the current editor (88.355708ms)
+✔ durable late second base cannot complete after view retires confirmation (121.398291ms)
+✔ durable late second base cannot complete after search retires confirmation (165.686125ms)
+✔ durable late second base cannot complete after owner retires confirmation (122.271375ms)
+✔ durable late second base cannot complete after document retires confirmation (87.766167ms)
+✔ durable late second base cannot complete after editor retires confirmation (113.693916ms)
+✔ durable late second base cannot complete after unmount retires confirmation (112.769666ms)
+✔ legacy Discovery without an editor continues to use its rendered mutation owner (20.4555ms)
+✔ real landmark visit handler confirms durable Agra with held rendered publication (133.911834ms)
+✔ real landmark visit refuses an undurable relationship and preserves its accepted base (93.321958ms)
+✔ durable Agra cannot confirm a visit after view retires Discovery (74.811917ms)
+✔ durable Agra cannot confirm a visit after search retires Discovery (37.710125ms)
+✔ durable Agra cannot confirm a visit after owner retires Discovery (38.987791ms)
+✔ durable Agra cannot confirm a visit after document retires Discovery (54.195083ms)
+✔ durable Agra cannot confirm a visit after editor retires Discovery (39.313666ms)
+✔ durable Agra cannot confirm a visit after unmount retires Discovery (36.468458ms)
+✔ real visit handler without an editor retains the legacy rendered stop and selection owner (38.6375ms)
+(node:1061) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/fixtures/batch14-route-documents.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reserved-before-body: none (50.33425ms)
+✔ reserved-before-body: new-raw (50.8235ms)
+✔ reserved-before-body: owner (6.760375ms)
+✔ reserved-before-body: foreign-body (6.985958ms)
+✔ reserved-before-body: foreign-head (2.815583ms)
+✔ inspection-before-body: none (18.70975ms)
+✔ inspection-before-body: new-raw (40.090833ms)
+✔ inspection-before-body: owner (6.471208ms)
+✔ inspection-before-body: foreign-body (6.6565ms)
+✔ inspection-before-body: foreign-head (6.107584ms)
+✔ body-before-input: none (26.201125ms)
+✔ body-before-input: new-raw (50.607459ms)
+✔ body-before-input: owner (8.097625ms)
+✔ body-before-input: foreign-body (4.974375ms)
+✔ body-before-input: foreign-head (5.114417ms)
+✔ input-before-pointer: none (28.19625ms)
+✔ input-before-pointer: new-raw (27.890084ms)
+✔ input-before-pointer: owner (15.759209ms)
+✔ input-before-pointer: foreign-body (8.573791ms)
+✔ input-before-pointer: foreign-head (30.992208ms)
+✔ pointer-before-readback: none (13.684334ms)
+✔ pointer-before-readback: new-raw (25.770167ms)
+✔ pointer-before-readback: owner (6.589542ms)
+✔ pointer-before-readback: foreign-body (5.17125ms)
+✔ pointer-before-readback: foreign-head (7.845584ms)
+✔ unreserved command retires on new raw input without invoking canonical storage (3.790625ms)
+✔ same-handle foreign mutation can be produced by the current native writer API (2.993208ms)
+✔ account ACK with optional native cache failure permits the next owned edit (65.671667ms)
+(node:1062) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/helpers/recovery-indexeddb-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ created → built → edit → reorder can overflow paired input, then reload and edit again (469.222875ms)
+✔ an independent recovery remains protected even when paired input would need overflow (305.905125ms)
+✔ an exact guest cache source admits paired input overflow without a recovery handle (154.914042ms)
+✔ a concurrent branch during paired input quota is preserved and cannot be accepted (348.586ms)
+(node:1063) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-seed-coordination.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual seed reserves the existing lookup queue before native write/readback, and autosave cannot start a second writer (583.093958ms)
+✔ retired actual seed cannot report another readback as a competing recovery or mount a stale editor (196.9065ms)
+✔ seed failure releases the reservation and reports refusal without a false device acknowledgement (210.955458ms)
+✔ actual recovery callback cannot acknowledge an editor snapshot for a retired seed (162.792ms)
+✔ current unsuccessful seed drains queued lookup failures so their existing retry status is reachable (244.204208ms)
+✔ actual discovery functional update cannot replace a seed across native write, readback and editor-ready handoff (345.374042ms)
+✔ actual transfer functional update cannot replace a seed across native write, readback and editor-ready handoff (317.614375ms)
+✔ a started actual autosave cannot publish protection after its initial editor generation retires (102.96825ms)
+✔ actual brief input retires initialization synchronously during write (202.06775ms)
+✔ actual destination-add input retires initialization synchronously during write (206.88625ms)
+✔ actual origin input retires initialization synchronously during write (148.02525ms)
+✔ actual end input retires initialization synchronously during write (139.886291ms)
+✔ actual dates input retires initialization synchronously during write (139.751834ms)
+✔ actual fixed-label input retires initialization synchronously during write (134.206625ms)
+✔ actual fixed-date input retires initialization synchronously during write (137.288667ms)
+✔ actual brief input retires initialization synchronously during readback (142.036583ms)
+✔ actual destination-add input retires initialization synchronously during readback (135.401791ms)
+✔ actual origin input retires initialization synchronously during readback (131.84925ms)
+✔ actual end input retires initialization synchronously during readback (131.517792ms)
+✔ actual dates input retires initialization synchronously during readback (131.546208ms)
+✔ actual fixed-label input retires initialization synchronously during readback (126.975459ms)
+✔ actual fixed-date input retires initialization synchronously during readback (131.032959ms)
+✔ actual brief input retires initialization synchronously during editor-initializing (133.042917ms)
+✔ actual destination-add input retires initialization synchronously during editor-initializing (130.785583ms)
+✔ actual origin input retires initialization synchronously during editor-initializing (126.936459ms)
+✔ actual end input retires initialization synchronously during editor-initializing (129.617916ms)
+✔ actual dates input retires initialization synchronously during editor-initializing (126.761958ms)
+✔ actual fixed-label input retires initialization synchronously during editor-initializing (126.153417ms)
+✔ actual fixed-date input retires initialization synchronously during editor-initializing (130.459ms)
+✔ a retired actual recovery consumer cannot install an entry or start a native writer (53.575667ms)
+✔ a current entry never acknowledges a foreign incoming trip (53.67925ms)
+✔ a seed joins the generation writer first started by an autosave whose optional effect cleaned up (130.721ms)
+✔ successful seed and exact handoff cannot relabel or clear protection from another generation (236.976958ms)
+✔ actual preservation cannot publish feedback or navigation into raw input entered during write (125.427792ms)
+✔ actual preservation cannot publish feedback or navigation into raw input entered during readback (124.287584ms)
+✔ actual preservation captures its source and accepts only the exact verified generation (77.74875ms)
+✔ actual ready handoff cannot release a newly installed intake receipt or foreign feedback (101.973292ms)
+✔ actual reviewed device retry starts a fresh guarded writer after native refusal and still waits for editor-ready handoff (130.776167ms)
+✔ actual reviewed device retry preserves a competing protected recovery and never seeds it (134.458625ms)
+✔ actual explicit retry does not duplicate a held writer and preserves a newer raw input on completion (199.418ms)
+✔ actual explicit retry reports an unknown read/write rejection only into its own current generation (125.956333ms)
+✔ actual seeded initialization failure retries with a fresh exact entry while its closure still captures the old seed (149.94325ms)
+✔ actual legacy onEndChange retains local input but refuses the old held seed (124.103875ms)
+✔ actual legacy onEndModeChange retains local input but refuses the old held seed (125.547ms)
+✔ actual legacy onEndSelect retains local input but refuses the old held seed (123.0935ms)
+✔ actual legacy onStartSelect retains local input but refuses the old held seed (127.392292ms)
+✔ actual legacy internal date handler retires initialization in the same event stack (130.614791ms)
+✔ actual legacy internal travellers handler retires initialization in the same event stack (132.448583ms)
+✔ actual legacy internal budget handler retires initialization in the same event stack (126.948625ms)
+✔ actual parent input capture retires before an invalid date picker raw-text handler publishes its unparsed input (127.937917ms)
+✔ actual pre-editor remove control preserves its visible change and refuses the old held seed (148.785583ms)
+✔ actual pre-editor order control preserves its visible change and refuses the old held seed (146.049167ms)
+✔ actual pre-editor night control preserves its visible change and refuses the old held seed (154.176667ms)
+✔ actual pre-editor undo control preserves its visible change and refuses the old held seed (146.895333ms)
+✔ actual pre-editor provider clarification keeps its selected point and invalidates the original seed (149.975875ms)
+✔ actual accepted brief capture preserves its existing stale-response refusal (124.884292ms)
+✔ actual accepted brief capture retires its replaced source (125.552542ms)
+✔ actual pre-editor planning-area source boundary refuses stale initialization (125.326291ms)
+✔ actual pre-editor transport-choice source boundary refuses stale initialization (123.097625ms)
+✔ actual pre-editor build-status source boundary refuses stale initialization (122.1525ms)
+✔ actual explicit Discovery clarification source replacement retires before a held add-stop validation continues (131.634084ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation (pointer) (113.846084ms)
+✔ partial native entry retry protects a competing body (pointer) (104.080291ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (pointer) (117.851708ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (receipt) (112.511583ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (pending-pointer) (115.770334ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation (retired) (102.208083ms)
+✔ authored input cannot replay the creation source after rerender (fresh, new) (100.82025ms)
+✔ authored input cannot replay the creation source after rerender (fresh, resumed) (102.914667ms)
+✔ authored input cannot replay the creation source after rerender (route-handoff, new) (99.488834ms)
+✔ authored input cannot replay the creation source after rerender (route-handoff, resumed) (101.46225ms)
+✔ creation replay remains bound to its selected owner (28.796875ms)
+✔ creation replay remains bound to its selected hydration (25.017541ms)
+✔ advisory rerender can retain the selected creation source within the same input revision (31.036667ms)
+(node:1064) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/discovery-direction-coordination.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual Discovery direction button waits for accepted direction before advancing the step (28.404959ms)
+✔ actual Discovery direction button does not advance after a refused durable action (27.615083ms)
+✔ actual Discovery direction button retains synchronous story fixture compatibility (8.013458ms)
+✔ actual Builder Discovery action returns a failed durable acknowledgement to its component (157.77125ms)
+✔ actual Builder Discovery action cannot return success after its view retires (113.29575ms)
+✔ actual Builder Discovery callback from a retired render cannot start another durable action (67.55375ms)
+(node:1065) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/generated-trip-title.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fresh six-stop round trip displays the first three destinations and retains every stop and airport endpoint (3.316583ms)
+✔ generated title retains a genuine origin-city destination, intentional repeats and airport-like destination text (0.5635ms)
+✔ explicitly clearing a custom name regenerates a destination-only title without changing the route (0.271625ms)
+✔ builder regeneration preserves explicit custom names and unknown saved-title provenance (1.017625ms)
+✔ known generated titles regenerate from new destinations during an explicit builder rebuild (0.451ms)
+✔ legacy generated display reads destinations without rewriting saved identity or route data (0.369875ms)
+✔ automatic display follows accepted stop order and handles an empty route (0.189042ms)
+✔ duplicate displays its explicit title: Hong Kong & Coron & Honolulu copy (0.933291ms)
+✔ duplicate displays its explicit title: Airport adventures copy (0.475542ms)
+✔ duplicate displays its explicit title: Summer route alternative (0.448167ms)
+(node:1066) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/homepage-async-entry.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Homepage hydration stays disabled until both-store owner-scoped read resolves (56.058291ms)
+✔ actual Homepage hydration enables fresh guest and signed-in input beside an unchanged foreign pending handoff (30.725209ms)
+✔ unknown/protected Homepage reads retain same-owner memory and do not manufacture empty durable input (21.935042ms)
+✔ owner change, unmount and superseded hydration reject late results (10.38325ms)
+✔ the visible retry rereads a transient unknown without discarding same-owner typed memory (11.392083ms)
+✔ same-owner unchanged receipt resume awaits preservation and retains explicit recovery navigation (26.395292ms)
+✔ competing receipt during preservation prevents stale same-owner resume navigation (13.535584ms)
+✔ edited Describe input with a legacy completed receipt must not redeem the old trip identity (6.64925ms)
+✔ actual Homepage Stops submit remains pending until canonical recovery and its receipt commit together (69.3635ms)
+✔ Plan with stops does not reopen an edited receipt trip whose route no longer matches the visible input (12.094958ms)
+✔ title-only edits keep the completed homepage trip identity (17.864792ms)
+✔ route mutation during preservation cannot redeem a completed receipt (10.760125ms)
+✔ new input or owner while preservation is pending cannot navigate (17.979584ms)
+✔ fresh reservation supersedes only the exact completed receipt observed under lock (1.102916ms)
+✔ unchanged authenticated canonical trip resumes its completed homepage receipt (14.657917ms)
+✔ fresh reservation never overwrites a concurrently changed raw homepage snapshot (2.650625ms)
+✔ explicit pending continuation uses the actual resume callback without clearing current selection (46.464291ms)
+(node:1067) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/new-search-past-dates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fresh New trip intake rejects restored yesterday before passing it to Builder (46.799625ms)
+✔ fresh New trip intake rejects raw past, invalid and reversed dates (18.307583ms)
+✔ fresh New trip intake accepts today, future, flexible and start-only dates (17.326833ms)
+✔ saved pending intake remains owned by the existing resume flow (1.345625ms)
+✔ raw New trip date edits retire navigation through the existing input update (1.169375ms)
+(node:1068) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/new-trip-starter-preservation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ New refuses a reservation arriving after starter mount and preserves current and frozen branches (97.970583ms)
+✔ New awaits write and refuses newer input during canonical read (29.889125ms)
+✔ New accepts exact persisted controls without writing (21.7915ms)
+✔ New refuses late preservation after owner (5.777333ms)
+✔ New refuses late preservation after session (6.786875ms)
+✔ New refuses late preservation after unmount (10.89275ms)
+✔ New refuses protected canonical input (7.344125ms)
+✔ New refuses unavailable canonical input (11.60875ms)
+✔ Resume refuses unsaved controls with a valid saved reservation (7.010083ms)
+✔ Resume rechecks canonical pair and opens exact checkpoint for unchanged controls (8.789083ms)
+✔ Resume refuses changed pair, owner and both-store protection (9.520375ms)
+✔ empty untouched New may navigate without manufacturing a saved input (2.574792ms)
+✔ Resume retires after input, session or unmount changes during canonical read (20.543291ms)
+✔ actual native/IndexedDB divergence refuses New and keeps every copy (4.638292ms)
+✔ explicit save after completed checkpoint keeps raw endpoint and releases only current form (42.927083ms)
+✔ explicit current save refuses pending-HOME without replacing prior input (11.167167ms)
+✔ explicit current save refuses competing-input without replacing prior input (4.246875ms)
+✔ explicit current save refuses pointer without replacing prior input (14.677334ms)
+✔ explicit current save refuses CAS-race without replacing prior input (7.456625ms)
+✔ pending-mode typing never releases a completed receipt automatically (11.742291ms)
+✔ raw edit survives native storage getter denial and synchronously retires New (3.294417ms)
+✔ Import cannot bypass a pending-mode release for partial or competing input (15.741875ms)
+✔ explicit current save without a receipt lock preserves every input and pending checkpoint (4.434166ms)
+(node:1069) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/new-trip-starter.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ New trip restores both inactive mode inputs and canonical repeated occurrences (2.517583ms)
+✔ New trip uses production capture, destination and endpoint controls with owner scoped intake (0.685333ms)
+✔ New trip persists edited intake without carrying a completed receipt (0.366125ms)
+✔ fresh-only Builder composition has one New trip heading and no duplicate first-place editor (3.407542ms)
+(node:1070) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/osaka-destination-planning.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual fresh Osaka autocomplete presents one reviewed city and selects its intact maintained tuple (175.917083ms)
+✔ fresh Osaka grouping is independent of candidate order and never alters source objects (2.238875ms)
+✔ Osaka saved selections and intentional repeated visits retain each occurrence and source identity (200.414667ms)
+✔ Osaka namesakes, gateways, districts and stale or contradictory tuples cannot borrow the fresh group (2.067708ms)
+(node:1071) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/osaka-seoul-transport.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ maintained Osaka to Seoul uses reviewed directional evidence and a broad planning total (21.79975ms)
+✔ pinned reference Osaka to Seoul uses reviewed directional evidence and a broad planning total (2.270292ms)
+✔ legacy identity with pinned binding Osaka to Seoul uses reviewed directional evidence and a broad planning total (1.543792ms)
+✔ normal worker can resolve an unknown Osaka to Seoul leg from service evidence without changing input (0.871208ms)
+✔ maintained osaka to seoul no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (5.192292ms)
+✔ maintained seoul to osaka no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (1.799375ms)
+✔ pinned reference osaka to seoul no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (18.026333ms)
+✔ pinned reference seoul to osaka no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (36.396042ms)
+✔ reviewed city corridors do not infer Seoul to Tokyo or airport substitutions (67.033375ms)
+✔ maintained Seoul to Osaka uses separately reviewed reverse evidence (1.558958ms)
+✔ pinned reference Seoul to Osaka uses separately reviewed reverse evidence (0.442667ms)
+✔ legacy identity with pinned binding Seoul to Osaka uses separately reviewed reverse evidence (0.283625ms)
+✔ catalog and GeoNames city representations work independently in both directions (71.001667ms)
+✔ maintained 35-night Builder reorder retains choices without applying a forward choice to the reverse leg (170.20425ms)
+✔ pinned reference 35-night Builder reorder retains choices without applying a forward choice to the reverse leg (154.822375ms)
+✔ osaka to seoul mismatched source point, provider pin, place id and country cannot borrow reviewed service evidence (31.179041ms)
+✔ seoul to osaka mismatched source point, provider pin, place id and country cannot borrow reviewed service evidence (34.430708ms)
+(node:1072) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/reviewed-bali-destinations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reviewed Bali discovery offers exact Ubud and Bali Kuta offline without resolving the island intent (565.397958ms)
+✔ reviewed Bali base identities expose the exact DPS gateway without changing their points (5.009584ms)
+✔ reviewed Bali coverage fails closed on a changed reference snapshot instead of falling through to live guesses (0.573084ms)
+✔ reviewed membership rejects changed tuple {"canonicalPlaceId":"reference:geonames:7378343"} (0.632875ms)
+✔ reviewed membership rejects changed tuple {"providerId":"reference:geonames:1639002@wrong"} (0.45425ms)
+✔ reviewed membership rejects changed tuple {"coordinates":[115,-8]} (0.485833ms)
+✔ reviewed membership rejects changed tuple {"parentCountries":["China"]} (0.429291ms)
+✔ reviewed membership rejects changed tuple {"parentCountries":["Indonesia","China"]} (0.423583ms)
+✔ reviewed membership rejects changed tuple {"canonicalName":"Other Kuta"} (0.409458ms)
+✔ reviewed membership rejects changed tuple {"placeType":"island"} (0.5265ms)
+✔ reviewed membership rejects changed tuple {"routability":"needs_base_selection"} (0.426209ms)
+✔ province, foreign, unknown and missing island identities cannot use reviewed Bali membership (0.114833ms)
+✔ Bali text search and explicit base revalidation use the same offline exact membership (18.000208ms)
+✔ explicit reference:geonames:1622846 inbound uses DPS flight and separate ground-access segments offline (32.015917ms)
+✔ explicit reference:geonames:1622846 outbound uses DPS flight and separate ground-access segments offline (2.428541ms)
+✔ explicit reference:geonames:1639002 inbound uses DPS flight and separate ground-access segments offline (3.397042ms)
+✔ explicit reference:geonames:1639002 outbound uses DPS flight and separate ground-access segments offline (3.503834ms)
+✔ Bali gateway support preserves exclusions, booked facts, other Kuta and same-island journeys (19.771084ms)
+✔ reviewed gateway projection cannot move the pinned airport by changing a self-consistent tuple (0.217708ms)
+✔ custom destination stores and explicit unknown overrides remain authoritative (0.729458ms)
+✔ reviewed registry fields match the actual accepted reference records, including the DPS airport (0.2715ms)
+✔ explicit accepted Bali base builds and round-trips canonical trip identity in isolated device storage (5.152ms)
+✔ unverified changed base geography and explicitly selected airports never become an assumed Bali stay (1.901375ms)
+(node:1076) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/search-date-picker.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ calendar exposes date cells inside week rows for 2026-02 (48.046083ms)
+✔ calendar exposes date cells inside week rows for 2026-09 (4.520833ms)
+✔ calendar exposes date cells inside week rows for 2026-08 (4.822875ms)
+✔ Search picker disables yesterday while today is selectable (11.879917ms)
+✔ Search picker rechecks local today when a previously enabled day is picked after midnight (8.364333ms)
+✔ the shared picker still permits historical trip dates unless Search opts in (2.940416ms)
+✔ complete-range mode does not submit a partial start selection (10.653791ms)
+✔ complete-range end uses the local selected start while canonical props are unchanged (3.104166ms)
+✔ closing a partial complete-range selection makes no submission (4.668167ms)
+✔ complete-range trigger is busy until its submitted range settles (1.082959ms)
+✔ complete-range end permits a valid range before the original start (1.786792ms)
+(node:1077) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/search-past-dates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Search blocks yesterday from restored input before reserving or navigating (5.684292ms)
+✔ Search blocks unaccepted typed past dates instead of using the previous valid range (1.240167ms)
+✔ Search rejects reversed ranges with a clear date message (0.383084ms)
+✔ Search accepts today, equal endpoints, future ranges, open dates and start-only dates (2.748334ms)
+✔ Search blocks a malformed typed date and requires applying valid typed text (1.751125ms)
+✔ Search reevaluates restored dates against the current local day after midnight (0.166ms)
+✔ Search uses the traveller's local today on both sides of the UTC date boundary (209.833375ms)
+✔ typing a Search date retires an in-flight continuation before publishing the raw draft (5.79075ms)
+(node:1079) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/staging-africa-latency-exception.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ multi-area acceptance exposes a fixed target and bounded completion (0.42875ms)
+✔ South Korea 1440px reports 0ms without completing functional checks (0.320083ms)
+✔ South Korea 1440px reports 2499.9ms without completing functional checks (0.513292ms)
+✔ South Korea 1440px reports 2500ms without completing functional checks (0.0405ms)
+✔ South Korea 1440px reports 3171.7ms without completing functional checks (0.042958ms)
+✔ South Korea 1440px reports 6869.5ms without completing functional checks (0.032916ms)
+✔ South Korea 390px reports 0ms without completing functional checks (0.032291ms)
+✔ South Korea 390px reports 2499.9ms without completing functional checks (0.039417ms)
+✔ South Korea 390px reports 2500ms without completing functional checks (0.047208ms)
+✔ South Korea 390px reports 3171.7ms without completing functional checks (0.075666ms)
+✔ South Korea 390px reports 6869.5ms without completing functional checks (0.04875ms)
+✔ Africa 1440px reports 0ms without completing functional checks (0.040292ms)
+✔ Africa 1440px reports 2499.9ms without completing functional checks (0.023792ms)
+✔ Africa 1440px reports 2500ms without completing functional checks (0.027208ms)
+✔ Africa 1440px reports 3171.7ms without completing functional checks (0.018875ms)
+✔ Africa 1440px reports 6869.5ms without completing functional checks (0.0215ms)
+✔ Africa 390px reports 0ms without completing functional checks (0.036333ms)
+✔ Africa 390px reports 2499.9ms without completing functional checks (0.025291ms)
+✔ Africa 390px reports 2500ms without completing functional checks (0.018208ms)
+✔ Africa 390px reports 3171.7ms without completing functional checks (0.0165ms)
+✔ Africa 390px reports 6869.5ms without completing functional checks (0.015125ms)
+✔ invalid or uncompleted elapsed time NaN fails closed (0.18025ms)
+✔ invalid or uncompleted elapsed time Infinity fails closed (0.023667ms)
+✔ invalid or uncompleted elapsed time -Infinity fails closed (0.021833ms)
+✔ invalid or uncompleted elapsed time -1 fails closed (0.017625ms)
+✔ invalid or uncompleted elapsed time 15000 fails closed (0.01675ms)
+✔ unreviewed report context Japan 390px one_way fails closed (0.031667ms)
+✔ unreviewed report context Africa 430px one_way fails closed (0.017125ms)
+✔ unreviewed report context South Korea 390px return_to_start fails closed (0.016458ms)
+(node:1080) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/staging-south-korea-latency-exception.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ main 1440px keeps performance failures visible after functional qualification (38.6575ms)
+✔ main 390px keeps performance failures visible after functional qualification (43.418541ms)
+✔ staging 1440px keeps performance failures visible after functional qualification (47.813542ms)
+✔ staging 390px keeps performance failures visible after functional qualification (39.60825ms)
+✔ codex/other 1440px keeps performance failures visible after functional qualification (42.991167ms)
+✔ codex/other 390px keeps performance failures visible after functional qualification (38.401292ms)
+✔ local 1440px keeps performance failures visible after functional qualification (41.324917ms)
+✔ local 390px keeps performance failures visible after functional qualification (39.60375ms)
+✔ clean performance requires both completed area measurements below 2500ms (39.858625ms)
+✔ qualification rejects no records (34.491208ms)
+✔ qualification rejects missing Africa (39.270125ms)
+✔ qualification rejects pending recovery (42.106584ms)
+✔ qualification rejects failed recovery (27.913209ms)
+✔ qualification rejects raised target (36.210709ms)
+✔ qualification rejects concealed miss (35.768083ms)
+✔ qualification rejects concealed pass (37.32ms)
+✔ qualification rejects invalid elapsed (28.303958ms)
+✔ qualification rejects invalid driver elapsed (44.7135ms)
+✔ qualification rejects wrong trip type (82.377583ms)
+✔ qualification rejects wrong width (43.212959ms)
+✔ qualification rejects raised completion bound (44.614334ms)
+✔ qualification rejects completion beyond bound (37.749875ms)
+✔ qualification rejects wrong scope (40.406667ms)
+✔ qualification rejects extra unreviewed record (37.543625ms)
+✔ functional failed case still blocks qualification (37.890625ms)
+✔ functional cancelled case still blocks qualification (42.728416ms)
+✔ functional missing case still blocks qualification (46.803584ms)
+(node:1081) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-async-edit-session.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ session-scoped automatic deferral keeps explicit writes durable and resumes latest work once (29.255459ms)
+✔ a successful response during deferral cannot write a projection (16.338625ms)
+✔ a rejected response during deferral cannot write a projection (16.246208ms)
+✔ projection admission rechecks deferral before reservation (7.540542ms)
+✔ projection admission rechecks deferral before reservation and preserves release during cleanup (9.427584ms)
+✔ deferral preserves an already reserved projection save and explicit acceptance waits for its readback (13.295833ms)
+✔ deferral release while a reserved write remains pending wakes current work after it finishes (28.271ms)
+✔ deferral is instance-owned, idempotent, and cannot strand a replacement or erase newer raw input (4.436334ms)
+✔ hydration awaits authoritative draft read and rejects an owner change during the read (2.080375ms)
+✔ held device transaction cannot advance accepted trip, Undo retention or account queue (6.516958ms)
+✔ atomic accepted edit consumes only its exact raw field after durable verification (4.379042ms)
+✔ held accepted edit rejects owner change and preserves raw bytes (4.297333ms)
+✔ held accepted edit rejects dispose change and preserves raw bytes (3.28175ms)
+✔ held raw input is visible in memory but stays pending and cannot release cloud saving (3.529417ms)
+✔ failed atomic draft retention keeps accepted document and unconsumed raw bytes (7.908625ms)
+✔ stale projection response cannot start a durable write after a newer raw input (26.63075ms)
+✔ reserved projection finishes its canonical commit while preserving newer input and refusing stale feedback (24.368834ms)
+✔ held exact ACK serializes a later edit and never retires its new recovery (38.311417ms)
+✔ exact account ACK remains account truth when optional canonical cache fails (5.292583ms)
+✔ Undo remains awaited and carries CAS ancestry behind a held earlier save (46.430458ms)
+✔ promotion remaps preserved raw input and a pre-promotion Undo frame after newer edits (102.242292ms)
+✔ raw discard retains bytes until its verified write and refuses failed discard (2.727667ms)
+✔ the existing synchronous API retains immediate boolean and acceptance returns (2.1885ms)
+✔ failed promotion draft retention preserves exact ownerless recovery and raw input (6.407625ms)
+✔ failed promotion recovery retention preserves exact ownerless recovery and raw input (12.794458ms)
+✔ failed authoritative draft hydration cannot overwrite unknown raw bytes (0.647ms)
+✔ projection retry awaits retained failure state without consuming independent raw input (7.026791ms)
+✔ network retry keeps exact current handle and waits for async status before account submission (13.526292ms)
+✔ latest promotion is a durable identity continuation without a new accepted edit revision (12.318541ms)
+✔ pre-promotion Undo waits for held ACK journaling and retains durable remap (41.859916ms)
+✔ an exact ACK waits for a held newer raw write instead of invalidating its durable continuation (6.455833ms)
+✔ an explicitly unacknowledged result cannot claim account success despite optional cache status (10.155667ms)
+✔ actual Discovery checkpoint verifies the accepted session document instead of a stale rendered owner ref (146.260417ms)
+✔ actual Discovery checkpoint refuses a newer raw input while projection readback is pending (44.730792ms)
+✔ actual Discovery checkpoint cannot confirm after its view retires during readback (45.494709ms)
+✔ actual Discovery checkpoint cannot acknowledge a different rendered trip scope (37.680875ms)
+✔ actual night controls retain two rapid activations across awaited device acceptance (16.296291ms)
+✔ reserved night activation finishes while newer raw input retires the queued second activation (10.556875ms)
+✔ queued night activations stop after native refusal without an automatic second write (7.885084ms)
+✔ accepted edit waits for the current projection readback without rebasing newer traveller input (7.27525ms)
+✔ actual Build waits for an in-flight projection commit before accepting planned status (20.819209ms)
+✔ waiting Build cannot accept planned status after its mounted scope retires (12.734125ms)
+✔ waiting Build cannot cross an owner rotation during canonical readback (10.347709ms)
+✔ waiting Build preserves a newer unsubmitted raw input and refuses the stale request (12.060041ms)
+✔ mounted Builder dispatch waits for durable acceptance before publishing Undo and success (5.931166ms)
+✔ mounted Builder dispatch cannot publish a completed acceptance after unmount (6.794834ms)
+✔ mounted Builder preservation refuses a held acceptance instead of fabricating device durability (37.874041ms)
+✔ actual Build follows an origin command issued before Build while its acceptance is pending (15.780333ms)
+✔ reserved accepted edit retains newer raw bytes with a revision above the committed draft (4.492333ms)
+✔ actual Build refuses later-command while a prior origin is pending (9.30425ms)
+✔ actual Build refuses prior-refusal while a prior origin is pending (15.428708ms)
+✔ actual Build refuses editor-replaced while a prior origin is pending (8.858291ms)
+✔ actual Build retains the existing explicit ownerless promotion path from pending recovery (14.841708ms)
+✔ actual Build request retires when raw input changes before its effect starts (6.570958ms)
+✔ actual Build cannot navigate after newer raw input arrives during account flush (11.632166ms)
+✔ discard queued behind a reserved commit settles against its accepted source (3.08275ms)
+✔ fresh Build can follow an obsolete retired command and a verified discard (10.15625ms)
+✔ actual Build must reassess a pending origin clear after its acceptance (15.143375ms)
+✔ guest Build retirement renders no account failure or unverified device assurance (29.349666ms)
+✔ Build assessment publication is bound to its settled render: none (2.378333ms)
+✔ Build assessment publication is bound to its settled render: document (2.243417ms)
+✔ Build assessment publication is bound to its settled render: revision (3.703083ms)
+✔ Build assessment publication is bound to its settled render: owner (1.84625ms)
+✔ Build assessment publication is bound to its settled render: unmount (1.743667ms)
+✔ discard superseded during its reserved write keeps newer raw and persists the higher revision (3.039ms)
+✔ Build status refuses a source changed by projection after its assessment (5.36875ms)
+✔ Build assessment refuses failed projection persistence (16.04925ms)
+✔ Build assessment refuses held projection persistence (13.321541ms)
+✔ actual build navigation rechecks none after the async persistence return (16.36ms)
+✔ actual build navigation rechecks failed after the async persistence return (15.384584ms)
+✔ actual build navigation rechecks held after the async persistence return (20.7615ms)
+✔ actual build navigation rechecks new-raw after the async persistence return (15.582375ms)
+✔ actual build navigation rechecks owner after the async persistence return (13.750666ms)
+✔ actual build navigation rechecks unmount after the async persistence return (14.609583ms)
+✔ actual map navigation rechecks none after the async persistence return (13.839166ms)
+✔ actual map navigation rechecks failed after the async persistence return (18.879375ms)
+✔ actual map navigation rechecks held after the async persistence return (16.016209ms)
+✔ actual map navigation rechecks new-raw after the async persistence return (15.930542ms)
+✔ actual map navigation rechecks owner after the async persistence return (14.328917ms)
+✔ actual map navigation rechecks unmount after the async persistence return (20.585041ms)
+✔ verified discard preserves only actual newer field intent: unrelated (2.234667ms)
+✔ verified discard preserves only actual newer field intent: same-field (1.956166ms)
+✔ verified discard preserves only actual newer field intent: same-field-aba (2.288ms)
+✔ unverified discard cannot remove input after write-failure (2.096125ms)
+✔ unverified discard cannot remove input after owner (1.431792ms)
+✔ Build assesses a healthy same-command projection at assessment 1 (13.684416ms)
+✔ Build assesses a healthy same-command projection at assessment 2 (13.775375ms)
+✔ mounted transfer work completes while ineligible generated recommendation lookup is held (144.860334ms)
+✔ route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing (66.924625ms)
+✔ raw input during held ACK stays visible and persists after canonical installation (7.676625ms)
+✔ queued date intent settles and remains device-durable after ACK timeout rejection (8.070125ms)
+✔ import manual retry success: one request, honest terminal state and durable reopen (35.497292ms)
+✔ import manual retry failure: one request, honest terminal state and durable reopen (25.110459ms)
+✔ import manual retry rejection: one request, honest terminal state and durable reopen (22.311208ms)
+✔ import retry late response cannot cross owner boundary (10.571291ms)
+✔ import retry late response cannot cross navigation boundary (11.545833ms)
+✔ import retry late response cannot cross dates boundary (23.535084ms)
+✔ import explicit retry runs actual Builder worker: insufficient (19.505625ms)
+✔ import explicit retry runs actual Builder worker: unavailable (18.168583ms)
+✔ import explicit retry runs actual Builder worker: network (19.686125ms)
+✔ import explicit retry runs actual Builder worker: incomplete (18.205ms)
+✔ import explicit retry runs actual Builder worker: mismatch (18.08675ms)
+✔ rapid repeated import retry clicks before durability schedule at most one lookup (14.239667ms)
+✔ actual page quota retry clears stale failure and publishes the matching Undo frame once (6.897458ms)
+✔ quota refusal retains an exact explicit change for manual retry without reporting a save (6.258041ms)
+✔ repeated quota retries serialize and keep the change pending until a verified write (3.417333ms)
+✔ quota retry cannot replay after owner (1.624583ms)
+✔ quota retry cannot replay after raw-input (2.140083ms)
+✔ quota retry cannot replay after new-command (3.499625ms)
+✔ quota retry cannot replay after dispose (1.5925ms)
+✔ quota retry preserves a separately written recovery instead of selecting a winner (2.64625ms)
+✔ account conflict after a quota retry retains the device change without another account write (3.853167ms)
+✔ security refusal never becomes a retryable quota command (1.484167ms)
+✔ readback refusal never becomes a retryable quota command (1.395417ms)
+✔ pointer refusal never becomes a retryable quota command (1.417084ms)
+✔ unknown refusal never becomes a retryable quota command (1.406708ms)
+(node:1082) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-entry-session.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ entry rejects explicit recoveryDurable=false before readback or handoff (23.809208ms)
+✔ entry rejects explicit readbackConfirmed=false before readback or handoff (19.35175ms)
+✔ entry rejects explicit pointerAcknowledged=false before readback or handoff (1.162125ms)
+✔ entry rejects explicit receiptAcknowledged=false before readback or handoff (1.107375ms)
+✔ entry rejects owner readback rather than adopting physical bytes (1.183625ms)
+✔ entry rejects trip readback rather than adopting physical bytes (0.955416ms)
+✔ entry rejects write readback rather than adopting physical bytes (0.914875ms)
+✔ entry rejects backend readback rather than adopting physical bytes (0.880333ms)
+✔ entry rejects body readback rather than adopting physical bytes (1.075833ms)
+✔ entry freezes source and receipt and transfers once only after real async editor draft initialization completes (6.880584ms)
+✔ entry lifetime retirement at write cannot mount or confer feedback authority (3.210125ms)
+✔ entry lifetime retirement at readback cannot mount or confer feedback authority (5.596125ms)
+✔ entry lifetime retirement at ready cannot mount or confer feedback authority (1.219917ms)
+✔ canonical source with no opened exact handle refuses an arbitrary newer local recovery (1.056042ms)
+✔ actual initialization scheduler holds actor work until exact session handoff commits (428.329ms)
+✔ entry preserves actual SecurityError body failure and refuses handoff (7.702666ms)
+✔ entry preserves actual QuotaExceededError body failure and refuses handoff (4.95325ms)
+✔ entry preserves actual InvalidStateError body failure and refuses handoff (6.363791ms)
+✔ entry derives pointer failure only after verified body (1.658417ms)
+✔ entry derives receipt failure only after verified body (7.267583ms)
+✔ entry retains explicit unknown failure without reclassifying an unattempted acknowledgement (3.606542ms)
+✔ entry retains explicit protected-recovery failure without reclassifying an unattempted acknowledgement (0.831875ms)
+✔ entry retains explicit pointer-incomplete failure without reclassifying an unattempted acknowledgement (1.086333ms)
+✔ entry retains explicit receipt-incomplete failure without reclassifying an unattempted acknowledgement (1.921458ms)
+(node:1084) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-gate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ populated Builder directly exposes explicit, Same as start and unknown journey ends (0.389292ms) # SKIP
+﹣ editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged (0.048ms) # SKIP
+﹣ canonical published handoff stays ready while optional enrichment is pending in Chromium and WebKit (0.032667ms) # SKIP
+✔ valid builder document passes the authoritative invariant (5.097166ms)
+✔ a canonical coordinate-less stop can advance while enrichment remains unknown (2.910458ms)
+✔ a coordinate-less stop without canonical identity still requires review (0.851875ms)
+✔ the exact Cancún endpoint and opening-stay trip can advance to dates and nights (46.056084ms)
+✔ a viable itinerary is not rejected across the exploratory duration range (3.648709ms)
+✔ progress tab cannot bypass unresolved place review (0.75275ms)
+✔ non-critical unresolved traveller intent needs attention without blocking a valid canonical route (1.681833ms)
+✔ France attention follows an explicit Paris base selection, never geography alone (11.485625ms)
+✔ a conflicting traveller place role remains a hard readiness conflict (0.609584ms)
+﹣ Build requires explicit continuation without adding unresolved intent and recovery preserves it (0.169125ms) # SKIP
+﹣ Overview recovery deep-link opens the exact retained Builder mention (0.055ms) # SKIP
+﹣ post-Build Kruger recovery preserves the unresolved reminder until canonical evidence exists (0.044334ms) # SKIP
+﹣ a provider-backed nearby place cannot bypass Kruger's missing canonical identity (0.050083ms) # SKIP
+﹣ provider unavailability never makes an unverified model base actionable (0.051334ms) # SKIP
+﹣ populated Builder only presents route-stop search results whose selected evidence can be added canonically (0.044834ms) # SKIP
+﹣ the inline Add a stop field stays ready for consecutive canonical additions on mobile and desktop (0.043209ms) # SKIP
+﹣ mobile Builder keeps destination intents visible while the single Add flow is open (0.037792ms) # SKIP
+✔ an entered origin may reach validation but cannot build while unverified (0.622208ms)
+✔ unreviewed geography blocks an otherwise authored itinerary (0.5665ms)
+✔ empty trip cannot advance, build, persist or navigate (0.138208ms)
+✔ three required stops under a hard maximum of two surfaces the structured conflict (0.759833ms)
+✔ eight retained stops in three days fail on zero-night stops and coverage (0.51375ms)
+✔ invalid document persistence is rejected for missing itinerary coverage (0.266833ms)
+✔ date and night-allocation contradictions block final persistence (0.268541ms)
+✔ the final validator blocks build, persistence and navigation through the same gate (0.342375ms)
+✔ the builder gate preserves distinct feasible and unknown realism outcomes (0.424875ms)
+✔ Builder applies a country-continuity proposal by occurrence-safe stop IDs (0.123042ms)
+(node:1098) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-layout.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a useful route requires a valid stop occurrence, independently of endpoint context (0.471ms)
+﹣ direct Builder entry offers capture, first place and import without mandatory steps or empty route (0.040334ms) # SKIP
+﹣ useful homepage and template handoffs show route timing immediately (0.03825ms) # SKIP
+﹣ mobile route map disclosure releases the map height (0.0305ms) # SKIP
+﹣ area-only handoff stays in clarification without an empty route or retired intake (0.032125ms) # SKIP
+﹣ versioned direct, area and Describe handoffs hydrate the unified Builder under their reserved identity (0.028ms) # SKIP
+﹣ homepage handoff adopts its durable recovery URL once and restores on reload (0.027375ms) # SKIP
+﹣ legacy step query cannot switch an empty Builder into timing and preserves other parameters (0.028917ms) # SKIP
+✔ Builder workspace height and capture width remain content-driven (2.180542ms)
+✔ desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints (0.887791ms)
+✔ the unified route workspace projects canonical occurrences beside the map (4.21575ms)
+✔ versioned homepage hydration reserves identity before replay and keeps one Builder document owner (2.153333ms)
+✔ homepage lookup cannot overwrite a newer point when its seed had no coordinates (295.0815ms)
+✔ homepage lookup preserves a later authoritative name change (25.741792ms)
+✔ homepage lookup preserves a later authoritative country change (11.4515ms)
+✔ homepage lookup preserves a later authoritative canonical identity change (12.834125ms)
+✔ homepage lookup preserves a later authoritative provider identity change (12.509916ms)
+✔ homepage lookup cannot overwrite newer evidence at an identical identity, provider and point (17.170958ms)
+✔ homepage target guard allows an unchanged target after an unrelated accepted budget edit (12.590125ms)
+✔ before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed (9.904958ms)
+✔ before canonical hydration, identical-point newer evidence invalidates the held homepage lookup (6.709458ms)
+✔ before canonical hydration, compatible homepage enrichment waits for its mounted canonical owner (6.6315ms)
+✔ a fatal initial map failure leaves the route workspace usable (1.831417ms)
+✔ Builder spacing and healthy route copy use the focused production treatment (2.005542ms)
+✔ the Journey shell and immersive closing share one production footer owner (1.357417ms)
+✔ clarification presentation separates action-required geography from confirmed stay bases (1.539667ms)
+✔ the activated Builder keeps one compact details and validation hierarchy (2.632292ms)
+✔ Journey is the only Add stop entry point after a route exists (0.939708ms)
+✔ night allocation is compact Route metadata instead of a separate band (1.204875ms)
+✔ Builder hierarchy has production Storybook coverage at every required width (1.259041ms)
+✔ night allocation reads canonical arrival and departure transfer impacts (0.666208ms)
+✔ manual night edits use canonical rebalance, durable stop intent and shared feedback (0.806708ms)
+﹣ first-place selection creates route timing without requiring endpoint context (0.027792ms) # SKIP
+﹣ passive validation preserves Starting from focus while typing after the first place (0.016958ms) # SKIP
+﹣ first-place resolution keeps the pending selection visible and prevents competing capture (0.014458ms) # SKIP
+﹣ endpoint-only handoff does not create an overnight route or timing table (0.018208ms) # SKIP
+﹣ direct text capture uses the existing parser then replaces capture with the populated route (0.017667ms) # SKIP
+﹣ legacy populated links focus summary or timing once while the whole route stays mounted (0.015583ms) # SKIP
+(node:1107) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-pending-build.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Build waits for the held route worker before guest completion (101.786708ms)
+✔ Build waits for the held route worker before account completion (79.900416ms)
+✔ Build waits for the held route worker before promotion completion (56.958334ms)
+✔ Build settles after terminal route failed while preserving unknown timing (26.478292ms)
+✔ Build settles after terminal route conflict while preserving unknown timing (28.904375ms)
+✔ Build waiting for route details refuses input retirement (19.575042ms)
+✔ Build waiting for route details refuses owner retirement (18.604916ms)
+✔ Build waiting for route details refuses unmount retirement (22.282667ms)
+✔ Build waiting for route details refuses editor retirement (24.199667ms)
+✔ the navigation receipt refuses a durably saved trip with route work still pending (10.864959ms)
+✔ Build returns review on deferred projection after provider response, then supports a deliberate retry (35.848667ms)
+✔ Build returns review on deferred projection after provider error, then supports a deliberate retry (36.660459ms)
+✔ stopped Build restores en feedback and preserves review and retry action semantics (1.488083ms)
+✔ stopped Build restores en feedback and preserves explicit recovery action semantics (1.070292ms)
+✔ stopped Build restores es feedback and preserves review and retry action semantics (0.902917ms)
+✔ stopped Build restores es feedback and preserves explicit recovery action semantics (0.860625ms)
+(node:1109) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/lib/easyt/trip-builder-async-edit-session.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Build assessment reaches an honest outcome: native, provider response (269.464917ms)
+✔ Build assessment reaches an honest outcome: native, provider error (161.131834ms)
+✔ Build assessment reaches an honest outcome: indexeddb-body, provider response (105.394458ms)
+✔ Build assessment reaches an honest outcome: indexeddb-body, provider error (91.037833ms)
+✔ Build assessment reaches an honest outcome: indexeddb-input, provider response (166.538583ms)
+✔ Build assessment reaches an honest outcome: indexeddb-input, provider error (154.539084ms)
+✔ delayed native route response stays pending until actual worker outcome (140.616583ms)
+✔ delayed indexeddb-body route response stays pending until actual worker outcome (95.06325ms)
+✔ delayed indexeddb-input route response stays pending until actual worker outcome (157.606875ms)
+✔ completed domain input does not start another provider call or write on retry (159.337833ms)
+✔ completed IDB body does not start another provider call or write on explicit necessary-work retry (88.857834ms)
+✔ stale native worker cannot publish blocked or completed work after input (126.692667ms)
+✔ stale native worker cannot publish blocked or completed work after owner (116.518958ms)
+✔ stale native worker cannot publish blocked or completed work after dispose (125.691084ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after input (84.947709ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after owner (76.418167ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after dispose (73.88675ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after input (135.819208ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after owner (124.301708ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after dispose (121.016333ms)
+✔ native projection storage refusal settles through the existing error and keeps the accepted document (115.0755ms)
+✔ indexeddb-body projection storage refusal settles through the existing error and keeps the accepted document (76.446292ms)
+✔ indexeddb-input projection storage refusal settles through the existing error and keeps the accepted document (123.716ms)
+✔ a provider response with no usable progress settles for review rather than hanging (105.996ms)
+✔ historical promotion stays fenced after native route outcome, provider response (131.813917ms)
+✔ historical promotion stays fenced after native route outcome, provider error (125.040291ms)
+✔ historical promotion stays fenced after indexeddb-body route outcome, provider response (91.144291ms)
+✔ historical promotion stays fenced after indexeddb-body route outcome, provider error (84.77425ms)
+✔ historical promotion stays fenced after indexeddb-input route outcome, provider response (169.901292ms)
+✔ historical promotion stays fenced after indexeddb-input route outcome, provider error (145.450084ms)
+✔ assessment observes delayed verified native completion without authorizing historical promotion (132.691333ms)
+✔ assessment observes delayed verified indexeddb-input completion without authorizing historical promotion (152.585167ms)
+✔ assessment observation deadline cannot turn unfinished work into success (139.442125ms)
+(node:1115) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-display.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ formats known generated titles from the first three destination stops (0.479125ms)
+✔ preserves a traveller-authored title (0.096583ms)
+✔ renaming changes only identity fields and clearing restores the geographic title (0.197625ms)
+✔ generated identity preserves ordered destination occurrences, origin stays and Unicode (0.111916ms)
+✔ route edits update automatic identity but never replace a custom override (0.07125ms)
+(node:1118) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-recovery-classification.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ clean canonical trip has no recovery state (0.434125ms)
+✔ only the mounted owner's exact pending handle is a current save (0.223833ms)
+✔ the exact mounted failed write is a current save failure (0.142167ms)
+✔ the same failed record becomes historical after reload (3.01775ms)
+✔ canonical-equivalent recovery is safe to reconcile (0.671ms)
+✔ the exact ownerless recovery is the active local document after reload (0.531834ms)
+✔ a different ownerless recovery remains protected as genuine divergence (0.230209ms)
+✔ the active ownerless recovery handle permits the next exactly-once local edit (2.737166ms)
+✔ a prior canonical snapshot is historical-superseded only through semantic comparison (1.68225ms)
+✔ a newer timestamp alone never discards unique traveller edits (0.448916ms)
+✔ save header and dashboard source keep historical recovery separate and trip-scoped (2.641417ms)
+✔ dashboard groups detached recoveries behind one calm disclosure while keeping each review path (0.296792ms)
+✔ detached-copy copy distinguishes an unconfirmed account save from a previously reported deletion (0.136917ms)
+✔ detached-copy presentation retains the warning, complete account comparison and individual review links (0.122375ms)
+ℹ tests 607
+ℹ suites 0
+ℹ pass 583
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 24
+ℹ todo 0
+ℹ duration_ms 11235.490667
+
+> morrovia@1.0.0 build
+> node --experimental-strip-types scripts/build-physical-land-refinement.ts --check && next build && node scripts/check-client-reference-manifests.mjs && node --experimental-strip-types scripts/generate-offline-shell-manifest.mjs
+
+(node:1162) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/scripts/build-physical-land-refinement.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{ components: 1, bytes: 152525, checked: true }
+   ▲ Next.js 15.5.21
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 18.2s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/51) ...
+   Generating static pages (12/51)
+   Generating static pages (25/51)
+   Generating static pages (38/51)
+ ✓ Generating static pages (51/51)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                                         Size  First Load JS
+┌ ƒ /                                                                            20.2 kB        1.05 MB
+├ ○ /_not-found                                                                     1 kB         105 kB
+├ ƒ /api/auth/[...all]                                                             281 B         104 kB
+├ ƒ /api/easyt/admin/access                                                        281 B         104 kB
+├ ƒ /api/easyt/admin/audit                                                         281 B         104 kB
+├ ƒ /api/easyt/admin/feedback/[feedbackId]                                         281 B         104 kB
+├ ƒ /api/easyt/admin/routes/[routeKey]                                             281 B         104 kB
+├ ƒ /api/easyt/admin/users/delete                                                  281 B         104 kB
+├ ƒ /api/easyt/booking-import                                                      281 B         104 kB
+├ ƒ /api/easyt/booking-import/[candidateId]                                        281 B         104 kB
+├ ƒ /api/easyt/calendar-export/callback                                            281 B         104 kB
+├ ƒ /api/easyt/calendar-export/connect                                             281 B         104 kB
+├ ƒ /api/easyt/calendar-export/destinations                                        281 B         104 kB
+├ ƒ /api/easyt/calendar-export/disconnect                                          281 B         104 kB
+├ ƒ /api/easyt/contact                                                             281 B         104 kB
+├ ƒ /api/easyt/email/inbound                                                       281 B         104 kB
+├ ƒ /api/easyt/email/webhook                                                       281 B         104 kB
+├ ƒ /api/easyt/feedback                                                            281 B         104 kB
+├ ƒ /api/easyt/feedback/survey                                                     281 B         104 kB
+├ ƒ /api/easyt/gifts/[token]                                                       281 B         104 kB
+├ ƒ /api/easyt/profile                                                             281 B         104 kB
+├ ƒ /api/easyt/public-routes/[routeKey]                                            281 B         104 kB
+├ ƒ /api/easyt/stamped                                                             281 B         104 kB
+├ ƒ /api/easyt/trips                                                               281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]                                                      281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/calendar-export                                      281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot                                              281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-stop-nights/apply             281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-transport-preference/apply    281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/set-trip-preference/apply            281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/gift                                                 281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/pdf                                                  281 B         104 kB
+├ ƒ /api/easyt/trips/[tripId]/promote                                              281 B         104 kB
+├ ƒ /api/health                                                                    281 B         104 kB
+├ ƒ /api/internal/openai-smoke                                                     281 B         104 kB
+├ ƒ /api/internal/viator-sandbox                                                   281 B         104 kB
+├ ƒ /api/journey-accommodation-search                                              281 B         104 kB
+├ ƒ /api/journey-activity-inventory                                                281 B         104 kB
+├ ƒ /api/journey-booking-readiness                                                 281 B         104 kB
+├ ƒ /api/journey-capture                                                           281 B         104 kB
+├ ƒ /api/journey-day-trips                                                         281 B         104 kB
+├ ƒ /api/journey-discover                                                          281 B         104 kB
+├ ƒ /api/journey-geocode                                                           281 B         104 kB
+├ ƒ /api/journey-local-search                                                      281 B         104 kB
+├ ƒ /api/journey-outdoors                                                          281 B         104 kB
+├ ƒ /api/journey-passport-requirements                                             281 B         104 kB
+├ ƒ /api/journey-place                                                             281 B         104 kB
+├ ƒ /api/journey-place-enrichment                                                  281 B         104 kB
+├ ƒ /api/journey-place-photo                                                       281 B         104 kB
+├ ƒ /api/journey-plan                                                              281 B         104 kB
+├ ƒ /api/journey-readiness                                                         281 B         104 kB
+├ ƒ /api/journey-road-routes                                                       281 B         104 kB
+├ ƒ /api/journey-route-image                                                       281 B         104 kB
+├ ƒ /api/journey-routes                                                            281 B         104 kB
+├ ƒ /api/journey-transfer-resolution                                               281 B         104 kB
+├ ● /case-study/[slug]                                                           3.44 kB         445 kB
+├   ├ /case-study/rio
+├   ├ /case-study/returns-kiosk
+├   ├ /case-study/returns-platform
+├   └ /case-study/farfetch
+├ ○ /journey                                                                       350 B        1.75 MB
+├ ƒ /journey/[tripId]                                                            28.9 kB        1.07 MB
+├ ƒ /journey/[tripId]/explore                                                    20.8 kB        1.08 MB
+├ ƒ /journey/[tripId]/itinerary                                                  69.8 kB        1.14 MB
+├ ƒ /journey/[tripId]/map                                                        4.29 kB        1.78 MB
+├ ƒ /journey/[tripId]/prep                                                         281 B         104 kB
+├ ƒ /journey/[tripId]/stay                                                       13.5 kB        1.64 MB
+├ ƒ /journey/[tripId]/transport                                                  18.3 kB         1.6 MB
+├ ○ /journey/about                                                               1.34 kB         964 kB
+├ ƒ /journey/admin                                                               2.65 kB         965 kB
+├ ƒ /journey/admin/audit                                                         2.65 kB         965 kB
+├ ƒ /journey/admin/emails                                                        2.65 kB         965 kB
+├ ƒ /journey/admin/feedback                                                       2.4 kB         965 kB
+├ ƒ /journey/admin/routes                                                        3.54 kB         966 kB
+├ ƒ /journey/admin/users                                                         4.53 kB         967 kB
+├ ○ /journey/affiliate-disclosure                                                1.19 kB         964 kB
+├ ƒ /journey/contact                                                             2.98 kB         965 kB
+├ ○ /journey/cookies                                                             3.51 kB         966 kB
+├ ƒ /journey/dashboard                                                           20.1 kB         995 kB
+├ ƒ /journey/discover                                                            15.5 kB         978 kB
+├ ○ /journey/forgot-password                                                     3.35 kB         966 kB
+├ ƒ /journey/gift/[token]                                                        3.44 kB         969 kB
+├ ○ /journey/help                                                                8.53 kB         971 kB
+├ ○ /journey/home                                                                  281 B         104 kB
+├ ƒ /journey/login                                                               7.42 kB         970 kB
+├ ƒ /journey/my-routes/[tripId]                                                    18 kB        1.23 MB
+├ ○ /journey/new                                                                  157 kB        1.21 MB
+├ ○ /journey/new/import                                                           127 kB        1.11 MB
+├ ○ /journey/passport                                                            9.65 kB         972 kB
+├ ○ /journey/plan                                                                  367 B        1.75 MB
+├ ƒ /journey/plan-next                                                           7.44 kB        1.54 MB
+├ ƒ /journey/prep                                                                  281 B         104 kB
+├ ○ /journey/privacy                                                             15.7 kB         978 kB
+├ ƒ /journey/profile                                                             12.6 kB         975 kB
+├ ○ /journey/reset-password                                                       4.3 kB         967 kB
+├ ƒ /journey/routes/[slug]                                                       7.43 kB        1.24 MB
+├ ƒ /journey/stamped                                                             10.7 kB        1.21 MB
+├ ○ /journey/terms                                                               1.39 kB         964 kB
+├ ○ /journey/trip                                                                11.5 kB         977 kB
+├ ○ /manifest.webmanifest                                                          281 B         104 kB
+├ ○ /more-about-me                                                                 224 B         442 kB
+├ ○ /ornament                                                                    4.91 kB         296 kB
+├ ○ /photography                                                                 2.17 kB         444 kB
+├ ○ /rio                                                                         3.91 kB         295 kB
+├ ○ /robots.txt                                                                    281 B         104 kB
+└ ○ /sitemap.xml                                                                   281 B         104 kB
++ First Load JS shared by all                                                     104 kB
+  ├ chunks/1255-f5767ca0d1da046a.js                                                46 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js                                          54.2 kB
+  └ other shared chunks (total)                                                  3.36 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+{
+  "root": "/Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate",
+  "dist": ".next",
+  "boundariesChecked": 15,
+  "failures": []
+}
+(node:1220) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/lib/easyt/offline-reader-floor.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"readerFloor":"idb-recovery-account-homepage-v2","buildId":"Vh5kV18FZbpY_K34Lnsu_","buildCommit":"9f1e185ac08fed0defc32556f4ab418ab6e11d47","assets":227}

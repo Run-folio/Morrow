@@ -53,7 +53,7 @@ function harness(queued = false) {
       return result;
     },
   };
-  const Form = () => null, Field = () => null, Launcher = () => null;
+  const Form = () => null, Field = () => null, Launcher = () => null, Button = () => null;
   const source = readFileSync('components/easyt/trip-shell-client.tsx', 'utf8');
   const imports: Record<string, any> = {};
   for (const match of source.matchAll(/from "([^"]+)"/g)) imports[match[1]!] = {};
@@ -67,14 +67,14 @@ function harness(queued = false) {
     '@/lib/easyt/personal-route': { personalRouteHref: () => '/fixture/route' },
     './workspace-orientation': { useWorkspaceOrientationBlocker: () => {}, WorkspaceOrientationLauncher: Launcher },
     './trip-overview-library-actions': { TripOverviewLibraryActions: Launcher },
-    './easyt-controls': { EasyTButton: () => null, EasyTLinkButton: () => null, EasyTField: Field },
+    './easyt-controls': { EasyTButton: Button, EasyTLinkButton: () => null, EasyTField: Field },
     './morrovia-feedback': { MorroviaFormDialog: Form, MorroviaSaveStatus: () => null },
     './trip-mobile-sheet': { useMobileTripWorkspace: () => false, TripMobileSheet: () => null },
     './trip-shell.module.css': { default: {} },
   });
   const js = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const module = { exports: {} as any };
-  new Function('require', 'module', 'exports', js)((id: string) => id in imports ? imports[id] : require(id), module, module.exports);
+  new Function('require', 'module', 'exports', 'window', js)((id: string) => id in imports ? imports[id] : require(id), module, module.exports, { requestAnimationFrame: (callback: () => void) => { callback(); return 0; } });
   const render = () => { cursor = 0; return module.exports.TripShellIdentityAndActions(); };
   function find(node: any, type: any): any {
     if (!node) return null;
@@ -82,9 +82,18 @@ function harness(queued = false) {
     if (node.type === type) return node;
     return find(node.props?.children, type);
   }
+  function matching(node: any, predicate: (node: any) => boolean): any {
+    if (!node) return null;
+    if (Array.isArray(node)) return node.map(child => matching(child, predicate)).find(Boolean) ?? null;
+    return predicate(node) ? node : matching(node.props?.children, predicate);
+  }
   const form = (tree = render()) => find(tree, Form), field = (tree = render()) => find(tree, Field);
   return { render, form, field, requests, accepted: firstAcceptance, updateGate,
     open: () => find(render(), Launcher).props.onRenameTrip(),
+    openInline: () => matching(render(), node => node.type === Button && node.props['aria-label'] === 'Edit trip name').props.onClick(),
+    inlineForm: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name'),
+    submitInline: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name').props.onSubmit({ preventDefault() {} }),
+    cancelInline: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name').props.onKeyDown({ key: 'Escape', preventDefault() {}, stopPropagation() {} }),
     type: (value: string) => field().props.onChange({ target: { value } }),
     submit: () => form().props.onSubmit(), cancel: () => form().props.onCancel(),
     switchTrip: (patch: Partial<EasyTTrip>) => { trip = requireReadableTripDocument({ ...trip, ...patch }); },
@@ -97,6 +106,35 @@ function harness(queued = false) {
   };
 }
 
+test('inline naming uses the existing scoped mutation and preserves itinerary data on acceptance', async () => {
+  const h = harness(), before = h.trip();
+  h.openInline(); h.type('  Slow   Japan  ');
+  assert.equal(h.form().props.open, false, 'the modal remains closed during inline editing');
+  h.submitInline(); await tick();
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0]?.key, 'trip-title');
+  h.accepted.resolve(true); await tick();
+  assert.equal(h.inlineForm(), null);
+  assert.equal(display.tripCustomTitle(h.trip()), 'Slow Japan');
+  assert.deepEqual(h.trip().stops, before.stops);
+  assert.deepEqual(h.trip().planItems, before.planItems);
+});
+
+test('Escape cancels an inline draft without invoking persistence', () => {
+  const h = harness(); h.openInline(); h.type('Unsaved name'); h.cancelInline();
+  assert.equal(h.inlineForm(), null);
+  assert.equal(h.requests.length, 0);
+  assert.equal(display.tripCustomTitle(h.trip()), 'Original name');
+});
+
+test('refused inline persistence retains the draft for retry', async () => {
+  const h = harness(); h.openInline(); h.type('Keep this draft'); h.submitInline(); await tick();
+  h.accepted.resolve(false); await tick();
+  assert.ok(h.inlineForm());
+  assert.equal(h.field().props.value, 'Keep this draft');
+  assert.equal(display.tripCustomTitle(h.trip()), 'Original name');
+});
+
 test('the actual shared mutation rejects an unchanged canonical rename before persistence', async () => {
   const trip = requireReadableTripDocument(display.renameTripIdentity(requireReadableTripDocument(canonicalRouteFixture()), 'Original name'));
   const source = readFileSync('components/easyt/use-trip-mutation-persistence.ts', 'utf8');
@@ -105,8 +143,9 @@ test('the actual shared mutation rejects an unchanged canonical rename before pe
   let writes = 0;
   const scope = {
     useCallback: (callback: unknown) => callback, enabled: true,
-    liveScopeRef: { current: 'exact-owner-document' }, scopeIsCurrent: () => true,
+    liveScopeRef: { current: 'exact-owner-document' }, renderScope: 'exact-owner-document', scopeIsCurrent: () => true,
     recoveryReadyRef: { current: true }, conflictRef: { current: false },
+    retainedEquivalentRef: { current: null },
     localWriteTailRef: { current: Promise.resolve() }, tripRef: { current: trip },
     session: { user: { id: trip.ownerId } }, cloneItineraryMutationDocument: structuredClone,
     pendingLocalWritesRef: { current: new Set() }, updatePending: () => {},

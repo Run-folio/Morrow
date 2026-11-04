@@ -94,10 +94,9 @@ test("a lazy preview can inspect a URL style before style.load without crashing"
   const demoMap = readFileSync(new URL("../app/journey/home/immersive/demo-map.tsx", import.meta.url), "utf8");
   assert.match(productDemo, /IntersectionObserver[\s\S]*setMapReady\(true\)/);
   assert.match(productDemo, /mapReady \? <DemoMap/);
-  assert.match(
-    demoMap,
-    /<JourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/,
-  );
+  assert.match(demoMap, /style: createMorroviaFallbackMapStyle\(\)/);
+  assert.match(demoMap, /installMorroviaMapControls/);
+  assert.match(demoMap, /scrollZoom: false, cooperativeGestures: true/);
   assert.doesNotMatch(demoMap, /previewMode/);
 
   const map = new FakeBasemap();
@@ -411,7 +410,8 @@ test("the MapLibre owner rehydrates overlays after style recovery without touchi
   assert.match(source, /data-basemap-status=\{basemapStatus\}/);
   assert.match(source, /hasMorroviaActiveStyle/);
   assert.match(source, /ownerActive && mapRef\.current === map/);
-  assert.match(source, /map\.remove\(\);\s*map\.off\("error", handleMapError\);\s*if \(mapRef\.current === map\) mapRef\.current = null/);
+  assert.match(source, /if \(mapRef\.current === map\) mapRef\.current = null;\s*const disposed = renderer\.dispose\(\)/);
+  assert.doesNotMatch(source, /map\.remove\(\)/, "only the admitted renderer owns safe disposal");
   assert.doesNotMatch(source, /removalTimerRef/);
   assert.doesNotMatch(source, /setStyle\([^)]*zoom/);
   const snapshot = inspectMorroviaBasemap(new FakeBasemap(), "loading");

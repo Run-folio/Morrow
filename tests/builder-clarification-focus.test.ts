@@ -67,10 +67,11 @@ function focusPorts() {
   const windowPort = { requestAnimationFrame: (run: () => void) => { const id = ++nextFrame; frames.set(id, { run, cancelled: false }); return id; },
     cancelAnimationFrame: (id: number) => { const frame = frames.get(id); if (frame) frame.cancelled = true; },
     setTimeout: (run: () => void) => { timers.push(run); return timers.length; } };
+  const completionVisibleRef = { current: true };
   const completedSearchRef = {current:{sequence:0,controller:null as AbortController|null}};
   const completedState = {suggestions:['previous result'] as unknown[],status:'ready',researchUsed:true};
   const autocomplete = { rootRef: { current: root }, window: windowPort, document: documentPort,
-    completedSearchRef,setCompletedSuggestions:(value:unknown[])=>{completedState.suggestions=value;},
+    completionVisibleRef,completedSearchRef,setCompletedSuggestions:(value:unknown[])=>{completedState.suggestions=value;},
     setCompletedSearchStatus:(value:string)=>{completedState.status=value;},setPublicResearchUsed:(value:boolean)=>{completedState.researchUsed=value;},
     submitFreeTextOnBlur: false, onSubmitFreeText() {}, onChange() {}, setOpen: (open: boolean) => { menuOpen = open; }, setActiveIndex() {} };
   blur = autocompleteHandler('onBlur')(autocomplete);
@@ -78,7 +79,7 @@ function focusPorts() {
   const enterQuery = () => { focusInput(); autocompleteHandler('onChange')(autocomplete)({ target: { value: 'Santa Cruz de Tenerife' } }); };
   const scope = { open: true, itemKey: 'island:places', dialogRef: { current: dialog }, titleRef: { current: heading },
     dismissRef: { current: () => { dismissals++; } }, loadingRef: { current: false }, document: documentPort, window: windowPort, HTMLElement: ElementPort };
-  return { scope, trigger, dialog, heading, input, close, footer, root, enterQuery, focusInput, ElementPort,completedSearchRef,completedState,
+  return { scope, trigger, dialog, heading, input, close, footer, root, enterQuery, focusInput, ElementPort,completionVisibleRef,completedSearchRef,completedState,
     activeName: () => documentPort.activeElement?.name, menuOpen: () => menuOpen, dismissals: () => dismissals,
     frameCount: () => frames.size, cancelledFrames: () => [...frames.values()].filter(frame => frame.cancelled).length,
     runFrames: (deliverCancelled = false) => { const pending = [...frames.values()]; frames.clear(); for (const frame of pending) if (deliverCancelled || !frame.cancelled) frame.run(); },
@@ -144,11 +145,13 @@ test('shell Tab wrapping, guarded Escape, scroll lock and return focus keep thei
 test('actual autocomplete blur still closes its menu when focus leaves its root', () => {
   const f = focusPorts(); f.enterQuery(); f.trigger.focus(); f.runTimers();
   assert.equal(f.menuOpen(), false);
+  assert.equal(f.completionVisibleRef.current, false);
 });
 
 test('actual autocomplete keeps its menu while focus moves to an option inside its root', () => {
   const f = focusPorts(), option = new f.ElementPort('option'); option.parent = f.root;
   f.enterQuery(); option.focus(); f.runTimers(); assert.equal(f.menuOpen(), true);
+  assert.equal(f.completionVisibleRef.current, true);
 });
 
 test('actual single-area semantic loop waits for the accepted shortlist state before its next click', async () => {

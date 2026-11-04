@@ -1,0 +1,58 @@
+{
+  "branch": "codex/integrated-interactions-a11y-20261104",
+  "sourceCommit": "bcdd694ed6e7a272093f543efec34a108376dddb",
+  "base": "57757a7abc40bd16c18e32faebbd0653e1185278",
+  "includedAncestors": [
+    "7307600f2f09ea02f29bd789e1ea7c9f817c7aa8",
+    "117033f87ec2b4687a3be9541e942bc0e0d453b1",
+    "3c0f4e37dcf0235a80541b6defdf7aa768f8a191"
+  ],
+  "checks": {
+    "combinedSelected": {
+      "total": 282,
+      "pass": 282
+    },
+    "recovery": {
+      "total": 145,
+      "pass": 145
+    },
+    "dataSafetyPlusKnownFailures": {
+      "total": 45,
+      "pass": 36,
+      "fail": 9
+    },
+    "pristine577KnownFailures": {
+      "total": 28,
+      "pass": 19,
+      "fail": 9
+    },
+    "typecheck": "pass",
+    "strictUiAudit": "pass",
+    "storybookBuild": "pass",
+    "productionBuild": "pass",
+    "browser": "not run; MANUAL HOSTED VERIFICATION REQUIRED"
+  },
+  "knownFailureNames": [
+    "actual fixed commitment date A to B to A cannot clear a later scope",
+    "actual fixed commitment keeps raw input until held true acceptance",
+    "actual fixed commitment label A to B to A cannot clear a later scope",
+    "actual fixed commitment preserves date during accepted persistence",
+    "actual fixed commitment preserves date-before-render during accepted persistence",
+    "actual fixed commitment preserves label during accepted persistence",
+    "actual fixed commitment preserves label-before-render during accepted persistence",
+    "native body with existing input domain completes healthy route work for guest",
+    "native body with existing input domain completes healthy route work for isolated-account"
+  ],
+  "pristineFailureNamesMatch": true,
+  "productionBuildId": "cRcMijOdj8UfYwjwBGZ_2",
+  "offlineAssets": 227,
+  "deployed": false,
+  "pushed": false,
+  "privacySourceSha256": {
+    "lib/analytics.ts": "8365173788e7a408ac09423357c47ebe60f06e459212a7047843f5eaa36cb75d",
+    "lib/analytics-replay.ts": "d001a70333b7276a9dd9113a94cb3ad352ec13973ba51e79ad511edd06a5972e",
+    "lib/easyt/storage.ts": "bbefcf32001cd6d50c1638b056cf138738ae43da46857d45f3c19424a20f2889",
+    "lib/easyt/trip-persistence.ts": "b3bee2b50ef91e6c55def373fea24e2bff93e82d27e02312ba8f7317e6559acf",
+    "lib/easyt/trip-document.ts": "e1652c4f59a29b20d6633ce0c3ef0bf6d2fb3a9774866cfb998b4a37d90566d0"
+  }
+}

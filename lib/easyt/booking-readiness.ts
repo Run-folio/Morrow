@@ -109,6 +109,26 @@ export type ResolvedAffiliateAction = {
   affiliate: true;
 };
 
+/** State only the context supported by the approved link contract. */
+export function affiliateHandoffDetail(
+  action: Pick<ResolvedAffiliateAction, "provider" | "category" | "href">,
+  language: "en" | "es" = "en",
+): string | null {
+  if (action.provider === "omio" && action.category === "transport") {
+    if (action.href === affiliatePartners.omio.transportUrl) return language === "es"
+      ? "Búsqueda general: introduce la ruta, las fechas y el número de viajeros en Omio."
+      : "General search: enter your route, dates and traveller count on Omio.";
+    return language === "es"
+      ? "Se transfieren la ruta y las fechas, pero no el número de viajeros. Compruébalo en Omio antes de reservar."
+      : "Route and dates are sent; traveller count is not carried over. Check it on Omio before booking.";
+  }
+  if (action.provider === "trip.com" && action.category === "accommodation"
+    && action.href === affiliatePartners.tripCom.accommodationUrl) return language === "es"
+      ? "Búsqueda general: introduce el hotel o destino, las fechas y los viajeros en Trip.com."
+      : "General search: enter the hotel or destination, dates and travellers on Trip.com.";
+  return null;
+}
+
 type ActivityAffiliatePartner = { provider: string; activitiesUrl?: string };
 export type ActivityAffiliatePartners = {
   viator?: ActivityAffiliatePartner | null;

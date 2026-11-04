@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createTwoStoreTripPersistence } from '../lib/easyt/two-store-trip-persistence.ts';
 import { MemoryRecoveryDriver } from './helpers/durable-recovery-driver.ts';
 import { envelope, canonicalAck } from './helpers/durable-recovery-fixture.ts';
-import { saveTripRecoveryToStorage, tripRecoveryStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY, type EasyTBrowserStorage } from '../lib/easyt/storage.ts';
+import { saveTripRecoveryToStorage, cacheCanonicalTripToStorage, tripRecoveryStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY, type EasyTBrowserStorage } from '../lib/easyt/storage.ts';
 import { createRecoveryDomainStore } from '../lib/easyt/durable-recovery-store.ts';
 import { createBuilderInputDraft, builderInputDraftKey } from '../lib/easyt/trip-builder-input-draft.ts';
 import { createTwoStoreEntryPersistence } from '../lib/easyt/two-store-entry-persistence.ts';
@@ -29,6 +29,26 @@ class SyntheticStorage implements EasyTBrowserStorage {
 }
 const trip = (writeId = 'candidate', ownerId: string | null = null) => JSON.parse(envelope(writeId, ownerId).rawRecovery).trip;
 const ctx = (ownerId: string | null = null) => ({ ownerId, isCurrent: () => true, overflowEnabled: true, accountOverflowQualified: true });
+
+test('full native storage can refuse optional account cache then refuse an edit without a source witness', async () => {
+  const ls = new SyntheticStorage(), driver = new MemoryRecoveryDriver(), base = trip('account-read', 'owner-a');
+  ls.values.set('unrelated-retained-data', 'x'.repeat(2048)); ls.limit = 4096;
+  const before = [...ls.values];
+  assert.equal(cacheCanonicalTripToStorage(ls, base), false);
+  const result = await createTwoStoreTripPersistence(ls, driver, ctx('owner-a')).save({ ...base, title: 'Uncommitted edit' }, { canonicalBase: base });
+  assert.equal(result.stored, false); assert.equal(result.nativeFailure, 'quota'); assert.equal(result.failureBoundary, 'recovery-write');
+  assert.deepEqual([...ls.values], before); assert.equal(driver.generations.size, 0);
+});
+
+test('exact cached account source still admits quota overflow without deleting native bytes', async () => {
+  const ls = new SyntheticStorage(), driver = new MemoryRecoveryDriver(), base = trip('cached-account', 'owner-a');
+  assert.equal(cacheCanonicalTripToStorage(ls, base), true); ls.refusal = 'quota'; const before = [...ls.values];
+  const result = await createTwoStoreTripPersistence(ls, driver, ctx('owner-a')).save({ ...base, title: 'Retained edit' }, { canonicalBase: base });
+  assert.equal(result.stored, true); assert.equal(result.handle.backend, 'indexeddb'); assert.deepEqual([...ls.values], before);
+  const reopened = await createTwoStoreTripPersistence(ls, driver, ctx('owner-a')).read(base.id);
+  assert.equal(reopened.kind, 'found'); if (reopened.kind === 'found') assert.equal(reopened.trip.title, 'Retained edit');
+  assert.equal((await createTwoStoreTripPersistence(ls, driver, ctx('owner-b')).read(base.id)).kind, 'missing');
+});
 
 test('matched 76 raw copies: 77th native quota enters domain, cold read needs no LS locator and all prior bytes stay exact', async () => {
   const ls = new SyntheticStorage(), driver = new MemoryRecoveryDriver();

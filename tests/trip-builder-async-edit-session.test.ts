@@ -26,6 +26,7 @@ import { tripNightsBetween, allocateTripNights } from '../lib/easyt/night-alloca
 import { canBuildTrip } from '../lib/easyt/can-build-trip.ts';
 import { acceptedGeographicPlace, stopGeographicPlace } from '../lib/easyt/geographic-binding.ts';
 import type { JourneyEndpointPlace } from '../lib/easyt/trip.ts';
+import { EasyTTripPersistenceError } from '../lib/easyt/trip-persistence-error.ts';
 
 const loaded = import('../lib/easyt/trip-builder-async-edit-session.ts').catch((cause: NodeJS.ErrnoException) => {
   if (cause.code === 'ERR_MODULE_NOT_FOUND') return null; throw cause;
@@ -344,17 +345,23 @@ test('an explicitly unacknowledged result cannot claim account success despite o
 
 function builderDispatch(h: Awaited<ReturnType<typeof harness>>) {
   const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf('  const dispatchAcceptedBuilderEdits =');
+  const start = source.includes('  const completeAcceptedBuilderEdit =') ? source.indexOf('  const completeAcceptedBuilderEdit =') : source.indexOf('  const dispatchAcceptedBuilderEdits =');
   const end = source.indexOf('  const updateDiscoveryPlanningState =', start);
   const changes: unknown[] = [], applied: unknown[] = [], errors: string[] = [];
   const ref = { current: h.session }, mounted = { current: true };
   const scope = { builderEditSessionRef: ref, builderMountedRef: mounted, activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
     builderStructuralFeedback: () => ({ summary: 'remove_stop' }), captureStructuralChange: (summary: string, canonical: unknown) => ({ summary, canonical }),
     publishStructuralChange: (frame: unknown) => changes.push(frame), applyAcceptedBuilderDocument: (trip: unknown) => applied.push(trip),
-    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {},setEditNeedsReview(){} };
-  const script = ts.transpileModule(source.slice(start, end) + '\nreturn dispatchAcceptedBuilderEdit;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  const dispatch = new Function('scope', `with(scope){${script}}`)(scope) as (edit: Parameters<typeof h.session.accept>[0]) => Promise<boolean>;
-  return { dispatch, changes, applied, errors, mounted, ref };
+    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {},setEditNeedsReview(){},
+    quotaFeedbackRef: { current: null }, get mountedBuilder() { return { session: h.session, snapshot: h.session.getSnapshot() }; },
+    syncAction: 'retry', openSummaryEditor() {} };
+  const retrySource = source.slice(source.indexOf('  const recoverFromSaveError ='), source.indexOf('  const recoveryActionLabel ='));
+  const parsed = ts.createSourceFile('retry.tsx', retrySource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let retry = '';
+  const find = (node: ts.Node) => { if (ts.isVariableDeclaration(node) && node.name.getText(parsed) === 'recoverFromSaveError') retry = node.initializer!.getText(parsed); ts.forEachChild(node, find); }; find(parsed);
+  const script = ts.transpileModule(source.slice(start, end) + `\nreturn { dispatch: dispatchAcceptedBuilderEdit, retry: ${retry} };`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const handlers = new Function('scope', `with(scope){${script}}`)(scope) as { dispatch(edit: Parameters<typeof h.session.accept>[0]): Promise<boolean>; retry(): Promise<void> };
+  return { ...handlers, changes, applied, errors, mounted, ref };
 }
 function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?: (ordinal:number)=>Promise<void>) {
   const view = builderDispatch(h);
@@ -905,4 +912,105 @@ test('rapid repeated import retry clicks before durability schedule at most one 
  assert.equal(h.projections.length,0);gate.resolve();await Promise.all([first,second]);await h.run(0);
  assert.equal(h.projections.length,1);const work=h.projections[0]!;work.result.resolve(response(work.request));await tick();await h.run(0);
  assert.equal(h.projections.length,1);h.session.dispose();
+});
+
+class QuotaStorage extends MemoryStorage {
+  full = true;
+  override setItem(key: string, value: string) {
+    if (this.full) throw new DOMException('Synthetic storage quota', 'QuotaExceededError');
+    super.setItem(key, value);
+  }
+}
+
+test('actual page quota retry clears stale failure and publishes the matching Undo frame once', async () => {
+  const storage = new QuotaStorage(), h = await harness({ storage });
+  const view = builderDispatch(h);
+  assert.equal(await view.dispatch(budget), false); assert.notEqual(view.errors.at(-1), ''); assert.equal(view.changes.length, 0);
+  storage.full = false; await view.retry();
+  assert.equal(view.errors.at(-1), ''); assert.equal(view.applied.length, 1); assert.equal(view.changes.length, 1);
+  h.session.dispose();
+});
+
+test('quota refusal retains an exact explicit change for manual retry without reporting a save', async () => {
+  const storage = new QuotaStorage();
+  const h = await harness({ storage, initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: 'owner-a' }), owner: 'owner-a' });
+  const before = h.session.getSnapshot();
+  const result = await h.session.accept(budget, before.inputRevision);
+  assert.equal(result.ok, false);
+  assert.deepEqual(h.session.getSnapshot().trip, before.trip);
+  assert.equal(h.session.getSnapshot().error?.retryableEdit, true);
+  assert.match(h.session.getSnapshot().error!.message, /storage is full/i);
+  assert.equal(h.writes.length, 0); assert.equal(storage.values.size, 0);
+  assert.equal(await h.session.flush(), false);
+  storage.full = false;
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), true);
+  assert.equal(h.session.getSnapshot().trip.brief.budgetBand, 'high');
+  assert.deepEqual(h.deviceWrites[1]!.trip, h.deviceWrites[0]!.trip);
+  assert.deepEqual(h.deviceWrites[1]!.options.draft, h.deviceWrites[0]!.options.draft);
+  assert.equal(h.session.getSnapshot().acceptedRevision, 1);
+  assert.equal(h.session.getSnapshot().saveState, 'local');
+  assert.equal(h.session.getSnapshot().error, null);
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false);
+  await h.run(450); assert.equal(h.writes.length, 1); await h.ack(0);
+  assert.equal(h.session.getSnapshot().canonicalSaveState, 'cloud'); h.session.dispose();
+});
+
+test('repeated quota retries serialize and keep the change pending until a verified write', async () => {
+  const storage = new QuotaStorage(), h = await harness({ storage });
+  await h.session.accept(budget, h.session.getSnapshot().inputRevision);
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false);
+  assert.equal(h.session.getSnapshot().error?.retryableEdit, true);
+  storage.full = false; const gate = h.holdRecovery(), count = h.deviceWrites.length;
+  const first = h.session.retryRejectedEdit(), second = h.session.retryRejectedEdit(); await tick();
+  assert.equal(h.deviceWrites.length, count + 1); assert.equal(Boolean(await second), false);
+  gate.resolve(); assert.equal(Boolean(await first), true); assert.equal(h.session.getSnapshot().acceptedRevision, 1); h.session.dispose();
+});
+
+for (const change of ['owner', 'raw-input', 'new-command', 'dispose'] as const) test(`quota retry cannot replay after ${change}`, async () => {
+  const storage = new QuotaStorage(), h = await harness({ storage });
+  await h.session.accept(budget, h.session.getSnapshot().inputRevision);
+  storage.full = false;
+  if (change === 'owner') h.rotate('different-owner');
+  if (change === 'raw-input') await h.session.updateDraft({ binding: { kind: 'origin' }, raw: 'newer intent' });
+  if (change === 'new-command') await h.session.accept(origin, h.session.getSnapshot().inputRevision);
+  if (change === 'dispose') h.session.dispose();
+  const writes = h.deviceWrites.length, before = [...storage.values];
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false);
+  assert.equal(h.deviceWrites.length, writes); assert.deepEqual([...storage.values], before); h.session.dispose();
+});
+
+test('quota retry preserves a separately written recovery instead of selecting a winner', async () => {
+  const storage = new QuotaStorage(), h = await harness({ storage });
+  await h.session.accept(budget, h.session.getSnapshot().inputRevision); storage.full = false;
+  const separate = { ...h.session.getSnapshot().trip, title: 'Other device edit' };
+  assert.equal(saveTripRecoveryToStorage(storage, separate, { writeId: 'other-device-copy' }).stored, true);
+  const before = [...storage.values];
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false);
+  assert.deepEqual([...storage.values], before); assert.equal(h.writes.length, 0);
+  assert.equal(h.session.getSnapshot().error?.category, 'protected'); h.session.dispose();
+});
+
+test('account conflict after a quota retry retains the device change without another account write', async () => {
+  const storage = new QuotaStorage();
+  const h = await harness({ storage, initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: 'owner-a' }), owner: 'owner-a' });
+  await h.session.accept(budget, h.session.getSnapshot().inputRevision); storage.full = false;
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), true);
+  const local = h.session.getSnapshot().trip; await h.run(450);
+  h.writes[0]!.result.reject(new EasyTTripPersistenceError({ category: 'conflict', status: 409, operation: 'update', message: 'Account changed elsewhere' }));
+  await tick();
+  assert.equal(h.session.getSnapshot().error?.category, 'conflict');
+  assert.deepEqual(h.recovery()?.trip, local);
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false); assert.equal(await h.session.retrySave(), false);
+  await h.run(450); assert.equal(h.writes.length, 1); assert.equal(await h.session.flush(), false); h.session.dispose();
+});
+
+for (const failure of ['security', 'readback', 'pointer', 'unknown'] as const) test(`${failure} refusal never becomes a retryable quota command`, async () => {
+  const h = await harness();
+  h.options.saveRecovery = async (trip, options) => ({ stored: false,
+    handle: { ownerId: options.ownerId, tripId: trip.id, writeId: 'unconfirmed' }, blockedByExistingRecovery: false,
+    writeAttempted: true, failureReason: 'device-unavailable', nativeFailure: failure === 'security' ? 'security' : failure === 'unknown' ? 'unknown' : 'quota',
+    failureBoundary: failure === 'readback' ? 'recovery-readback' : 'recovery-write', ...(failure === 'pointer' ? { recoveryDurable: true, readbackConfirmed: true } : {}) });
+  await h.session.accept(budget, h.session.getSnapshot().inputRevision);
+  assert.notEqual(h.session.getSnapshot().error?.retryableEdit, true);
+  assert.equal(Boolean(await h.session.retryRejectedEdit()), false); assert.equal(h.writes.length, 0); h.session.dispose();
 });

@@ -143,7 +143,7 @@ export function MorroviaMapLoading({
   const compact = state !== "initial" && state !== "long" && state !== "error";
   return (
     <section aria-busy={failed ? undefined : true} className={styles.mapLoading} data-mode={compact ? "compact" : "panel"} data-state={state}>
-      <div className={styles.mapContext} aria-hidden={state === "initial" || undefined}>{children}</div>
+      <div className={styles.mapContext} aria-hidden={state === "initial" || undefined} inert={state === "initial" || undefined}>{children}</div>
       <div className={`${styles.mapStatus} ${failed ? styles.mapError : ""}`} role={failed ? "alert" : "status"}>
         <span className={styles.mapStatusIcon} aria-hidden="true">{failed ? <AlertCircle /> : state === "place" ? <MapPin /> : <LoaderCircle />}</span>
         <div><strong>{title}</strong><p>{detail}</p></div>

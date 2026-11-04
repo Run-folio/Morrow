@@ -24,3 +24,18 @@ const journeyLabels: Record<string, { short: string; title: string; line: string
 export function homepageJourneyLabel(key: string, fallback: string) {
   return journeyLabels[key] ?? { short: fallback, title: fallback, line: "", theme: "" };
 }
+
+/** Homepage hierarchy is presentation-only; routing and handoff facts stay canonical. */
+export function homepageStoryPresentation(route: {
+  key: string;
+  title: string;
+  countries: readonly string[];
+  interestLabel: string;
+  stops: readonly { name: string }[];
+}) {
+  return {
+    eyebrow: homepageJourneyLabel(route.key, route.title).theme || route.interestLabel,
+    title: route.countries.join(" + "),
+    stops: route.stops.map(stop => stop.name).join(" → "),
+  };
+}

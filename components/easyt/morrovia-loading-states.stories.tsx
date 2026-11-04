@@ -316,7 +316,7 @@ export const BuilderActionPending: Story = { render: () => <BuilderActionContext
 export const TripsDashboardSkeleton: Story = { render: () => <TripsSkeletonContext /> };
 export const TripsDashboardSkeletonMobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, render: () => <TripsSkeletonContext /> };
 export const ItineraryAndSummarySkeleton: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/loading-prototype/itinerary" } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/loading-prototype/itinerary", segments: ["itinerary"] } } },
   render: () => <ItinerarySkeletonContext />,
 };
 export const LocalProviderLoading: Story = { render: () => <ProviderContext /> };

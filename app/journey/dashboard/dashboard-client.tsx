@@ -427,7 +427,7 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   const recoveryIssue = recoveryIssues[trip.id];
   return <article className={`${styles.tripCard} ${resolvedKind === "past" ? styles.pastCard : ""} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
     <div className={styles.cardMediaFrame}>
-      <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
+      <Link className={styles.cardMedia} href={primaryHref} aria-label={`${primaryLabel}: ${title}`} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
         {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{statusLabel(trip.status, language)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} onError={() => { if (photo) onPhotoError(trip, photo.src); }} fallback={<div className={styles.countryFallback}><CountryVisualFallback country={dashboardTripCoverPlace(trip)?.country} /></div>} />}
       </Link>
       {resolvedKind !== "idea" && photo?.scope === "country" && imageDisplayed ? <CountryIllustrationLabel country={photo.country} /> : null}

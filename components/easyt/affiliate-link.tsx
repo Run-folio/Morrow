@@ -1,10 +1,10 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useId, type ReactNode } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/easyt/affiliate-click";
-import { affiliateProviderLabel, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { affiliateProviderLabel, affiliateHandoffDetail, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { EasyTLinkButton } from "./easyt-controls";
 import { MorroviaContextualDisclosure } from "./morrovia-feedback";
 import styles from "./affiliate-link.module.css";
@@ -53,6 +53,7 @@ export function MorroviaAffiliateLink({
   renderAsSurface = false,
   children,
   onClick: onClickSupplement,
+  language = "en",
 }: {
   action: ResolvedAffiliateAction;
   context: AffiliateClickContext;
@@ -65,6 +66,7 @@ export function MorroviaAffiliateLink({
   renderAsSurface?: boolean;
   children?: ReactNode;
   onClick?: () => void;
+  language?: "en" | "es";
 }) {
   const providerLabel = affiliateProviderLabel(action.provider);
   const onClick = () => {
@@ -73,6 +75,8 @@ export function MorroviaAffiliateLink({
     else trackEvent(event.name, event.properties);
     onClickSupplement?.();
   };
+  const handoffDetail = affiliateHandoffDetail(action, language);
+  const handoffId = useId();
   const accessibleLabel = `${action.cta}, opens ${providerLabel} in a new tab`;
   if (renderAsSurface) {
     return <a
@@ -80,16 +84,18 @@ export function MorroviaAffiliateLink({
       href={action.href}
       target="_blank"
       rel="sponsored noopener noreferrer"
+      aria-describedby={handoffDetail ? handoffId : undefined}
       data-affiliate-provider={action.provider}
       onClick={onClick}
-    >{children ?? action.cta}<span className="sr-only">{`Opens ${providerLabel} in a new tab.`}</span></a>;
+    >{children ?? action.cta}{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}<span className="sr-only">{`Opens ${providerLabel} in a new tab.`}</span></a>;
   }
-  return <EasyTLinkButton
+  return <><EasyTLinkButton
     className={className}
     href={action.href}
     target="_blank"
     rel="sponsored noopener noreferrer"
     aria-label={accessibleLabel}
+    aria-describedby={handoffDetail ? handoffId : undefined}
     icon={ExternalLink}
     size={size}
     variant={variant}
@@ -97,5 +103,5 @@ export function MorroviaAffiliateLink({
     iconOnly={iconOnly}
     data-affiliate-provider={action.provider}
     onClick={onClick}
-  >{children ?? action.cta}</EasyTLinkButton>;
+  >{children ?? action.cta}</EasyTLinkButton>{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}</>;
 }

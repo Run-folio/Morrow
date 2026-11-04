@@ -23,7 +23,7 @@ test("Google canvas selection changes one map panel without suppressing Morrovia
   lacks(workspace, /\{!googleCanvasActive && \(shapeDayTab === "stay" \|\| shapeDayTab === "eat"\)/, "Stay and Eat inventory is not gated by map provider");
   has(workspace, /const selectedPlaceDetail = selectedRecommendationDetail \?\? selectedGoogleRecommendationDetail/, "Google and Morrovia results share one detail projection");
   has(workspace, /const showShellContext = Boolean\([\s\S]*?hasExplicitMapContext/, "the single parent-owned map context opens for the exact selected place");
-  has(workspace, /<section className=\{`\$\{styles\.mapContextPanel\}/, "the parent renders one selected-place context panel");
+  has(workspace, /<div role="group" className=\{`\$\{styles\.mapContextPanel\}/, "the parent renders one selected-place context panel");
 });
 
 test("the beta renderer switch keeps MapLibre immediate and leaves Places availability independent", () => {
