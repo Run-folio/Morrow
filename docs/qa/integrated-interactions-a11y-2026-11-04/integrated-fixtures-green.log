@@ -1,0 +1,28 @@
+✔ saved idea list item has a compatible generic root and preserves drag/content attributes (2.85025ms)
+✔ other itinerary cards retain native article semantics (0.164167ms)
+(node:99267) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-fetch-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ story fixture handles its endpoint and forwards unmatched requests unchanged (9.766042ms)
+✔ unmount cleanup restores native fetch exactly and is repeatable (0.143125ms)
+✔ cleanup cannot replace a newer fetch owner (0.048625ms)
+✔ overlapping managed fixtures never restore or forward to a retired owner (0.195ms)
+✔ nested managed fixture cleanup retains a still-active predecessor (0.118625ms)
+(node:99268) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-storage-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ isolated getter denial preserves prior storage and restores its descriptor (0.775791ms)
+✔ isolated read denial preserves prior storage and restores its descriptor (0.074291ms)
+✔ isolated write denial preserves prior storage and restores its descriptor (0.064667ms)
+✔ overlapping managed storage fixtures restore the original descriptor after out-of-order cleanup (0.076667ms)
+✔ nested storage cleanup preserves a still-active predecessor and unrelated later owners (0.070333ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 74.155042

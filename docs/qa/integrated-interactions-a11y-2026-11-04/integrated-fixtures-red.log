@@ -1,0 +1,78 @@
+(node:99263) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-fetch-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ story fixture handles its endpoint and forwards unmatched requests unchanged (9.053334ms)
+✔ unmount cleanup restores native fetch exactly and is repeatable (0.124459ms)
+✔ cleanup cannot replace a newer fetch owner (0.041791ms)
+✖ overlapping managed fixtures never restore or forward to a retired owner (0.408708ms)
+✔ nested managed fixture cleanup retains a still-active predecessor (0.131167ms)
+(node:99264) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-storage-fixture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ isolated getter denial preserves prior storage and restores its descriptor (0.645792ms)
+✔ isolated read denial preserves prior storage and restores its descriptor (0.069958ms)
+✔ isolated write denial preserves prior storage and restores its descriptor (0.054666ms)
+✖ overlapping managed storage fixtures restore the original descriptor after out-of-order cleanup (0.495417ms)
+✔ nested storage cleanup preserves a still-active predecessor and unrelated later owners (0.068083ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 8
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.01775
+
+✖ failing tests:
+
+test at tests/storybook-fetch-fixture.test.ts:24:1
+✖ overlapping managed fixtures never restore or forward to a retired owner (0.408708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'retired A'
+  - 'native'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-fetch-fixture.test.ts:29:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'retired A',
+    expected: 'native',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/storybook-storage-fixture.test.ts:16:1
+✖ overlapping managed storage fixtures restore the original descriptor after out-of-order cleanup (0.495417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      configurable: true,
+      enumerable: true,
+  +   get: [Function: get],
+  +   set: undefined
+  -   value: {},
+  -   writable: true
+    }
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/storybook-storage-fixture.test.ts:23:9)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Object],
+    expected: [Object],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

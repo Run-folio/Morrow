@@ -1,0 +1,212 @@
+(node:98818) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/durable-recovery-indexeddb.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ native entry adapter preserves typed input independently of a canonical trip and enumerates only recovery heads (2.715375ms)
+✔ canonical recovery and required input metadata commit and verify in one native transaction (3.98725ms)
+✔ required entry quota aborts already queued canonical generation and pointer writes (0.700958ms)
+✔ native adapter waits for transaction complete, then independently reads back every entry byte (16.889333ms)
+✔ first native quota cause survives queued pointer AbortError and aborts the whole transaction (0.826875ms)
+✔ native ACK journal quota never retires recovery or modifies the newer pointer (2.394875ms)
+✔ a blocked open is terminal and late upgrade is aborted without creating a schema (0.233875ms)
+✔ unsupported/missing schema refuses without deleting or repairing existing data (0.108ms)
+✔ new namespace creates only the domain schema; version change closes the connection without recovery mutation (0.396792ms)
+✔ unsupported strict durability refuses writes rather than silently retrying with relaxed durability (0.278417ms)
+(node:98819) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/durable-recovery-store.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ committed generation, input and receipt reopen exactly without any LS locator (2.574959ms)
+✔ owner-scoped list and current pointer cold-reopen without an LS ID, with guest/account isolation (1.580709ms)
+✔ corrupt or foreign owner current pointers cannot masquerade as missing or authorize a different trip (0.184584ms)
+✔ retry reuses exact immutable generation; a handle collision cannot overwrite it (4.328ms)
+✔ concurrent distinct replacements have one CAS winner and preserve all prior generations (3.13775ms)
+✔ stale retry cannot promote an old generation over a newer head (3.968667ms)
+✔ owner, pointer, input, receipt and parent scope mismatches never start a transaction (1.586834ms)
+✔ only confirmed native setter quota can admit the isolated fallback operation (0.603625ms)
+✔ QuotaExceededError preserves old copies and never verifies the refused operation (1.82725ms)
+✔ SecurityError preserves old copies and never verifies the refused operation (0.939583ms)
+✔ AbortError preserves old copies and never verifies the refused operation (0.470875ms)
+✔ InvalidStateError preserves old copies and never verifies the refused operation (0.385083ms)
+✔ OtherError preserves old copies and never verifies the refused operation (0.3615ms)
+✔ committed bytes with failed independent readback remain retained but unverified (0.441625ms)
+✔ changed operation after commit refuses acceptance while retaining its exact scoped bytes (0.200167ms)
+✔ corrupt/future generation and a missing head generation stay protected during read and replacement (0.66325ms)
+✔ delayed exact trusted ACK journals only its generation and cannot retire or move a newer head (2.892833ms)
+✔ foreign, changed-candidate and guest ACKs cannot be journaled; exact retry does not overwrite the journal (3.027291ms)
+✔ missing IndexedDB fails explicitly without attempting any browser/global fallback (0.340917ms)
+(node:98820) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/map-mutation-recovery-state.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a delayed successful authenticated Map save never presents its exact safe recovery as a conflict (24.309291ms)
+✔ a failed authenticated Map save preserves the device copy and makes recovery actionable (1.981ms)
+✔ a stale Map CAS remains a conflict and cannot overwrite the cloud trip (14.140833ms)
+✔ rapid Map mutations serialize coherent revisions without transient warnings or lost fields (4.877167ms)
+✔ successful reload is clean, while historical and other-owner recovery remain distinct (1.243208ms)
+(node:98821) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/recovery-domain-account-cas.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Trip update failed. {
+  category: 'authentication',
+  errorName: 'Error',
+  errorCode: undefined
+}
+Trip update failed. {
+  category: 'authentication',
+  errorName: 'Error',
+  errorCode: undefined
+}
+✔ case 1: old requests meet actual owner, source-version and revision CAS rejection after a newer exact cloud ACK (13.677917ms)
+✔ case 2: supported account reader preserves old raw and unacknowledged IDB branches and blocks even a capacious LS writer (3.425ms)
+▶ case 3: old request during a held new claim/save retains IDB and the exact authoritative ACK or conflict for either winner
+  ✔ save: new request wins (4.468875ms)
+  ✔ save: old request wins (4.558916ms)
+  ✔ claim: new request wins (3.599625ms)
+  ✔ claim: old request wins (2.326125ms)
+✔ case 3: old request during a held new claim/save retains IDB and the exact authoritative ACK or conflict for either winner (15.320958ms)
+(node:98821) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/helpers/recovery-domain-account-synthetic.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:98822) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/recovery-domain-lifecycle.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ domain status overlays exact handle while immutable canonical bytes and native records remain unchanged (12.529084ms)
+✔ unbound/stale/wrong-owner lifecycle cannot admit a canonical generation or claim successful metadata (1.231ms)
+✔ domain discard requires confirmation, cold reopen hides only exact discarded recovery and retains every generation (18.111709ms)
+✔ discarded domain cannot be revived by a stale retained handle; unexplained old raw divergence stays protected (3.778541ms)
+✔ post-commit owner change/readback refusal retains metadata but refuses accepted lifecycle result (1.09525ms)
+✔ actual IndexedDB adapter qualifies lifecycle binding without relaxing generic owner/request fences (14.254166ms)
+✔ guest domain claim remains a protected explicit hold in the actual browser adapter, retaining input and every branch (1.46725ms)
+✔ unreadable or invalid scoped cache cannot manufacture missing/fresh after domain discard (11.741166ms)
+✔ a G1 lifecycle journal neither labels G2 nor permits a delayed G1 discard to hide it (6.11225ms)
+✔ native divergence during the lifecycle read barrier cannot accept a stale domain selection (0.691625ms)
+(node:98823) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/recovery-provenance.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ empty is authoritative only when both stores are ready; unknown DB cannot hide sole recovery (1.402958ms)
+✔ sole overflow recovery is selected without a localStorage locator (0.691917ms)
+✔ captured legacy baseline permits a descendant domain generation without deleting raw copies (0.526708ms)
+✔ later-looking old raw divergence cannot replace a sole domain copy; both branches remain in the result (0.492958ms)
+✔ byte-changed or missing captured legacy source stays protected even if its write identity is unchanged (0.562458ms)
+✔ exact mirror of the same immutable recovery can be read through domain metadata without pretending a new receipt ACK (0.520208ms)
+✔ raw-only multiple identities are protected without a timestamp winner or document-equivalence guess (0.478625ms)
+✔ foreign scope, wrong physical key, corrupt and unsupported copies cannot become an absence or selected document (0.493792ms)
+✔ duplicate physical keys cannot hide conflicting bytes during provenance comparison (0.247417ms)
+(node:98824) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/signed-in-trip-persistence-regression.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fixture-a-us-west completes signed-in create, route/nights Build, reload, retry and isolation (62.385958ms)
+✔ fixture-b-southern-africa completes signed-in create, route/nights Build, reload, retry and isolation (11.662166ms)
+✔ fixture-c-europe completes signed-in create, route/nights Build, reload, retry and isolation (7.08475ms)
+(node:98825) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-mutation-persistence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ leg guard authored-leg accepts reordered JSON fields when the leg values are unchanged (1.54075ms)
+✔ leg guard authored-leg retains real future-authored-value conflict with a changed route pair (0.862083ms)
+✔ leg guard authored-leg retains real ordered-values conflict with a changed route pair (0.609333ms)
+✔ leg guard authored-leg retains real endpoint conflict with a changed route pair (0.573167ms)
+✔ leg guard authored-leg retains real identity conflict with a changed route pair (0.769375ms)
+✔ leg guard canonical-leg accepts reordered JSON fields when the leg values are unchanged (0.51825ms)
+✔ leg guard canonical-leg retains real future-authored-value conflict with a changed route pair (0.625ms)
+✔ leg guard canonical-leg retains real ordered-values conflict with a changed route pair (0.558458ms)
+✔ leg guard canonical-leg retains real endpoint conflict with a changed route pair (0.517875ms)
+✔ leg guard canonical-leg retains real identity conflict with a changed route pair (0.538291ms)
+✔ A17 completed necessary certificate saves after a semantically equivalent JSONB ACK (45.955333ms)
+✔ A08 held equivalent ACK permits the inverse to durably save current dependent work once (9.4545ms)
+✔ dependent-work merge retains completion and terminal evidence for the current inverse basis (3.767167ms)
+✔ sequential Map mutations use the preceding account revision without losing authored state (0.584667ms)
+✔ a queued edit authored from the same base cannot erase a preceding disjoint edit (0.369083ms)
+✔ independent queued additions to the same authored array are merged without duplication (0.403666ms)
+✔ an unknown revision is never borrowed from this queue (0.087459ms)
+✔ a stale tab still receives the repository conflict instead of borrowing another tab's revision (11.963875ms)
+(node:98826) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-recovery-classification.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ clean canonical trip has no recovery state (0.405208ms)
+✔ only the mounted owner's exact pending handle is a current save (0.074708ms)
+✔ the exact mounted failed write is a current save failure (0.050667ms)
+✔ the same failed record becomes historical after reload (1.329583ms)
+✔ canonical-equivalent recovery is safe to reconcile (0.278167ms)
+✔ the exact ownerless recovery is the active local document after reload (0.202875ms)
+✔ a different ownerless recovery remains protected as genuine divergence (0.104084ms)
+✔ the active ownerless recovery handle permits the next exactly-once local edit (4.679375ms)
+✔ a prior canonical snapshot is historical-superseded only through semantic comparison (0.404334ms)
+✔ a newer timestamp alone never discards unique traveller edits (0.258041ms)
+✔ save header and dashboard source keep historical recovery separate and trip-scoped (0.468542ms)
+✔ dashboard groups detached recoveries behind one calm disclosure while keeping each review path (0.137917ms)
+✔ detached-copy copy distinguishes an unconfirmed account save from a previously reported deletion (0.152833ms)
+✔ detached-copy presentation retains the warning, complete account comparison and individual review links (0.1085ms)
+(node:98827) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-shell-async-recovery.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mutation does not apply, acknowledge, or queue a cloud save before durable device completion (44.794917ms)
+✔ an account switch rejects a pending local completion and cannot queue it into the new account (14.134292ms)
+✔ unmount rejects a durable completion without accepting the edit or starting account persistence (12.939208ms)
+✔ unavailable hydration stays protected and does not accept a fresh mutation (9.217084ms)
+✔ a signed-in session does not implicitly claim or promote a guest mutation (8.989792ms)
+✔ an ended session cannot accept an edit in an account-owned recovery scope (8.098458ms)
+✔ local mutation continuations serialize and evaluate each update from the accepted preceding document (8.233458ms)
+✔ exact account authority survives an optional cache refusal after the recovery was acknowledged (14.207375ms)
+✔ a newer recovery arriving during account ACK is preserved and blocks further editing (8.676292ms)
+✔ the next queued account request waits for exact ACK and uses its canonical CAS revision (9.374416ms)
+✔ an unconfirmed device ACK retains account authority but holds further account requests (10.376458ms)
+✔ workspace diagnostic identifies actual resolver guest-read refusal without saving (9.999583ms)
+✔ workspace diagnostic identifies actual resolver explicit-save refusal without saving (5.049333ms)
+✔ workspace diagnostic identifies actual resolver owner-workspace-read refusal without saving (3.936958ms)
+✔ workspace diagnostic cannot publish after owner retirement (3.825083ms)
+✔ workspace diagnostic cannot publish after owner-roundtrip retirement (3.744166ms)
+✔ workspace diagnostic cannot publish after generation retirement (3.682542ms)
+✔ workspace diagnostic cannot publish after unmount retirement (3.738166ms)
+✔ workspace diagnostic is absent from the actual banner without build opt-in (8.68875ms)
+✔ workspace diagnostic never renders exception content and vanishes after successful explicit retry (4.083708ms)
+✔ rename dialog stays open until the scoped durable mutation is accepted (18.697084ms)
+✔ discard dialog remains pending until exact discard and the remaining recovery read finish (14.597666ms)
+✔ resolver keeps hydration pending and never decides missing before device read completion (3.937375ms)
+✔ resolver reports protected and unavailable reads without treating them as a missing trip (7.303792ms)
+✔ resolver ignores an old-owner read and cannot promote it after the route owner changes (3.78575ms)
+✔ resolver does not start promotion when the explicit guest save is protected (3.499875ms)
+✔ resolver retains account Saved truth after optional cache refusal and keeps protected device work visible (3.274166ms)
+✔ acknowledged account document remains available after explicit save and ordinary navigation (3.578083ms)
+✔ fresh resolver reopen renders an owner-scoped acknowledged document without saving it again (3.229458ms)
+✔ account ACK without device continuation survives navigation with its incomplete warning (3.596083ms)
+✔ acknowledged result cannot bypass a protected document read (3.398333ms)
+✔ acknowledged result cannot bypass a unavailable document read (3.225ms)
+✔ one document observation keeps a current pending recovery on its existing save path (3.1835ms)
+✔ late acknowledged-document read cannot cross an owner transition (10.847833ms)
+✔ incomplete account continuation retries only after the explicit retry action on an ordinary tab (7.516333ms)
+✔ a current pending document retires an incomplete earlier ACK before later missing reads (3.8635ms)
+✔ account-owned workspace recovery retries through the owner-pinned exact-conflict acknowledgement path (3.235958ms)
+✔ workspace qualified retry still protects a genuinely different account conflict (3.449333ms)
+✔ shared header retains explicit automatic identity across every workspace tab without writing (13.309542ms)
+✔ shared header retains legacy automatic identity across every workspace tab without writing (13.246792ms)
+✔ shared header retains custom Unicode identity across every workspace tab without writing (13.731ms)
+✔ shared header retains unknown legacy identity across every workspace tab without writing (13.680083ms)
+(node:98828) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-sync-recovery.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ session expiry returns a typed interruption without changing the local edit (11.255ms)
+✔ failed network save can retry to one canonical cloud document with the same ID (0.350709ms)
+✔ local-only recovery and repeated promotion retry never create another trip ID (0.263541ms)
+✔ refresh and account transitions recover only for the exact owner (0.054375ms)
+✔ sign-in recovery returns to the exact planner document and requests one retry (0.061542ms)
+✔ modern recovery selects Builder while legacy recovery retains its planner context (0.035917ms)
+✔ the trip workspace waits for authenticated saved intent, then uses the recovery-aware persistence path (0.285167ms)
+✔ Builder reauthentication returns to Builder while legacy callers retain planner recovery (0.876083ms)
+ℹ tests 145
+ℹ suites 0
+ℹ pass 145
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1204.198792

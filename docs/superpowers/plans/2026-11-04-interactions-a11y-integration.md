@@ -23,8 +23,8 @@
 - [x] Inspect exact source branches, ancestry, notes and overlap before integration.
 - [x] Merge 7307600f into staging577 candidate, then merge 3c0f4e3 (includes117033f once); resolve overlaps individually and record decisions.
 - [x] Run contract/interaction/accessibility-fixture/privacy/persistence regressions; distinguish baseline failures with pristine source where necessary.
-- [ ] Run typecheck, strict UI audit, official inventory, Storybook build and production build; preserve generated offline source artifact.
-- [ ] Review combined diff independently; fix concrete issues, rerun affected checks and commit evidence with remaining manual gates.
+- [x] Run typecheck, strict UI audit, official inventory, Storybook build and production build; preserve generated offline source artifact.
+- [x] Review combined diff independently; fix concrete issues, rerun affected checks and commit evidence with remaining manual gates.
 
 ## Integration ledger
 
