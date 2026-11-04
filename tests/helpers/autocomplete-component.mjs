@@ -22,7 +22,7 @@ export function autocompleteRender(query,{api=async()=>({status:200,body:{candid
   useEffect(callback,deps){const at=effectIndex++,prior=effects[at];if(prior&&deps?.every((value,index)=>Object.is(value,prior.deps?.[index])))return;prior?.cleanup?.();effects[at]={deps,callback};}};
  const module={exports:{}};
  const context=vm.createContext({module,exports:module.exports,require,console,URL,URLSearchParams,AbortController,AbortSignal,DOMException,setTimeout,clearTimeout,process:{env:{NODE_ENV:'test'}},__hooks:hooks,
-  window:{setTimeout(callback){const id=++timerId;timers.set(id,callback);return id;},clearTimeout(id){timers.delete(id);}},document:{activeElement:null},
+  window:{setTimeout(callback){const id=++timerId;timers.set(id,callback);return id;},clearTimeout(id){timers.delete(id);}},document:{activeElement:null,getElementById:()=>null},
   fetch:async(url)=>{const parsed=new URL(url,'http://127.0.0.1:43189');calls.push(parsed);const response=await api({pathname:parsed.pathname,method:'GET',searchParams:parsed.searchParams});return {ok:response.status>=200&&response.status<300,status:response.status,json:async()=>JSON.parse(JSON.stringify(response.body))};}});
  new vm.Script(script,{filename:'actual-autocomplete-bundle.cjs'}).runInContext(context);
  let tree;
@@ -31,8 +31,8 @@ export function autocompleteRender(query,{api=async()=>({status:200,body:{candid
   for(const node of allElements(tree)){const ref=node.props.ref;if(ref&&typeof ref==='object')ref.current={value:node.props.role==='combobox'?props.value:undefined,focus(){},contains(){return false;}};}
   for(const effect of effects)if(effect.callback){const callback=effect.callback;effect.callback=null;effect.cleanup=callback();}return tree;};
  render();allElements(tree).find(node=>node.props.role==='combobox').props.onFocus();render();
- return {selected,calls,render,enter(){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key:'Enter',preventDefault(){}});},change(next){allElements(tree).find(node=>node.props.role==='combobox').props.onChange({target:{value:next}});props.value=next;render();},async settle(){const pending=[...timers.values()];timers.clear();for(const timer of pending)timer();for(let i=0;i<40;i++)await Promise.resolve();render();},
-  key(key){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key,preventDefault(){}});render();},
+ return {selected,calls,render,enter(){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key:'Enter',nativeEvent:{},preventDefault(){},stopPropagation(){}});},change(next){allElements(tree).find(node=>node.props.role==='combobox').props.onChange({target:{value:next}});props.value=next;render();},async settle(){const pending=[...timers.values()];timers.clear();for(const timer of pending)timer();for(let i=0;i<40;i++)await Promise.resolve();render();},
+  key(key,nativeEvent={}){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key,nativeEvent,preventDefault(){},stopPropagation(){}});render();},
   actions(){return allElements(tree).filter(node=>node.props.onClick && node.props.role!=='option').map(node=>({label:text(node),disabled:Boolean(node.props.disabled||node.props.loading),click:()=>node.props.onClick()}));},
   rows(){return allElements(tree).filter(node=>node.props.role==='option').map(node=>({key:node.key,label:text(node),choose:()=>node.props.onClick()}));},
   close(){for(const effect of effects)effect.cleanup?.();}};

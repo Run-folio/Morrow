@@ -160,7 +160,7 @@ test("the scheduled card is the primary selection target and editing chrome is s
   assert.match(component, /className=\{styles\.activitySelect\}/);
   assert.match(component, /aria-pressed=\{selected\}/);
   assert.match(component, /onActivitySelect\?\.\(activity, trigger\)/);
-  assert.match(component, /<details className=\{styles\.activityMenu\}>/);
+  assert.match(component, /<details className=\{styles\.activityExpansion\}/);
   assert.match(styles, /\.activitySelected \{[\s\S]*outline:/);
   assert.match(styles, /\.activitySelected::before,[\s\S]*background: var\(--morrovia-signal\)/);
   assert.match(styles, /\.activitySelect \{[\s\S]*min-height: 68px/);

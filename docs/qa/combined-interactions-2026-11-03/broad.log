@@ -1,0 +1,585 @@
+(node:70785) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual fixed commitment keeps raw input until held false acceptance (454.54025ms)
+✖ actual fixed commitment keeps raw input until held true acceptance (401.172125ms)
+✔ actual fixed commitment handles rejection without clearing input (505.92875ms)
+✖ actual fixed commitment preserves label during accepted persistence (354.785625ms)
+✖ actual fixed commitment preserves date during accepted persistence (146.178ms)
+✖ actual fixed commitment preserves label-before-render during accepted persistence (126.128541ms)
+✖ actual fixed commitment preserves date-before-render during accepted persistence (470.109791ms)
+✔ actual fixed commitment preserves input-revision during accepted persistence (183.712791ms)
+✔ actual fixed commitment preserves unmount during accepted persistence (349.101584ms)
+✖ actual fixed commitment label A to B to A cannot clear a later scope (123.360958ms)
+✖ actual fixed commitment date A to B to A cannot clear a later scope (437.512417ms)
+✔ actual fixed commitment owner A to B to A cannot clear a later scope (292.859625ms)
+✔ actual fixed commitment trip A to B to A cannot clear a later scope (366.432583ms)
+✔ actual fixed commitment editor A to B to A cannot clear a later scope (183.324333ms)
+✔ actual fixed commitment starts one request for a double click and permits retry after refusal (146.602959ms)
+(node:70786) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/lib/easyt/builder-input-persistence.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ native body with existing input domain completes healthy route work for guest (2466.367458ms)
+✔ native body with existing input domain completes failed route work for guest (1389.243917ms)
+✖ native body with existing input domain completes healthy route work for isolated-account (1468.146291ms)
+✔ native body with existing input domain completes failed route work for isolated-account (1071.686666ms)
+✔ mixed input projection refuses owner without changing the observed competing source (755.366291ms)
+✔ mixed input projection refuses new-input without changing the observed competing source (574.202625ms)
+✔ mixed input projection refuses other-branch without changing the observed competing source (351.828167ms)
+✔ mixed input projection refuses clear-current without changing the observed competing source (569.219375ms)
+✔ mixed paired input commit with an uncertain acknowledgement preserves source and target generations (805.077125ms)
+✔ navigation during mixed input commit preserves the predecessor and never acknowledges the old pointer (717.778792ms)
+✔ mixed projection keeps source when before-pointer-cas (942.064541ms)
+✔ mixed projection keeps source when after-pointer-cas (820.023ms)
+✔ mixed projection keeps source when lost-pointer-readback (799.969708ms)
+(node:70787) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-projection-ack-reorder-guard.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ projection ACK overlaps actual table reorder at queue merge: candidate (2.975917ms) # SKIP
+(node:70788) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/helpers/recovery-indexeddb-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ created → built → edit → reorder can overflow paired input, then reload and edit again (2438.475292ms)
+✔ an independent recovery remains protected even when paired input would need overflow (1078.223583ms)
+✔ an exact guest cache source admits paired input overflow without a recovery handle (450.120708ms)
+✔ a concurrent branch during paired input quota is preserved and cannot be accepted (1272.115667ms)
+(node:70789) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-calendar-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mobile day orientation stays compact and scrolls its own rail (2.474584ms)
+✔ Calendar uses a sticky content Close target without a separate visible sheet heading (0.84525ms)
+✔ view titles stay accessible without reserving a visible toolbar title column (0.249958ms)
+✔ day rail shows dates without visible day ordinals while its accessible names retain occurrence context (0.163125ms)
+✔ map keeps its accessible name and precedes Add activity and suggestions in DOM order (0.252416ms)
+✔ matched populated acceptance route uses the trip's real Itinerary path (0.555875ms)
+✔ 320px saved-stay copy wraps inside its existing card and does not widen the page (0.278625ms)
+✔ Calendar stays a pure projection while delegating planning interactions to its canonical parent (0.327167ms)
+✔ Calendar selection resolves canonical IDs in place, with an explicit full-day switch (0.53775ms)
+✔ Calendar keeps day cards selectable while removing redundant empty-card and weekday copy (0.384834ms)
+✔ both itinerary views keep the existing photo-credit control with the thumbnail (0.291541ms)
+✔ Calendar exposes canonical Move, item-scoped Undo, and transport or booking detail owners (0.689084ms)
+✔ Calendar exposes truthful temporal and item semantics without relying on colour (0.754458ms)
+✔ continuous and representative Calendar stories cover all required widths (1.007959ms)
+✔ mixed timing workspace acceptance includes a saved exact time and an untimed item (0.155084ms)
+✔ Spanish acceptance renders the production workspace with Spanish copy (0.272667ms)
+✔ restored rail and occurrence navigation have explicit responsive Storybook states (0.222542ms)
+✔ production-backed acceptance stories cover the ten day-view states and five widths (1.17325ms)
+✔ logistics-only acceptance includes a canonical saved stay and no invented activity (0.170541ms)
+✔ no-photography acceptance does not show unrelated suggestion fixtures (0.116375ms)
+(node:70790) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-day-composition.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ generated Botanical Garden description remains day context through persistence, not an activity (17.125083ms)
+✔ older generated Botanical Garden prose remains context after reload without hiding authored notes (129.077084ms)
+✔ an inter-stop transfer belongs to its destination day, never the preceding sightseeing day (98.252375ms)
+✔ optional canonical dayPart supports every broad period and clear without changing day identity (5.142583ms)
+✔ unscheduled, scheduled-unslotted, and scheduled-slotted remain distinct canonical states (0.356417ms)
+✔ day composition groups explicit periods and leaves legacy untimed rows truthfully unslotted (7.577458ms)
+✔ legacy fallback is balanced and monotonic for one, two, three, four, and many items (0.28225ms)
+✔ an unambiguous authored activity can be slotted, moved to midday, and cleared without inventing a time (0.721292ms)
+✔ authored note dayparts survive planner reconciliation on the same canonical stop (1.24225ms)
+✔ arrival, departure, unknown timing, and overnight stay context remain truthful with no fake exact times (24.634916ms)
+✔ specific-day period intent survives JSON reload, a day move, stop reorder, and canonical owner promotion (13.488625ms)
+✔ add to day, assign afternoon, save, and device reload retains the same stable item and period (0.59475ms)
+✔ night reduction remaps to a surviving same-stop day, fails closed to saved when none survives, and stop removal leaves no orphan (0.573917ms)
+✔ trip duplication remaps the scheduled day identity while preserving dayPart (0.389ms)
+✔ automatic Add to Day chooses a deterministic suitable available period without inventing a time (0.2315ms)
+✔ dropping a full-day provider activity on a period keeps its single canonical day-level item (0.970166ms)
+✔ full-day activity with an old period assignment is projected as a single full-day row (0.397542ms)
+✔ a saved full-day idea dropped on a period schedules once at day level (0.369417ms)
+✔ moving a full-day activity across days clears its period without duplicating it (0.694083ms)
+✔ slot, extended and full-day ideas enforce one duration model at the mutation boundary (0.278166ms)
+✔ the hosted-equivalent eleven-hour activity remains day-level after JSON reload (0.751584ms)
+✔ a persisted full-day band leaves period plans intact and available around its unknown timing (1.449042ms)
+✔ suggestion metadata and stable identity survive scheduling and JSON reload (0.413667ms)
+✔ presentation dedupes exact provider identity and never promotes description into the title (0.166584ms)
+✔ canonical drag placement reorders within a period and moves between periods without duplication (1.228917ms)
+✔ canonical drag placement appends into an occupied period without replacing its items (1.273666ms)
+✔ dragging a provider suggestion into an occupied period inserts exactly once and preserves its evidence (1.430916ms)
+✔ saved ideas remain unscheduled until the canonical schedule action is used (27.404667ms)
+✔ a failed durable write leaves a full-day suggestion and itinerary unchanged (0.854917ms)
+(node:70791) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-direct-slot-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every active day renders three compact slots with direct context carrying Add controls (0.936375ms)
+✔ the selected day and slot flow uses the existing canonical trip mutation (0.261625ms)
+(node:70792) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-workspace-gauntlet.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ gauntlet fixtures preserve normal, travel, empty, dense, locked, stay-only, untimed, partial, long-name, image and coordinate edge cases (7.622167ms)
+✔ the full direct-edit sequence keeps the input canonical document immutable and protected rows intact (1.8305ms)
+✔ missing coordinates and a cancelled or failed discovery provider cannot change the canonical trip (8.169833ms)
+✔ an authenticated canonical save submits the owner revision and accepts only the returned revision (204.576292ms)
+(node:70793) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/itinerary-workspace-mutations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy unowned PlanItem prose stays canonical while authored day notes use the Notes owner (97.542ms)
+✔ Itinerary adds an activity at the requested canonical position and adds a day note without inventing time (0.520458ms)
+✔ Itinerary edits, reorders, and removes only unambiguous authored activities (1.179333ms)
+✔ explicit dayparts stay aligned through add, reorder, remove, and recovery reload (6.683333ms)
+✔ authored activity move and undo survive reload without inventing a clock time (2.206708ms)
+✔ removal undo restores only the authored activity, position and daypart after reload (1.013833ms)
+✔ booking, mapped-place, generated, duplicate, and stale-location rows remain protected (0.531291ms)
+✔ add/remove survives navigation and reload through the canonical recovery document while selection stays valid (3.025708ms)
+✔ a failed account mutation leaves the canonical account trip unchanged (1.209167ms)
+✔ Itinerary keeps stale revisions fail-closed through the shared CAS path (57.853583ms)
+✔ multiple rapid Itinerary edits serialize and retain both authored changes (49.695625ms)
+✔ immediate Add then Undo persists the pre-Add document after a slow first acknowledgement (10.581125ms)
+✔ Undo after the Add acknowledgement persists the original activity state (0.757416ms)
+✔ the first Add acknowledgement keeps a newer pending Undo recovery until its own save (108.479ms)
+✔ immediate Remove then Undo restores the authored activity in the account document (33.569542ms)
+✔ a queued unrelated field edit survives an immediate Itinerary Undo (14.049875ms)
+✔ an external canonical change still rejects a queued Itinerary Undo (1.374792ms)
+(node:70796) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-async-edit-session.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ session-scoped automatic deferral keeps explicit writes durable and resumes latest work once (193.75525ms)
+✔ a successful response during deferral cannot write a projection (99.600375ms)
+✔ a rejected response during deferral cannot write a projection (96.926833ms)
+✔ projection admission rechecks deferral before reservation (47.458042ms)
+✔ projection admission rechecks deferral before reservation and preserves release during cleanup (17.132583ms)
+✔ deferral preserves an already reserved projection save and explicit acceptance waits for its readback (57.508583ms)
+✔ deferral release while a reserved write remains pending wakes current work after it finishes (91.144833ms)
+✔ deferral is instance-owned, idempotent, and cannot strand a replacement or erase newer raw input (51.644667ms)
+✔ hydration awaits authoritative draft read and rejects an owner change during the read (1.601458ms)
+✔ held device transaction cannot advance accepted trip, Undo retention or account queue (14.207166ms)
+✔ atomic accepted edit consumes only its exact raw field after durable verification (25.608208ms)
+✔ held accepted edit rejects owner change and preserves raw bytes (170.148333ms)
+✔ held accepted edit rejects dispose change and preserves raw bytes (85.572542ms)
+✔ held raw input is visible in memory but stays pending and cannot release cloud saving (14.101417ms)
+✔ failed atomic draft retention keeps accepted document and unconsumed raw bytes (10.79475ms)
+✔ stale projection response cannot start a durable write after a newer raw input (12.391958ms)
+✔ reserved projection finishes its canonical commit while preserving newer input and refusing stale feedback (94.375333ms)
+✔ held exact ACK serializes a later edit and never retires its new recovery (84.370709ms)
+✔ exact account ACK remains account truth when optional canonical cache fails (26.403417ms)
+✔ Undo remains awaited and carries CAS ancestry behind a held earlier save (262.051583ms)
+✔ promotion remaps preserved raw input and a pre-promotion Undo frame after newer edits (310.90125ms)
+✔ raw discard retains bytes until its verified write and refuses failed discard (25.32075ms)
+✔ the existing synchronous API retains immediate boolean and acceptance returns (5.172625ms)
+✔ failed promotion draft retention preserves exact ownerless recovery and raw input (24.525917ms)
+✔ failed promotion recovery retention preserves exact ownerless recovery and raw input (18.448291ms)
+✔ failed authoritative draft hydration cannot overwrite unknown raw bytes (1.619792ms)
+✔ projection retry awaits retained failure state without consuming independent raw input (41.074542ms)
+✔ network retry keeps exact current handle and waits for async status before account submission (24.032667ms)
+✔ latest promotion is a durable identity continuation without a new accepted edit revision (25.07525ms)
+✔ pre-promotion Undo waits for held ACK journaling and retains durable remap (233.4345ms)
+✔ an exact ACK waits for a held newer raw write instead of invalidating its durable continuation (65.71125ms)
+✔ an explicitly unacknowledged result cannot claim account success despite optional cache status (27.985125ms)
+✔ actual Discovery checkpoint verifies the accepted session document instead of a stale rendered owner ref (808.571625ms)
+✔ actual Discovery checkpoint refuses a newer raw input while projection readback is pending (541.161041ms)
+✔ actual Discovery checkpoint cannot confirm after its view retires during readback (416.72575ms)
+✔ actual Discovery checkpoint cannot acknowledge a different rendered trip scope (182.443375ms)
+✔ actual night controls retain two rapid activations across awaited device acceptance (48.317583ms)
+✔ reserved night activation finishes while newer raw input retires the queued second activation (32.994417ms)
+✔ queued night activations stop after native refusal without an automatic second write (34.419917ms)
+✔ accepted edit waits for the current projection readback without rebasing newer traveller input (74.109791ms)
+✔ actual Build waits for an in-flight projection commit before accepting planned status (161.696125ms)
+✔ waiting Build cannot accept planned status after its mounted scope retires (97.559708ms)
+✔ waiting Build cannot cross an owner rotation during canonical readback (48.935334ms)
+✔ waiting Build preserves a newer unsubmitted raw input and refuses the stale request (42.747917ms)
+✔ mounted Builder dispatch waits for durable acceptance before publishing Undo and success (33.729958ms)
+✔ mounted Builder dispatch cannot publish a completed acceptance after unmount (12.306ms)
+✔ mounted Builder preservation refuses a held acceptance instead of fabricating device durability (297.846ms)
+✔ actual Build follows an origin command issued before Build while its acceptance is pending (72.985583ms)
+✔ reserved accepted edit retains newer raw bytes with a revision above the committed draft (14.569125ms)
+✔ actual Build refuses later-command while a prior origin is pending (56.320292ms)
+✔ actual Build refuses prior-refusal while a prior origin is pending (24.91125ms)
+✔ actual Build refuses editor-replaced while a prior origin is pending (49.868125ms)
+✔ actual Build retains the existing explicit ownerless promotion path from pending recovery (151.00675ms)
+✔ actual Build request retires when raw input changes before its effect starts (32.665333ms)
+✔ actual Build cannot navigate after newer raw input arrives during account flush (71.996875ms)
+✔ discard queued behind a reserved commit settles against its accepted source (7.151458ms)
+✔ fresh Build can follow an obsolete retired command and a verified discard (78.865834ms)
+✔ actual Build must reassess a pending origin clear after its acceptance (126.667958ms)
+✔ guest Build retirement renders no account failure or unverified device assurance (198.692625ms)
+✔ Build assessment publication is bound to its settled render: none (68.141792ms)
+✔ Build assessment publication is bound to its settled render: document (18.904667ms)
+✔ Build assessment publication is bound to its settled render: revision (9.20325ms)
+✔ Build assessment publication is bound to its settled render: owner (5.350917ms)
+✔ Build assessment publication is bound to its settled render: unmount (3.94975ms)
+✔ discard superseded during its reserved write keeps newer raw and persists the higher revision (4.869916ms)
+✔ Build status refuses a source changed by projection after its assessment (21.993459ms)
+✔ Build assessment refuses failed projection persistence (24.600042ms)
+✔ Build assessment refuses held projection persistence (59.068958ms)
+✔ actual build navigation rechecks none after the async persistence return (42.800667ms)
+✔ actual build navigation rechecks failed after the async persistence return (51.714208ms)
+✔ actual build navigation rechecks held after the async persistence return (139.628ms)
+✔ actual build navigation rechecks new-raw after the async persistence return (52.891791ms)
+✔ actual build navigation rechecks owner after the async persistence return (44.587083ms)
+✔ actual build navigation rechecks unmount after the async persistence return (58.755ms)
+✔ actual map navigation rechecks none after the async persistence return (56.765459ms)
+✔ actual map navigation rechecks failed after the async persistence return (55.388334ms)
+✔ actual map navigation rechecks held after the async persistence return (81.228417ms)
+✔ actual map navigation rechecks new-raw after the async persistence return (51.242625ms)
+✔ actual map navigation rechecks owner after the async persistence return (64.991ms)
+✔ actual map navigation rechecks unmount after the async persistence return (44.331958ms)
+✔ verified discard preserves only actual newer field intent: unrelated (8.679625ms)
+✔ verified discard preserves only actual newer field intent: same-field (5.333041ms)
+✔ verified discard preserves only actual newer field intent: same-field-aba (14.398292ms)
+✔ unverified discard cannot remove input after write-failure (7.237417ms)
+✔ unverified discard cannot remove input after owner (3.878875ms)
+✔ Build assesses a healthy same-command projection at assessment 1 (32.549167ms)
+✔ Build assesses a healthy same-command projection at assessment 2 (43.44125ms)
+✔ mounted transfer work completes while ineligible generated recommendation lookup is held (329.49775ms)
+✔ route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing (154.306333ms)
+✔ raw input during held ACK stays visible and persists after canonical installation (13.589417ms)
+✔ queued date intent settles and remains device-durable after ACK timeout rejection (37.688666ms)
+✔ import manual retry success: one request, honest terminal state and durable reopen (204.132959ms)
+✔ import manual retry failure: one request, honest terminal state and durable reopen (176.50925ms)
+✔ import manual retry rejection: one request, honest terminal state and durable reopen (92.372083ms)
+✔ import retry late response cannot cross owner boundary (116.65225ms)
+✔ import retry late response cannot cross navigation boundary (63.965541ms)
+✔ import retry late response cannot cross dates boundary (146.329ms)
+✔ import explicit retry runs actual Builder worker: insufficient (181.300792ms)
+✔ import explicit retry runs actual Builder worker: unavailable (49.155291ms)
+✔ import explicit retry runs actual Builder worker: network (61.531375ms)
+✔ import explicit retry runs actual Builder worker: incomplete (51.7285ms)
+✔ import explicit retry runs actual Builder worker: mismatch (47.254208ms)
+✔ rapid repeated import retry clicks before durability schedule at most one lookup (43.730875ms)
+✔ actual page quota retry clears stale failure and publishes the matching Undo frame once (21.823958ms)
+✔ quota refusal retains an exact explicit change for manual retry without reporting a save (20.484791ms)
+✔ repeated quota retries serialize and keep the change pending until a verified write (8.168125ms)
+✔ quota retry cannot replay after owner (19.979292ms)
+✔ quota retry cannot replay after raw-input (30.073125ms)
+✔ quota retry cannot replay after new-command (13.701625ms)
+✔ quota retry cannot replay after dispose (18.532666ms)
+✔ quota retry preserves a separately written recovery instead of selecting a winner (6.3105ms)
+✔ account conflict after a quota retry retains the device change without another account write (19.4065ms)
+✔ security refusal never becomes a retryable quota command (12.679292ms)
+✔ readback refusal never becomes a retryable quota command (39.844166ms)
+✔ pointer refusal never becomes a retryable quota command (3.791792ms)
+✔ unknown refusal never becomes a retryable quota command (9.390083ms)
+(node:70799) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-layout.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a useful route requires a valid stop occurrence, independently of endpoint context (1.697916ms)
+﹣ direct Builder entry offers capture, first place and import without mandatory steps or empty route (0.131167ms) # SKIP
+﹣ useful homepage and template handoffs show route timing immediately (0.090042ms) # SKIP
+﹣ mobile route map disclosure releases the map height (0.141875ms) # SKIP
+﹣ area-only handoff stays in clarification without an empty route or retired intake (0.094667ms) # SKIP
+﹣ versioned direct, area and Describe handoffs hydrate the unified Builder under their reserved identity (0.077666ms) # SKIP
+﹣ homepage handoff adopts its durable recovery URL once and restores on reload (0.063792ms) # SKIP
+﹣ legacy step query cannot switch an empty Builder into timing and preserves other parameters (0.075084ms) # SKIP
+✔ Builder workspace height and capture width remain content-driven (4.460417ms)
+✔ desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints (27.589417ms)
+✔ the unified route workspace projects canonical occurrences beside the map (7.330583ms)
+✔ versioned homepage hydration reserves identity before replay and keeps one Builder document owner (2.265375ms)
+✔ homepage lookup cannot overwrite a newer point when its seed had no coordinates (1292.346917ms)
+✔ homepage lookup preserves a later authoritative name change (53.458458ms)
+✔ homepage lookup preserves a later authoritative country change (171.100167ms)
+✔ homepage lookup preserves a later authoritative canonical identity change (77.986166ms)
+✔ homepage lookup preserves a later authoritative provider identity change (27.5745ms)
+✔ homepage lookup cannot overwrite newer evidence at an identical identity, provider and point (33.534333ms)
+✔ homepage target guard allows an unchanged target after an unrelated accepted budget edit (38.793625ms)
+✔ before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed (26.052375ms)
+✔ before canonical hydration, identical-point newer evidence invalidates the held homepage lookup (114.040583ms)
+✔ before canonical hydration, compatible homepage enrichment waits for its mounted canonical owner (142.149416ms)
+✔ a fatal initial map failure leaves the route workspace usable (2.555167ms)
+✔ Builder spacing and healthy route copy use the focused production treatment (2.002167ms)
+✔ the Journey shell and immersive closing share one production footer owner (1.183ms)
+✔ clarification presentation separates action-required geography from confirmed stay bases (3.784416ms)
+✔ the activated Builder keeps one compact details and validation hierarchy (7.851792ms)
+✔ Journey is the only Add stop entry point after a route exists (7.044833ms)
+✔ night allocation is compact Route metadata instead of a separate band (10.222084ms)
+✔ Builder hierarchy has production Storybook coverage at every required width (3.325208ms)
+✔ night allocation reads canonical arrival and departure transfer impacts (1.589667ms)
+✔ manual night edits use canonical rebalance, durable stop intent and shared feedback (15.344583ms)
+﹣ first-place selection creates route timing without requiring endpoint context (0.068625ms) # SKIP
+﹣ passive validation preserves Starting from focus while typing after the first place (0.023708ms) # SKIP
+﹣ first-place resolution keeps the pending selection visible and prevents competing capture (0.020292ms) # SKIP
+﹣ endpoint-only handoff does not create an overnight route or timing table (0.023417ms) # SKIP
+﹣ direct text capture uses the existing parser then replaces capture with the populated route (0.020791ms) # SKIP
+﹣ legacy populated links focus summary or timing once while the whole route stays mounted (0.018709ms) # SKIP
+(node:70807) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-order.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ accepts an exact occurrence-ID permutation with repeated destinations (12.287125ms)
+✔ rejects duplicate, missing and unknown occurrence IDs (0.118959ms)
+✔ rejects stale source and locked-stop displacement (0.099833ms)
+✔ treats unchanged and globally fixed orders as non-mutations (0.077875ms)
+✔ keeps a Route Check proposal only while it exactly matches the current recommendation (0.077916ms)
+✔ existing accepted order sources establish manual authority without accepting a mere preview (1.884ms)
+(node:70808) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-reorder-interaction.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ moves stable occurrence IDs without mutating the source (1.418041ms)
+✔ drag, keyboard and menu share one preview and commit boundary (19.264208ms)
+﹣ keyboard and menu reorder the same canonical route exactly once (0.368125ms) # SKIP
+﹣ native pointer drag commits the occurrence selected at dragstart (0.110084ms) # SKIP
+﹣ canonical destination chips reorder first, middle and last occurrences (0.094375ms) # SKIP
+(node:70811) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-top-controls-async.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual Builder chips distinguish country and capital while editing retains raw names and IDs (515.236083ms)
+✔ Builder destination selection waits for accepted true before closing and focusing its own editor (190.335042ms)
+✔ Builder false or rejected selection retains the exact current destination editor and typed raw input (136.53ms)
+✔ accepted destination A cannot close or focus away from editor B opened after Escape (189.574375ms)
+✔ Escape without a replacement editor permanently cancels stale accepted selection focus (41.769375ms)
+✔ opening the same destination again creates a fresh editor lifecycle (36.925167ms)
+✔ pending Builder acceptance cannot modify editor or focus after owner changes (53.12675ms)
+✔ pending Builder acceptance cannot modify editor or focus after document changes (31.140458ms)
+✔ pending Builder acceptance cannot modify editor or focus after unmount changes (70.994083ms)
+✔ Builder destination selection blocks an immediate duplicate request and shows existing disabled state (34.043417ms)
+✔ an old autocomplete callback cannot select against a later active editor or protected scope (49.06925ms)
+✔ delayed editor opening handles false, rejection, cancellation and duplicate clicks (243.13225ms)
+✔ the latest destination edit request owns a delayed editor opening (79.603833ms)
+✔ mount effect replay preserves the live autocomplete handler lifecycle (54.252875ms)
+✔ protected controls appearing during acceptance preserve the pending editor (74.379334ms)
+✔ Builder selection preserves input and focus for a dynamic object result (178.344709ms)
+✔ Builder opening refuses a dynamic object result instead of literal true (39.015417ms)
+✔ Builder selection preserves input and focus for a dynamic string result (73.980125ms)
+✔ Builder opening refuses a dynamic string result instead of literal true (97.400208ms)
+✔ Builder selection preserves input and focus for a dynamic number result (61.373042ms)
+✔ Builder opening refuses a dynamic number result instead of literal true (75.303375ms)
+✔ Builder selection preserves input and focus for a dynamic undefined result (96.209416ms)
+✔ Builder opening refuses a dynamic undefined result instead of literal true (29.031167ms)
+✔ pending Builder acceptance started before effect replay remains stale after setup (112.227083ms)
+✔ stale Builder completion cannot clear a fresh pending operation after effect replay (126.041167ms)
+✔ Builder range preview is scoped to account trip and canonical date source (70.254959ms)
+(node:70813) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-builder-top-controls.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mounted Builder owns the approved top controls and the existing table map (5.14475ms)
+✔ homepage and Builder share destination field presentation (60.930208ms)
+(node:70814) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/fixtures/batch14-route-documents.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ JSONB key order cannot duplicate stopId allocation rows during a queued rebase (108.439167ms)
+✔ semantic rebase keeps real nested value edits and authored array order (2.973667ms)
+✔ overlapping night edits submit exactly three rows after a delayed JSONB acknowledgement (4.85575ms)
+(node:70815) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-mutation-persistence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ leg guard authored-leg accepts reordered JSON fields when the leg values are unchanged (127.175334ms)
+✔ leg guard authored-leg retains real future-authored-value conflict with a changed route pair (8.194708ms)
+✔ leg guard authored-leg retains real ordered-values conflict with a changed route pair (18.2705ms)
+✔ leg guard authored-leg retains real endpoint conflict with a changed route pair (3.348792ms)
+✔ leg guard authored-leg retains real identity conflict with a changed route pair (4.32175ms)
+✔ leg guard canonical-leg accepts reordered JSON fields when the leg values are unchanged (1.624041ms)
+✔ leg guard canonical-leg retains real future-authored-value conflict with a changed route pair (1.186042ms)
+✔ leg guard canonical-leg retains real ordered-values conflict with a changed route pair (1.378834ms)
+✔ leg guard canonical-leg retains real endpoint conflict with a changed route pair (2.525167ms)
+✔ leg guard canonical-leg retains real identity conflict with a changed route pair (5.336667ms)
+✔ A17 completed necessary certificate saves after a semantically equivalent JSONB ACK (138.604833ms)
+✔ A08 held equivalent ACK permits the inverse to durably save current dependent work once (96.99325ms)
+✔ dependent-work merge retains completion and terminal evidence for the current inverse basis (57.43925ms)
+✔ sequential Map mutations use the preceding account revision without losing authored state (0.680042ms)
+✔ a queued edit authored from the same base cannot erase a preceding disjoint edit (0.413625ms)
+✔ independent queued additions to the same authored array are merged without duplication (0.541417ms)
+✔ an unknown revision is never borrowed from this queue (0.161125ms)
+✔ a stale tab still receives the repository conflict instead of borrowing another tab's revision (51.306083ms)
+(node:70818) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-shell-async-recovery.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mutation does not apply, acknowledge, or queue a cloud save before durable device completion (545.881667ms)
+✔ an account switch rejects a pending local completion and cannot queue it into the new account (156.955875ms)
+✔ unmount rejects a durable completion without accepting the edit or starting account persistence (119.895625ms)
+✔ unavailable hydration stays protected and does not accept a fresh mutation (182.809042ms)
+✔ a signed-in session does not implicitly claim or promote a guest mutation (74.6215ms)
+✔ an ended session cannot accept an edit in an account-owned recovery scope (48.077167ms)
+✔ local mutation continuations serialize and evaluate each update from the accepted preceding document (67.554541ms)
+✔ exact account authority survives an optional cache refusal after the recovery was acknowledged (199.922667ms)
+✔ a newer recovery arriving during account ACK is preserved and blocks further editing (46.418834ms)
+✔ the next queued account request waits for exact ACK and uses its canonical CAS revision (60.317209ms)
+✔ an unconfirmed device ACK retains account authority but holds further account requests (53.049667ms)
+✔ workspace diagnostic identifies actual resolver guest-read refusal without saving (40.598417ms)
+✔ workspace diagnostic identifies actual resolver explicit-save refusal without saving (39.238709ms)
+✔ workspace diagnostic identifies actual resolver owner-workspace-read refusal without saving (18.516958ms)
+✔ workspace diagnostic cannot publish after owner retirement (39.228875ms)
+✔ workspace diagnostic cannot publish after owner-roundtrip retirement (104.567875ms)
+✔ workspace diagnostic cannot publish after generation retirement (53.59975ms)
+✔ workspace diagnostic cannot publish after unmount retirement (37.545542ms)
+✔ workspace diagnostic is absent from the actual banner without build opt-in (28.69325ms)
+✔ workspace diagnostic never renders exception content and vanishes after successful explicit retry (32.304583ms)
+✔ rename dialog stays open until the scoped durable mutation is accepted (145.91825ms)
+✔ discard dialog remains pending until exact discard and the remaining recovery read finish (271.43475ms)
+✔ resolver keeps hydration pending and never decides missing before device read completion (18.92475ms)
+✔ resolver reports protected and unavailable reads without treating them as a missing trip (75.902958ms)
+✔ resolver ignores an old-owner read and cannot promote it after the route owner changes (43.633875ms)
+✔ resolver does not start promotion when the explicit guest save is protected (34.126292ms)
+✔ resolver retains account Saved truth after optional cache refusal and keeps protected device work visible (14.655209ms)
+✔ acknowledged account document remains available after explicit save and ordinary navigation (23.256125ms)
+✔ fresh resolver reopen renders an owner-scoped acknowledged document without saving it again (28.193917ms)
+✔ account ACK without device continuation survives navigation with its incomplete warning (22.576084ms)
+✔ acknowledged result cannot bypass a protected document read (19.410083ms)
+✔ acknowledged result cannot bypass a unavailable document read (11.972833ms)
+✔ one document observation keeps a current pending recovery on its existing save path (14.96325ms)
+✔ late acknowledged-document read cannot cross an owner transition (43.71625ms)
+✔ incomplete account continuation retries only after the explicit retry action on an ordinary tab (191.63575ms)
+✔ a current pending document retires an incomplete earlier ACK before later missing reads (31.556333ms)
+✔ account-owned workspace recovery retries through the owner-pinned exact-conflict acknowledgement path (21.293333ms)
+✔ workspace qualified retry still protects a genuinely different account conflict (18.266834ms)
+✔ shared header retains explicit automatic identity across every workspace tab without writing (58.997291ms)
+✔ shared header retains legacy automatic identity across every workspace tab without writing (77.266125ms)
+✔ shared header retains custom Unicode identity across every workspace tab without writing (106.69225ms)
+✔ shared header retains unknown legacy identity across every workspace tab without writing (130.124875ms)
+ℹ tests 361
+ℹ suites 0
+ℹ pass 335
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 17
+ℹ todo 0
+ℹ duration_ms 16780.652083
+
+✖ failing tests:
+
+test at tests/builder-fixed-commitment-async.test.ts:71:39
+✖ actual fixed commitment keeps raw input until held true acceptance (401.172125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   date: '2026-11-01',
+  +   label: '  Oaxaca  '
+  -   date: '',
+  -   label: ''
+    }
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:75:45)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { label: '  Oaxaca  ', date: '2026-11-01' },
+    expected: { label: '', date: '' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label during accepted persistence (354.785625ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date during accepted persistence (146.178ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves label-before-render during accepted persistence (126.128541ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:83:38)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:81:115
+✖ actual fixed commitment preserves date-before-render during accepted persistence (470.109791ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:84:37)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment label A to B to A cannot clear a later scope (123.360958ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at Object.actual [as setFixedCommitmentLabel] (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:3:42)
+      at Object.typeLabel (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:62:49)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:90:31)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at tests/builder-fixed-commitment-async.test.ts:88:67
+✖ actual fixed commitment date A to B to A cannot clear a later scope (437.512417ms)
+  ReferenceError: retireBuilderEntryForInput is not defined
+      at actual (eval at actual (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:18:10), <anonymous>:4:5)
+      at Object.typeDate (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:63:48)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-fixed-commitment-async.test.ts:91:30)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for guest (2466.367458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/builder-input-domain-projection.test.mjs:15:2
+✖ native body with existing input domain completes healthy route work for isolated-account (1468.146291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/builder-input-domain-projection.test.mjs:23:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -460,6 +460,16 @@
   position: relative;
 }
 
+.activityExpansion { grid-column: 1 / -1; min-width: 0; }
+.activityExpansion > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; color: var(--morrovia-ink-soft); font: var(--morrovia-type-control); }
+.activityExpansion > summary::-webkit-details-marker { display: none; }
+.activityExpansion > summary:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+.activityExpansion > summary svg { width: 16px; height: 16px; }
+.activityExpansion[open] > summary svg { transform: rotate(180deg); }
+.activityExpansion > div { display: grid; gap: 8px; min-width: 0; padding-top: 8px; }
+.activityExpansion > div > p { margin: 0; overflow-wrap: anywhere; font: var(--morrovia-type-supporting-body); }
+.activityExpansion button { min-height: 44px; white-space: normal; }
+
 .activityMenu > summary {
   width: 44px;
   height: 44px;

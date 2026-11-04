@@ -6285,7 +6285,7 @@ function TripBuilderDocument() {
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
                   onConfirmSavedFinish={()=>{void confirmSavedFinish()}}
-                  onReorder={async ids=>await commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology}
+                  onReorder={async ids=>await commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology} lockedStopIds={protectedBuilderStopIds}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
                   onType={async type=>{

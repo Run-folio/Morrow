@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Pencil, Route, Sparkles } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -103,8 +103,11 @@ export function TripShellIdentityAndActions() {
   if (renameIntentRef.current.scope !== renderScope) renameIntentRef.current = { scope: renderScope, session: {}, open: false, draft: "", error: "" };
   const [renameState, setRenameState] = useState(() => renameIntentRef.current);
   const [renamePending, setRenamePending] = useState<object | null>(null);
+  const [inlineRenameSession, setInlineRenameSession] = useState<object | null>(null);
+  const inlineRenameTriggerRef = useRef<HTMLButtonElement>(null);
   const visibleRename = renameState.scope === renderScope ? renameState : renameIntentRef.current;
   const { open: renameOpen, draft, error: validationError, session: renderSession } = visibleRename;
+  const inlineRename = renameOpen && inlineRenameSession === renderSession;
   useEffect(() => {
     renameMountedRef.current = true;
     return () => { renameMountedRef.current = false; renameMountGenerationRef.current += 1; renameRequestRef.current += 1; renamePendingRef.current = null; };
@@ -120,6 +123,15 @@ export function TripShellIdentityAndActions() {
     renameRequestRef.current += 1;
     updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });
   };
+  const cancelRename = () => {
+    if (!sessionIsCurrent()) return;
+    renameRequestRef.current += 1;
+    updateRenameIntent({ ...renameIntentRef.current, open: false });
+    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());
+  };
+  const returnInlineFocus = () => {
+    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());
+  };
   const saveRename = async () => {
     if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;
     const request = ++renameRequestRef.current;
@@ -132,6 +144,7 @@ export function TripShellIdentityAndActions() {
     }
     if (isCurrent() && normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) {
       updateRenameIntent({ ...renameIntentRef.current, open: false });
+      returnInlineFocus();
       return true;
     }
     const operation = {};
@@ -141,6 +154,7 @@ export function TripShellIdentityAndActions() {
         ? renameTripIdentity(current, normalizedTitle) : current, "trip-title");
       if (changed !== true || !isCurrent()) return false;
       updateRenameIntent({ ...renameIntentRef.current, open: false });
+      returnInlineFocus();
       return true;
     } catch { return false; }
     finally {
@@ -182,6 +196,21 @@ export function TripShellIdentityAndActions() {
           <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
         </span>
       </h1>
+      {!inlineRename ? <EasyTButton ref={inlineRenameTriggerRef} aria-label="Edit trip name" className={styles.inlineNameTrigger} icon={Pencil} size="small" variant="quiet" onClick={() => {
+        openRename();
+        setInlineRenameSession(renameIntentRef.current.session);
+      }}>Edit name</EasyTButton> : <form className={styles.inlineNameForm} aria-label="Edit trip name" onSubmit={(event) => { event.preventDefault(); void saveRename(); }} onKeyDown={(event) => {
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cancelRename(); }
+      }}>
+        <EasyTField autoFocus label="Trip name" value={draft} error={validationError || mutation.error || undefined}
+          onFocus={(event) => event.currentTarget.select()} autoComplete="off"
+          onChange={(event) => {
+            if (!sessionIsCurrent()) return;
+            if (event.target.value !== renameIntentRef.current.draft) renameRequestRef.current += 1;
+            updateRenameIntent({ ...renameIntentRef.current, draft: event.target.value, error: "" });
+          }} />
+        <div><EasyTButton type="submit" size="small" loading={renamePendingRef.current?.scope === renderScope || mutation.isPending("trip-title")}>Save name</EasyTButton><EasyTButton size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton></div>
+      </form>}
       {metadata}
     </div>
     <div className={styles.headerActions}>
@@ -194,13 +223,13 @@ export function TripShellIdentityAndActions() {
       <p>{tripDisplayTitle(trip)}</p><p>{status}</p><div className={styles.tripDetailsMetadata}>{metadata}</div>
     </TripMobileSheet>
     <MorroviaFormDialog
-      open={renameOpen}
+      open={renameOpen && !inlineRename}
       title="Rename this trip"
       detail="Leave blank to use the destination-based name."
       submitLabel="Save name"
       error={validationError || mutation.error || undefined}
       submitting={renamePendingRef.current?.scope === renderScope && renamePendingRef.current.operation === renamePending || mutation.isPending("trip-title")}
-      onCancel={() => { if (sessionIsCurrent()) { renameRequestRef.current += 1; updateRenameIntent({ ...renameIntentRef.current, open: false }); } }}
+      onCancel={cancelRename}
       onSubmit={() => void saveRename()}
     >
       <EasyTField

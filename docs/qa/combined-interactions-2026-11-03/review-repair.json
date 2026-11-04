@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "7758e44c",
+  "productionCodeCommit": "8aa0590b723c2a806e582cb8ba94746a73a47836",
+  "deployId": "6aea67ae5fee7a22f53122d0",
+  "state": "ready",
+  "context": "branch-deploy",
+  "publishedAt": null,
+  "functions": null,
+  "requiredFunctions": [],
+  "edgeFunctions": null,
+  "url": "https://interaction-review-a7e2f044--morrovia-staging.netlify.app/review.html#itinerary",
+  "browserVerified": [
+    "full itinerary rendering",
+    "activity edit accepted; focus returned to card",
+    "Escape activity edit retained title and returned focus to Edit activity",
+    "restart creates fresh id and another accepted edit",
+    "inline title save and Escape cancellation",
+    "Builder Space/ArrowUp/Enter accepted move and retained grip focus",
+    "protected Sacred Valley grip disabled",
+    "320px iframe measured and expanded controls visually inspected"
+  ],
+  "publishedStagingBefore": "6aea475869734d93efb59ccc",
+  "publishedStagingAfter": "6aea668052f1a5901c9fb6da",
+  "separateStagingDeploy": {
+    "commit": "57757a7abc40bd16c18e32faebbd0653e1185278",
+    "branch": "staging",
+    "title": "Prevent capability URLs from entering analytics context",
+    "publishedAt": "2026-11-03T22:58:34.402Z"
+  },
+  "notes": "Our deploys used only --alias and no --prod. Separate staging publication observed; not reverted. Real touch, screen reader, reduced motion and account sync remain unverified."
+}

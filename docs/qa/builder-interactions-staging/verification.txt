@@ -1,0 +1,14 @@
+Staging base: 662a42e520d4db67ee644a2e35973d002c42f89d
+Current selected tests: 100 total / 84 pass / 0 fail / 16 browser skips
+New actual-hook tests: 10/10 pass
+New actual-component review tests: 4/4 pass
+Wider selected tests: 295 total / 283 pass / 9 fail / 3 browser skips
+Pristine staging baseline reproduces the exact same 9 failures
+Production-scoped TypeScript: exit 0, empty diagnostics
+Full TypeScript: 282 test-only errors, missing playwright types/cascading implicit-any
+UI audit: exit 0, no new debt
+Final Storybook static build: exit 0, 23.34s Vite build
+Browser/device/visual QA: not run; restrictions respected
+Independent static reviewer: no remaining important findings
+No deployment, push, account/recovery writes, or unrelated itinerary/name work
+Patch applicability: git apply --check against pristine 662a42e exit 0
