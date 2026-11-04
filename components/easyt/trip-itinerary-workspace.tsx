@@ -925,6 +925,11 @@ export default function TripItineraryWorkspace({
 
   useLayoutEffect(() => {
     if (editingActivity === null) returnFromActivityEdit();
+    else if (activityEditHandoffRef.current) {
+      const input = sequenceEditorRef.current?.querySelector<HTMLInputElement>("form input");
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+    }
   }, [editingActivity]);
 
   if (!active || !mapContext) {
@@ -1822,7 +1827,6 @@ export default function TripItineraryWorkspace({
               setAddFlow(null);
               beginActivityEdit({ dayNumber: active.dayNumber, noteIndex: activity.noteIndex, title: activity.title });
               setSelectedItemId(null); setSelectedRecommendation(null);
-              window.requestAnimationFrame(() => sequenceEditorRef.current?.querySelector<HTMLInputElement>("form input")?.focus());
             }}
             onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart)}
             onSeeSuggestions={() => {
@@ -1908,6 +1912,7 @@ export default function TripItineraryWorkspace({
                 itemId={itemId}
                 selected={selectedItemId === itemId}
                 editing={editingActivity?.dayNumber === active.dayNumber && editingActivity.noteIndex === sourceIndex}
+                autoFocusEdit={!activityEditHandoffRef.current}
                 editDraft={editDraft}
                 editError={editError}
                 menuOpen={openMenuId === itemId}
@@ -1916,7 +1921,7 @@ export default function TripItineraryWorkspace({
                 canMoveEarlier={protection.editable && Boolean(previous)}
                 canMoveLater={protection.editable && Boolean(next)}
                 onSelect={() => setSelectedItemId(itemId)}
-                onBeginEdit={() => beginActivityEdit(target)}
+                onBeginEdit={() => { activityEditHandoffRef.current = null; beginActivityEdit(target); }}
                 onEditDraftChange={(value) => { setEditDraft(value); setEditError(""); }}
                 onSaveEdit={saveActivityEdit}
                 onCancelEdit={() => { setEditingActivity(null); setEditDraft(""); setEditError(""); }}
@@ -3180,6 +3185,7 @@ function TimelineRow({
   itemId,
   selected,
   editing,
+  autoFocusEdit = true,
   editDraft,
   editError,
   menuOpen,
@@ -3209,6 +3215,7 @@ function TimelineRow({
   itemId: string;
   selected: boolean;
   editing: boolean;
+  autoFocusEdit?: boolean;
   editDraft: string;
   editError: string;
   menuOpen: boolean;
@@ -3241,7 +3248,7 @@ function TimelineRow({
         <form className={styles.rowEditor} onSubmit={(event) => { event.preventDefault(); onSaveEdit(); }} onKeyDown={(event) => {
           if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCancelEdit(); }
         }}>
-          <EasyTField autoFocus label={copy.activityName} value={editDraft} error={editError || undefined} onChange={(event) => onEditDraftChange(event.target.value)} />
+          <EasyTField autoFocus={autoFocusEdit} label={copy.activityName} value={editDraft} error={editError || undefined} onChange={(event) => onEditDraftChange(event.target.value)} />
           <span><EasyTButton type="submit" size="small" disabled={!editDraft.trim()}>{copy.save}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onCancelEdit}>{copy.cancel}</EasyTButton></span>
         </form>
       </article>

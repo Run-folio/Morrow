@@ -52,7 +52,7 @@ test('focus return waits for the editor-closed layout commit',()=>{
  find(tree);assert.ok(effect);
  const effectJs=ts.transpileModule('const effect='+effect.getText(tree),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  let calls=0;
- const scope={editingActivity:{} as object|null,returnFromActivityEdit:()=>{calls++;}};
+ const scope={editingActivity:{} as object|null,activityEditHandoffRef:{current:null},returnFromActivityEdit:()=>{calls++;}};
  const run=new Function('scope',`with(scope){${effectJs};return effect;}`)(scope);
  run();assert.equal(calls,0);
  scope.editingActivity=null;run();assert.equal(calls,1);
@@ -69,4 +69,36 @@ test('focus commit hook is registered before every workspace early return',()=>{
   if(ts.isIfStatement(node))assert.doesNotMatch(node.getText(tree),/\breturn\b/);
   assert.equal(ts.isReturnStatement(node),false);
  }
+});
+
+test('card edit entry has one focus owner at the editor layout commit',()=>{
+ let effect:ts.Expression|undefined;
+ function find(node:ts.Node){
+  if(ts.isCallExpression(node)&&node.expression.getText(tree)==='useLayoutEffect'&&node.arguments[0]?.getText(tree).includes('returnFromActivityEdit()'))effect=node.arguments[0];
+  ts.forEachChild(node,find);
+ }
+ find(tree);assert.ok(effect);
+ const entryJs=ts.transpileModule('const entry='+effect.getText(tree),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const events:unknown[]=[];
+ const input={focus:(opts?:FocusOptions)=>events.push(['focus',opts]),scrollIntoView:(opts?:ScrollIntoViewOptions)=>events.push(['scroll',opts])};
+ const scope={editingActivity:{},activityEditHandoffRef:{current:{} as object|null},sequenceEditorRef:{current:{querySelector:()=>input}},returnFromActivityEdit:()=>{throw Error('cannot return before closing');}};
+ const run=new Function('scope',`with(scope){${entryJs};return entry;}`)(scope);
+ run();
+ assert.deepEqual(events,[['focus',{preventScroll:true}],['scroll',{block:'center',inline:'nearest',behavior:'instant'}]]);
+ scope.activityEditHandoffRef.current=null;events.length=0;run();assert.deepEqual(events,[]);
+ assert.match(source,/autoFocusEdit=\{!activityEditHandoffRef\.current\}/);
+ assert.match(source,/autoFocus=\{autoFocusEdit\}/);
+});
+
+test('ordinary row editing retires a previous card handoff before taking focus ownership',()=>{
+ let callback:ts.Expression|undefined;
+ function find(node:ts.Node){
+  if(ts.isJsxAttribute(node)&&node.name.getText(tree)==='onBeginEdit'&&node.initializer&&ts.isJsxExpression(node.initializer)&&node.initializer.expression?.getText(tree).includes('beginActivityEdit(target)'))callback=node.initializer.expression;
+  ts.forEachChild(node,find);
+ }
+ find(tree);assert.ok(callback);
+ const rowJs=ts.transpileModule('const entry='+callback.getText(tree),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const handoff={current:{} as object|null};const target={noteIndex:1};let edited:unknown;
+ const scope={activityEditHandoffRef:handoff,target,beginActivityEdit:(value:unknown)=>{assert.equal(handoff.current,null);edited=value;}};
+ new Function('scope',`with(scope){${rowJs};entry();}`)(scope);assert.equal(edited,target);
 });
