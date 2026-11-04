@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from 'typescript';
+import {productionSource, sourceNode, sourceAttribute, sourceVariable, evaluateSource, openingWithClass} from './helpers/production-source.ts';
+import {itineraryWorkspaceHref, mapWorkspaceHref} from '../lib/easyt/trip-workspace-links.ts';
+import {tripOverviewDisplayTitle, tripDisplayTitle} from '../lib/easyt/trip-display.ts';
+import {deriveTripDateFacts} from '../lib/easyt/trip-facts.ts';
+import {formatIsoDate} from '../lib/easyt/trip-lifecycle.ts';
+import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
 
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.module.css", import.meta.url), "utf8");
@@ -25,7 +32,18 @@ test("date metadata omits only the open-day question mark while preserving day n
 });
 
 test("Itinerary map handoffs preserve the selected day as the return destination", () => {
-  assert.match(itinerary, /const mapReturnHref = itineraryWorkspaceHref\(workingTrip\.id, active\.dayNumber\)/);
+  const expression = sourceVariable(productionSource("components/easyt/trip-itinerary-workspace.tsx"), "mapReturnHref");
+  for (const workspaceView of ["days", "calendar"]) for (const mapReturnHash of ["", "#day-3"]) {
+    const workingTrip = {id: "trip-synthetic"}, active = {dayNumber: 3};
+    const href = evaluateSource<string>(expression, {workingTrip, active, workspaceView, mapReturnHash, itineraryWorkspaceHref});
+    const returned = new URL(href, "https://morrovia.invalid");
+    assert.equal(returned.pathname, "/journey/trip-synthetic/itinerary");
+    assert.equal(returned.searchParams.get("day"), "3");
+    assert.equal(returned.searchParams.get("itineraryView"), workspaceView);
+    assert.equal(returned.hash, mapReturnHash);
+    const mapHref = new URL(mapWorkspaceHref(workingTrip.id, null, "see", active.dayNumber, null, null, href), returned.origin);
+    assert.equal(mapHref.searchParams.get("returnTo"), href, "Map must retain the exact day/view/hash return target");
+  }
   assert.match(itinerary, /mapResultHandoffForExploreResult\(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber\),\s*mapReturnHref/);
 });
 
@@ -145,7 +163,12 @@ test("Itinerary uses embedded selection while full Map uses the shared workspace
   assert.match(map, /selectedPlannerPinId = null/);
   assert.match(map, /morroviaMapOptions\(surface, "compact"\)/);
   assert.match(map, /previewLabel \?\? "Whole-trip route map preview"/);
-  assert.match(map, /map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
+  const mapTree = productionSource("components/journey-planner-map.tsx");
+  const renderer = sourceVariable(mapTree, "renderer");
+  assert.ok(ts.isCallExpression(renderer) && renderer.expression.getText() === "createMapRenderer", "only an admitted renderer owns cleanup");
+  sourceNode(mapTree, (node): node is ts.CallExpression => ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+    && node.expression.name.text === "dispose" && node.expression.expression.getText() === "renderer"
+    && ts.isVariableDeclaration(node.parent), "reported renderer disposal outcome");
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
   assert.match(map, /if \(!domainSelection\) \{\s*pinMarkersRef\.current\.forEach\(\(marker\) => marker\.remove\(\)\)/);
@@ -229,7 +252,21 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
   assert.match(styles, /\.calendarWorkspace \.dayPanel \{[^}]*grid-column: 2/);
   assert.doesNotMatch(itinerary, /hasContextRail/);
   assert.match(itinerary, /<aside className=\{`\$\{styles\.contextRail\}/);
-  assert.match(itinerary, /<div className=\{styles\.contextRailBody\} hidden=\{workspaceView === "days" && Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/, 'Calendar overlays preserve the underlying sidebar');
+  const body = openingWithClass(productionSource("components/easyt/trip-itinerary-workspace.tsx"), "div", "contextRailBody");
+  const hidden = sourceAttribute(body, "hidden");
+  for (const [workspaceView, calendarCompact, expectedHidden] of [
+    ["days", false, [false, true, true, true]], ["days", true, [false, true, true, true]],
+    ["calendar", false, [false, false, false, false]], ["calendar", true, [false, true, true, true]],
+  ] as const) {
+    for (const [index, kind] of ["none", "activity", "transport", "booking"].entries()) {
+      const selectedDetail = kind === "activity" ? {} : null, selectedTransportAgenda = kind === "transport" ? {} : null,
+        selectedBooking = kind === "booking" ? {} : null, calendarRenderedDetail = workspaceView === "calendar" && kind !== "none";
+      const actual = evaluateSource(hidden, {workspaceView, calendarCompact, calendarRenderedDetail, selectedDetail, selectedTransportAgenda, selectedBooking});
+      assert.equal(actual, expectedHidden[index], `${workspaceView}/${calendarCompact}/${kind}`);
+    }
+  }
+  assert.equal(evaluateSource(hidden, {workspaceView: "calendar", calendarCompact: true, calendarRenderedDetail: false,
+    selectedDetail: null, selectedTransportAgenda: null, selectedBooking: null}), false, "pending/unresolved detail must not hide the available Calendar rail");
   assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
@@ -239,11 +276,57 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
 
 test("Calendar preserves trip title, date and timeline while naming selected-day details", () => {
   const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
-  assert.match(shell, /<h1 id="trip-shell-title">\{isOverview \? tripOverviewDisplayTitle\(mutation\.trip\) : tripDisplayTitle\(mutation\.trip\)\}/);
+  const tree = productionSource("components/easyt/trip-shell-client.tsx");
+  const heading = sourceNode(tree, (node): node is ts.JsxElement => ts.isJsxElement(node) && node.openingElement.tagName.getText() === "h1"
+    && node.openingElement.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText() === "id"
+      && prop.initializer && ts.isStringLiteral(prop.initializer) && prop.initializer.text === "trip-shell-title"), "shared trip heading");
+  const visible: ts.Expression[] = [];
+  function visitVisible(node: ts.JsxElement) {
+    if (node.openingElement.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText() === "aria-hidden"
+      && prop.initializer && ts.isStringLiteral(prop.initializer) && prop.initializer.text === "true")) return;
+    for (const child of node.children) {
+      if (ts.isJsxElement(child)) visitVisible(child);
+      else if (ts.isJsxExpression(child) && child.expression) visible.push(child.expression);
+    }
+  }
+  visitVisible(heading); assert.equal(visible.length, 1, "one visible shared identity, independent of disclosure markup");
+  const generated = canonicalRouteFixture(); generated.brief.customTitle = null;
+  generated.stops = generated.stops.map(stop => ({...stop, country: "Japan", countryCode: "JP"}));
+  const authored = {...generated, brief: {...generated.brief, customTitle: "  春の旅 — Our anniversary  "}};
+  const legacy = {...generated, title: "An unclassified saved journey", brief: {...generated.brief}}; delete legacy.brief.customTitle;
+  for (const [trip, expected] of [[generated, "Japan"], [authored, authored.brief.customTitle], [legacy, legacy.title]] as const) {
+    const before = JSON.stringify(trip);
+    for (const isOverview of [false, true]) {
+      const bindings = {mutation: {trip}, isOverview, tripOverviewDisplayTitle, tripDisplayTitle};
+      const displayTitle = evaluateSource(sourceVariable(tree, "displayTitle"), bindings);
+      assert.equal(evaluateSource(visible[0]!, {...bindings, displayTitle}), expected);
+    }
+    assert.equal(JSON.stringify(trip), before, "identity rendering must never rename stored data");
+  }
   assert.match(shell, /dateFacts\.rangeLabel/);
   assert.match(itinerary, /className=\{styles\.workspaceToolbar\}/);
-  assert.match(itinerary, /displayDate\(days\[0\]!\.date, language, true\)/);
-  assert.match(itinerary, /displayDate\(days\[days\.length - 1\]!\.date, language\)/);
+  const metadata = sourceVariable(tree, "metadata");
+  const range = sourceNode(metadata, (node): node is ts.JsxExpression => ts.isJsxExpression(node)
+    && Boolean(node.expression && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "rangeLabel"), "rendered trip date range");
+  for (const [dates, expected] of [
+    [{startDate: "2027-04-06", endDate: "2027-04-12"}, "6 Apr 2027 – 12 Apr 2027"],
+    [{startDate: "", endDate: ""}, "Dates to confirm"],
+  ] as const) assert.equal(evaluateSource(range.expression!, {dateFacts: deriveTripDateFacts(dates)}), expected);
+  const itineraryTree = productionSource("components/easyt/trip-itinerary-workspace.tsx");
+  const formatter = sourceNode(itineraryTree, (node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === "displayDayDate", "selected date formatter");
+  const displayDayDate = evaluateSource(formatter, {formatIsoDate});
+  const mobilePicker = openingWithClass(itineraryTree, "EasyTButton", "mobileDayPicker").parent;
+  const mobileDate = sourceNode(mobilePicker, (node): node is ts.CallExpression => ts.isCallExpression(node) && node.expression.getText() === "displayDayDate", "mobile selected date");
+  const desktopSelect = sourceNode(itineraryTree, (node): node is ts.JsxOpeningElement => ts.isJsxOpeningElement(node)
+    && node.tagName.getText() === "EasyTSelect" && node.attributes.properties.some(prop => ts.isJsxAttribute(prop)
+      && prop.name.getText() === "label" && prop.initializer?.getText().includes("jumpToDateDestination")), "desktop day picker");
+  const optionDate = sourceNode(desktopSelect.parent, (node): node is ts.CallExpression => ts.isCallExpression(node) && node.expression.getText() === "displayDayDate", "desktop option date");
+  for (const [language, expected] of [["en", "Thu, Apr 8"], ["es", "jue, 8 abr"]] as const) {
+    const active = {id: "day-3", date: "2027-04-08"};
+    assert.equal(evaluateSource(mobileDate, {active, language, displayDayDate}), expected);
+    assert.equal(evaluateSource(optionDate, {day: active, language, displayDayDate}), expected);
+    assert.equal(evaluateSource(sourceAttribute(desktopSelect, "value"), {active}), active.id);
+  }
   assert.match(itinerary, /<JourneyRouteStopTrack[\s\S]*stops=\{destinations\}/);
   assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
   assert.match(itinerary, /data-calendar-sheet-heading tabIndex=\{-1\}/);
