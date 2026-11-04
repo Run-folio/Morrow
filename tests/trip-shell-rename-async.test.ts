@@ -87,13 +87,27 @@ function harness(queued = false) {
     if (Array.isArray(node)) return node.map(child => matching(child, predicate)).find(Boolean) ?? null;
     return predicate(node) ? node : matching(node.props?.children, predicate);
   }
-  const form = (tree = render()) => find(tree, Form), field = (tree = render()) => find(tree, Field);
+  const field = (tree = render()) => find(tree, 'input');
+  const form = (tree = render()) => {
+    const native = find(tree, 'form');
+    const nodes: any[] = [];
+    const walk = (node: any): void => { if (Array.isArray(node)) { node.forEach(walk); return; } if (!node) return; nodes.push(node); walk(node.props?.children); };
+    walk(native);
+    return { props: { open: Boolean(field(tree)), onSubmit: () => native.props.onSubmit({preventDefault() {}}),
+      onCancel: () => nodes.find(node => node.props?.children === 'Cancel').props.onClick(),
+      submitting: Boolean(nodes.find(node => node.props?.children === 'Save name')?.props.loading),
+      error: nodes.find(node => node.props?.role === 'alert')?.props.children,
+    } };
+  };
+
   return { render, form, field, requests, accepted: firstAcceptance, updateGate,
     open: () => find(render(), Launcher).props.onRenameTrip(),
-    openInline: () => matching(render(), node => node.type === Button && node.props['aria-label'] === 'Edit trip name').props.onClick(),
-    inlineForm: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name'),
-    submitInline: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name').props.onSubmit({ preventDefault() {} }),
-    cancelInline: () => matching(render(), node => node.type === 'form' && node.props['aria-label'] === 'Edit trip name').props.onKeyDown({ key: 'Escape', preventDefault() {}, stopPropagation() {} }),
+    openInline: () => find(render(), Launcher).props.onRenameTrip(),
+    inlineForm: () => { const tree=render(); return field(tree) ? find(tree,'form') : null; },
+    renameDialog: () => find(render(), Form),
+    titleInputCount: () => { let count=0; const walk=(node:any):void=>{if(Array.isArray(node)){node.forEach(walk);return;}if(!node)return;if(node.type==='input')count++;walk(node.props?.children);};walk(render());return count; },
+    submitInline: () => find(render(),'form').props.onSubmit({ preventDefault() {} }),
+    cancelInline: () => find(render(),'form').props.onKeyDown({ key:'Escape',preventDefault(){},stopPropagation(){} }),
     type: (value: string) => field().props.onChange({ target: { value } }),
     submit: () => form().props.onSubmit(), cancel: () => form().props.onCancel(),
     switchTrip: (patch: Partial<EasyTTrip>) => { trip = requireReadableTripDocument({ ...trip, ...patch }); },
@@ -109,7 +123,8 @@ function harness(queued = false) {
 test('inline naming uses the existing scoped mutation and preserves itinerary data on acceptance', async () => {
   const h = harness(), before = h.trip();
   h.openInline(); h.type('  Slow   Japan  ');
-  assert.equal(h.form().props.open, false, 'the modal remains closed during inline editing');
+  assert.equal(h.renameDialog(), null, 'no modal is introduced by in-place editing');
+  assert.equal(h.titleInputCount(), 1, 'one title-line editor owns the draft');
   h.submitInline(); await tick();
   assert.equal(h.requests.length, 1);
   assert.equal(h.requests[0]?.key, 'trip-title');
@@ -146,6 +161,7 @@ test('the actual shared mutation rejects an unchanged canonical rename before pe
     liveScopeRef: { current: 'exact-owner-document' }, renderScope: 'exact-owner-document', scopeIsCurrent: () => true,
     recoveryReadyRef: { current: true }, conflictRef: { current: false },
     retainedEquivalentRef: { current: null },
+
     localWriteTailRef: { current: Promise.resolve() }, tripRef: { current: trip },
     session: { user: { id: trip.ownerId } }, cloneItineraryMutationDocument: structuredClone,
     pendingLocalWritesRef: { current: new Set() }, updatePending: () => {},

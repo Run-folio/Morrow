@@ -27,8 +27,7 @@ import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConfl
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { isTripMapPathname, tripWorkspaceMapActionHref, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
-import { EasyTField } from "./easyt-controls";
-import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaConfirmationDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";
 import { TripOverviewLibraryActions } from "./trip-overview-library-actions";
@@ -118,6 +117,23 @@ export function TripShellIdentityAndActions() {
   const sessionIsCurrent = () => scopeIsCurrent() && renameIntentRef.current.session === renderSession && renameIntentRef.current.open;
   const updateRenameIntent = (next: typeof renameIntentRef.current) => { renameIntentRef.current = next; setRenameState(next); };
 
+  const titleButtonRef = useRef<HTMLButtonElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const wasRenamingRef = useRef(false);
+  useEffect(() => {
+    if (renameOpen) { titleInputRef.current?.focus(); titleInputRef.current?.select(); }
+    else if (wasRenamingRef.current) titleButtonRef.current?.focus();
+    wasRenamingRef.current = renameOpen;
+  }, [renameOpen]);
+  const cancelRename = () => {
+    if (sessionIsCurrent()) {
+      renameRequestRef.current += 1;
+      updateRenameIntent({ ...renameIntentRef.current, open: false });
+    }
+  };
+  const renameSubmitting = renamePendingRef.current?.scope === renderScope && renamePendingRef.current.operation === renamePending || mutation.isPending("trip-title");
+  const renameError = validationError || mutation.error;
+
   const openRename = () => {
     if (!scopeIsCurrent() || renameIntentRef.current.open) return;
     renameRequestRef.current += 1;
@@ -179,9 +195,27 @@ export function TripShellIdentityAndActions() {
   return <>
     <div className={styles.tripIdentity}>
       <p className={styles.eyebrow}>{status}</p>
+      <form className={styles.tripTitleForm} aria-label={renameOpen ? "Rename trip" : undefined} onSubmit={(event) => { event.preventDefault(); void saveRename(); }} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); cancelRename(); } }}>
       <h1 id="trip-shell-title">
+        {/* morrovia-ui-audit-allow-next-line native-control -- The title editor must remain phrasing content inside h1; EasyTField adds a block FieldShell. */}
+        {renameOpen ? <input
+          ref={titleInputRef}
+          className={styles.tripTitleInput}
+          aria-label="Trip name"
+          aria-describedby={renameError ? "trip-title-hint trip-title-error" : "trip-title-hint"}
+          aria-invalid={Boolean(renameError)}
+          value={draft}
+          placeholder={displayTitle}
+          autoComplete="off"
+          onChange={(event) => {
+            if (!sessionIsCurrent()) return;
+            if (event.target.value !== renameIntentRef.current.draft) renameRequestRef.current += 1;
+            updateRenameIntent({ ...renameIntentRef.current, draft: event.target.value, error: "" });
+          }}
+        /> : <>
         <span className={styles.tripTitleDisclosure}>
           <EasyTButton
+            ref={titleButtonRef}
             className={styles.tripTitleToggle}
             variant="quiet"
             size="small"
@@ -195,22 +229,16 @@ export function TripShellIdentityAndActions() {
           ><span>{displayTitle}</span></EasyTButton>
           <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
         </span>
+        </>}
       </h1>
-      {!inlineRename ? <EasyTButton ref={inlineRenameTriggerRef} aria-label="Edit trip name" className={styles.inlineNameTrigger} icon={Pencil} size="small" variant="quiet" onClick={() => {
-        openRename();
-        setInlineRenameSession(renameIntentRef.current.session);
-      }}>Edit name</EasyTButton> : <form className={styles.inlineNameForm} aria-label="Edit trip name" onSubmit={(event) => { event.preventDefault(); void saveRename(); }} onKeyDown={(event) => {
-        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cancelRename(); }
-      }}>
-        <EasyTField autoFocus label="Trip name" value={draft} error={validationError || mutation.error || undefined}
-          onFocus={(event) => event.currentTarget.select()} autoComplete="off"
-          onChange={(event) => {
-            if (!sessionIsCurrent()) return;
-            if (event.target.value !== renameIntentRef.current.draft) renameRequestRef.current += 1;
-            updateRenameIntent({ ...renameIntentRef.current, draft: event.target.value, error: "" });
-          }} />
-        <div><EasyTButton type="submit" size="small" loading={renamePendingRef.current?.scope === renderScope || mutation.isPending("trip-title")}>Save name</EasyTButton><EasyTButton size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton></div>
-      </form>}
+      {renameOpen ? <div className={styles.tripTitleEditorActions}>
+        <p id="trip-title-hint">{Array.from(draft.trim()).length}/80 characters · Leave blank to use the destination-based name.</p>
+        {renameError ? <p id="trip-title-error" role="alert">{renameError}</p> : null}
+        <EasyTButton type="submit" size="small" loading={renameSubmitting}>Save name</EasyTButton>
+        <EasyTButton type="button" size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton>
+      </div> : null}
+      </form>
+
       {metadata}
     </div>
     <div className={styles.headerActions}>
@@ -222,29 +250,7 @@ export function TripShellIdentityAndActions() {
     <TripMobileSheet open={detailsOpen} title="Trip details" onClose={() => setDetailsOpen(false)}>
       <p>{tripDisplayTitle(trip)}</p><p>{status}</p><div className={styles.tripDetailsMetadata}>{metadata}</div>
     </TripMobileSheet>
-    <MorroviaFormDialog
-      open={renameOpen && !inlineRename}
-      title="Rename this trip"
-      detail="Leave blank to use the destination-based name."
-      submitLabel="Save name"
-      error={validationError || mutation.error || undefined}
-      submitting={renamePendingRef.current?.scope === renderScope && renamePendingRef.current.operation === renamePending || mutation.isPending("trip-title")}
-      onCancel={cancelRename}
-      onSubmit={() => void saveRename()}
-    >
-      <EasyTField
-        data-dialog-autofocus="true"
-        label="Trip name"
-        value={draft}
-        onChange={(event) => {
-          if (!sessionIsCurrent()) return;
-          if (event.target.value !== renameIntentRef.current.draft) renameRequestRef.current += 1;
-          updateRenameIntent({ ...renameIntentRef.current, draft: event.target.value, error: "" });
-        }}
-        hint={`${Array.from(draft.trim()).length}/80 characters · optional`}
-        autoComplete="off"
-      />
-    </MorroviaFormDialog>
+
   </>;
 }
 
