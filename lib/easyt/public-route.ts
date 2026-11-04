@@ -8,7 +8,7 @@ import { routeFamilyByKey, type RouteConfidence, type RouteConnection, type Rout
 import { routeImages } from "./route-images.ts";
 import { inspirationByKey } from "./inspiration.ts";
 import { mergeStructuredTripBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
-import type { PlaceSelection } from "./place-intelligence.ts";
+import { canonicalPlaceFactsMatch, type PlaceSelection } from "./place-intelligence.ts";
 import { curatedRouteKnowledgeFor, isBetaCuratedRoute, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 
 export const LEGACY_PUBLIC_ROUTE_SLUGS: Readonly<Record<string, string>> = {
@@ -217,7 +217,12 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
   const originName = seed?.origin ?? first.name;
   const canonicalOrigin = matchCatalogPlace(originName);
   const destinations = route.stops.map((stop, index) => {
-    const canonical = matchCatalogPlace(stop.name);
+    const candidate = matchCatalogPlace(stop.name);
+    // A reusable route already supplies country and coordinates. A same-name
+    // catalogue entry must not attach a contradictory identity to that point.
+    // Keep it unresolved instead; saved traveller documents are not migrated.
+    const canonical = candidate && canonicalPlaceFactsMatch(candidate.canonicalPlaceId, { country: stop.country, coordinates: stop.coordinates })
+      ? candidate : undefined;
     const mention = captured.mentions.find((item) => (Boolean(canonical?.canonicalPlaceId) && item.canonicalPlaceId === canonical?.canonicalPlaceId)
       || normalizedPlaceName(item.canonicalName) === normalizedPlaceName(stop.name));
     return {
@@ -226,7 +231,7 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
       canonicalPlaceId: canonical?.canonicalPlaceId,
       placeMentionId: mention?.mentionId,
       placeType: canonical?.placeType,
-      resolutionStatus: mention?.status ?? (canonical ? "resolved" as const : undefined),
+      resolutionStatus: candidate && !canonical ? "unresolved" as const : mention?.status ?? (canonical ? "resolved" as const : undefined),
       routability: canonical?.routability,
       sourceLabel: canonical?.provenance.label,
       parentCountries: canonical ? [...canonical.parentCountries] : [stop.country],

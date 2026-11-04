@@ -1,0 +1,1830 @@
+[
+  {
+    "schemaVersion": 2,
+    "id": "trip-synthetic-preserve-portugal-atlantic",
+    "ownerId": "synthetic-owner",
+    "title": "Our saved portugal-atlantic trip",
+    "status": "draft",
+    "startDate": "2026-05-10",
+    "endDate": "2026-05-16",
+    "travellers": 2,
+    "currency": "GBP",
+    "brief": {
+      "customTitle": "Our saved portugal-atlantic trip",
+      "sourceRouteKey": "portugal-atlantic",
+      "curatedRoute": {
+        "version": 1,
+        "routeKey": "portugal-atlantic",
+        "routeTitle": "The Atlantic reset",
+        "confidence": "medium",
+        "reviewedAt": "2026-08-08",
+        "freshness": "reviewed",
+        "sources": [
+          {
+            "label": "Visit Portugal",
+            "url": "https://www.visitportugal.com/en",
+            "covers": "Official destination context",
+            "id": "portugal-atlantic:source:1"
+          },
+          {
+            "label": "Visit Lisboa",
+            "url": "https://www.visitlisboa.com/en",
+            "covers": "City context",
+            "id": "portugal-atlantic:source:2"
+          }
+        ],
+        "canonicalStopIds": [
+          "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+          "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+          "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2"
+        ],
+        "stops": [
+          {
+            "stopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "name": "Lisbon",
+            "country": "Portugal",
+            "canonicalPlaceId": "lisbon",
+            "minimumNights": 2,
+            "recommendedNights": 2,
+            "reason": "A colourful, walkable opening with food and neighbourhood energy.",
+            "sourceIds": [
+              "portugal-atlantic:source:1",
+              "portugal-atlantic:source:2"
+            ]
+          },
+          {
+            "stopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "name": "Comporta",
+            "country": "Portugal",
+            "minimumNights": 2,
+            "recommendedNights": 2,
+            "reason": "A genuine pause between city and coast.",
+            "sourceIds": [
+              "portugal-atlantic:source:1",
+              "portugal-atlantic:source:2"
+            ]
+          },
+          {
+            "stopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+            "name": "Lagos",
+            "country": "Portugal",
+            "canonicalPlaceId": "reference:geonames:2332459",
+            "minimumNights": 2,
+            "recommendedNights": 2,
+            "reason": "Wide-open Atlantic days and a relaxed finish.",
+            "sourceIds": [
+              "portugal-atlantic:source:1",
+              "portugal-atlantic:source:2"
+            ]
+          }
+        ],
+        "connections": [
+          {
+            "fromStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "toStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "mode": "road",
+            "planningMinutes": 120,
+            "note": "Road allowance. Verify current schedules, entry rules and opening hours before booking.",
+            "confidence": "medium",
+            "sourceIds": [
+              "portugal-atlantic:source:1",
+              "portugal-atlantic:source:2"
+            ]
+          },
+          {
+            "fromStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "toStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+            "mode": "road",
+            "planningMinutes": 240,
+            "note": "Road allowance. Verify current schedules, entry rules and opening hours before booking.",
+            "confidence": "medium",
+            "sourceIds": [
+              "portugal-atlantic:source:1",
+              "portugal-atlantic:source:2"
+            ]
+          }
+        ],
+        "coverage": {
+          "state": "fully-supported",
+          "reason": "This trip still follows the reviewed route order and bases."
+        }
+      },
+      "mustDo": "Keep our chosen itinerary and bookings.",
+      "pace": "slow",
+      "hotelChanges": "few",
+      "budgetBand": "mid",
+      "selectedPlaces": {
+        "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2": [
+          "Traveller-chosen waterfront walk"
+        ]
+      },
+      "nightAllocations": {
+        "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0": 2,
+        "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1": 2,
+        "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2": 2
+      },
+      "scheduleLocks": {
+        "stopIds": [
+          "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2"
+        ],
+        "arrivalDates": {
+          "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2": "2026-05-14"
+        }
+      },
+      "decisionSelections": {
+        "routeOrder": "entered",
+        "transportByLeg": {
+          "trip-synthetic-preserve-portugal-atlantic-leg-1": {
+            "identity": "[\"transport-choice-v1\",\"synthetic:retained-road\",\"road\",\"routed_road\"]",
+            "candidateId": "synthetic:retained-road",
+            "mode": "road",
+            "evidence": "routed_road",
+            "fromEndpointId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "toEndpointId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1"
+          }
+        }
+      },
+      "intent": {
+        "version": 2,
+        "travellers": 2,
+        "timing": {
+          "flexibility": "fixed",
+          "durationDays": 7
+        },
+        "hardConstraints": {
+          "originRequired": true,
+          "mustSeeStopIds": [
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2"
+          ],
+          "optionalStopIds": [],
+          "fixedCommitments": [],
+          "avoidDriving": false
+        },
+        "preferences": {
+          "budgetSensitivity": "mid",
+          "transportModes": [
+            "flight",
+            "train"
+          ],
+          "pace": "relaxed",
+          "interests": [
+            "beach",
+            "food",
+            "culture"
+          ],
+          "dislikes": []
+        },
+        "route": {
+          "version": 1,
+          "origin": {
+            "name": "Lisbon",
+            "canonicalPlaceId": "lisbon",
+            "country": "Portugal",
+            "coordinates": [
+              -9.1393,
+              38.7223
+            ]
+          },
+          "tripType": "unknown_legacy",
+          "journeyEnd": {
+            "mode": "unknown"
+          },
+          "destinations": [
+            {
+              "id": "legacy-stop:catalog-portugal-atlantic-0",
+              "sourceText": "Lisbon",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Lisbon",
+                "canonicalPlaceId": "lisbon",
+                "country": "Portugal",
+                "coordinates": [
+                  -9.1393,
+                  38.7223
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0"
+              ]
+            },
+            {
+              "id": "legacy-stop:catalog-portugal-atlantic-1",
+              "sourceText": "Comporta",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Comporta",
+                "country": "Portugal",
+                "coordinates": [
+                  -8.79,
+                  38.38
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1"
+              ]
+            },
+            {
+              "id": "legacy-stop:catalog-portugal-atlantic-2",
+              "sourceText": "Lagos",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Lagos",
+                "canonicalPlaceId": "reference:geonames:2332459",
+                "country": "Portugal",
+                "coordinates": [
+                  -8.6742,
+                  37.1028
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2"
+              ]
+            }
+          ],
+          "orderAuthority": "legacy_preserved",
+          "explicitIntentIds": null,
+          "orderedStopIds": [
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2"
+          ],
+          "projectionInputKey": null
+        }
+      },
+      "structuredBrief": {
+        "version": 1,
+        "duration": {
+          "value": 7,
+          "unit": "days",
+          "precision": "approximate",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        "destinations": [
+          {
+            "name": "Lisbon",
+            "canonicalPlaceId": "lisbon",
+            "placeMentionId": "place-lisbon-0",
+            "placeType": "city",
+            "resolutionStatus": "resolved",
+            "routability": "direct_destination",
+            "sourceLabel": "Morrovia curated place catalog",
+            "parentCountries": [
+              "Portugal"
+            ],
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0"
+          },
+          {
+            "name": "Comporta",
+            "placeMentionId": "place-unresolved-comporta-42",
+            "resolutionStatus": "unresolved",
+            "parentCountries": [
+              "Portugal"
+            ],
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1"
+          },
+          {
+            "name": "Lagos",
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+            "canonicalPlaceId": "reference:geonames:2332459",
+            "placeMentionId": "place-unresolved-lagos-66",
+            "placeType": "city",
+            "resolutionStatus": "unresolved",
+            "routability": "direct_destination",
+            "sourceLabel": "GeoNames",
+            "parentCountries": [
+              "Nigeria"
+            ]
+          }
+        ],
+        "mustVisit": [],
+        "countries": [
+          {
+            "value": "Portugal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        ],
+        "preferredRegions": [],
+        "dates": {
+          "start": {
+            "value": "2026-05-10",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "end": {
+            "value": "2026-05-16",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "fixed": {
+            "value": false,
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        },
+        "interests": [
+          {
+            "value": "beach",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "value": "food",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "value": "culture",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        ],
+        "transportPreferences": [],
+        "accommodationPreferences": [],
+        "hardConstraints": [],
+        "softPreferences": [
+          {
+            "type": "interest",
+            "value": "beach",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "interest",
+            "value": "food",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "interest",
+            "value": "culture",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        ],
+        "source": {
+          "rawPrompt": "7 days. Start in Lisbon, continue through Comporta, and finish in Lagos.",
+          "parserVersion": "place-intelligence-v1-deterministic",
+          "inputs": [
+            "prompt",
+            "builder"
+          ]
+        },
+        "confidence": "high",
+        "issues": [],
+        "placeMentions": [
+          {
+            "mentionId": "place-lisbon-0",
+            "sourceText": "Lisbon",
+            "sourceTexts": [
+              "Lisbon"
+            ],
+            "normalizedPhrase": "lisbon",
+            "canonicalName": "Lisbon",
+            "canonicalPlaceId": "lisbon",
+            "aliases": [
+              "Lisboa",
+              "LIS"
+            ],
+            "placeType": "city",
+            "status": "resolved",
+            "confidence": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "reviewed",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "morrovia-place-catalog:lisbon",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "curated",
+                  "supports": "Canonical identity, aliases, type and stable containment for Lisbon.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "The phrase matches Morrovia's curated canonical place data.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            },
+            "provenance": [
+              {
+                "id": "morrovia-place-catalog:lisbon",
+                "label": "Morrovia curated place catalog",
+                "kind": "canonical",
+                "supports": "Canonical identity, aliases, type and stable containment for Lisbon.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "parentCountries": [
+              "Portugal"
+            ],
+            "routability": "direct_destination",
+            "directlyRoutable": true,
+            "requiresBaseSelection": false,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 0,
+            "candidates": []
+          },
+          {
+            "mentionId": "place-unresolved-comporta-42",
+            "sourceText": "Comporta",
+            "sourceTexts": [
+              "Comporta"
+            ],
+            "normalizedPhrase": "comporta",
+            "canonicalName": "Comporta",
+            "aliases": [],
+            "placeType": "unknown",
+            "status": "unresolved",
+            "confidence": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Morrovia retained this possible place phrase but could not resolve it."
+              }
+            },
+            "provenance": [
+              {
+                "id": "unresolved:comporta",
+                "label": "Traveller phrase",
+                "kind": "unresolved",
+                "supports": "The exact phrase was retained without claiming a geographic identity."
+              }
+            ],
+            "parentCountries": [],
+            "routability": "non_routable_reference",
+            "directlyRoutable": false,
+            "requiresBaseSelection": false,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 1,
+            "candidates": []
+          },
+          {
+            "mentionId": "place-unresolved-lagos-66",
+            "sourceText": "Lagos.",
+            "sourceTexts": [
+              "Lagos."
+            ],
+            "normalizedPhrase": "lagos",
+            "canonicalName": "Lagos.",
+            "aliases": [],
+            "placeType": "unknown",
+            "status": "unresolved",
+            "confidence": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Morrovia retained this possible place phrase but could not resolve it."
+              }
+            },
+            "provenance": [
+              {
+                "id": "unresolved:lagos",
+                "label": "Traveller phrase",
+                "kind": "unresolved",
+                "supports": "The exact phrase was retained without claiming a geographic identity."
+              }
+            ],
+            "parentCountries": [],
+            "routability": "non_routable_reference",
+            "directlyRoutable": false,
+            "requiresBaseSelection": false,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 2,
+            "candidates": []
+          }
+        ],
+        "placeIssues": [
+          {
+            "code": "unresolved_place",
+            "mentionId": "place-unresolved-comporta-42",
+            "sourceText": "Comporta",
+            "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+            "message": "Confirm Comporta before Morrovia uses it in the route. Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+            "severity": "warning",
+            "blocksRoute": false,
+            "options": [],
+            "provenance": [
+              {
+                "id": "unresolved:comporta",
+                "label": "Traveller phrase",
+                "kind": "unresolved",
+                "supports": "The exact phrase was retained without claiming a geographic identity."
+              }
+            ],
+            "confidence": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Morrovia retained this possible place phrase but could not resolve it."
+              }
+            }
+          },
+          {
+            "code": "unresolved_place",
+            "mentionId": "place-unresolved-lagos-66",
+            "sourceText": "Lagos.",
+            "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+            "message": "Confirm Lagos. before Morrovia uses it in the route. Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+            "severity": "warning",
+            "blocksRoute": false,
+            "options": [],
+            "provenance": [
+              {
+                "id": "unresolved:lagos",
+                "label": "Traveller phrase",
+                "kind": "unresolved",
+                "supports": "The exact phrase was retained without claiming a geographic identity."
+              }
+            ],
+            "confidence": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Morrovia retained this possible place phrase but could not resolve it."
+              }
+            }
+          }
+        ],
+        "placeSelections": [],
+        "completedPlanningAreaMentionIds": [],
+        "removedPlaceMentionIds": []
+      },
+      "bookings": [
+        {
+          "id": "trip-synthetic-preserve-portugal-atlantic-stay",
+          "type": "stay",
+          "title": "Traveller booked stay",
+          "date": "2026-05-10",
+          "confirmation": "SYNTHETIC-ONLY",
+          "url": "https://example.invalid/synthetic-stay",
+          "location": "Lagos, Portugal",
+          "notes": [
+            "Keep the booking and location."
+          ]
+        },
+        {
+          "id": "trip-synthetic-preserve-portugal-atlantic-leg-1",
+          "type": "transport",
+          "title": "Traveller confirmed transfer",
+          "date": "2026-05-10",
+          "confirmation": "SYNTHETIC-TRANSFER",
+          "url": null,
+          "transportDetails": {
+            "mode": "road",
+            "from": "Lisbon",
+            "to": "Comporta"
+          },
+          "transportLegBinding": {
+            "version": 1,
+            "legId": "trip-synthetic-preserve-portugal-atlantic-leg-1",
+            "mode": "road",
+            "fromEndpointId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+            "toEndpointId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+            "fromLabel": "Lisbon",
+            "toLabel": "Comporta"
+          },
+          "travellerMarkedBooked": true
+        }
+      ],
+      "forwardCompatibleSentinel": {
+        "version": 1,
+        "note": "Retain unknown saved fields."
+      },
+      "origin": "Lisbon",
+      "originCanonicalPlaceId": "lisbon",
+      "originCountry": "Portugal",
+      "originCoordinates": [
+        -9.1393,
+        38.7223
+      ],
+      "journeyEnd": {
+        "mode": "unknown"
+      },
+      "dayNotes": {
+        "1": [
+          "Keep the explicitly locked arrival and chosen transfer."
+        ]
+      }
+    },
+    "stops": [
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+        "name": "Lisbon",
+        "country": "Portugal",
+        "canonicalPlaceId": "lisbon",
+        "order": 0,
+        "latitude": 38.7223,
+        "longitude": -9.1393,
+        "arrivalDate": "2026-05-10",
+        "departureDate": "2026-05-12",
+        "nights": 2
+      },
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+        "name": "Comporta",
+        "country": "Portugal",
+        "order": 1,
+        "latitude": 38.38,
+        "longitude": -8.79,
+        "arrivalDate": "2026-05-12",
+        "departureDate": "2026-05-14",
+        "nights": 2
+      },
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+        "name": "Lagos",
+        "country": "Portugal",
+        "canonicalPlaceId": "reference:geonames:2332459",
+        "order": 2,
+        "latitude": 37.1028,
+        "longitude": -8.6742,
+        "arrivalDate": "2026-05-14",
+        "departureDate": "2026-05-16",
+        "nights": 2
+      }
+    ],
+    "legs": [
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-leg-1",
+        "fromStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+        "toStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-0",
+          "name": "Lisbon",
+          "country": "Portugal",
+          "canonicalPlaceId": "lisbon",
+          "coordinates": [
+            -9.1393,
+            38.7223
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+          "name": "Comporta",
+          "country": "Portugal",
+          "coordinates": [
+            -8.79,
+            38.38
+          ]
+        },
+        "classification": "intercity",
+        "mode": "road",
+        "distanceKm": null,
+        "straightLineDistanceKm": null,
+        "routedDistanceKm": null,
+        "durationMinutes": 175,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": 175,
+        "usableDayLoss": null,
+        "provider": "Traveller confirmed transfer",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [
+          "Confirm compatible, validated coordinates before assessing this connection."
+        ],
+        "routeMetadata": {
+          "source": "traveller-authored",
+          "authoredNote": "Do not replace this saved transfer."
+        }
+      },
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-leg-2",
+        "fromStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+        "toStopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-1",
+          "name": "Comporta",
+          "country": "Portugal",
+          "coordinates": [
+            -8.79,
+            38.38
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+          "name": "Lagos",
+          "country": "Portugal",
+          "canonicalPlaceId": "reference:geonames:2332459",
+          "coordinates": [
+            -8.6742,
+            37.1028
+          ]
+        },
+        "classification": "intercity",
+        "mode": "unknown",
+        "distanceKm": null,
+        "straightLineDistanceKm": null,
+        "routedDistanceKm": null,
+        "durationMinutes": null,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": null,
+        "usableDayLoss": null,
+        "provider": "Confirm the affected location to assess this connection.",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [
+          "Confirm compatible, validated coordinates before assessing this connection."
+        ],
+        "routeMetadata": {
+          "source": "unverified-geography"
+        }
+      }
+    ],
+    "planItems": [
+      {
+        "id": "trip-synthetic-preserve-portugal-atlantic-authored-plan",
+        "stopId": "trip-synthetic-preserve-portugal-atlantic-stop-catalog-portugal-atlantic-2",
+        "dayNumber": 1,
+        "date": "2026-05-10",
+        "type": "activity",
+        "title": "Our reserved afternoon",
+        "reason": "Traveller choice",
+        "notes": [
+          "Keep this note exactly."
+        ],
+        "startsAt": "14:00",
+        "endsAt": "16:00",
+        "bookingUrl": "https://example.invalid/synthetic-booking",
+        "latitude": 37.1028,
+        "longitude": -8.6742
+      }
+    ],
+    "recommendations": [],
+    "createdAt": "2026-11-04T13:32:00.744Z",
+    "updatedAt": "2026-11-04T13:32:00.744Z"
+  },
+  {
+    "schemaVersion": 2,
+    "id": "trip-synthetic-preserve-andean-highlands",
+    "ownerId": "synthetic-owner",
+    "title": "Our saved andean-highlands trip",
+    "status": "draft",
+    "startDate": "2026-05-10",
+    "endDate": "2026-05-18",
+    "travellers": 2,
+    "currency": "GBP",
+    "brief": {
+      "customTitle": "Our saved andean-highlands trip",
+      "sourceRouteKey": "andean-highlands",
+      "curatedRoute": {
+        "version": 1,
+        "routeKey": "andean-highlands",
+        "routeTitle": "Andean highlands, gently",
+        "confidence": "medium",
+        "reviewedAt": "2026-08-08",
+        "freshness": "reviewed",
+        "sources": [
+          {
+            "label": "Peru Travel",
+            "url": "https://www.peru.travel/en",
+            "covers": "Official destination context",
+            "id": "andean-highlands:source:1"
+          },
+          {
+            "label": "UNESCO World Heritage",
+            "url": "https://whc.unesco.org/en/statesparties/pe",
+            "covers": "Heritage sites and significance",
+            "id": "andean-highlands:source:2"
+          }
+        ],
+        "canonicalStopIds": [
+          "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+          "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+          "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+        ],
+        "stops": [
+          {
+            "stopId": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "name": "Cusco",
+            "country": "Peru",
+            "canonicalPlaceId": "cusco",
+            "minimumNights": 3,
+            "recommendedNights": 3,
+            "reason": "Start gently and let the body adjust to altitude.",
+            "sourceIds": [
+              "andean-highlands:source:1",
+              "andean-highlands:source:2"
+            ]
+          },
+          {
+            "stopId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "name": "Sacred Valley",
+            "country": "Peru",
+            "canonicalPlaceId": "sacred-valley",
+            "minimumNights": 3,
+            "recommendedNights": 3,
+            "reason": "A lower-pressure base for landscapes and heritage sites.",
+            "sourceIds": [
+              "andean-highlands:source:1",
+              "andean-highlands:source:2"
+            ]
+          },
+          {
+            "stopId": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+            "name": "Arequipa",
+            "country": "Peru",
+            "canonicalPlaceId": "arequipa",
+            "minimumNights": 2,
+            "recommendedNights": 2,
+            "reason": "A lower-key final chapter with a different climate and scale.",
+            "sourceIds": [
+              "andean-highlands:source:1",
+              "andean-highlands:source:2"
+            ]
+          }
+        ],
+        "connections": [
+          {
+            "fromStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "toStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "mode": "road",
+            "planningMinutes": 120,
+            "note": "Road transfer allowance; altitude and traffic can change the day. Verify current schedules, entry rules and opening hours before booking.",
+            "confidence": "medium",
+            "sourceIds": [
+              "andean-highlands:source:1",
+              "andean-highlands:source:2"
+            ]
+          },
+          {
+            "fromStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "toStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+            "mode": "flight",
+            "planningMinutes": 360,
+            "note": "Door-to-door flight allowance. Verify current schedules, entry rules and opening hours before booking.",
+            "confidence": "needs-review",
+            "sourceIds": [
+              "andean-highlands:source:1",
+              "andean-highlands:source:2"
+            ]
+          }
+        ],
+        "coverage": {
+          "state": "fully-supported",
+          "reason": "This trip still follows the reviewed route order and bases."
+        }
+      },
+      "mustDo": "Keep our chosen itinerary and bookings.",
+      "pace": "slow",
+      "hotelChanges": "few",
+      "budgetBand": "mid",
+      "selectedPlaces": {
+        "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa": [
+          "Traveller-chosen waterfront walk"
+        ]
+      },
+      "nightAllocations": {
+        "trip-synthetic-preserve-andean-highlands-stop-seed-cusco": 3,
+        "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley": 3,
+        "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa": 2
+      },
+      "scheduleLocks": {
+        "stopIds": [
+          "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+        ],
+        "arrivalDates": {
+          "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa": "2026-05-16"
+        }
+      },
+      "decisionSelections": {
+        "routeOrder": "entered",
+        "transportByLeg": {
+          "trip-synthetic-preserve-andean-highlands-leg-1": {
+            "identity": "[\"transport-choice-v1\",\"synthetic:retained-road\",\"road\",\"routed_road\"]",
+            "candidateId": "synthetic:retained-road",
+            "mode": "road",
+            "evidence": "routed_road",
+            "fromEndpointId": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "toEndpointId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley"
+          }
+        }
+      },
+      "intent": {
+        "version": 2,
+        "travellers": 2,
+        "timing": {
+          "flexibility": "fixed",
+          "durationDays": 9
+        },
+        "hardConstraints": {
+          "originRequired": true,
+          "mustSeeStopIds": [
+            "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+          ],
+          "optionalStopIds": [],
+          "fixedCommitments": [],
+          "avoidDriving": false
+        },
+        "preferences": {
+          "budgetSensitivity": "mid",
+          "transportModes": [
+            "flight",
+            "train"
+          ],
+          "pace": "relaxed",
+          "interests": [
+            "nature",
+            "culture",
+            "hiking"
+          ],
+          "dislikes": []
+        },
+        "route": {
+          "version": 1,
+          "origin": {
+            "name": "Cusco",
+            "canonicalPlaceId": "cusco",
+            "country": "Peru",
+            "coordinates": [
+              -71.9785,
+              -13.517
+            ]
+          },
+          "tripType": "unknown_legacy",
+          "journeyEnd": {
+            "mode": "unknown"
+          },
+          "destinations": [
+            {
+              "id": "legacy-stop:seed-cusco",
+              "sourceText": "Cusco",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Cusco",
+                "canonicalPlaceId": "cusco",
+                "country": "Peru",
+                "coordinates": [
+                  -71.9785,
+                  -13.517
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-andean-highlands-stop-seed-cusco"
+              ]
+            },
+            {
+              "id": "legacy-stop:seed-sacred-valley",
+              "sourceText": "Sacred Valley",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Sacred Valley",
+                "canonicalPlaceId": "sacred-valley",
+                "country": "Peru",
+                "coordinates": [
+                  -72.115,
+                  -13.308
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley"
+              ]
+            },
+            {
+              "id": "legacy-stop:seed-arequipa",
+              "sourceText": "Arequipa",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Arequipa",
+                "canonicalPlaceId": "arequipa",
+                "country": "Peru",
+                "coordinates": [
+                  -71.5375,
+                  -16.409
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": null,
+              "routeMembership": "required",
+              "stopIds": [
+                "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+              ]
+            }
+          ],
+          "orderAuthority": "legacy_preserved",
+          "explicitIntentIds": null,
+          "orderedStopIds": [
+            "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+          ],
+          "projectionInputKey": null
+        }
+      },
+      "structuredBrief": {
+        "version": 1,
+        "duration": {
+          "value": 9,
+          "unit": "days",
+          "precision": "approximate",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        "destinations": [
+          {
+            "name": "Cusco",
+            "canonicalPlaceId": "cusco",
+            "placeMentionId": "place-cusco-0",
+            "placeType": "city",
+            "resolutionStatus": "resolved",
+            "routability": "direct_destination",
+            "sourceLabel": "Morrovia curated place catalog",
+            "parentCountries": [
+              "Peru"
+            ],
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco"
+          },
+          {
+            "name": "Sacred Valley",
+            "canonicalPlaceId": "sacred-valley",
+            "placeMentionId": "place-sacred-valley-0",
+            "placeType": "valley",
+            "resolutionStatus": "resolved",
+            "routability": "needs_base_selection",
+            "sourceLabel": "Morrovia curated place catalog",
+            "parentCountries": [
+              "Peru"
+            ],
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley"
+          },
+          {
+            "name": "Arequipa",
+            "canonicalPlaceId": "arequipa",
+            "placeMentionId": "place-arequipa-0",
+            "placeType": "city",
+            "resolutionStatus": "resolved",
+            "routability": "direct_destination",
+            "sourceLabel": "Morrovia curated place catalog",
+            "parentCountries": [
+              "Peru"
+            ],
+            "role": "preferred",
+            "priority": "normal",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            },
+            "id": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa"
+          }
+        ],
+        "mustVisit": [],
+        "countries": [
+          {
+            "value": "Peru",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        ],
+        "preferredRegions": [
+          {
+            "value": "Sacred Valley",
+            "provenance": {
+              "source": "prompt",
+              "kind": "explicit",
+              "confidence": "high",
+              "sourceText": "Sacred Valley"
+            }
+          }
+        ],
+        "dates": {
+          "start": {
+            "value": "2026-05-10",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "end": {
+            "value": "2026-05-18",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "fixed": {
+            "value": false,
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        },
+        "pace": {
+          "value": "relaxed",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        "interests": [
+          {
+            "value": "nature",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "value": "culture",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "value": "hiking",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        ],
+        "transportPreferences": [],
+        "accommodationPreferences": [],
+        "hardConstraints": [],
+        "softPreferences": [
+          {
+            "type": "pace",
+            "value": "relaxed",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "interest",
+            "value": "nature",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "interest",
+            "value": "culture",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "interest",
+            "value": "hiking",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          {
+            "type": "region",
+            "value": "Sacred Valley",
+            "provenance": {
+              "source": "prompt",
+              "kind": "explicit",
+              "confidence": "high",
+              "sourceText": "Sacred Valley"
+            }
+          }
+        ],
+        "source": {
+          "rawPrompt": "9 days. Start in Cusco, continue through Sacred Valley, and finish in Arequipa.",
+          "parserVersion": "place-intelligence-v1-deterministic",
+          "inputs": [
+            "prompt",
+            "builder"
+          ]
+        },
+        "confidence": "high",
+        "issues": [],
+        "placeMentions": [
+          {
+            "mentionId": "place-cusco-0",
+            "sourceText": "Cusco",
+            "sourceTexts": [
+              "Cusco"
+            ],
+            "normalizedPhrase": "cusco",
+            "canonicalName": "Cusco",
+            "canonicalPlaceId": "cusco",
+            "aliases": [
+              "Cuzco",
+              "CUZ"
+            ],
+            "placeType": "city",
+            "status": "resolved",
+            "confidence": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "reviewed",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "morrovia-place-catalog:cusco",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "curated",
+                  "supports": "Canonical identity, aliases, type and stable containment for Cusco.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "The phrase matches Morrovia's curated canonical place data.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            },
+            "provenance": [
+              {
+                "id": "morrovia-place-catalog:cusco",
+                "label": "Morrovia curated place catalog",
+                "kind": "canonical",
+                "supports": "Canonical identity, aliases, type and stable containment for Cusco.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "parentCountries": [
+              "Peru"
+            ],
+            "routability": "direct_destination",
+            "directlyRoutable": true,
+            "requiresBaseSelection": false,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 0,
+            "candidates": []
+          },
+          {
+            "mentionId": "place-sacred-valley-0",
+            "sourceText": "Sacred Valley",
+            "sourceTexts": [
+              "Sacred Valley"
+            ],
+            "normalizedPhrase": "sacred valley",
+            "canonicalName": "Sacred Valley",
+            "canonicalPlaceId": "sacred-valley",
+            "aliases": [
+              "Sacred Valley of the Incas",
+              "Valle Sagrado",
+              "Valle Sagrado de los Incas"
+            ],
+            "placeType": "valley",
+            "status": "resolved",
+            "confidence": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "reviewed",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "morrovia-place-catalog:sacred-valley",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "curated",
+                  "supports": "Canonical identity, aliases, type and stable containment for Sacred Valley.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "The phrase matches Morrovia's curated canonical place data.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            },
+            "provenance": [
+              {
+                "id": "morrovia-place-catalog:sacred-valley",
+                "label": "Morrovia curated place catalog",
+                "kind": "canonical",
+                "supports": "Canonical identity, aliases, type and stable containment for Sacred Valley.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "parentCountries": [
+              "Peru"
+            ],
+            "routability": "needs_base_selection",
+            "directlyRoutable": false,
+            "requiresBaseSelection": true,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 2,
+            "candidates": []
+          },
+          {
+            "mentionId": "place-arequipa-0",
+            "sourceText": "Arequipa",
+            "sourceTexts": [
+              "Arequipa"
+            ],
+            "normalizedPhrase": "arequipa",
+            "canonicalName": "Arequipa",
+            "canonicalPlaceId": "arequipa",
+            "aliases": [],
+            "placeType": "city",
+            "status": "resolved",
+            "confidence": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "reviewed",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "morrovia-place-catalog:arequipa",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "curated",
+                  "supports": "Canonical identity, aliases, type and stable containment for Arequipa.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "The phrase matches Morrovia's curated canonical place data.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            },
+            "provenance": [
+              {
+                "id": "morrovia-place-catalog:arequipa",
+                "label": "Morrovia curated place catalog",
+                "kind": "canonical",
+                "supports": "Canonical identity, aliases, type and stable containment for Arequipa.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "parentCountries": [
+              "Peru"
+            ],
+            "routability": "direct_destination",
+            "directlyRoutable": true,
+            "requiresBaseSelection": false,
+            "isAnchor": false,
+            "role": "preferred",
+            "order": 3,
+            "candidates": []
+          }
+        ],
+        "placeIssues": [
+          {
+            "code": "region_requires_base",
+            "mentionId": "place-sacred-valley-0",
+            "canonicalPlaceId": "sacred-valley",
+            "sourceText": "Sacred Valley",
+            "reason": "This is valid planning geography, but no overnight base or route endpoint has been selected.",
+            "message": "Where would you like to stay around Sacred Valley? Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+            "severity": "warning",
+            "blocksRoute": false,
+            "options": [
+              {
+                "kind": "base",
+                "canonicalPlaceId": "cusco",
+                "label": "Cusco",
+                "country": "Peru",
+                "placeType": "city",
+                "coordinates": [
+                  -71.9675,
+                  -13.5319
+                ],
+                "provenance": [
+                  {
+                    "id": "route-catalog:inca-trail-sacred-valley",
+                    "label": "Cusco, Sacred Valley and Machu Picchu",
+                    "kind": "canonical",
+                    "supports": "Existing curated route family lists Cusco as one supported base; it is not a universal recommendation.",
+                    "reviewedAt": "2026-08-09"
+                  }
+                ]
+              },
+              {
+                "kind": "base",
+                "canonicalPlaceId": "ollantaytambo",
+                "label": "Ollantaytambo",
+                "country": "Peru",
+                "placeType": "town",
+                "coordinates": [
+                  -72.264,
+                  -13.2586
+                ],
+                "provenance": [
+                  {
+                    "id": "route-catalog:inca-trail-sacred-valley",
+                    "label": "Cusco, Sacred Valley and Machu Picchu",
+                    "kind": "canonical",
+                    "supports": "Existing curated route family lists Ollantaytambo as one supported base; it is not a universal recommendation.",
+                    "reviewedAt": "2026-08-09"
+                  }
+                ]
+              },
+              {
+                "kind": "base",
+                "canonicalPlaceId": "aguas-calientes",
+                "label": "Aguas Calientes",
+                "country": "Peru",
+                "placeType": "town",
+                "coordinates": [
+                  -72.545,
+                  -13.154
+                ],
+                "provenance": [
+                  {
+                    "id": "route-catalog:inca-trail-sacred-valley",
+                    "label": "Cusco, Sacred Valley and Machu Picchu",
+                    "kind": "canonical",
+                    "supports": "Existing curated route family lists Aguas Calientes as one supported base; it is not a universal recommendation.",
+                    "reviewedAt": "2026-08-09"
+                  }
+                ]
+              }
+            ],
+            "provenance": [
+              {
+                "id": "morrovia-place-catalog:sacred-valley",
+                "label": "Morrovia curated place catalog",
+                "kind": "canonical",
+                "supports": "Canonical identity, aliases, type and stable containment for Sacred Valley.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "confidence": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "reviewed",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "morrovia-place-catalog:sacred-valley",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "curated",
+                  "supports": "Canonical identity, aliases, type and stable containment for Sacred Valley.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "The phrase matches Morrovia's curated canonical place data.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          }
+        ],
+        "placeSelections": [],
+        "completedPlanningAreaMentionIds": [],
+        "removedPlaceMentionIds": []
+      },
+      "bookings": [
+        {
+          "id": "trip-synthetic-preserve-andean-highlands-stay",
+          "type": "stay",
+          "title": "Traveller booked stay",
+          "date": "2026-05-10",
+          "confirmation": "SYNTHETIC-ONLY",
+          "url": "https://example.invalid/synthetic-stay",
+          "location": "Arequipa, Peru",
+          "notes": [
+            "Keep the booking and location."
+          ]
+        },
+        {
+          "id": "trip-synthetic-preserve-andean-highlands-leg-1",
+          "type": "transport",
+          "title": "Traveller confirmed transfer",
+          "date": "2026-05-10",
+          "confirmation": "SYNTHETIC-TRANSFER",
+          "url": null,
+          "transportDetails": {
+            "mode": "road",
+            "from": "Cusco",
+            "to": "Sacred Valley"
+          },
+          "transportLegBinding": {
+            "version": 1,
+            "legId": "trip-synthetic-preserve-andean-highlands-leg-1",
+            "mode": "road",
+            "fromEndpointId": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+            "toEndpointId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+            "fromLabel": "Cusco",
+            "toLabel": "Sacred Valley"
+          },
+          "travellerMarkedBooked": true
+        }
+      ],
+      "forwardCompatibleSentinel": {
+        "version": 1,
+        "note": "Retain unknown saved fields."
+      },
+      "origin": "Cusco",
+      "originCanonicalPlaceId": "cusco",
+      "originCountry": "Peru",
+      "originCoordinates": [
+        -71.9785,
+        -13.517
+      ],
+      "journeyEnd": {
+        "mode": "unknown"
+      },
+      "dayNotes": {
+        "1": [
+          "Keep the explicitly locked arrival and chosen transfer."
+        ]
+      }
+    },
+    "stops": [
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+        "name": "Cusco",
+        "country": "Peru",
+        "canonicalPlaceId": "cusco",
+        "order": 0,
+        "latitude": -13.517,
+        "longitude": -71.9785,
+        "arrivalDate": "2026-05-10",
+        "departureDate": "2026-05-13",
+        "nights": 3
+      },
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+        "name": "Sacred Valley",
+        "country": "Peru",
+        "canonicalPlaceId": "sacred-valley",
+        "order": 1,
+        "latitude": -13.308,
+        "longitude": -72.115,
+        "arrivalDate": "2026-05-13",
+        "departureDate": "2026-05-16",
+        "nights": 3
+      },
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+        "name": "Arequipa",
+        "country": "Peru",
+        "canonicalPlaceId": "arequipa",
+        "order": 2,
+        "latitude": -16.409,
+        "longitude": -71.5375,
+        "arrivalDate": "2026-05-16",
+        "departureDate": "2026-05-18",
+        "nights": 2
+      }
+    ],
+    "legs": [
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-leg-1",
+        "fromStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+        "toStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-andean-highlands-stop-seed-cusco",
+          "name": "Cusco",
+          "country": "Peru",
+          "canonicalPlaceId": "cusco",
+          "coordinates": [
+            -71.9785,
+            -13.517
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+          "name": "Sacred Valley",
+          "country": "Peru",
+          "canonicalPlaceId": "sacred-valley",
+          "coordinates": [
+            -72.115,
+            -13.308
+          ]
+        },
+        "classification": "intercity",
+        "mode": "road",
+        "distanceKm": null,
+        "straightLineDistanceKm": null,
+        "routedDistanceKm": null,
+        "durationMinutes": 175,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": 175,
+        "usableDayLoss": null,
+        "provider": "Traveller confirmed transfer",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [
+          "Confirm compatible, validated coordinates before assessing this connection."
+        ],
+        "routeMetadata": {
+          "source": "traveller-authored",
+          "authoredNote": "Do not replace this saved transfer."
+        }
+      },
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-leg-2",
+        "fromStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+        "toStopId": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-andean-highlands-stop-seed-sacred-valley",
+          "name": "Sacred Valley",
+          "country": "Peru",
+          "canonicalPlaceId": "sacred-valley",
+          "coordinates": [
+            -72.115,
+            -13.308
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+          "name": "Arequipa",
+          "country": "Peru",
+          "canonicalPlaceId": "arequipa",
+          "coordinates": [
+            -71.5375,
+            -16.409
+          ]
+        },
+        "classification": "intercity",
+        "mode": "unknown",
+        "distanceKm": null,
+        "straightLineDistanceKm": null,
+        "routedDistanceKm": null,
+        "durationMinutes": null,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": null,
+        "usableDayLoss": null,
+        "provider": "Confirm the affected location to assess this connection.",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [
+          "Confirm compatible, validated coordinates before assessing this connection."
+        ],
+        "routeMetadata": {
+          "source": "unverified-geography"
+        }
+      }
+    ],
+    "planItems": [
+      {
+        "id": "trip-synthetic-preserve-andean-highlands-authored-plan",
+        "stopId": "trip-synthetic-preserve-andean-highlands-stop-seed-arequipa",
+        "dayNumber": 1,
+        "date": "2026-05-10",
+        "type": "activity",
+        "title": "Our reserved afternoon",
+        "reason": "Traveller choice",
+        "notes": [
+          "Keep this note exactly."
+        ],
+        "startsAt": "14:00",
+        "endsAt": "16:00",
+        "bookingUrl": "https://example.invalid/synthetic-booking",
+        "latitude": -16.409,
+        "longitude": -71.5375
+      }
+    ],
+    "recommendations": [],
+    "createdAt": "2026-11-04T13:32:00.756Z",
+    "updatedAt": "2026-11-04T13:32:00.756Z"
+  }
+]
