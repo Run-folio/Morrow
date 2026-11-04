@@ -1,0 +1,86 @@
+- main:
+  - link "Morrovia home":
+    - /url: /
+  - navigation "Morrovia navigation":
+    - text: "?"
+    - generic "Open navigation" [active]:
+      - generic: Menu
+    - text: ✦
+  - region "Travel is complicated. Planning it shouldn’t be.":
+    - paragraph: ABOUT MORROVIA
+    - heading "Travel is complicated. Planning it shouldn’t be." [level=1]:
+      - generic: Travel is complicated.
+      - text: Planning it
+      - emphasis: shouldn’t
+      - text: be.
+    - paragraph: Plan a realistic multi-stop trip, with routes, nights and days connected.
+    - list "What Morrovia stands for":
+      - generic: Multi-stop trips made coherent
+      - generic: A realistic first plan
+      - generic: Built for independent travellers
+    - figure:
+      - img "An illustrated traveller following a connected multi-stop route through mountains, rail journeys and coastal destinations."
+  - region "One trip, not twenty tabs":
+    - paragraph: WHY WE BUILT MORROVIA
+    - heading "One trip, not twenty tabs" [level=2]
+    - paragraph: Finding a flight, a room or a train is the easy part. The hard part is seeing whether every stop, transfer and day still works together.
+    - paragraph: "That is why we built Morrovia: one connected plan you can shape, question and change, with every final decision still yours."
+  - region "Designed for real travel":
+    - paragraph: BUILT AROUND REAL TRAVEL
+    - heading "Designed for real travel" [level=2]
+    - article:
+      - heading "Realistic travel time" [level=3]
+      - paragraph: Morrovia accounts for transfers, connections, movement and the effect travel has on a day.
+    - article:
+      - heading "Honest uncertainty" [level=3]
+      - paragraph: Supported facts stay distinct from estimates, with important details clearly marked for verification.
+    - article:
+      - heading "Traveller control" [level=3]
+      - paragraph: Morrovia proposes a coherent first plan, but you can edit, move, save and shape it as the trip evolves.
+  - region "From rough idea to a trip that works":
+    - paragraph: ONE CONNECTED PLANNING FLOW
+    - heading "From rough idea to a trip that works" [level=2]
+    - figure "The current Morrovia Map keeps every stop, transfer and day in one connected view.":
+      - img "The current Morrovia Map workspace showing a connected route through Delhi, Agra and Jaipur."
+      - generic: The current Morrovia Map keeps every stop, transfer and day in one connected view.
+    - list:
+      - generic: "1"
+      - heading "Route planning" [level=3]
+      - paragraph: Put every stop in an order that makes sense.
+      - generic: "2"
+      - heading "Smart nights" [level=3]
+      - paragraph: Balance nights around pace, distance and what matters most.
+      - generic: "3"
+      - heading "Day-by-day itinerary" [level=3]
+      - paragraph: Turn the route into an editable daily plan, with travel time in view.
+      - generic: "4"
+      - heading "Before you go" [level=3]
+      - paragraph: Keep bookings and practical details connected to the journey.
+  - region "Your next trip starts with a route you can trust":
+    - paragraph: THE ROAD AHEAD
+    - heading "Your next trip starts with a route you can trust" [level=2]
+    - paragraph: Bring the places, dates and must-dos. Morrovia will turn them into a connected first plan, ready for you to shape.
+    - link "Start my trip":
+      - /url: /journey/new
+      - text: Start my trip
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: /journey/contact
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- alert
