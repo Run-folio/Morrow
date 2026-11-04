@@ -7,12 +7,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EasyTButton as Button, EasyTLinkButton as LinkButton, EasyTField as Field, EasyTSelect as Select, EasyTSegmentedControl as Segments } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { MorroviaMapLoading } from "@/components/easyt/morrovia-loading-states";
-import { discoveryDuration, discoveryShape, discoverySequence, discoveryRegions, discoveryStyles, discoveryLengths, filterDiscoveryRoutes, initialDiscoveryFilters, resetDiscoveryFilter, type DiscoveryFilters } from "@/lib/easyt/route-discovery";
+import { discoveryDuration, discoveryShape, discoverySequence, discoveryRegions, discoveryStyles, discoveryLengths, filterDiscoveryRoutes, initialDiscoveryFilters, normalizeDiscoveryFilters, resetDiscoveryFilter, type DiscoveryFilters } from "@/lib/easyt/route-discovery";
 import type { DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import type { RoutesOverviewEditorial } from "@/lib/easyt/routes-overview-editorial";
 import EditorialCarousel from "./editorial-carousel";
 import RoutesOverviewHero from "./routes-overview-hero";
 import DiscoveryPhoto from "./discovery-photo";
+import RouteTransportPill from "./route-transport-pill";
 import styles from "./discover.module.css";
 import type { DiscoveryMapSelection } from "./discovery-map";
 
@@ -23,24 +24,23 @@ const DiscoveryMap = dynamic(() => import("./discovery-map"), { loading: () => <
 type Shortcut = { label: string; interest?: DiscoveryFilters["style"]; routeKey?: string };
 export type DiscoveryBrowserProps = { routes: DiscoveryRoute[]; navigation?: ReactNode; editorial?: RoutesOverviewEditorial; shortcuts?: Shortcut[]; unavailable?: boolean; initialFilters?: DiscoveryFilters; initialSelected?: string; initialView?: "gallery" | "map"; imageUnavailable?: boolean };
 
-export function RouteItem({ route, index, onSelect, featured = false, compact = false, active = false, imageUnavailable = false }: { route: DiscoveryRoute; index: number; onSelect: (route: DiscoveryRoute) => void; featured?: boolean; compact?: boolean; active?: boolean; imageUnavailable?: boolean }) {
+export function RouteItem({ route, onSelect, featured = false, compact = false, active = false, imageUnavailable = false }: { route: DiscoveryRoute; onSelect: (route: DiscoveryRoute) => void; featured?: boolean; compact?: boolean; active?: boolean; imageUnavailable?: boolean }) {
   return <article className={`${featured ? styles["route-story"] : styles["route-row"]} ${active ? styles.active : ""}`}>
-    <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "100px"} unavailable={imageUnavailable} creditSize="compact" creditPlacement="bottom-right" />
+    <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "(max-width:700px) 69px, 100px"} unavailable={imageUnavailable} creditSize="compact" creditPlacement="bottom-right" />
     {featured && <span className={styles["story-wash"]} />}
     <Button variant="quiet" className={styles.itemSelect} aria-label={`${compact ? "Show on map:" : "Preview"} ${route.title}`} aria-pressed={compact ? active : undefined} onClick={() => onSelect(route)}>
-      <span className={styles["row-number"]}>{String(index + 1).padStart(2, "0")}</span>
       <span className={featured ? styles["story-copy"] : styles["row-copy"]}>
-        <small>{route.countries.join(" → ")}</small><strong>{route.title}</strong>
+        <span className={styles.rowIdentity}><small>{route.countries.join(" → ")}</small><RouteTransportPill transport={route.character} /></span>
+        <strong>{route.title}</strong>
         <span className={styles["row-sequence"]}>{discoverySequence(route)}</span>
-        <span className={styles["row-meta"]}>{discoveryDuration(route)} · {discoveryShape(route)}</span>
-        <span className={styles.character}>{route.character}</span>
-      </span><ArrowUpRight aria-hidden="true" />
+      </span>
+      <span className={styles.rowFacts}><strong>{discoveryDuration(route)}</strong><span>{discoveryShape(route)}</span></span>
     </Button>
-    <Link className={styles.itemExplore} prefetch={false} href={route.href} aria-label={`Explore route: ${route.title}`}>Explore route <ArrowUpRight aria-hidden="true" /></Link>
+    <LinkButton variant="quiet" className={styles.itemExplore} prefetch={false} href={route.href} aria-label={`Explore route: ${route.title}`}>Explore route <ArrowUpRight aria-hidden="true" /></LinkButton>
   </article>;
 }
 export default function DiscoveryBrowser({ routes, navigation, editorial, shortcuts = [], unavailable = false, initialFilters = initialDiscoveryFilters, initialSelected, initialView = "gallery", imageUnavailable = false }: DiscoveryBrowserProps) {
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(() => normalizeDiscoveryFilters(initialFilters));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState(initialView);
   const [count, setCount] = useState(12);
@@ -93,7 +93,7 @@ export default function DiscoveryBrowser({ routes, navigation, editorial, shortc
       {filtersOpen && <div className={styles["filter-panel"]} id="route-filters">
         <Select label="Region" value={filters.region} onChange={(event) => update("region", event.target.value as DiscoveryFilters["region"])}>{discoveryRegions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select>
         <Select label="Country" value={filters.country} onChange={(event) => update("country", event.target.value)}><option value="all">Any country</option>{countries.map((country) => <option key={country}>{country}</option>)}</Select>
-        <Select label="Travel style" value={filters.style} onChange={(event) => update("style", event.target.value as DiscoveryFilters["style"])}>{discoveryStyles.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select>
+        <Select label="Interests" value={filters.style} onChange={(event) => update("style", event.target.value as DiscoveryFilters["style"])}>{discoveryStyles.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select>
         <Select label="Trip length" value={filters.length} onChange={(event) => update("length", event.target.value as DiscoveryFilters["length"])}>{discoveryLengths.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</Select>
         <p>Trip length matches overlapping suggested ranges.</p>
       </div>}
@@ -102,12 +102,12 @@ export default function DiscoveryBrowser({ routes, navigation, editorial, shortc
     <section className={styles["catalogue-content"]} aria-label="Route catalogue" id="all-routes">
       <div className={styles["catalogue-heading"]}><div><span className={styles.eyebrow}>THE FULL ROUTE CATALOGUE</span><h2>{active.length ? "Find your kind of journey." : "More starting points."}</h2></div><div className={styles["result-count"]} role="status" aria-live="polite"><strong>{results.length}</strong><span>{active.length ? `matching ${results.length === 1 ? "route" : "routes"}` : routes.length === 1 ? "starting point" : "starting points"}</span></div></div>
       {unavailable ? <MorroviaStatusBanner tone="warning" title="Routes are temporarily unavailable" detail="We couldn’t check the current catalogue. Please try again shortly." actions={<><LinkButton href="/journey/discover" variant="secondary">Try again</LinkButton><LinkButton href="/journey/new">Start your own trip</LinkButton></>} /> : !routes.length ? <MorroviaStatusBanner title="New routes are on their way" detail="There are no public routes to browse right now. You can still start with your own idea." actions={<LinkButton href="/journey/new">Start your own trip</LinkButton>} /> : !results.length ? <div className={styles["empty-state"]}><Compass aria-hidden="true" /><h2>No routes match your search.</h2><p>Try fewer filters, another country or a broader search.</p><div><Button onClick={reset}>Clear filters</Button><LinkButton variant="secondary" href="/journey/new">Start your own trip</LinkButton></div></div> : view === "map" ? <div className={styles["map-mode"]}>
-        <div ref={mapListRef} className={styles["map-list"]} aria-label="Routes on the map">{results.map((route, index) => <RouteItem compact key={route.key} route={route} index={index} onSelect={selectMap} active={activeMapSelection.kind !== "collection" && route.key === mapRoute.key} imageUnavailable={imageUnavailable} />)}</div>
+        <div ref={mapListRef} className={styles["map-list"]} aria-label="Routes on the map">{results.map((route) => <RouteItem compact key={route.key} route={route} onSelect={selectMap} active={activeMapSelection.kind !== "collection" && route.key === mapRoute.key} imageUnavailable={imageUnavailable} />)}</div>
         <div ref={mapStageRef} className={styles["map-stage"]}><div className={styles["map-mode-toolbar"]}><span className={styles.eyebrow}>{activeMapSelection.kind === "collection" ? "EVERY JOURNEY HAS A SHAPE" : mapRoute.countries.join(" → ")}</span><Button size="small" variant="secondary" onClick={() => setSelected(mapRoute)}>Open route</Button><Button size="small" variant="secondary" onClick={() => setMapSelection(activeMapSelection.kind === "collection" ? { kind: "route", routeKey: mapRoute.key } : { kind: "collection" })}>{activeMapSelection.kind === "collection" ? "Focus selected route" : "Show all routes"}</Button></div><DiscoveryMap routes={results} route={mapRoute} selection={activeMapSelection} surface={discoveryWorkspaceSurface} cameraOcclusions={mapOcclusions} onSelection={setMapSelection} /></div>
       </div> : <>
-        {!!featured.length && <div className={styles["featured-stories"]}>{featured.map((route, index) => <RouteItem key={route.key} featured route={route} index={index} onSelect={setSelected} imageUnavailable={imageUnavailable} />)}</div>}
+        {!!featured.length && <div className={styles["featured-stories"]}>{featured.map((route) => <RouteItem key={route.key} featured route={route} onSelect={setSelected} imageUnavailable={imageUnavailable} />)}</div>}
         {!!featured.length && <div className={styles["browse-heading"]}><h3>Keep your options open.</h3><p>Suggested ranges · every stop is yours to change</p></div>}
-        <div className={styles["route-rows"]}>{rest.map((route, index) => <RouteItem key={route.key} route={route} index={index + featured.length} onSelect={setSelected} imageUnavailable={imageUnavailable} />)}</div>
+        <div className={styles["route-rows"]}>{rest.map((route) => <RouteItem key={route.key} route={route} onSelect={setSelected} imageUnavailable={imageUnavailable} />)}</div>
         {visible.length < results.length && <div className={styles["load-more"]}><span>Showing {visible.length} of {results.length} routes</span><Button variant="secondary" onClick={() => setCount((current) => current + 12)}>See {Math.min(12, results.length - visible.length)} more routes</Button></div>}
       </>}
       {!!shortcuts.length && <div className={styles["browse-shortcuts"]}><span className={styles.eyebrow}>FOLLOW A FEELING. OR A PLACE.</span><div>{shortcuts.map((shortcut) => shortcut.interest ? <Button key={shortcut.label} variant="quiet" size="small" onClick={() => { setFilters({ ...initialDiscoveryFilters, style: shortcut.interest! }); setCount(12); document.getElementById("discover-routes")?.scrollIntoView({ block: "start" }); }}>{shortcut.label}<ArrowUpRight aria-hidden="true" /></Button> : <LinkButton key={shortcut.label} href={routes.find((route) => route.key === shortcut.routeKey)?.href ?? "/journey/discover"} prefetch={false} variant="quiet" size="small">{shortcut.label}<ArrowUpRight aria-hidden="true" /></LinkButton>)}</div></div>}

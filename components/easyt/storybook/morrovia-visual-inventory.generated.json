@@ -5307,7 +5307,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 613,
+        "count": 620,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5317,7 +5317,7 @@
       },
       {
         "value": "12px",
-        "count": 548,
+        "count": 556,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5367,7 +5367,7 @@
       },
       {
         "value": "16px",
-        "count": 294,
+        "count": 295,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5387,7 +5387,7 @@
       },
       {
         "value": "4px",
-        "count": 271,
+        "count": 276,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5397,7 +5397,7 @@
       },
       {
         "value": "6px",
-        "count": 254,
+        "count": 255,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5407,7 +5407,7 @@
       },
       {
         "value": "20px",
-        "count": 241,
+        "count": 245,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5416,23 +5416,23 @@
         ]
       },
       {
-        "value": "5px",
-        "count": 234,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css"
-        ]
-      },
-      {
         "value": "24px",
-        "count": 231,
+        "count": 234,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
           "app/journey/cookies/cookies.module.css",
           "app/journey/dashboard/dashboard.module.css"
+        ]
+      },
+      {
+        "value": "5px",
+        "count": 233,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css"
         ]
       },
       {
@@ -5477,7 +5477,7 @@
       },
       {
         "value": "28px",
-        "count": 132,
+        "count": 133,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5815,6 +5815,16 @@
         ]
       },
       {
+        "value": "100px",
+        "count": 7,
+        "examples": [
+          "app/journey/discover/discover.module.css",
+          "app/journey/discover/routes-overview-hero.module.css",
+          "app/journey/home/immersive/immersive.module.css",
+          "app/journey/routes/[slug]/route-overview.module.css"
+        ]
+      },
+      {
         "value": "68px",
         "count": 7,
         "examples": [
@@ -5822,15 +5832,6 @@
           "app/journey/dashboard/dashboard.module.css",
           "app/journey/home/home-explorer.module.css",
           "app/journey/home/home.module.css"
-        ]
-      },
-      {
-        "value": "100px",
-        "count": 6,
-        "examples": [
-          "app/journey/discover/routes-overview-hero.module.css",
-          "app/journey/home/immersive/immersive.module.css",
-          "app/journey/routes/[slug]/route-overview.module.css"
         ]
       },
       {
@@ -5914,11 +5915,28 @@
         ]
       },
       {
+        "value": "85px",
+        "count": 4,
+        "examples": [
+          "app/journey/discover/discover.module.css",
+          "app/journey/routes/[slug]/route-overview.module.css"
+        ]
+      },
+      {
         "value": "94px",
         "count": 4,
         "examples": [
           "app/journey/home/home-explorer.module.css",
           "app/journey/home/home.module.css"
+        ]
+      },
+      {
+        "value": "108px",
+        "count": 3,
+        "examples": [
+          "app/journey/discover/discover.module.css",
+          "app/journey/home/home.module.css",
+          "app/journey/new/new-trip.module.css"
         ]
       },
       {
@@ -5951,14 +5969,6 @@
         "examples": [
           "app/journey/home/home.module.css",
           "app/journey/new/trip-builder.module.css"
-        ]
-      },
-      {
-        "value": "108px",
-        "count": 2,
-        "examples": [
-          "app/journey/home/home.module.css",
-          "app/journey/new/new-trip.module.css"
         ]
       },
       {
@@ -6013,6 +6023,13 @@
         "examples": [
           "app/journey/home/immersive/immersive.module.css",
           "app/journey/routes/[slug]/route-overview.module.css"
+        ]
+      },
+      {
+        "value": "124px",
+        "count": 1,
+        "examples": [
+          "app/journey/discover/discover.module.css"
         ]
       },
       {
@@ -6108,13 +6125,6 @@
       },
       {
         "value": "75px",
-        "count": 1,
-        "examples": [
-          "app/journey/routes/[slug]/route-overview.module.css"
-        ]
-      },
-      {
-        "value": "85px",
         "count": 1,
         "examples": [
           "app/journey/routes/[slug]/route-overview.module.css"
@@ -7606,7 +7616,7 @@
     "breakpoints": [
       {
         "value": "max-width: 700px",
-        "count": 47,
+        "count": 48,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7705,6 +7715,16 @@
         ]
       },
       {
+        "value": "max-width: 1024px",
+        "count": 11,
+        "examples": [
+          "app/journey/about/about.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/home/home.module.css"
+        ]
+      },
+      {
         "value": "max-width: 390px",
         "count": 11,
         "examples": [
@@ -7732,16 +7752,6 @@
           "app/journey/plan-map-docks.module.css",
           "components/easyt/trip-overview-workspace.module.css",
           "components/journey-planner-strip.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 1024px",
-        "count": 10,
-        "examples": [
-          "app/journey/about/about.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/home/home.module.css"
         ]
       },
       {

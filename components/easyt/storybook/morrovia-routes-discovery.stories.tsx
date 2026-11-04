@@ -1,6 +1,6 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import DiscoveryBrowser from "@/app/journey/discover/discovery-browser";
+import DiscoveryBrowser, { RouteItem } from "@/app/journey/discover/discovery-browser";
 import DiscoveryPhoto from "@/app/journey/discover/discovery-photo";
 import RoutePreview from "@/app/journey/discover/route-preview";
 import { discoveryCatalogue, type DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
@@ -81,3 +81,11 @@ export const MapAt1024: Story = { args: { initialView: "map" }, globals: { viewp
 export const MapAt1440: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const MapMultiCountry: Story = {args:{initialView:"map",initialFilters:{...initialDiscoveryFilters,multi:true}}};
 export const MapImageUnavailable: Story = {args:{initialView:"map",imageUnavailable:true}};
+
+// Approved balanced rows reuse the production RouteItem and transport projection.
+export const BalancedRows1440: Story = { ...Default, globals:{viewport:{value:"morrovia1440",isRotated:false}} };
+export const BalancedRows768: Story = { ...Default, globals:{viewport:{value:"morrovia768",isRotated:false}} };
+export const BalancedRows430: Story = { ...Default, globals:{viewport:{value:"morrovia430",isRotated:false}} };
+export const BalancedRows390: Story = { ...Default, globals:{viewport:{value:"morrovia390",isRotated:false}} };
+export const BalancedRows320: Story = { ...Default, globals:{viewport:{value:"morrovia320",isRotated:false}} };
+export const TransportEvidenceStates: Story = { render: () => <div className={styles["route-rows"]}>{["japan-slow","portugal-atlantic","japan-south-korea","south-korea"].map(key=>routes.find(route=>route.key===key)).filter((route): route is DiscoveryRoute=>!!route).map(route=><RouteItem key={route.key} route={route} onSelect={()=>{}} />)}</div> };

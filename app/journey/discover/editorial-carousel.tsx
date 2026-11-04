@@ -7,6 +7,7 @@ import type { RoutesEditorialChapter } from "@/lib/easyt/routes-overview-editori
 import RoutePlanLink from "../routes/[slug]/route-plan-link";
 import { discoveryDuration, discoverySequence, discoveryShape } from "@/lib/easyt/route-discovery";
 import DiscoveryPhoto from "./discovery-photo";
+import RouteTransportPill from "./route-transport-pill";
 import styles from "./editorial-carousel.module.css";
 
 export default function EditorialCarousel({ chapters, imageUnavailable = false }: { chapters: RoutesEditorialChapter[]; imageUnavailable?: boolean }) {
@@ -27,7 +28,7 @@ export default function EditorialCarousel({ chapters, imageUnavailable = false }
       <div className={styles.copy}>
         <p className={styles.eyebrow}>{chapter.route.countries.join(" + ")}</p>
         <h3>{chapter.title}<em>{chapter.emphasis}</em></h3>
-        <p className={styles.character}>{chapter.route.character}</p>
+        <RouteTransportPill transport={chapter.route.character} />
         <p className={styles.idea}>{chapter.route.bestFor}</p>
         <p className={styles.sequence}>{discoverySequence(chapter.route)}</p>
         <p className={styles.facts}>{discoveryDuration(chapter.route)} · {discoveryShape(chapter.route)}</p>

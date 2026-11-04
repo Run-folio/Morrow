@@ -1,0 +1,4 @@
+.pill{display:inline-flex;align-items:center;width:fit-content;max-width:100%;border:1px solid transparent;border-radius:var(--morrovia-control-radius);padding:4px 8px;font:var(--morrovia-type-fine-print);font-weight:500;line-height:1.35;letter-spacing:normal;text-transform:none;white-space:normal}
+.rail{color:var(--morrovia-action);background:var(--morrovia-lilac-strong);border-color:color-mix(in srgb,var(--morrovia-action) 18%,var(--morrovia-paper))}
+.road{color:var(--morrovia-ink-soft);background:var(--morrovia-disabled);border-color:var(--morrovia-line)}
+.mixed{color:var(--morrovia-signal);background:var(--morrovia-tint);border-color:color-mix(in srgb,var(--morrovia-signal) 18%,var(--morrovia-paper))}

@@ -1,11 +1,11 @@
 import { publicRouteDetailFor, publicRoutePublishedFamilies, type PublicRoutePlanDraft } from "./public-route.ts";
-import { discoveryCharacter } from "./route-discovery.ts";
+import { discoveryCharacter, type DiscoveryTransport } from "./route-discovery.ts";
 import type { RouteFamily } from "./route-catalog.ts";
 import { routeDestinationPhoto, routeImagePhoto, type RoutePhotoRecord } from "./route-images.ts";
 
 export type DiscoveryImage = { variants: { src: string; width: number; height?: number }[]; alt: string; credit: string; authorUrl?: string; sourceUrl: string; license: string; licenseUrl?: string; provenance?: RoutePhotoRecord["provenance"] };
 export type DiscoveryRoute = Pick<RouteFamily, "key" | "title" | "region" | "interests" | "bestFor" | "suggestedDays"> & {
-  href: string; countries: string[]; character: string; imageQuery: string;
+  href: string; countries: string[]; character: DiscoveryTransport | null; imageQuery: string;
   stops: { id: string; name: string; country: string; coordinates: [number, number]; reason: string }[];
   image: DiscoveryImage | null; supportingImage: DiscoveryImage | null;
 };
@@ -29,7 +29,7 @@ export function discoveryCatalogue(visibleRoutes: readonly RouteFamily[] = publi
     const detail = publicRouteDetailFor(route.key);
     if (!detail) return [];
     return [{ key: route.key, title: detail.title, href: `/journey/routes/${detail.key}`, region: route.region, countries: detail.countries, interests: route.interests, bestFor: route.bestFor,
-      suggestedDays: route.suggestedDays, character: discoveryCharacter({ ...route, countries: detail.countries }, detail.rhythm),
+      suggestedDays: route.suggestedDays, character: discoveryCharacter(route),
       stops: detail.stops.map(({ id, name, country, coordinates, reason }) => ({ id, name, country, coordinates, reason })),
       imageQuery: route.imageQuery ?? `${detail.stops[0].name} ${detail.stops[0].country} travel`,
       image: discoveryImageFor(route), supportingImage: discoveryImageFor(route, true),

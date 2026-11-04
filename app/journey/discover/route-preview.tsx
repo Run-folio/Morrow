@@ -10,6 +10,7 @@ import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { MorroviaMapLoading } from "@/components/easyt/morrovia-loading-states";
 import RoutePlanLink from "../routes/[slug]/route-plan-link";
 import DiscoveryPhoto from "./discovery-photo";
+import RouteTransportPill from "./route-transport-pill";
 import styles from "./discover.module.css";
 import type { DiscoveryMapSelection } from "./discovery-map";
 const DiscoveryMap = dynamic(() => import("./discovery-map"), { loading: () => <MorroviaMapLoading>Ordered route stops</MorroviaMapLoading>, ssr: false });
@@ -49,7 +50,7 @@ export default function RoutePreview({ route, onClose, imageUnavailable = false 
       <div className={styles["atlas-visual"]}><div className={styles["atlas-photo"]}><DiscoveryPhoto route={route} priority unavailable={imageUnavailable} /></div><DiscoveryMap route={route} selection={mapSelection} surface={{ variant: "preview" }} /></div>
       <div className={styles["atlas-copy"]}>
         <div className={styles["atlas-heading"]}><div><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2 id="atlas-title">{route.title}</h2></div><div className={styles["atlas-facts"]}><strong>{discoveryDuration(route)}</strong><span>{discoveryShape(route)}</span><small>Suggested range</small></div></div>
-        <p className={styles["route-character"]}>{route.character}</p><p className={styles["best-for"]}>{route.bestFor}</p>
+        <RouteTransportPill transport={route.character} /><p className={styles["best-for"]}>{route.bestFor}</p>
         <ol className={styles["stop-order"]} aria-label="Route stops in order">{route.stops.map((item, index) => <li key={item.id}><Button variant="quiet" aria-pressed={item.id === selectedStopId} onClick={() => setSelectedStopId(item.id)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.name}</strong><small>{item.country}</small></Button></li>)}</ol>
         <p className={styles["stop-reason"]}><strong>{selectedStop?.name}</strong> {selectedStop?.reason}</p>
         <p className={styles["route-truth"]}>Suggested durations are catalogue guidance. Connections are illustrative; schedules and transfer details need checking.</p>

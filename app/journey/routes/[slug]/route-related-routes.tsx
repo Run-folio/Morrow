@@ -8,10 +8,9 @@ import styles from "./route-overview.module.css";
 export default function RouteRelatedRoutes({ routes }: { routes: DiscoveryRoute[] }) {
   const router = useRouter();
   return <div className={styles.relatedGrid}>
-    {routes.map((route, index) => <RouteItem
+    {routes.map((route) => <RouteItem
       key={route.key}
       route={route}
-      index={index}
       featured
       onSelect={(selected) => router.push(selected.href)}
     />)}

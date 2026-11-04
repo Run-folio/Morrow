@@ -91,13 +91,18 @@ export type DiscoveryFilters = {
   search: string;
   region: RouteFamily["region"] | "all" | "americas";
   country: string;
-  style: RouteInterest | "all" | "slow";
+  style: RouteInterest | "all";
   length: "all" | "short" | "medium" | "long";
   multi: boolean;
 };
 export const initialDiscoveryFilters: DiscoveryFilters = { search: "", region: "all", country: "all", style: "all", length: "all", multi: false };
 export const discoveryRegions = [["all", "Anywhere"], ["asia", "Asia"], ["europe", "Europe"], ["americas", "Americas"], ["africa", "Africa"], ["oceania", "Oceania"]] as const;
-export const discoveryStyles = [["all", "Any style"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"], ["slow", "Slow travel"]] as const;
+export const discoveryStyles = [["all", "Any interest"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"]] as const;
+/** Accept old or external filter state without resurrecting an unsupported pace rule. */
+export function normalizeDiscoveryFilters(filters: DiscoveryFilters): DiscoveryFilters {
+  const supported = ["all", "food", "rail", "nature", "coast", "culture", "heritage", "hiking", "wildlife"];
+  return supported.includes(filters.style) ? filters : { ...filters, style: "all" };
+}
 export const discoveryLengths = [["all", "Any duration"], ["short", "Up to 10 days"], ["medium", "10–21 days"], ["long", "21+ days"]] as const;
 
 type SearchableRoute = Pick<RouteFamily, "title" | "region" | "countries" | "interests" | "bestFor" | "suggestedDays"> & { stops: ReadonlyArray<{ name: string }> };
@@ -105,11 +110,12 @@ export function normalizeDiscoveryText(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 export function filterDiscoveryRoutes<T extends SearchableRoute>(routes: readonly T[], filters: DiscoveryFilters): T[] {
+  filters = normalizeDiscoveryFilters(filters);
   const terms = normalizeDiscoveryText(filters.search).split(/\s+/).filter(Boolean);
   return routes.filter((route) => {
     const text = normalizeDiscoveryText([route.title, route.region.replaceAll("-", " "), ...route.countries, ...route.stops.map((stop) => stop.name)].join(" "));
     const region = filters.region === "all" || (filters.region === "americas" ? route.region.endsWith("america") : route.region === filters.region);
-    const style = filters.style === "all" || (filters.style === "slow" ? route.bestFor.toLowerCase().includes("slow") || route.suggestedDays.ideal >= 12 : route.interests.includes(filters.style));
+    const style = filters.style === "all" || route.interests.includes(filters.style);
     const length = filters.length === "all" || (filters.length === "short" ? route.suggestedDays.min <= 10 : filters.length === "medium" ? route.suggestedDays.min <= 21 && route.suggestedDays.max >= 10 : route.suggestedDays.max >= 21);
     return terms.every((term) => text.includes(term)) && region && style && length && (filters.country === "all" || route.countries.includes(filters.country)) && (!filters.multi || route.countries.length > 1);
   });
@@ -121,14 +127,22 @@ export function discoverySequence(route: { stops: readonly { name: string }[] })
 export function discoveryShape(route: { stops: readonly unknown[]; countries: readonly string[] }) { return `${route.stops.length} stops · ${route.countries.length} ${route.countries.length === 1 ? "country" : "countries"}`; }
 export function discoveryDuration(route: { suggestedDays: { min: number; max: number } }) { return `${route.suggestedDays.min}–${route.suggestedDays.max} days`; }
 
-/** Presentation describes existing facts; it does not infer new transport feasibility. */
-export function discoveryCharacter(route: RouteFamily, rhythm?: string) {
-  if (rhythm === "Altitude-aware") return "Mountains + altitude";
-  if (route.connections.length && route.connections.every((connection) => connection.mode === "train")) return "Rail + pacing";
-  if (route.connections.some((connection) => connection.mode === "ferry")) return "Islands + ferries";
-  if (route.countries.length > 1) return "Borders + mixed connections";
-  if (route.connections.length && route.connections.every((connection) => connection.mode === "road")) return "Driving + nightly pacing";
-  if (route.interests.includes("coast")) return "Cities + coast";
-  if (route.interests.includes("food")) return "Food + city chapters";
-  return "Places + connections";
+export type DiscoveryTransport = "Rail-focused" | "By road" | "Mixed transport";
+
+/** Summarise recorded planning modes only when every ordered adjacent leg is present.
+ * Confidence concerns service verification; this label never promises a live service.
+ * Do not infer transport from interests, countries, nights or narrative character.
+ */
+export function discoveryCharacter(route: RouteFamily): DiscoveryTransport | null {
+  if (route.stops.length < 2 || route.connections.length !== route.stops.length - 1) return null;
+  const modes = new Set<string>();
+  for (const [index, connection] of route.connections.entries()) {
+    if (connection.from !== route.stops[index].name || connection.to !== route.stops[index + 1].name) return null;
+    if (!["train", "bus", "road", "ferry", "flight"].includes(connection.mode)) return null;
+    modes.add(connection.mode === "bus" ? "road" : connection.mode);
+  }
+  if (modes.size > 1) return "Mixed transport";
+  if (modes.has("train")) return "Rail-focused";
+  if (modes.has("road")) return "By road";
+  return null;
 }
