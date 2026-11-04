@@ -215,7 +215,7 @@ export const featuredRouteFamilies: RouteFamily[] = [
     ],
     sourceLinks: [
       source("Vietnam tourism", "https://vietnam.travel/", "Official destination context across Vietnam.", "Vietnam National Authority of Tourism"),
-      source("Cambodia tourism", "https://www.tourismcambodia.org/", "Official destination context for Phnom Penh and Siem Reap.", "Ministry of Tourism, Cambodia"),
+      { ...source("Cambodia travel guide", "https://www.tourismcambodia.org/", "Independent destination context for Phnom Penh and Siem Reap.", "TourismCambodia.org — independent travel guide"), checkedAt: "2026-11-04", limitations: "Independent travel-guide context; not government, border, operator or live-service evidence." },
     ],
     imageQuery: "Trang An Vietnam Cambodia long route landscape",
     routeOrderRationale: "The sequence moves south through Vietnam without backtracking, keeps Ninh Bình and Huế as real bases, then crosses into Cambodia for Phnom Penh before finishing at Siem Reap.",
