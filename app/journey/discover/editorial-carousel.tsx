@@ -16,8 +16,8 @@ export default function EditorialCarousel({ chapters, imageUnavailable = false }
   const chapter = chapters[activeIndex];
   if (!chapter) return null;
   const move = (direction: number) => setIndex((current) => (current + direction + chapters.length) % chapters.length);
-  return <section id="featured-route" className={styles.carousel} aria-roledescription="carousel" aria-label="A route worth starting with">
-    <header className={styles.toolbar}><h2>A route worth starting with</h2><div className={styles.controls}>
+  return <section id="featured-route" className={styles.carousel} aria-roledescription="carousel" aria-label="Featured routes">
+    <header className={styles.toolbar}><h2>Featured route</h2><div className={styles.controls}>
       <span role="status" aria-live="polite" aria-atomic="true">{String(activeIndex + 1).padStart(2, "0")} / {String(chapters.length).padStart(2, "0")}<span className="sr-only"> · {chapter.route.title}</span></span>
       <EasyTButton variant="secondary" icon={ArrowLeft} aria-label="Previous featured route" aria-controls="featured-route-slide" disabled={chapters.length < 2} onClick={() => move(-1)}>Previous</EasyTButton>
       <EasyTButton variant="secondary" icon={ArrowRight} aria-label="Next featured route" aria-controls="featured-route-slide" disabled={chapters.length < 2} onClick={() => move(1)}>Next</EasyTButton>
@@ -32,7 +32,7 @@ export default function EditorialCarousel({ chapters, imageUnavailable = false }
         <p className={styles.idea}>{chapter.route.bestFor}</p>
         <p className={styles.sequence}>{discoverySequence(chapter.route)}</p>
         <p className={styles.facts}>{discoveryDuration(chapter.route)} · {discoveryShape(chapter.route)}</p>
-        <div className={styles.actions}><RoutePlanLink draft={chapter.draft} placement="discovery" className={styles.start}>Start with this route</RoutePlanLink><EasyTLinkButton href={chapter.route.href} prefetch={false} variant="quiet" className={styles.secondary}>See whole journey</EasyTLinkButton></div>
+        <div className={styles.actions}><RoutePlanLink draft={chapter.draft} placement="discovery" className={styles.start}>Use this route</RoutePlanLink><EasyTLinkButton href={chapter.route.href} prefetch={false} variant="quiet" className={styles.secondary}>View full route</EasyTLinkButton></div>
       </div>
     </div>
   </section>;

@@ -46,7 +46,7 @@ export default function RoutePreview({ route, onClose, imageUnavailable = false 
   return (
     // morrovia-ui-audit-allow-next-line native-dialog -- atlas exploration needs a scrollable native modal; the canonical confirmation dialog owns consequential confirmation rather than route browsing
     <dialog ref={dialog} className={styles["atlas-dialog"]} aria-labelledby="atlas-title" onCancel={(event) => { event.preventDefault(); onClose(); }}>
-      <div className={styles["atlas-top"]}><span className={styles.eyebrow}>AN OPEN PAGE IN YOUR ATLAS</span><Button variant="quiet" icon={X} iconOnly onClick={onClose}>Close route preview</Button></div>
+      <div className={styles["atlas-top"]}><span className={styles.eyebrow}>ROUTE PREVIEW</span><Button variant="quiet" icon={X} iconOnly onClick={onClose}>Close route preview</Button></div>
       <div className={styles["atlas-visual"]}><div className={styles["atlas-photo"]}><DiscoveryPhoto route={route} priority unavailable={imageUnavailable} /></div><DiscoveryMap route={route} selection={mapSelection} surface={{ variant: "preview" }} /></div>
       <div className={styles["atlas-copy"]}>
         <div className={styles["atlas-heading"]}><div><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2 id="atlas-title">{route.title}</h2></div><div className={styles["atlas-facts"]}><strong>{discoveryDuration(route)}</strong><span>{discoveryShape(route)}</span><small>Suggested range</small></div></div>
@@ -56,7 +56,7 @@ export default function RoutePreview({ route, onClose, imageUnavailable = false 
         <p className={styles["route-truth"]}>Suggested durations are catalogue guidance. Connections are illustrative; schedules and transfer details need checking.</p>
         {error && <MorroviaStatusBanner tone="warning" title="Starting route unavailable" detail={error} actions={<Button variant="secondary" onClick={() => setAttempt((value) => value + 1)}>Try again</Button>} />}
       </div>
-      <div className={styles["atlas-actions"]}><p>A starting point.<br /><em>Yours to change.</em></p><div><LinkButton href={route.href} prefetch={false} variant="secondary" icon={ArrowUpRight}>View full route</LinkButton>{draft ? <RoutePlanLink draft={draft} placement="discovery" className={styles.startRoute}>Use this route</RoutePlanLink> : <Button disabled loading={!error}>Use this route</Button>}</div></div>
+      <div className={styles["atlas-actions"]}><p>Start planning this route.</p><div><LinkButton href={route.href} prefetch={false} variant="secondary" icon={ArrowUpRight}>View full route</LinkButton>{draft ? <RoutePlanLink draft={draft} placement="discovery" className={styles.startRoute}>Use this route</RoutePlanLink> : <Button disabled loading={!error}>Use this route</Button>}</div></div>
     </dialog>
   );
 }
