@@ -20,8 +20,17 @@
 
 ## Steps
 
-- [ ] Inspect exact source branches, ancestry, notes and overlap before integration.
-- [ ] Merge 7307600f into staging577 candidate, then merge 3c0f4e3 (includes117033f once); resolve overlaps individually and record decisions.
-- [ ] Run contract/interaction/accessibility-fixture/privacy/persistence regressions; distinguish baseline failures with pristine source where necessary.
+- [x] Inspect exact source branches, ancestry, notes and overlap before integration.
+- [x] Merge 7307600f into staging577 candidate, then merge 3c0f4e3 (includes117033f once); resolve overlaps individually and record decisions.
+- [x] Run contract/interaction/accessibility-fixture/privacy/persistence regressions; distinguish baseline failures with pristine source where necessary.
 - [ ] Run typecheck, strict UI audit, official inventory, Storybook build and production build; preserve generated offline source artifact.
 - [ ] Review combined diff independently; fix concrete issues, rerun affected checks and commit evidence with remaining manual gates.
+
+## Integration ledger
+
+- Source clones: interaction branch preserved as `codex/reviewed-interactions-7307600f`; Storybook source `codex/storybook-contract-reconciliation-20261104` at 3c0f4e3 imported from the local homepage-map clone. 117033f is its direct parent and was not applied twice.
+- Ruling: use history merges from true ancestor8f71bae rather than replaying a diff against662 — preserves later staging privacy/homepage changes; risk if wrong is unintentional source loss, checked with unchanged privacy hashes and combined regressions.
+- Explicit conflicts: route workspace actions retain accessible cells plus accepted async move/Escape/focus semantics; route workspace stories retain both fixture sets; autocomplete retains scoped lifecycle plus options-only listbox; generated visual inventory regenerated. Fifth auto-merge issue: duplicate shell story imports removed.
+- Ruling: fix reviewer-discovered fixture owner teardown in this integration — out-of-order cleanup restored retired fetch/storage mocks and contaminated following stories. Active predecessor resolution preserves unrelated owners and never reads original saved values. Both regressions failed before repair; fixture/card suite12/12 and full selected suite282/282 pass afterward.
+- Byte checks: analytics/replay/storage/persistence/trip-document match577; rename shared-owner code and Builder reorder hook match730. Strict audit baseline only lowers existing Journey CSS debt403→398, directly from117033f; no loosening.
+- Fresh pristine577 snapshot reproduces all nine Builder fixed-commitment/input-domain failures (19/28 pass). These remain release gates. No real recovery/browser data, deployment, push, service credentials or external providers were touched.

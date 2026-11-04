@@ -226,7 +226,7 @@ function classificationLabel(classification: VisualAuditClassification) {
 export function AuditRecords({ families }: { families?: string[] }) {
   const records = families?.length ? visualAuditRecords.filter((record) => families.includes(record.family)) : visualAuditRecords;
   return <div className={styles.recordGrid}>{records.map((record) => <article className={styles.record} data-classification={classificationKey(record.classification)} key={`${record.family}-${record.implementation}`}>
-    <header className={styles.recordHead}><span className={styles.classification}>{classificationLabel(record.classification)}</span><h3>{record.implementation}</h3></header>
+    <header className={styles.recordHead}><span className={styles.classification}>{classificationLabel(record.classification)}</span><h2>{record.implementation}</h2></header>
     <dl><div><dt>Semantic job</dt><dd>{record.semanticJob}</dd></div><div><dt>Owner</dt><dd>{record.owner}</dd></div><div><dt>Consumers</dt><dd>{record.consumers.join(" · ")}</dd></div>{record.canonicalReference ? <div><dt>Canonical reference</dt><dd>{record.canonicalReference}</dd></div> : null}<div><dt>Differences</dt><dd>{record.differences}</dd></div><div><dt>Coverage</dt><dd>{record.storybookCoverage}</dd></div><div><dt>Status</dt><dd>{record.migrationStatus}</dd></div></dl>
   </article>)}</div>;
 }
@@ -234,7 +234,7 @@ export function AuditRecords({ families }: { families?: string[] }) {
 export function AuditCanonicalOwnership() {
   return <Catalogue><Intro eyebrow="06 Audit" title="Canonical ownership" detail={`${canonicalUiOwners.length} recurring semantic families answer who owns the implementation, where it is reviewed, which states matter and where composition must stop.`} />
     <div className={styles.recordGrid}>{canonicalUiOwners.map((record) => <article className={styles.record} data-classification="canonical" key={record.family}>
-      <header className={styles.recordHead}><span className={styles.classification}>CANONICAL OWNER</span><h3>{record.family}</h3></header>
+      <header className={styles.recordHead}><span className={styles.classification}>CANONICAL OWNER</span><h2>{record.family}</h2></header>
       <dl><div><dt>Semantic job</dt><dd>{record.semanticJob}</dd></div><div><dt>Owner</dt><dd>{record.owner}</dd></div><div><dt>Coverage</dt><dd>{record.storybookCoverage}</dd></div><div><dt>Meaningful states</dt><dd>{record.meaningfulStates.join(" · ")}</dd></div><div><dt>Boundary</dt><dd>{record.boundary}</dd></div></dl>
     </article>)}</div>
   </Catalogue>;
@@ -303,7 +303,7 @@ export function AuditResponsive() {
 
 export function AuditIntentionalExceptions() {
   const records = visualAuditRecords.filter((record) => record.classification === "INTENTIONAL EXCEPTION");
-  return <Catalogue><Intro eyebrow="06 Audit" title="Intentional exceptions" detail="Every exception names its canonical reference, different traveller job or interaction contract, owner and consumers. Visual difference alone is never sufficient." /><div className={styles.recordGrid}>{records.map((record) => <article className={styles.record} data-classification={classificationKey(record.classification)} key={`${record.family}-${record.implementation}`}><header className={styles.recordHead}><span className={styles.classification}>{record.classification}</span><h3>{record.implementation}</h3></header><dl><div><dt>Semantic job</dt><dd>{record.semanticJob}</dd></div><div><dt>Owner</dt><dd>{record.owner}</dd></div><div><dt>Consumers</dt><dd>{record.consumers.join(" · ")}</dd></div><div><dt>Canonical reference</dt><dd>{record.canonicalReference}</dd></div><div><dt>Reason</dt><dd>{record.differences}</dd></div><div><dt>Status</dt><dd>{record.migrationStatus}</dd></div></dl></article>)}</div></Catalogue>;
+  return <Catalogue><Intro eyebrow="06 Audit" title="Intentional exceptions" detail="Every exception names its canonical reference, different traveller job or interaction contract, owner and consumers. Visual difference alone is never sufficient." /><div className={styles.recordGrid}>{records.map((record) => <article className={styles.record} data-classification={classificationKey(record.classification)} key={`${record.family}-${record.implementation}`}><header className={styles.recordHead}><span className={styles.classification}>{record.classification}</span><h2>{record.implementation}</h2></header><dl><div><dt>Semantic job</dt><dd>{record.semanticJob}</dd></div><div><dt>Owner</dt><dd>{record.owner}</dd></div><div><dt>Consumers</dt><dd>{record.consumers.join(" · ")}</dd></div><div><dt>Canonical reference</dt><dd>{record.canonicalReference}</dd></div><div><dt>Reason</dt><dd>{record.differences}</dd></div><div><dt>Status</dt><dd>{record.migrationStatus}</dd></div></dl></article>)}</div></Catalogue>;
 }
 
 export function AuditComparisonMatrix({ records }: { records: VisualAuditRecord[] }) {

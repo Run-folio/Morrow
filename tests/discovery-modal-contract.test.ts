@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from 'typescript';
+import {createDiscoveryDraft, reduceDiscoveryDraft, readDiscoveryDraft} from '../lib/easyt/discovery-draft.ts';
+import {discoveryChoiceEvent} from '../lib/easyt/discovery-funnel.ts';
+import {productionSource, sourceNode, sourceAttribute, evaluateSource, sourceBranchIsActive} from './helpers/production-source.ts';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -125,23 +128,57 @@ test("visual Discovery uses the modal title and secondary geography without dupl
     scope.baseTitle=evaluate('baseTitle',scope);
     assert.equal(evaluate('title',scope),title);assert.equal(evaluate('description',scope),description);
   }
-  assert.doesNotMatch(steps, /<h3>|styles\.eyebrow\}>\{copy\.steps/);
+  assert.doesNotMatch(steps, /<h[1-6][^>]*>\{copy\.steps|styles\.eyebrow\}>\{copy\.steps/);
   assert.doesNotMatch(steps, /<p className=\{styles\.truth\}>/);
 });
 
-test("Builder commit locks every Discovery navigation and dismissal path", () => {
+test("Builder commit locks every Discovery navigation and dismissal path", async () => {
   const builder = read("app/journey/new/trip-builder.tsx");
   const modal = read("components/easyt/discovery-modal.tsx");
   const shell = read("components/easyt/builder-clarification-shell.tsx");
   assert.match(builder, /loading=\{discoveryCommitting\}/);
   assert.match(modal, /onDismiss=\{\(\) => onClose\("closed"\)\}[^>]*loading=\{loading\}/);
-  assert.match(modal, /previousStep \? <EasyTButton disabled=\{loading\}/);
+  const tree = productionSource("components/easyt/discovery-modal.tsx");
+  const back = sourceNode(tree, (node): node is ts.ConditionalExpression => ts.isConditionalExpression(node)
+    && ts.isJsxElement(node.whenTrue) && node.whenTrue.children.some(child => ts.isJsxExpression(child)
+      && child.expression?.getText() === "copy.actions.back"), "Discovery Back control");
+  for (const [previousStep, rootBaseChoice, expected] of [
+    [undefined, false, false], [undefined, true, false], ["directions", false, true], ["directions", true, false],
+  ] as const) assert.equal(Boolean(evaluateSource(back.condition, {previousStep, rootBaseChoice})), expected);
+  const button = (back.whenTrue as ts.JsxElement).openingElement;
+  for (const loading of [false, true]) assert.equal(evaluateSource(sourceAttribute(button, "disabled"), {loading}), loading);
   assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{\(\) => onClose\("finish_later"\)\}/);
   assert.match(shell, /if \(event\.key === "Escape"\) \{ event\.preventDefault\(\); if \(!loadingRef\.current\) dismissRef\.current\(\);/);
   assert.match(shell, /if \(event\.target === event\.currentTarget && !loading\) onDismiss\(\)/);
   assert.match(shell, /iconOnly variant="quiet" size="small" disabled=\{loading\}/);
-  assert.match(modal, /loading \? <section className=\{styles\.loading\}[\s\S]*?: <DiscoverySteps/);
-  assert.match(builder, /onAction=\{\(action\) => \{\s*if \(discoveryCommitRef\.current\) return;/);
+  const steps = sourceNode(tree, (node): node is ts.JsxSelfClosingElement => ts.isJsxSelfClosingElement(node)
+    && node.tagName.getText() === "DiscoverySteps", "Discovery choices");
+  for (const [loading, rootBaseChoice, expected] of [
+    [false, false, true], [true, false, false], [false, true, false], [true, true, false],
+  ] as const) assert.equal(sourceBranchIsActive(steps, {loading, rootBaseChoice}), expected);
+  const owner = sourceNode(productionSource("app/journey/new/trip-builder.tsx"), (node): node is ts.JsxSelfClosingElement => ts.isJsxSelfClosingElement(node)
+    && node.tagName.getText() === "DiscoveryModal", "Builder Discovery owner");
+  for (const state of ["editable", "committing", "stale-view", "unsupported-version"]) {
+    let writes = 0, events = 0;
+    const draft = createDiscoveryDraft(), version = {current: 0};
+    const action = evaluateSource<(action: unknown) => Promise<boolean>>(sourceAttribute(owner, "onAction"), {
+      discoveryCommitRef: {current: state === "committing"}, planningAreaViewRef: {current: {key: "current-view"}},
+      planningAreaViewKey: state === "stale-view" ? "old-view" : "current-view",
+      discoveryRead: {status: state === "unsupported-version" ? "unsupported-version" : "current"},
+      discoverySearchVersionRef: version, capturePlanningAreaView: () => () => true, reduceDiscoveryDraft,
+      discoveryDraft: draft, discoveryChoiceEvent, discoveryEventKind: "country", discoveryProjection: {places: []},
+      trackEvent: () => { events++; }, activeClarificationMention: {mentionId: "synthetic-mention"},
+      discoveryEntry: {step: "places"}, readDiscoveryDraft,
+      updateDiscoveryPlanningState: async (update: (current: object) => object) => {
+        writes++; const result = update({discoveryDraftByMentionId: {"synthetic-mention": draft}});
+        assert.ok(result); return true;
+      },
+    });
+    assert.equal(await action({type: "set-step", step: "places"}), state === "editable", state);
+    assert.equal(writes, state === "editable" ? 1 : 0, `${state}: no guarded draft mutation`);
+    assert.equal(version.current, state === "editable" ? 1 : 0, `${state}: no guarded search-version retirement`);
+    assert.equal(events, 0, "step navigation must not fabricate a place-choice analytics event");
+  }
 });
 
 test("Builder confirmation uses the same fail-closed review gate and base as Discovery", () => {
@@ -167,6 +204,20 @@ test("Discovery exposes one card mutation, reset and reviewed search without ear
   assert.match(modal, /contextCountries=\{mention\.parentCountries\}/);
   assert.match(modal, /includeNonRoutable/);
   assert.doesNotMatch(modal, /parentConstraint=\{entry\.kind/);
-  assert.match(builder, /onClose=\{\(action\) => \{[\s\S]*?flushSync[\s\S]*?discoveryDraftByMentionId[\s\S]*?persistDeviceRecovery\(discoveryOwnersRef\.current\.trip\)/);
+  const tree = productionSource("app/journey/new/trip-builder.tsx");
+  const modalNode = sourceNode(tree, (node): node is ts.JsxSelfClosingElement => ts.isJsxSelfClosingElement(node)
+    && node.tagName.getText() === "DiscoveryModal", "Builder Discovery owner");
+  const close = sourceAttribute(modalNode, "onClose");
+  assert.ok(ts.isArrowFunction(close) && close.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword));
+  const checkpoint = sourceNode(close, (node): node is ts.AwaitExpression => ts.isAwaitExpression(node)
+    && ts.isCallExpression(node.expression) && ts.isPropertyAccessExpression(node.expression.expression)
+    && node.expression.expression.name.text === "persistDeviceRecovery", "awaited owned Discovery checkpoint");
+  const call = checkpoint.expression as ts.CallExpression;
+  const receiver = (call.expression as ts.PropertyAccessExpression).expression.getText();
+  assert.equal(call.arguments[0]?.getText(), `${receiver}.trip`, "checkpoint must use its captured owner's current document");
+  assert.match(close.getText(), /await updateDiscoveryPlanningState/);
+  assert.match(close.getText(), /discoveryDraftByMentionId/);
+  assert.doesNotMatch(close.getText(), /addGuidedPlanningPlace|confirmAttractionVisit|commitDiscoveryReview/,
+    "dismissal must preserve the draft without accepting route choices");
   assert.match(modal, /saveError \? <MorroviaStatusBanner/);
 });

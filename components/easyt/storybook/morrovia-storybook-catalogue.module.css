@@ -140,7 +140,7 @@
 
 .record { display: grid; align-content: start; gap: 13px; }
 .recordHead { display: grid; gap: 7px; }
-.recordHead h3 { margin: 0; font-size: 15px; }
+.recordHead h2 { margin: 0; font-size: 15px; }
 .classification { justify-self: start; padding: 5px 8px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-ink); background: var(--morrovia-lilac); font: 800 9px/1.2 var(--morrovia-meta); letter-spacing: .05em; }
 .record[data-classification="canonical"] .classification { color: var(--morrovia-success); }
 .record[data-classification="duplicate"] .classification { color: var(--morrovia-danger); background: var(--morrovia-danger-soft); }

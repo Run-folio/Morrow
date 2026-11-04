@@ -1,3 +1,4 @@
+import { expect } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { affiliatePartners, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
@@ -36,11 +37,17 @@ export const CompactTransportOfferMobile390: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
+const absentPromotion: Pick<Story, "render" | "play"> = {
+  render: args => <main><h1>Partner promotion eligibility</h1><div data-promotion-under-test><MorroviaPartnerPromotion {...args} /></div></main>,
+  play: async ({ canvasElement }) => { await expect(canvasElement.querySelector("[data-promotion-under-test]")?.childElementCount).toBe(0); },
+};
 export const ExpiredOffer: Story = {
+  ...absentPromotion,
   args: { now: new Date("2026-11-30T23:00:01Z") },
 };
 
 export const NonOmioProvider: Story = {
+  ...absentPromotion,
   args: { action: { provider: "trip.com", href: affiliatePartners.tripCom.carRentalUrl } },
 };
 

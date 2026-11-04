@@ -33,7 +33,7 @@ test("homepage inspiration reuses reviewed route photos with resilient fallback 
   assert.ok(card.includes("</EasyTLinkButton>") && card.indexOf("</EasyTLinkButton>") < card.indexOf("<MorroviaPhotoCredit"), "photo credit must be a sibling after the card link");
 });
 
-test("homepage how it works uses the approved three steps and opens the existing product tour", () => {
+test("homepage how it works uses the approved three steps and opens its inline disclosure", () => {
   const source = read("app/journey/home/immersive/homepage-how-it-works.tsx");
 
   assert.match(source, /Tell us where\./);
@@ -41,8 +41,12 @@ test("homepage how it works uses the approved three steps and opens the existing
   assert.match(source, /Make it yours\./);
   const englishSteps = source.match(/en:\s*\[([\s\S]*?)\],\s*es:/)?.[1] ?? "";
   assert.equal((englishSteps.match(/title:/g) ?? []).length, 3);
-  assert.match(source, /PRODUCT_TOUR_OPEN_EVENT/);
-  assert.match(source, /window\.dispatchEvent\(new Event\(PRODUCT_TOUR_OPEN_EVENT\)\)/);
+  assert.match(source, /aria-expanded=\{expanded\}/);
+  assert.match(source, /aria-controls=\{panelId\}/);
+  assert.match(source, /hidden=\{!expanded\}/);
+  assert.match(source, /event.key === "Escape"/);
+  assert.match(source, /triggerRef.current\?\.focus\(\)/);
+  assert.doesNotMatch(source, /PRODUCT_TOUR_OPEN_EVENT/);
   assert.doesNotMatch(source, /<video|PlayCircle|CirclePlay/);
 });
 
@@ -56,7 +60,7 @@ test("homepage inspiration grid keeps seven readable cards on desktop and wraps 
 
 test("homepage inspiration stories cover full, fewer, empty, mobile and interaction states", () => {
   const stories = read("app/journey/home/immersive/homepage-inspiration.stories.tsx");
-  for (const state of ["SevenRoutes", "FewerRoutes", "NoRoutes", "Mobile320", "InteractionBoundary", "TourFocusReturn"]) {
+  for (const state of ["SevenRoutes", "FewerRoutes", "NoRoutes", "Mobile320", "InteractionBoundary", "HowItWorksFocusReturn"]) {
     assert.match(stories, new RegExp(`export const ${state}`), state);
   }
 });
@@ -67,8 +71,8 @@ test("the rendered interaction play verifies canonical card content and ordinary
   assert.match(stories, /card\.textContent\?\.includes\(route\.title\)/);
   assert.match(stories, /route\.dayRange\.min === route\.dayRange\.max/);
   assert.match(stories, /route\.stops\.length/);
-  assert.match(stories, /new MouseEvent\("click", \{ bubbles: true, cancelable: true, button: 0 \}\)/);
-  assert.match(stories, /ordinaryClick\.defaultPrevented/);
+  assert.match(stories, /await userEvent\.click\(cards\[0\]\)/);
+  assert.match(stories, /observed\.event\?\.defaultPrevented/);
   assert.match(stories, /Hydrated card click must intercept native navigation/);
   assert.match(stories, /Card click changed the selected Route Story/);
 });

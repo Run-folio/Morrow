@@ -2352,7 +2352,7 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
     <h2 className="sr-only" id={`${panelId}-heading`}>{copy.calendarHeading}</h2>
     {weeks.map((week, weekIndex) => <section className={styles.calendarWeek} key={week.id} aria-labelledby={`${panelId}-week-${weekIndex}`}>
       <h3 id={`${panelId}-week-${weekIndex}`}>{copy.weekOf} {week.startDate ? <time dateTime={week.startDate}>{displayDate(week.startDate, language)}</time> : copy.timeNotSet}</h3>
-      <div className={styles.calendarBands} aria-label="Overnight destinations">
+      <div className={styles.calendarBands} role="group" aria-label={language === "es" ? "Destinos nocturnos" : "Overnight destinations"}>
         {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><b>{band.stop.order + 1}</b><span>{band.stop.name} · {band.span} {language === "es" ? (band.span === 1 ? "noche" : "noches") : (band.span === 1 ? "night" : "nights")}{band.continued ? (language === "es" ? " · continúa" : " · continued") : ""}</span></div>)}
       </div>
       {week.startDate ? <div className={styles.calendarWeekdayLabels} aria-hidden="true">{(language === "es" ? ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).map(label => <span key={label}>{label}</span>)}</div> : null}
@@ -2825,7 +2825,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   if (!results.length && unsettled) return <><div className={styles.suggestionStatus}>{suggestionStatus}</div>{experienceFallback}{contextualDialog}</>;
   if (!results.length) return <><p className={styles.suggestionEmpty}>{missingDestination ? emptyAddMessage : places.length || inventory.length || filteredAtAdmission ? (language === "es" ? "Las ideas encontradas no coinciden con este día o ya están planificadas." : "The returned ideas do not match this day or are already planned.") : (language === "es" ? "No se encontraron ideas locales para este día." : "No local ideas were found for this day.")}</p>{experienceFallback}{contextualDialog}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
-    <h4>Shortlist for {stop?.name}</h4>
+    <h3>Shortlist for {stop?.name}</h3>
     <div className={styles.discoveryList}>{displayedResults.map((result) => {
       const idea = result.idea;
       const pending = isPending(idea.placeId);

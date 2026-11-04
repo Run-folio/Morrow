@@ -23,7 +23,8 @@
 .button.button:hover:not(:disabled):not([data-disabled]) { transform: none; border-color: var(--morrovia-ink-soft); background: var(--morrovia-lilac); }
 .button.button[aria-expanded="true"] { border-color: var(--morrovia-action); background: var(--morrovia-lilac); }
 .button.button:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; box-shadow: var(--morrovia-focus-shadow); }
-.button.button:disabled, .button.button[data-disabled] { opacity: .62; border-color: var(--morrovia-line); background: var(--morrovia-disabled); color: var(--morrovia-muted); cursor: not-allowed; transform: none; }
+.button.button:disabled, .button.button[data-disabled] { border-color: var(--morrovia-line); background: var(--morrovia-disabled); color: var(--morrovia-muted); cursor: not-allowed; transform: none; }
+.button.button:disabled { opacity: .62; }
 .content { display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px; grid-template-rows: 20px auto; align-items: center; gap: 2px 9px; width: 100%; min-width: 0; }
 .content .icon { grid-column: 1; grid-row: 1; width: 20px; height: 20px; color: var(--morrovia-action); }
 .content .label { grid-column: 2; grid-row: 1; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); font-weight: 600; letter-spacing: 0; text-transform: none; }

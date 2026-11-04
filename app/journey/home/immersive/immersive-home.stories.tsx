@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect } from "react";
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import { immersiveHomepageRoutes } from "@/lib/easyt/immersive-homepage-routes";
 import { discoveryCatalogue } from "@/lib/easyt/discovery-catalogue";
 import ImmersiveHome from "./immersive-home";
@@ -66,24 +67,36 @@ export const FullComposition: Story = {
 export const DescribeMode: Story = {
   render: () => <ConnectedComposition />,
   play: async ({ canvasElement }) => {
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    const tab = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
-      .find((button) => button.textContent?.includes("Describe"));
-    if (!tab) throw new Error("Describe mode trigger is missing");
-    tab.click();
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    if (!canvasElement.querySelector("textarea")) throw new Error("Describe mode did not open");
+    const tab = await within(canvasElement).findByRole("tab", { name: "Describe my trip" });
+    await waitFor(() => expect(tab).toBeEnabled());
+    await userEvent.click(tab);
+    await waitFor(() => expect(canvasElement.querySelector("textarea")).toBeVisible());
+    await expect(tab).toHaveAttribute("aria-selected", "true");
   },
 };
 
-export const PersonalizeOpen: Story = {
+export const TravellersKeyboard: Story = {
+  tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
   render: () => <ConnectedComposition />,
   play: async ({ canvasElement }) => {
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    const trigger = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.trim() === "Personalize");
-    if (!trigger) throw new Error("Personalize trigger is missing");
-    trigger.click();
+    const canvas = within(canvasElement);
+    const group = await canvas.findByRole("group", { name: "Travellers" });
+    const increase = within(group).getByRole("button", { name: /Increase travellers/ });
+    await waitFor(() => expect(increase).toBeEnabled());
+    const original = Number(group.querySelector("output")?.textContent?.match(/\d+/)?.[0] ?? "2");
+    increase.focus();
+    await userEvent.keyboard("{Home}");
+    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("1 traveller"));
+    await userEvent.keyboard("{ArrowUp}");
+    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("2 travellers"));
+    await userEvent.keyboard("{End}");
+    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("12 travellers"));
+    within(group).getByRole("button", { name: /Decrease travellers/ }).focus();
+    await userEvent.keyboard("{Home}");
+    increase.focus();
+    for (let count = 1; count < original; count += 1) await userEvent.keyboard("{ArrowUp}");
+    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent(`${original} ${original === 1 ? "traveller" : "travellers"}`));
   },
 };
 

@@ -59,7 +59,7 @@ function LunaFixture({ mode }: { mode: FixtureMode }) {
 const meta = {
   title: "Morrovia/05 Product Patterns/Luna AI assistant",
   component: EasyTTripCopilot,
-  parameters: { layout: "padded", nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/map" } } },
+  parameters: { layout: "padded", nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/map", segments: ["map"] } } },
   decorators: [(Story) => <main className="morrovia-editorial-page" style={{ maxWidth: 620, margin: "0 auto" }}><Story /></main>],
   args: { surface: "map" },
 } satisfies Meta<typeof EasyTTripCopilot>;

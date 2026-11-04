@@ -1,3 +1,4 @@
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
@@ -395,9 +396,9 @@ function tripWithInterests(interests: TripInterest[]): EasyTTrip {
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary",
   component: TripItineraryWorkspace,
-  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
+  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary", segments: ["itinerary"] } } },
   decorators: [(Story, context) => {
-    if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+    if (context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
     return <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></>}</main>;
   }],
   args: {
@@ -414,6 +415,21 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+// Native recovery initialization/writes are asynchronous; retain exact predicates with a bounded budget.
+function waitForItineraryUpdate<T>(assertion: () => T | Promise<T>) {
+  return waitFor(assertion, { timeout: 5000 });
+}
+
+/** Wait for the existing account-action eligibility gate without bypassing recovery hydration. */
+async function waitForItineraryFixtureReady(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const calendarWasOpen = Boolean(canvasElement.querySelector("#itinerary-calendar"));
+  if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Calendar" }));
+  // This public action enables only after owner, scope and recovery classification settle.
+  await waitForItineraryUpdate(() => expect(canvas.getByRole("button", { name: "Add to calendar" })).toBeEnabled());
+  if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Day by day" }));
+}
 
 export const Default: Story = {};
 
@@ -493,7 +509,7 @@ export const RichDayPlannerIntegrated: Story = {
   },
 };
 // The production workspace renders ContextualFeedbackSlot after the saved day work.
-const feedbackItineraryNavigation = { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-itinerary-rich-day-integrated/itinerary" } } };
+const feedbackItineraryNavigation = { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-itinerary-rich-day-integrated/itinerary", segments: ["itinerary"] } } };
 export const ContextualFeedbackPopulatedDay: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackStoryEligible: true } };
 export const ContextualFeedbackAuthenticatedEntry: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackAuthenticatedFixture: true } };
 export const ContextualFeedbackOtherAccountEntry: Story = {
@@ -694,10 +710,13 @@ export const ContextualAddPanel: Story = {
   play: async ({ canvasElement }) => {
     const add = canvasElement.querySelector<HTMLButtonElement>('section[data-day-part="afternoon"] button[aria-label^="Add plan"]');
     if (!add) throw new Error("Afternoon Add must be available");
-    add.click();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const dialog = canvasElement.querySelector<HTMLDialogElement>("dialog:modal");
-    if (!dialog?.textContent?.includes("Add a plan") || !dialog.textContent.includes("Add your own")) throw new Error("Contextual Add panel must open with discovery and manual entry");
+    await userEvent.click(add);
+    // The production Add flow portals its dialog outside the story canvas.
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Add to Afternoon on Day 1" });
+    await expect(dialog).toBeVisible();
+    await expect(within(dialog).getByRole("heading", { name: "Add a plan" })).toBeVisible();
+    await expect(within(dialog).getByRole("textbox", { name: "Search ideas" })).toBeVisible();
+    await expect(within(dialog).getByRole("textbox", { name: "Add your own" })).toBeVisible();
   },
 };
 
@@ -707,25 +726,27 @@ export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortl
 export const FullDaySuggestionTopAreaDrop: Story = {
   ...MixedOrganicAndCommercialShortlist,
   play: async ({ canvasElement }) => {
-    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    await settle();
+    await waitForItineraryFixtureReady(canvasElement);
     const card = canvasElement.querySelector<HTMLElement>('[data-provider-product-id="CUSCO-FULL-DAY"][draggable="true"]');
     if (!card) throw new Error("Missing full-day suggestion card");
     const transfer = new DataTransfer();
     card.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
     card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-    await settle();
-    const target = canvasElement.querySelector<HTMLElement>("[data-full-day-drop-zone]");
-    if (!target) throw new Error("Missing top-area full-day target");
+    const target = await waitForItineraryUpdate(() => {
+      const node = canvasElement.querySelector<HTMLElement>("[data-full-day-drop-zone]");
+      if (!node) throw new Error("Missing top-area full-day target");
+      return node;
+    });
     const over = new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer });
     target.dispatchEvent(over);
     if (!over.defaultPrevented) throw new Error("The top area must accept the full-day drag");
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
-    await settle();
-    const cards = [...canvasElement.querySelectorAll("[data-full-day-band] strong")].filter(node => node.textContent === storyCommercialInventory[0].title);
-    if (cards.length !== 1) throw new Error("The full-day drop must create one band above the slots");
-    if (canvasElement.querySelectorAll("section[data-day-part]").length !== 3) throw new Error("Normal planning slots must remain available");
+    await waitForItineraryUpdate(() => {
+      const cards = [...canvasElement.querySelectorAll("[data-full-day-band] strong")].filter(node => node.textContent === storyCommercialInventory[0].title);
+      if (cards.length !== 1) throw new Error("The full-day drop must create one band above the slots");
+      if (canvasElement.querySelectorAll("section[data-day-part]").length !== 3) throw new Error("Normal planning slots must remain available");
+    });
   },
 };
 export const FullDayExperienceOnBusyDay: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, selectedDayNumber: 2, initialActivityInventory: { 2: storyCommercialInventory } } };
@@ -803,15 +824,17 @@ export const EmptyDayWithSidebarSuggestion: Story = {
 
 export const ClickAddAutomaticallyPlaced: Story = {
   play: async ({ canvasElement }) => {
+    await waitForItineraryFixtureReady(canvasElement);
     const add = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.textContent?.includes("Add to Day"));
     if (!add) throw new Error("Missing Add to Day action");
     const card = add.closest('[data-itinerary-suggestion-id]');
     const title = card?.querySelector('strong')?.textContent;
     if (!title) throw new Error("Missing suggestion title");
-    add.click();
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    if ([...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title).length !== 1) throw new Error("Add must create exactly one canonical planned activity");
+    await userEvent.click(add);
+    await waitForItineraryUpdate(() => {
+      if ([...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title).length !== 1) throw new Error("Add must create exactly one canonical planned activity");
+    });
   },
 };
 
@@ -833,8 +856,11 @@ export const SavedIdeaScheduling: Story = UnscheduledSavedIdea;
 export const PlannedActivityWholeCardDrag: Story = {
   ...RichDayPlannerIntegrated,
   play: async ({ canvasElement }) => {
-    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    await settle();
+    await waitForItineraryFixtureReady(canvasElement);
+    const canvas = within(canvasElement);
+    // Route restoration can select Day 1 before play; choose the fixture's populated day.
+    await userEvent.click(await canvas.findByRole("tab", { name: /^Day 2 ·/ }));
+    await waitForItineraryUpdate(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
     const card = canvasElement.querySelector<HTMLElement>('[data-day-part="morning"] [data-itinerary-activity-id][draggable="true"]');
     const body = card?.querySelector<HTMLElement>("[data-itinerary-drag-surface] strong");
     const target = canvasElement.querySelector<HTMLElement>('section[data-day-part="evening"]');
@@ -843,13 +869,14 @@ export const PlannedActivityWholeCardDrag: Story = {
     const transfer = new DataTransfer();
     body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
     card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-    await settle();
+    await waitForItineraryUpdate(() => expect(target).toHaveAttribute("data-drop-zone", "ready"));
     target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
     card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
-    await settle();
-    const moved = [...canvasElement.querySelectorAll<HTMLElement>("[data-itinerary-activity-id]")].filter(node => node.dataset.itineraryActivityId === id);
-    if (moved.length !== 1 || moved[0].closest("[data-day-part]")?.getAttribute("data-day-part") !== "evening") throw new Error("Dragging the body must move the canonical activity once");
+    await waitForItineraryUpdate(() => {
+      const moved = [...canvasElement.querySelectorAll<HTMLElement>("[data-itinerary-activity-id]")].filter(node => node.dataset.itineraryActivityId === id);
+      if (moved.length !== 1 || moved[0].closest("[data-day-part]")?.getAttribute("data-day-part") !== "evening") throw new Error("Dragging the body must move the canonical activity once");
+    });
   },
 };
 export const AlreadyAddedSuggestionState: Story = RecommendationAlreadyScheduled;
@@ -906,28 +933,24 @@ export const TravelDay: Story = {
 };
 
 export const Calendar: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/itinerary` } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/itinerary`, segments: ["itinerary"] } } },
   args: { trip },
   play: async ({ canvasElement, args }) => {
-    const switchButton = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar");
-    if (!switchButton) throw new Error("Missing Calendar view control");
-    switchButton.click();
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    const requestedDay = args.trip.planItems.find(day => day.dayNumber === args.selectedDayNumber);
-    if (requestedDay) {
-      const select = canvasElement.querySelector<HTMLSelectElement>('select');
-      if (!select) throw new Error('Missing canonical day selector');
-      select.value = requestedDay.id;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    }
-    const calendar = canvasElement.querySelector('#itinerary-calendar');
-    if (!calendar) throw new Error('Missing full-trip calendar');
-    const days = canvasElement.querySelectorAll('article[class*="calendarDay"]');
-    const selector = canvasElement.querySelector<HTMLSelectElement>('select');
-    if (!selector || days.length !== selector.options.length) throw new Error('Calendar must expose every canonical trip day');
-    if (canvasElement.querySelectorAll('[aria-label^="Day "][aria-label$=" planner"]').length !== 1) throw new Error('Expected one selected-day planner');
-
+    const canvas = within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole("button", { name: "Calendar" }))[0]);
+    const calendar = await waitFor(() => {
+      const node = canvasElement.querySelector("#itinerary-calendar");
+      expect(node).toBeVisible();
+      return node as HTMLElement;
+    });
+    const days = within(calendar as HTMLElement).getAllByRole("button", { name: /^Day \d+,/ });
+    const datedDays = args.trip.startDate && args.trip.endDate
+      ? Math.round((Date.parse(args.trip.endDate) - Date.parse(args.trip.startDate)) / 86400000) + 1
+      : new Set(args.trip.planItems.map(day => day.dayNumber)).size;
+    await expect(days).toHaveLength(datedDays);
+    await expect(days[0]).toHaveAccessibleName(/^Day 1,/);
+    await expect(days[days.length - 1]).toHaveAccessibleName(new RegExp(`^Day ${datedDays},`));
+    await expect(days.filter(day => day.getAttribute("aria-pressed") === "true")).toHaveLength(1);
   },
 };
 export const CalendarAttributedPhoto: Story = {
@@ -986,23 +1009,33 @@ export const CalendarActivityDrag: Story = {
   play: async (context) => {
     await Calendar.play?.(context);
     const { canvasElement } = context;
-    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await waitForItineraryFixtureReady(canvasElement);
     const source = canvasElement.querySelector<HTMLElement>('#itinerary-calendar button[draggable="true"]');
     if (!source) throw new Error('Missing draggable calendar activity');
     const title = source.querySelector('strong')?.textContent;
     const sourceDay = source.closest('article');
     const target = [...canvasElement.querySelectorAll<HTMLElement>('#itinerary-calendar article')].find(day => day !== sourceDay && day.querySelector('strong')?.textContent === sourceDay?.querySelector('strong')?.textContent);
     if (!title || !target) throw new Error('Missing same-occurrence drop target');
+    const sourceDayLabel = sourceDay?.querySelector('button[aria-pressed]')?.getAttribute('aria-label');
+    const targetDayLabel = target.querySelector('button[aria-pressed]')?.getAttribute('aria-label');
+    if (!sourceDayLabel || !targetDayLabel) throw new Error('Missing canonical calendar day labels');
     const transfer = new DataTransfer();
     source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
-    await settle();
-    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    await waitForItineraryUpdate(() => expect(target).toHaveAttribute('data-drop-eligible', 'true'));
+    const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer });
+    target.dispatchEvent(over);
+    if (!over.defaultPrevented) throw new Error('Calendar day must accept the activity drag');
     target.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
-    await settle();
-    if (sourceDay?.textContent?.includes(title)) throw new Error('Dropped activity remained in source day');
-    if (!target.textContent?.includes(title)) throw new Error('Dropped activity missing from target day');
-    const matching = [...canvasElement.querySelectorAll('#itinerary-calendar button strong')].filter(node => node.textContent === title);
-    if (matching.length !== 1) throw new Error('Drop duplicated or lost the activity');
+    source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
+    await waitForItineraryUpdate(() => {
+      const canvas = within(canvasElement);
+      const currentSource = canvas.getByRole('button', { name: sourceDayLabel }).closest('article');
+      const currentTarget = canvas.getByRole('button', { name: targetDayLabel }).closest('article');
+      if (currentSource?.textContent?.includes(title)) throw new Error('Dropped activity remained in source day');
+      if (!currentTarget?.textContent?.includes(title)) throw new Error('Dropped activity missing from target day');
+      const matching = [...canvasElement.querySelectorAll('#itinerary-calendar button strong')].filter(node => node.textContent === title);
+      if (matching.length !== 1) throw new Error('Drop duplicated or lost the activity');
+    });
   },
 };
 export const CalendarMobile320: Story = { ...Calendar, globals: { viewport: { value: "morrovia320", isRotated: false } } };
@@ -1212,29 +1245,43 @@ const repeatedTokyoTrip = tripFromBuilder({
 export const RepeatedDestinationSecondOccurrence: Story = {
   args: { trip: repeatedTokyoTrip, selectedDayNumber: 2 },
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
-  play: async ({ canvasElement }) => {
-    const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const assertSelectedDay = (dayNumber: number) => {
+      const day = args.trip.planItems.find(item => item.dayNumber === dayNumber);
+      if (!day) throw new Error(`Missing canonical Day ${dayNumber}`);
+      const select = canvas.queryByRole("combobox", { name: "Jump to date / destination" });
+      if (select) expect(select).toHaveValue(day.id);
+      else expect(canvas.getByRole("button", { name: "Choose a day" })).toHaveAccessibleDescription(new RegExp(`· Day ${dayNumber} ·`));
+    };
     const destinations = canvasElement.querySelectorAll<HTMLButtonElement>('nav[aria-label="Route destinations"] button');
     if (destinations.length !== 3) throw new Error("Expected three canonical stop occurrences");
-    destinations[2]!.click();
-    await settle();
-    if (new URL(window.location.href).searchParams.get("day") !== "5") throw new Error("The second Tokyo occurrence must write its canonical day deep link");
-    if (destinations[2]!.getAttribute("aria-current") !== "step" || canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 5)?.id) {
-      throw new Error("The second Tokyo occurrence must remain active at its first canonical day");
-    }
-    const nextDay = canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[5];
-    if (!nextDay) throw new Error("Missing later day for the second Tokyo occurrence");
-    nextDay.click();
-    await settle();
-    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("The later Tokyo day must use the existing day query");
-    if (destinations[2]!.getAttribute("aria-current") !== "step") throw new Error("The second Tokyo occurrence must remain active on later days");
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
-    await settle();
-    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
-    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("Calendar changed the selected day deep link");
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Day by day")?.click();
-    await settle();
-    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('nav[aria-label="Route destinations"] button[aria-current="step"]')) throw new Error("Day by day lost the selected occurrence");
+    await userEvent.click(destinations[2]!);
+    await waitFor(() => {
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("5");
+      expect(destinations[2], "The second Tokyo occurrence must remain active at its first canonical day").toHaveAttribute("aria-current", "step");
+      assertSelectedDay(5);
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Next day" }));
+    await waitFor(() => {
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+      expect(destinations[2]).toHaveAttribute("aria-current", "step");
+      assertSelectedDay(6);
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Calendar" }));
+    await waitFor(() => {
+      assertSelectedDay(6);
+      expect(canvas.getByRole("button", { name: /^Day 6,/ })).toHaveAttribute("aria-pressed", "true");
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Day by day" }));
+    await waitFor(() => {
+      assertSelectedDay(6);
+      const currentDestinations = canvasElement.querySelectorAll('nav[aria-label="Route destinations"] button');
+      expect(currentDestinations[2]).toHaveAttribute("aria-current", "step");
+      expect(currentDestinations[0]).not.toHaveAttribute("aria-current", "step");
+      expect(new URL(window.location.href).searchParams.get("day")).toBe("6");
+    });
   },
 };
 
@@ -1384,6 +1431,10 @@ export const CalendarDenseTwelveActivities: Story = {
     }, selectedDayNumber: 2,
   },
   play: async context => {
+    const canvas = within(context.canvasElement);
+    // Select Day 2 explicitly rather than relying on selectedDayNumber after route restoration.
+    await userEvent.click(await canvas.findByRole("tab", { name: /^Day 2 ·/ }));
+    await waitFor(() => expect(canvas.getByRole("tab", { name: /^Day 2 ·/ })).toHaveAttribute("aria-selected", "true"));
     await Calendar.play?.(context);
     const { canvasElement } = context;
     const selected = canvasElement.querySelector('#itinerary-calendar [data-selected="true"]');
@@ -1427,16 +1478,18 @@ export const CalendarAddOutcome: Story = {
   play: async context => {
     await Calendar.play?.(context);
     const { canvasElement } = context;
+    await waitForItineraryFixtureReady(canvasElement);
     const card = canvasElement.querySelector<HTMLElement>('[data-itinerary-suggestion-id]');
     const title = card?.querySelector('strong')?.textContent;
     const add = [...(card?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(button => button.textContent?.includes('Add to Day'));
     if (!add || !title) throw new Error('Missing calendar Add fixture');
-    add.click();
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    const planned = [...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title);
-    if (planned.length !== 1) throw new Error('Calendar Add must create exactly one activity in the selected day');
-    const previews = [...canvasElement.querySelectorAll('#itinerary-calendar [data-selected="true"] button strong')].filter(node => node.textContent === title);
-    if (previews.length !== 1) throw new Error('Calendar Add did not update its canonical day preview');
+    await userEvent.click(add);
+    await waitForItineraryUpdate(() => {
+      const planned = [...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title);
+      if (planned.length !== 1) throw new Error('Calendar Add must create exactly one activity in the selected day');
+      const previews = [...canvasElement.querySelectorAll('#itinerary-calendar [data-selected="true"] button strong')].filter(node => node.textContent === title);
+      if (previews.length !== 1) throw new Error('Calendar Add did not update its canonical day preview');
+    });
   },
 };
 
@@ -1453,10 +1506,10 @@ const suggestionStateTrip = (name: string, country: string, canonicalPlaceId: st
   planItems: [{ ...trip.planItems[0]!, type: 'activity', title: name, notes: [], image: null }], legs: [],
   brief: { ...trip.brief, customActivities: {}, selectedPlaces: {}, bookings: [], mapPins: [], dayNotes: {} },
 });
-export const SuggestionStatesTokyo: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Tokyo', 'Japan', 'tokyo', 35.6895, 139.6917) } };
-export const SuggestionStatesCusco: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Cusco', 'Peru', 'cusco', -13.532, -71.967) } };
-export const SuggestionStatesRome: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Rome', 'Italy', 'rome', 41.9028, 12.4964) } };
-export const SuggestionStatesNairobi: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Nairobi', 'Kenya', 'nairobi', -1.2921, 36.8219) } };
+export const SuggestionStatesTokyo: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Tokyo', 'Japan', 'tokyo', 35.6895, 139.6917) } };
+export const SuggestionStatesCusco: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Cusco', 'Peru', 'cusco', -13.532, -71.967) } };
+export const SuggestionStatesRome: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Rome', 'Italy', 'rome', 41.9028, 12.4964) } };
+export const SuggestionStatesNairobi: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Nairobi', 'Kenya', 'nairobi', -1.2921, 36.8219) } };
 export const SuggestionDurationFiltered: Story = { args: { trip, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: extendedCommercialInventory } } };
 
 export const CalendarLongEventDetail: Story = {
@@ -1474,7 +1527,24 @@ export const CalendarLongEventDetail: Story = {
   },
 };
 
-export const SuggestionLiveDays: Story = { args: {
+export const SuggestionLiveDays: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: {
   trip: { ...trip, stops: trip.stops.map(stop => ({ ...stop, canonicalPlaceId: stop.id })) }, selectedDayNumber: 1,
   initialSuggestions: undefined, initialActivityInventory: undefined,
 } };
+
+export const CalendarLandmarks: Story = {
+  ...Calendar, tags: ["current-ui"], parameters: { ...Calendar.parameters, a11y: { test: "error" } },
+  play: async context => {
+    await Calendar.play!(context);
+    await waitFor(() => {
+      const panel = context.canvasElement.querySelector('dialog[class*="calendarDaySheet"][data-dialog-presentation="inline"]');
+      if (context.canvasElement.ownerDocument.defaultView!.innerWidth >= 1100) expect(panel).not.toBeNull();
+      if (panel) {
+        expect(panel.tagName).toBe("DIALOG");
+        expect(panel.getAttribute("role")).toBeNull();
+        const label = panel.getAttribute("aria-label")!;
+        expect(within(context.canvasElement).getAllByRole("region", { name: label })).toHaveLength(1);
+      }
+    });
+  },
+};

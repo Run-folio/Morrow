@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { EasyTButton, EasyTLinkButton } from './easyt-controls';
 import { TripMobileSheet } from './trip-mobile-sheet';
 
-const meta = { title: 'Morrovia/Trip workspace/Mobile sheet', component: TripMobileSheet, parameters: { layout: 'fullscreen' } } satisfies Meta<typeof TripMobileSheet>;
+const meta = { title: 'Morrovia/04 Structure/Mobile sheet', component: TripMobileSheet, parameters: { layout: 'fullscreen' } } satisfies Meta<typeof TripMobileSheet>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 function Example({ title, children }: { title: string; children: React.ReactNode }) {

@@ -141,10 +141,13 @@ test('actual Stamps JSX/styles: bounded responsive, locale and action browser ve
     });
     await check('actual map selection, Escape focus restoration and memory editing', async () => {
       await page.goto(ready.url); await search(page).fill('France'); const france = row(page, 'France');
-      await france.locator('button').first().click(); await page.locator('#selected-stamp-country').waitFor();
+      const countryTrigger = france.locator('button').first();
+      await countryTrigger.click(); await page.locator('#selected-stamp-country').waitFor();
       assert.equal(await page.getByText('Synthetic saved memory.', { exact: true }).isVisible(), true);
       await page.keyboard.press('Escape'); assert.equal(await page.locator('#selected-stamp-country').count(), 0);
-      await page.waitForFunction(() => document.activeElement?.getAttribute('aria-controls') === 'selected-stamp-country');
+      await page.waitForFunction(node => node === document.activeElement, await countryTrigger.elementHandle());
+      assert.equal(await countryTrigger.evaluate(node => node === document.activeElement), true);
+      assert.equal(await countryTrigger.getAttribute('aria-controls'), null);
       const mapFrance = page.locator('path[data-country-id=france]'); await mapFrance.focus(); await page.keyboard.press('Enter');
       await page.locator('#selected-stamp-country').getByRole('button', { name: 'Edit', exact: true }).click();
       await page.locator('textarea').fill('Updated synthetic memory'); await page.getByRole('button', { name: 'Save memory', exact: true }).click();

@@ -1,3 +1,4 @@
+import { expect, within } from "storybook/test";
 import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
@@ -153,7 +154,7 @@ const populatedStamps = [
 ];
 const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore: "Restore", archive: "Archive", duplicate: "Duplicate", gift: "Share", delete: "Delete" };
 
-const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onPhotoError={() => undefined} onRemove={() => undefined} />)}</div>;
+const renderCardGrid = () => <><h2 className={styles.srOnly}>Your trips</h2><div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onPhotoError={() => undefined} onRemove={() => undefined} />)}</div></>;
 
 const sharedOriginTrips = [
   storyTrip({ id: "tokyo-shared-1", title: "Tokyo to Kyoto", status: "planned", startDate: "2027-03-01", endDate: "2027-03-12", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }, { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 6 }] }),
@@ -266,3 +267,16 @@ export const CompactCountryTitles: Story = { args: { trips: [
   { ...upcomingBalkans, id: "country-balkans", brief: { ...upcomingBalkans.brief, customTitle: null } },
   { ...currentJapan, id: "country-unknown", title: "", stops: currentJapan.stops.map(stop => ({ ...stop, country: "", countryCode: undefined })), brief: { ...currentJapan.brief, customTitle: null } },
 ], stamps: populatedStamps } };
+
+export const AccessibleFallbackCovers: Story = {
+  render: renderSharedOrigins, tags: ["current-ui"], parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const covers = [...canvasElement.querySelectorAll<HTMLAnchorElement>('a[class*="cardMedia_"]')];
+    await expect(covers.length).toBeGreaterThan(0);
+    for (const cover of covers) {
+      const title = cover.closest("article")?.querySelector("h3")?.textContent;
+      await expect(cover).toHaveAccessibleName(`Continue trip: ${title}`);
+    }
+    await expect(within(canvasElement).getByRole("searchbox", { name: "Search trips" })).toBeVisible();
+  },
+};

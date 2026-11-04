@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import { useState, type ReactNode } from "react";
+import { installStoryFetch } from "./storybook/story-fetch-fixture";
 import "maplibre-gl/dist/maplibre-gl.css";
 import TripShell from "./trip-shell";
 import TripMapWorkspace from "./trip-map-workspace";
@@ -328,13 +329,8 @@ const dubrovnikPlaces = {
   },
 } satisfies Record<string, JourneyLocalPlace>;
 
-let dubrovnikSuggestionFixtureInstalled = false;
-
 function installDubrovnikSuggestionFixture() {
-  if (typeof window === "undefined" || dubrovnikSuggestionFixtureInstalled) return;
-  dubrovnikSuggestionFixtureInstalled = true;
-  const fetchFromStory = window.fetch.bind(window);
-  window.fetch = async (input, init) => {
+  return installStoryFetch(async (input, init, fetchFromStory) => {
     const value = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const url = new URL(value, window.location.origin);
     if (url.pathname === "/api/journey-local-search") {
@@ -351,16 +347,11 @@ function installDubrovnikSuggestionFixture() {
       return new Response(JSON.stringify({ activities: [{ provider: "viator", source: "viator", providerProductId: "DBV-KAYAK", title: "Dubrovnik sea-kayak and old-town views", destination: { canonicalPlaceId: "dubrovnik", label: "Dubrovnik" }, tags: ["beach", "culture"], rating: 4.9, reviewCount: 842, duration: { fixedMinutes: 180 }, price: { amount: 42, currency: "GBP" }, productUrl: "https://www.viator.com/tours/Dubrovnik/DBV-KAYAK?pid=storybook", provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-09T12:00:00.000Z" } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return fetchFromStory(input, init);
-  };
+  });
 }
 
-let goldenTrianglePlaceFixtureInstalled = false;
-
 function installGoldenTrianglePlaceFixture() {
-  if (typeof window === "undefined" || goldenTrianglePlaceFixtureInstalled) return;
-  goldenTrianglePlaceFixtureInstalled = true;
-  const fetchFromStory = window.fetch.bind(window);
-  window.fetch = async (input, init) => {
+  return installStoryFetch(async (input, init, fetchFromStory) => {
     const value = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const url = new URL(value, window.location.origin);
     if (url.pathname.includes("/copilot/actions/") && url.pathname.endsWith("/apply")) {
@@ -389,7 +380,7 @@ function installGoldenTrianglePlaceFixture() {
       sourceLabel: "Wikimedia Commons",
       descriptionSourceLabel: "Wikipedia",
     } : null }), { status: 200, headers: { "Content-Type": "application/json" } });
-  };
+  });
 }
 
 const indiaDay = (dayNumber: number, stopId: keyof typeof indiaImages, title: string, type: PlanItem["type"] = "activity") => ({
@@ -503,10 +494,10 @@ const meta = {
   component: TripMapStory,
   parameters: {
     layout: "fullscreen",
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map", segments: ["map"] } },
   },
-  decorators: [(Story) => {
-    setStorybookAuthOwner("storybook-traveller");
+  decorators: [(Story, context) => {
+    if (context.args.storyTrip.ownerId) setStorybookAuthOwner(context.args.storyTrip.ownerId);
     return <div className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></div>;
   }],
   args: { storyTrip: trip },
@@ -525,7 +516,7 @@ const scheduledResultHandoffParameters = {
   nextjs: {
     appDirectory: true,
     navigation: {
-      pathname: "/journey/tour-cusco-sacred-valley-arequipa/map",
+      pathname: "/journey/tour-cusco-sacred-valley-arequipa/map", segments: ["map"],
       query: { stop: "cusco", mode: "see", day: "2", result: "idea:tour-idea-qorikancha" },
     },
   },
@@ -545,7 +536,7 @@ const attractionHandoffParameters = {
   nextjs: {
     appDirectory: true,
     navigation: {
-      pathname: "/journey/cusco-sacred-valley-arequipa/map",
+      pathname: "/journey/cusco-sacred-valley-arequipa/map", segments: ["map"],
       query: { stop: "cusco", mode: "see", day: "1" },
     },
   },
@@ -574,12 +565,9 @@ export const AttractionHandoffMobile390: Story = {
 
 export const GoldenTriangle: Story = {
   args: { storyTrip: goldenTriangleTrip },
-  decorators: [(Story) => {
-    installGoldenTrianglePlaceFixture();
-    return <><style>{`aside[role="alert"]{display:none!important}`}</style><Story /></>;
-  }],
+  beforeEach: installGoldenTrianglePlaceFixture,
   parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"] } },
   },
 };
 
@@ -587,32 +575,29 @@ const dubrovnikSuggestionParameters = {
   nextjs: {
     appDirectory: true,
     navigation: {
-      pathname: "/journey/storybook-dubrovnik-shape-day/map",
+      pathname: "/journey/storybook-dubrovnik-shape-day/map", segments: ["map"],
       query: { stop: "dubrovnik", day: "1" },
     },
   },
 };
 
-const dubrovnikDecorator = (Story: () => ReactNode) => {
-  installDubrovnikSuggestionFixture();
-  return <Story />;
-};
+
 
 export const DubrovnikStay: Story = {
   args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "stay" } },
-  decorators: [dubrovnikDecorator],
+  beforeEach: installDubrovnikSuggestionFixture,
   parameters: dubrovnikSuggestionParameters,
 };
 
 export const DubrovnikEat: Story = {
   args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "eat" } },
-  decorators: [dubrovnikDecorator],
+  beforeEach: installDubrovnikSuggestionFixture,
   parameters: dubrovnikSuggestionParameters,
 };
 
 export const DubrovnikSee: Story = {
   args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "see" } },
-  decorators: [dubrovnikDecorator],
+  beforeEach: installDubrovnikSuggestionFixture,
   parameters: dubrovnikSuggestionParameters,
 };
 
@@ -626,7 +611,7 @@ export const StayDeepLink: Story = {
     nextjs: {
       appDirectory: true,
       navigation: {
-        pathname: "/journey/cusco-sacred-valley-arequipa/map",
+        pathname: "/journey/cusco-sacred-valley-arequipa/map", segments: ["map"],
         query: { stop: "sacred-valley", mode: "stay" },
       },
     },
@@ -700,7 +685,7 @@ export const InitialBrandedOverview: Story = GoldenTriangle;
 export const DetailedBasemap: Story = {
   ...GoldenTriangle,
   args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail" } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "delhi", mode: "plan" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "delhi", mode: "plan" } } } },
 };
 
 export const MapWorkspaceDesktop1440WholeRoute: Story = {
@@ -735,7 +720,7 @@ export const MapWorkspaceDesktop1440SelectedStay: Story = {
 };
 
 const namibiaSwakopmundParameters = {
-  nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", query: { stop: "swakopmund", mode: "stay" } } },
+  nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", segments: ["map"], query: { stop: "swakopmund", mode: "stay" } } },
 };
 
 export const NamibiaDesktop1440AttachedStay: Story = {
@@ -747,7 +732,7 @@ export const NamibiaDesktop1440AttachedStay: Story = {
 export const NamibiaDesktop1440SavedRestaurant: Story = {
   args: { storyTrip: namibiaMapTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", selectedMapResultId: "idea:namibia-hafeni-idea" } },
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", query: { stop: "swakopmund", mode: "eat" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", segments: ["map"], query: { stop: "swakopmund", mode: "eat" } } } },
 };
 
 export const NamibiaDesktop1024SavedCustomPin: Story = {
@@ -820,7 +805,7 @@ export const MissingDestinationDescription: Story = {
       planItems: trip.planItems.map((item) => item.stopId === "cusco" ? { ...item, image: null } : item),
     },
   },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map", query: { stop: "cusco", mode: "plan" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map", segments: ["map"], query: { stop: "cusco", mode: "plan" } } } },
 };
 
 export const Mobile390Restoration: Story = {
@@ -985,10 +970,9 @@ export const LocalHoiAnUnavailable: Story = {
 export const LocalHoiAnEmpty: Story = {
   args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [], accommodationInventoryStatus: "not-requested" } } },
 };
-const hoiAnRetryDecorator = (Story: () => ReactNode) => {
-  const fetchFromStory = window.fetch.bind(window);
+function installHoiAnRetryFixture() {
   let attempts = 0;
-  window.fetch = async (input, init) => {
+  return installStoryFetch(async (input, init, fetchFromStory) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
     if (url.pathname !== "/api/journey-local-search") return fetchFromStory(input, init);
     attempts += 1;
@@ -996,12 +980,11 @@ const hoiAnRetryDecorator = (Story: () => ReactNode) => {
       ? { places: [], searchStatus: "failed", unavailable: true }
       : { places: [reviewPlace("hoi-retry-eat", "Old Town Kitchen", "Hội An, Vietnam", [108.341, 15.878], "restaurant")], searchStatus: "ready" }),
     { status: 200, headers: { "Content-Type": "application/json" } });
-  };
-  return <Story />;
-};
+  });
+}
 export const LocalHoiAnRetry: Story = {
   args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
-  decorators: [hoiAnRetryDecorator],
+  beforeEach: installHoiAnRetryFixture,
 };
 export const LocalHanoiPlanned: Story = {
   args: { storyTrip: hanoiReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "see", selectedMapResultId: "idea:hanoi-temple" } },
@@ -1066,7 +1049,7 @@ export const CompositionTablet768: Story = {
 export const CompositionMobile390: Story = Mobile390Restoration;
 
 const mapPlanAgraDayFiveParameters = {
-  nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "plan", day: "5" } } },
+  nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "agra", mode: "plan", day: "5" } } },
 };
 
 export const MapPlanMultiDayTransferLongTitle: Story = {
@@ -1084,13 +1067,13 @@ export const MapPlanMultiDayTransferLongTitleMobile430: Story = { ...MapPlanMult
 export const MapPlanSelectedMappableActivity: Story = {
   ...GoldenTriangle,
   args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", selectedMapResultId: "idea:agra-fort-map-plan" } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "plan", day: "6", result: "idea:agra-fort-map-plan" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "agra", mode: "plan", day: "6", result: "idea:agra-fort-map-plan" } } } },
 };
 
 export const MapPlanFreeTime: Story = {
   ...GoldenTriangle,
   args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "plan", day: "10" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "jaipur", mode: "plan", day: "10" } } } },
 };
 
 const googleSavedReferencePlanTrip: EasyTTrip = {
@@ -1116,7 +1099,7 @@ export const MapPlanSavedGoogleReferenceMapLibre: Story = {
 
 export const MapPlanSingleDayStop: Story = {
   args: { storyTrip: cancunReturnTripFixture, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-cancun-return/map", query: { stop: "antigua", mode: "plan", day: "3" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-cancun-return/map", segments: ["map"], query: { stop: "antigua", mode: "plan", day: "3" } } } },
 };
 
 const enrichedPlaces = [
@@ -1153,18 +1136,18 @@ export const GooglePlacesEnrichmentMobile390: Story = {
 export const GooglePlacesEnrichmentUnavailable: Story = {
   ...GooglePlacesEnrichmentFixture,
   args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", googleFixture: { ...googleFixture, detailsById: Object.fromEntries(Object.entries(googleFixture.detailsById).filter(([id]) => id !== "ChIJnative-story-fixture")) } } },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "agra", mode: "see", day: "5" } } } },
 };
 
 export const GooglePlacesEnrichmentNoMedia: Story = {
   ...GooglePlacesEnrichmentFixture,
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "agra", mode: "see", day: "5" } } } },
   play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Native POI outside Nearby")?.click(); },
 };
 
 export const GooglePlacesEnrichmentJaipur: Story = {
   ...GooglePlacesEnrichmentFixture,
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "see", day: "7" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", segments: ["map"], query: { stop: "jaipur", mode: "see", day: "7" } } } },
 };
 
 const longNamePlace = {
@@ -1305,7 +1288,7 @@ export const MobileDrawerQualifiedTrip: Story = {
     },
     storyState: { mobileShapeDayOpen: true, mobileDrawerOpen: true },
   },
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${qualifiedDrawerTrip.id}/map`, query: { stop: qualifiedDrawerTrip.stops[0]!.id, mode: "plan" } } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${qualifiedDrawerTrip.id}/map`, segments: ["map"], query: { stop: qualifiedDrawerTrip.stops[0]!.id, mode: "plan" } } } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 

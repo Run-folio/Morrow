@@ -1,4 +1,6 @@
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import type { EasyTTrip, TripLeg } from "@/lib/easyt/trip";
 import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
 import TripShell from "./trip-shell";
@@ -164,11 +166,15 @@ const meta = {
     layout: "fullscreen",
     nextjs: {
       appDirectory: true,
-      navigation: { pathname: "/journey/storybook-first-class-transport/transport" },
+      navigation: { pathname: "/journey/storybook-first-class-transport/transport", segments: ["transport"] },
     },
   },
   decorators: [
-    (Story, context) => <TripShell trip={context.args.trip as EasyTTrip}><Story /></TripShell>,
+    (Story, context) => {
+      const fixture = context.args.trip as EasyTTrip;
+      if (fixture.ownerId) setStorybookAuthOwner(fixture.ownerId);
+      return <main className="morrovia-editorial-page"><TripShell trip={fixture} cacheTrip={false} orientationAutoStart={false}><Story /></TripShell></main>;
+    },
   ],
   args: { trip: transportTrip },
 } satisfies Meta<typeof TripTransportWorkspace>;
@@ -185,7 +191,17 @@ export const CanonicalAgendaMobile430: Story = { globals: { viewport: { value: "
 export const CanonicalAgendaTablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const CanonicalAgendaDesktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const CanonicalAgendaDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
-export const SelectedJourneyDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const SelectedJourneyDesktop1440: Story = {
+  globals: { viewport: { value: "morrovia1440", isRotated: false } }, tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
+    await expect(await canvas.findByRole("region", { name: "Journey details" })).toBeVisible();
+    await expect(canvasElement.querySelector('[data-selected="true"]')).toBeVisible();
+    await expect(canvas.getAllByRole("listitem").length).toBeGreaterThan(0);
+  },
+};
 
 export const PartialUnknownTransport: Story = {
   args: { trip: transportTrip },
@@ -205,7 +221,24 @@ export const ManualBookingDetails: Story = {
 };
 
 export const UnbookedConnections: Story = { args: { trip: { ...transportTrip, brief: { ...transportTrip.brief, bookings: [] } } } };
-export const ModeDialogOptions: Story = { args: { trip: japanTrip() } };
+export const ModeDialogOptions: Story = {
+  args: { trip: japanTrip() },
+  tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
+    await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
+    const trigger = (await canvas.findAllByRole("button", { name: "Change transport mode" }))[0];
+    await userEvent.click(trigger);
+    const dialog = await body.findByRole("dialog", { name: "Change transport" });
+    await expect(within(dialog).getByRole("radiogroup", { name: "Transport options" })).toBeVisible();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(dialog).not.toBeVisible());
+    await expect(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    await body.findByRole("dialog", { name: "Change transport" });
+  },
+};
 
 // Single supported baseline; Refresh options is explicit and never runs on story mount.
 const refreshTrip = japanTrip();

@@ -67,9 +67,9 @@ export const OverviewFinalStep: Story = {
     [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Next"))?.click();
   },
 };
-export const MapStep: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/map" } } }, render: () => <OrientationStory workspace="map" ownerId="story-map" /> };
-export const ItineraryStep: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/itinerary" } } }, render: () => <OrientationStory workspace="itinerary" ownerId="story-itinerary" /> };
-export const MobileSheet390: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/itinerary" } } }, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <OrientationStory workspace="itinerary" ownerId="story-mobile-390" /> };
+export const MapStep: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/map", segments: ["map"] } } }, render: () => <OrientationStory workspace="map" ownerId="story-map" /> };
+export const ItineraryStep: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/itinerary", segments: ["itinerary"] } } }, render: () => <OrientationStory workspace="itinerary" ownerId="story-itinerary" /> };
+export const MobileSheet390: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/itinerary", segments: ["itinerary"] } } }, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <OrientationStory workspace="itinerary" ownerId="story-mobile-390" /> };
 export const MissingTargetFallback: Story = { render: () => <OrientationStory workspace="overview" ownerId="story-missing-target" missingFirst /> };
 export const CompletedManualReplay: Story = {
   render: () => <OrientationStory workspace="overview" ownerId="story-manual-replay" autoReady={false} completed />,

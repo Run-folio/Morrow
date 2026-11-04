@@ -1,3 +1,4 @@
+import { expect, userEvent, waitFor } from "storybook/test";
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
@@ -56,28 +57,31 @@ export const InteractionBoundary: Story = {
       card.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
       if (root?.dataset.selectedStoryKey !== before) throw new Error("Card focus or hover changed the selected Route Story");
     });
-    const ordinaryClick = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
-    cards[0]?.dispatchEvent(ordinaryClick);
-    if (!ordinaryClick.defaultPrevented) throw new Error("Hydrated card click must intercept native navigation for the shared preview");
-    await new Promise((resolve) => window.setTimeout(resolve, 80));
-    const preview = canvasElement.querySelector<HTMLDialogElement>("dialog:modal");
-    if (!preview || !preview.querySelector("#atlas-title")) throw new Error("Homepage inspiration card must open the shared route preview");
+    const observed: { event: MouseEvent | null } = { event: null };
+    const observe = (event: MouseEvent) => { observed.event = event; };
+    canvasElement.ownerDocument.addEventListener("click", observe, { once: true });
+    try { await userEvent.click(cards[0]); }
+    finally { canvasElement.ownerDocument.removeEventListener("click", observe); }
+    if (!observed.event?.defaultPrevented) throw new Error("Hydrated card click must intercept native navigation for the shared preview");
+    await waitFor(() => {
+      const preview = canvasElement.ownerDocument.querySelector<HTMLDialogElement>("dialog:modal");
+      if (!preview || !preview.querySelector("#atlas-title")) throw new Error("Homepage inspiration card must open the shared route preview");
+    }, { timeout: 10000 });
     if (root?.dataset.selectedStoryKey !== before) throw new Error("Card click changed the selected Route Story");
   },
 };
-export const TourFocusReturn: Story = {
-  args: { withTour: true },
+export const HowItWorksFocusReturn: Story = {
   play: async ({ canvasElement }) => {
-    const trigger = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.includes("See how it works"));
+    const trigger = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find(button => button.textContent?.includes("See how it works"));
     if (!trigger) throw new Error("How it works trigger is missing");
-    trigger.focus();
-    trigger.click();
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    const dialog = canvasElement.querySelector<HTMLElement>('[role="dialog"]');
-    if (!dialog) throw new Error("Existing product tour did not open");
-    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    if (canvasElement.querySelector('[role="dialog"]')) throw new Error("Escape did not close the existing tour");
-    if (document.activeElement !== trigger) throw new Error("Tour did not restore focus to its activating trigger");
+    await userEvent.click(trigger);
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const panel = canvasElement.ownerDocument.getElementById(trigger.getAttribute("aria-controls")!);
+    await expect(panel).toBeVisible();
+    await expect(panel?.querySelectorAll("li")).toHaveLength(3);
+    await userEvent.keyboard("{Escape}");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(panel).not.toBeVisible();
+    await expect(trigger).toHaveFocus();
   },
 };

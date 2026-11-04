@@ -118,7 +118,7 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
         })}</ol>
       </nav>
       <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={activateSelection} cameraOcclusions={{ right: navigatorWidth }} />
-      <aside className={styles.mapDetail} aria-label="Route map details">
+      <aside className={styles.mapDetail} aria-label="Route map details" tabIndex={0}>
         <div className={styles.mapContext} aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{stop ? `${stop.country} · Stop ${stopIndex + 1}` : connection ? "Connection context" : "The whole route"}</p>
           <h3>{stop?.name ?? (connection ? `${connection.from} → ${connection.to}` : `${stops[0]?.name} to ${stops.at(-1)?.name}`)}</h3>

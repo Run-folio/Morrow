@@ -682,7 +682,7 @@ export default function TripExploreWorkspace({
       </div>
 
       <div className={styles.resultsHeader}>
-        <div><strong>{exploreCategoryLabels[category]}</strong><span> around {destinationLabel}</span></div>
+        <h2><strong>{exploreCategoryLabels[category]}</strong><span> around {destinationLabel}</span></h2>
         <small>{visibleResults.length} {visibleResults.length === 1 ? "idea" : "ideas"}</small>
       </div>
 

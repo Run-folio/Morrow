@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
@@ -87,11 +87,10 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => (
-      <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}>
-        <Story />
-      </main>
-    ),
+    (Story, context) => {
+      if (context.args.trip?.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+      return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></main>;
+    },
   ],
 } satisfies Meta<typeof TripShell>;
 
@@ -150,7 +149,7 @@ export const Itinerary: Story = {
     ),
   },
   parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary", segments: ["itinerary"] } },
   },
 };
 
@@ -165,7 +164,7 @@ export const MapWorkspace: Story = {
     ),
   },
   parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map", segments: ["map"] } },
   },
 };
 
@@ -385,4 +384,79 @@ export const GeneratedTwoCountriesMap: Story = {
 export const Mobile390GeneratedCountryItinerary: Story = {
   ...GeneratedOneCountryItinerary,
   globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+
+/** These exercise actual shell chrome, not the placeholder workspace bodies. */
+export const MobileMetadata390: Story = {
+  ...CompactMobile390,
+  args: { ...Overview.args, cacheTrip: false, orientationAutoStart: false },
+  tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const identity = canvasElement.querySelector("#trip-shell-title")?.parentElement;
+    const metadata = identity?.querySelector("dl");
+    await waitFor(() => expect(metadata).toBeVisible());
+    await expect(metadata?.querySelector("dd")).toBeVisible();
+    await expect(metadata?.querySelector("dd")).toHaveTextContent(/2026/);
+    await expect(metadata).toHaveTextContent("3 overnight places");
+    await expect(metadata).toHaveTextContent("2 transfers");
+  },
+};
+
+export const MobileMoreOpen: Story = {
+  ...CompactMobile390,
+  args: { ...Overview.args, cacheTrip: false, orientationAutoStart: false },
+  tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
+    const trigger = await canvas.findByRole("button", { name: "More" });
+    await userEvent.click(trigger);
+    const dialog = await body.findByRole("dialog", { name: "More trip sections" });
+    await expect(within(dialog).getByRole("link", { name: "Explore" })).toHaveAttribute("href", `/journey/${trip.id}/explore`);
+    await expect(within(dialog).getByRole("link", { name: "Stays" })).toHaveAttribute("href", `/journey/${trip.id}/stay`);
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Close / }));
+    await waitFor(() => expect(dialog).not.toBeVisible());
+    await expect(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    await body.findByRole("dialog", { name: "More trip sections" });
+  },
+};
+
+export const MobileTripDetails: Story = {
+  ...CompactMobile390,
+  args: { ...Overview.args, cacheTrip: false, orientationAutoStart: false },
+  tags: ["current-ui"],
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole("button", { name: "Trip menu" }));
+    await userEvent.click(await body.findByRole("menuitem", { name: "Trip details" }));
+    const dialog = await body.findByRole("dialog", { name: "Trip details" });
+    await expect(dialog).toHaveTextContent("3 overnight places");
+    await expect(dialog).toHaveTextContent("2 transfers");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Close / }));
+    await waitFor(() => expect(dialog).not.toBeVisible());
+  },
+};
+
+
+function moreCurrentSection(section: "Explore" | "Stays"): NonNullable<Story["play"]> {
+  return async ({ canvasElement }) => {
+    const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole("button", { name: `More, current section: ${section}` }));
+    const dialog = await body.findByRole("dialog", { name: "More trip sections" });
+    await expect(within(dialog).getByRole("link", { name: section })).toHaveAttribute("aria-current", "page");
+  };
+}
+export const MobileMoreCurrentExplore: Story = {
+  ...MobileMoreOpen, tags: ["current-ui"],
+  parameters: { ...MobileMoreOpen.parameters, nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/explore`, segments: ["explore"] } } },
+  play: moreCurrentSection("Explore"),
+};
+export const MobileMoreCurrentStays: Story = {
+  ...MobileMoreOpen, tags: ["current-ui"],
+  parameters: { ...MobileMoreOpen.parameters, nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/stay`, segments: ["stay"] } } },
+  play: moreCurrentSection("Stays"),
 };

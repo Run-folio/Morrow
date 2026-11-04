@@ -72,7 +72,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
     <Photo imageKey={place.imageKey} name={place.name} language={language} />
     <div className={styles.cardContent}>
       <div className={styles.cardMeta}><span>{location}</span>{existing ? <span className={styles.existing}>{copy.roles.existing}</span> : null}</div>
-      <h4>{place.name}</h4>
+      <h3>{place.name}</h3>
       {reason ? <p>{reason}</p> : null}
       <div className={styles.role}><MapPin aria-hidden="true" /><span>{role}</span></div>
       <div className={styles.cardActions}>
@@ -178,7 +178,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
       {projection.directions.map((direction, index) => <article className={styles.directionCard} key={direction.id} data-selected={draft.directionId === direction.id} data-discovery-card="true">
         <Photo imageKey={direction.imageKey} name={discoveryDirectionTitle(language, direction.titleKey, direction.title)} language={language} />
         <div className={styles.directionContent}><span className={styles.directionNumber}>{String(index + 1).padStart(2, "0")}</span>
-          <h4>{discoveryDirectionTitle(language, direction.titleKey, direction.title)}</h4>
+          <h3>{discoveryDirectionTitle(language, direction.titleKey, direction.title)}</h3>
           <p>{direction.summary ?? `${direction.placeIds.length} ${copy.directionCount}`}</p>
           <EasyTButton variant="secondary" fullWidth aria-label={`${copy.accessibility.direction}: ${discoveryDirectionTitle(language, direction.titleKey, direction.title)}`} onClick={async () => {
             if (await onAction({ type: "change-direction", directionId: direction.id }) === false) return;
