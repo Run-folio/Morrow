@@ -122,7 +122,8 @@ export async function renderBuilder({
   /** Server-supplied synthetic listing, allowing actual dashboard reopen paths. */
   dashboardTrips?: () => unknown[];
   prepRequest?: (input:{path:string;body:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
-  shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
+  shellCanonicalTrip?: ({ id: string; ownerId: string | null } & Record<string, unknown>)
+    | (()=>{id:string;ownerId:string|null});
   /** Optional real SDK session endpoint, entirely synthetic and loopback-local. */
   authSessionRequest?: () => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
@@ -226,7 +227,10 @@ export async function renderBuilder({
       response.end(`<button id="complete">Complete simulated sign in</button><script>document.getElementById('complete').onclick=()=>{sessionStorage.setItem('builder-fixture-owner','owner-a');location.assign(new URLSearchParams(location.search).get('next'))}</script>`);return;
     }
     response.setHeader("Content-Type", "text/html; charset=utf-8");
-    response.end(`${styled ? `<style>*,::before,::after{box-sizing:border-box}body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>` : ""}<div id="root"></div><script>window.__BUILDER_TEST_DASHBOARD_TRIPS__=${JSON.stringify(dashboardTrips?.()??[]).replaceAll("<","\\u003c")}</script><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
+    // An account fixture may model the server's fresh canonical prop on reload.
+    // Static fixture props retain their existing init-script behavior.
+    const serverTrip=typeof shellCanonicalTrip==='function'?`window.__BUILDER_TEST_CANONICAL_TRIP__=${JSON.stringify(shellCanonicalTrip()).replaceAll('<','\\u003c')};`:'';
+    response.end(`${styled ? `<style>*,::before,::after{box-sizing:border-box}body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>` : ""}<div id="root"></div><script>window.__BUILDER_TEST_DASHBOARD_TRIPS__=${JSON.stringify(dashboardTrips?.()??[]).replaceAll("<","\\u003c")};${serverTrip}</script><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { chromium, webkit } = require(runtime);
@@ -274,7 +278,7 @@ export async function renderBuilder({
     key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput, entryPath: path,
   });
   if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
-  if (shellCanonicalTrip) await page.addInitScript((value: unknown) => { (window as Window & { __BUILDER_TEST_CANONICAL_TRIP__?: unknown }).__BUILDER_TEST_CANONICAL_TRIP__ = value; }, shellCanonicalTrip);
+  if (shellCanonicalTrip&&typeof shellCanonicalTrip!=='function') await page.addInitScript((value: unknown) => { (window as Window & { __BUILDER_TEST_CANONICAL_TRIP__?: unknown }).__BUILDER_TEST_CANONICAL_TRIP__ = value; }, shellCanonicalTrip);
   if (receiptLockDelayMs) await page.addInitScript((delay: number) => {
     const original = navigator.locks.request.bind(navigator.locks);
     navigator.locks.request = ((...args: Parameters<typeof original>) => {

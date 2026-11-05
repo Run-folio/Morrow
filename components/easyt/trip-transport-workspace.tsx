@@ -1,6 +1,10 @@
 "use client";
 import {TripFlightSearchAirports} from './trip-flight-search-airports';
 import {flightSearchAirportPlan} from '@/lib/easyt/flight-search-airport-choice';
+import {missingReturnJourney} from '@/lib/easyt/missing-return-journey';
+import {prepareMissingReturnJourneyRepair} from '@/lib/easyt/trip-builder-handler-contract';
+import {builderDocumentFingerprint} from '@/lib/easyt/trip-builder-document-commit';
+import {requireReadableTripDocument} from '@/lib/easyt/trip-document';
 import {adoptTransportComparison} from "@/lib/easyt/transport-comparison";
 import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptions';
 import {transportJourneyParts, journeyPartGapLabel} from '@/lib/easyt/transport-journey-parts';
@@ -21,7 +25,7 @@ import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
-import { parseTransportWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
+import { parseTransportWorkspaceTarget,tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripLeg } from "@/lib/easyt/trip";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import { useTripShellMutation } from "./trip-shell-client";
@@ -154,6 +158,8 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const mutation = useTripShellMutation();
   const copy = copyFor(language);
   const items = useMemo(() => itineraryTransportAgenda(trip), [trip]);
+  const missingReturn=useMemo(()=>missingReturnJourney(trip),[trip]);
+  const [restoredLegId,setRestoredLegId]=useState<string|null>(null);
   const searchParams = useSearchParams();
   const orientation = parseTransportWorkspaceTarget(trip, searchParams);
   const [selectedLegId, setSelectedLegId] = useState<string | null>(orientation.legId ?? null);
@@ -165,6 +171,15 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const unmatchedBookings = useMemo(() => unmatchedTravellerTransportBookings(trip), [trip]);
   const selected = items.find((item) => item.leg.id === selectedLegId) ?? null;
   const headingId = "transport-workspace-heading";
+  const restoreReturn=async()=>{
+    const fingerprint=builderDocumentFingerprint(trip);let addedId:string|null=null;
+    const saved=await mutation.mutateTrip(current=>{
+      const result=prepareMissingReturnJourneyRepair(requireReadableTripDocument(current),fingerprint);
+      if(!result.ok){if(result.reason==='not-needed')return current;throw new Error(language==='es'?'La ruta cambió. Revisa el regreso antes de añadirlo.':'This route changed. Review the return journey before adding it.');}
+      addedId=result.legId;return result.trip;
+    },'restore-return-journey');
+    if(saved&&addedId)setRestoredLegId(addedId);
+  };
   const selectJourney = (id: string, toggle = false) => {
     const nextId = toggle && selectedLegId === id ? null : id;
     setSelectedLegId(nextId);
@@ -175,6 +190,13 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
       window.history.pushState(window.history.state, "", url);
     }
   };
+
+  useEffect(() => {
+    if(!restoredLegId||!items.some(item=>item.leg.id===restoredLegId))return;
+    selectJourney(restoredLegId);
+    document.querySelector<HTMLButtonElement>(`[data-transport-leg-id="${CSS.escape(restoredLegId)}"] [data-transport-summary] button`)?.focus();
+    setRestoredLegId(null);
+  },[items,restoredLegId]);
 
   useEffect(() => {
     if (!items.length) setSelectedLegId(null);
@@ -202,6 +224,14 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
 
     {mutation.error ? <MorroviaStatusBanner tone="danger" title={language === "es" ? "No se pudo guardar este cambio" : "Couldn’t save this change"} detail={mutation.error} />
       : !mutation.canMutate ? <MorroviaSaveStatus state="saving" label={language === "es" ? "Comprobando el viaje…" : "Checking this trip…"} /> : null}
+
+    {missingReturn.kind!=='not-needed'?<MorroviaStatusBanner tone="warning"
+      title={missingReturn.kind==='repairable'?(language==='es'?'Falta el trayecto de regreso':'Return journey missing'):(language==='es'?'Revisa el trayecto de regreso':'Return journey needs review')}
+      detail={missingReturn.kind==='repairable'
+        ?language==='es'?`Tu ruta vuelve a ${missingReturn.to.name}. El transporte y los horarios necesitan confirmación.`:`Your route returns to ${missingReturn.to.name}. Transport and timing still need checking.`
+        :language==='es'?'Revisa la ruta y los datos guardados antes de añadir el regreso.':'Review the route and saved journey details before adding the return.'}
+      actions={missingReturn.kind==='repairable'?<EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate||mutation.isPending('restore-return-journey')} onClick={()=>void restoreReturn()}>{language==='es'?'Añadir trayecto de regreso':'Add return journey'}</EasyTButton>
+        :<EasyTLinkButton size="small" variant="secondary" href={tripBuilderHref(trip.id,trip.ownerId)}>{language==='es'?'Revisar ruta':'Review route'}</EasyTLinkButton>} />:null}
 
     {unmatchedBookings.map((booking) => <div className={styles.bookingMismatch} role="alert" key={booking.id}>
       <p>{copy.missingLegMismatch} <strong>{booking.title}</strong></p>

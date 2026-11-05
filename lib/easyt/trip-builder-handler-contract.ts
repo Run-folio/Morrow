@@ -3,6 +3,31 @@ import { prepareAcceptedBuilderEdit, type BuilderAcceptedEdit } from './trip-bui
 import { prepareBuilderNecessaryProjection } from './trip-builder-reconciliation.ts';
 import { prepareTripDocumentForWrite, requireReadableTripDocument } from './trip-document.ts';
 import { builderDetailsFingerprint, builderDocumentFingerprint } from './trip-builder-document-commit.ts';
+import {missingReturnJourney} from './missing-return-journey.ts';
+import {authoredContentKey} from './trip-retained-authored-content.ts';
+
+/** Explicit restoration uses the same necessary-prefix and pending-work contract
+ * as accepted Builder edits. The current mutation head is checked again here. */
+export function prepareMissingReturnJourneyRepair(trip:CanonicalEasyTTrip,expectedFingerprint:string){
+ if(builderDocumentFingerprint(trip)!==expectedFingerprint)return {ok:false as const,reason:'stale-source' as const};
+ const plan=missingReturnJourney(trip);
+ if(plan.kind!=='repairable')return {ok:false as const,reason:plan.kind};
+ const result=prepareBuilderNecessaryProjection(trip,trip,{legIds:[],scheduleStopIds:[],recommendationStopIds:[],endpointChanged:false,routeAssessment:false});
+ if(!result.ok)return result;
+ let restored=result.trip;
+ // The ordinary prefix materializes an empty ideas list. Restoration does not
+ // own that authored field, including the distinction between absent and empty.
+ if(trip.brief.itineraryIdeas===undefined&&restored.brief.itineraryIdeas?.length===0){const {itineraryIdeas:_empty,...brief}=restored.brief;restored={...restored,brief};}
+ if(restored.legs.length!==trip.legs.length+1||restored.legs.at(-1)?.id!==plan.legId)return {ok:false as const,reason:'invalid-bindings' as const};
+ const untouched=(value:CanonicalEasyTTrip)=>{
+  const {legs:_legs,brief,...rest}=value,{routeAssessment:_assessment,cascadeStatus,...saved}=brief;
+  const {routeReconciliation:_work,...status}=cascadeStatus??{conflicts:[],affectedBookingIds:[],affectedPlanItemCount:0};
+  return {...rest,brief:{...saved,cascadeStatus:status}};
+ };
+ if(authoredContentKey(restored.legs.slice(0,trip.legs.length))!==authoredContentKey(trip.legs)
+  ||authoredContentKey(untouched(restored))!==authoredContentKey(untouched(trip)))return {ok:false as const,reason:'invalid-bindings' as const};
+ return {ok:true as const,trip:restored,legId:plan.legId};
+}
 
 const endpointKey = (place: JourneyEndpointPlace | null) => JSON.stringify(place && {
   name: place.name, canonicalPlaceId: place.canonicalPlaceId, providerId: place.providerId, country: place.country, coordinates: place.coordinates,

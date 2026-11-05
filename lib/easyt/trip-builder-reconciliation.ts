@@ -1,4 +1,5 @@
 import { selectedTransportChoiceForLeg, effectiveTripLeg } from "./transport-mode-choice.ts";
+import {missingReturnJourney} from './missing-return-journey.ts';
 import { geographicDependency, stopGeographicPlace, guardTripRoutingGeometry } from './geographic-binding.ts';
 import { assessRouteIntelligence, routeIntelligenceForPersistence } from "./planner.ts";
 import { plannerEndpointForJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
@@ -154,10 +155,11 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
         if (consumption)
             before = prepareRetainedContentPreservationSource(before, validatedCandidate, consumption) as CanonicalEasyTTrip;
         let trip = retainRemovedAuthoredContent(before, validatedCandidate) as CanonicalEasyTTrip;
+        const restoringReturn=missingReturnJourney(trip).kind==='repairable';
         const oldPairs = new Map(before.legs.map(l => [pair(l), l]));
         const graph = buildCanonicalTripLegs({ tripId: trip.id, origin: { ...(trip.brief.intent.route.origin ?? { name: '' }), coordinates: trip.brief.intent.route.origin?.coordinates ?? null }, journeyEnd: trip.brief.intent.route.journeyEnd, stops: trip.stops });
         const changed = new Set<string>();
-        trip.legs = scope.legIds.length || scope.endpointChanged ? graph.map(leg => {
+        trip.legs = scope.legIds.length || scope.endpointChanged || restoringReturn ? graph.map(leg => {
             const old = oldPairs.get(pair(leg));
             const id = old?.id ?? `${trip.id}-leg:${encodeURIComponent(leg.fromStopId)}:${encodeURIComponent(leg.toStopId)}`;
             const same = old && authoredContentKey([place(routeEndpointForLeg(before, old, 'from')), place(routeEndpointForLeg(before, old, 'to'))]) === authoredContentKey([place(leg.fromEndpoint ?? null), place(leg.toEndpoint ?? null)]);
@@ -204,7 +206,7 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
         scope.recommendationStopIds.forEach(id => add('recommendation', id));
         if (scope.endpointChanged)
             add('endpoint', trip.id);
-        if (scope.routeAssessment) {
+        if (scope.routeAssessment || restoringReturn) {
             trip.brief.routeAssessment = undefined;
             add('assessment', trip.id);
         }
