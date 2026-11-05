@@ -22,7 +22,8 @@ Generated components/easyt/storybook/morrovia-visual-inventory.generated.json.
 │
 ●  Copying static files: public at storybook-static
 │  Vite vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 2885 modules transformed.
+[2K
+transforming...✓ 2885 modules transformed.
 rendering chunks...
 computing gzip size...
 │  Vite storybook-static/iframe.html
@@ -801,4 +802,3 @@ computing gzip size...
 │  /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/storybook-static
 │
 └  Storybook build completed successfully
-

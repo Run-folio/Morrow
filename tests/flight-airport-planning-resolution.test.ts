@@ -7,6 +7,8 @@ import {resolveCanonicalTransferJourney} from '../lib/easyt/multimodal-transfer-
 import {flightAirportAssumptionLabel} from '../lib/easyt/flight-airport-assumptions.ts';
 import {transferTimingLabel} from '../lib/easyt/transfer-timing-label.ts';
 import {transferJourneyModeLabel} from '../lib/easyt/transfer-journey.ts';
+import {transportPresentationState} from '../lib/easyt/itinerary-transport-agenda.ts';
+import {isPassengerServiceLeg,transportBookingMarkedByTraveller} from '../lib/easyt/transport-booking.ts';
 import {selectedTransferPlace} from './fixtures/accepted-transfer-place.ts';
 import type {TripLeg} from '../lib/easyt/trip.ts';
 import {japanTrip} from './fixtures/transport-choice.ts';
@@ -223,8 +225,14 @@ test('actual Transport summary presents a known planning total as Estimated',asy
   ts.forEachChild(node,visit);
  }visit(ast);assert(summary);assert(estimated);
  // Evaluate the owning card's real computation, not a test-supplied boolean.
- const body=ts.transpileModule(`const showsEstimatedTiming = ${estimated.getText(ast)}; return (${summary.getText(ast)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
- const render=new Function('React','leg','durationMinutes','transferJourneyModeLabel','transferTimingLabel','language','styles',body);
+ const card=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='TransportCard') as import('typescript').FunctionDeclaration;
+ const copy=ast.statements.find(node=>ts.isVariableStatement(node)&&node.declarationList.declarations.some(declaration=>declaration.name.getText(ast)==='copyFor'))!;
+ const presentation=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='presentationLabel')!;
+ const wanted=new Set(['state','isNotBooked','status','showsEstimatedTiming']);
+ const declarations=card.body!.statements.filter(node=>ts.isVariableStatement(node)&&node.declarationList.declarations.some(declaration=>wanted.has(declaration.name.getText(ast))));
+ assert.equal(declarations.length,4,'the timing paragraph uses actual status and timing computations');
+ const body=ts.transpileModule(`${copy.getText(ast)}\n${presentation.getText(ast)}\nconst copy=copyFor(language),item={booking:null,manualBooking:null};\n${declarations.map(node=>node.getText(ast)).join('\n')}\nreturn (${summary.getText(ast)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
+ const render=new Function('transportPresentationState','isPassengerServiceLeg','transportBookingMarkedByTraveller','React','leg','durationMinutes','transferJourneyModeLabel','transferTimingLabel','language','styles',body).bind(null,transportPresentationState,isPassengerServiceLeg,transportBookingMarkedByTraveller);
  const leg=(await resolveCanonicalTransferJourney(canonical())).leg;
  const output=render({createElement:(_type:unknown,_props:unknown,...children:unknown[])=>children.flat(Infinity).join('')},leg,leg.doorToDoorMinutes,transferJourneyModeLabel,transferTimingLabel,'en',{mode:'mode'});
  assert.match(output,/Estimated.*~4h.*total/);assert.doesNotMatch(output,/Timing to confirm/);
