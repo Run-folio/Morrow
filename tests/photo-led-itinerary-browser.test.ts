@@ -3,7 +3,7 @@ import test from 'node:test';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
 import {routeDestinationPhoto,routePhotoForSource} from '../lib/easyt/route-images.ts';
-import type { Route } from 'playwright';
+import type { Request, Route } from 'playwright';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
 import {itineraryPresentationImages} from '../lib/easyt/itinerary-presentation-images.ts';
@@ -85,7 +85,7 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.getByRole('dialog',{name:'Add a plan',exact:true}).waitFor();
     await view.page.keyboard.press('Escape');
     await view.page.route('**/journey/immersive/*.webp',(route: Route)=>route.abort());
-    const failedPhoto=view.page.waitForEvent('requestfailed',{predicate:r=>r.url().includes('/journey/immersive/')});
+    const failedPhoto=view.page.waitForEvent('requestfailed',{predicate:(r:Request)=>r.url().includes('/journey/immersive/')});
     await view.page.reload();await failedPhoto;
     await view.page.locator('[data-itinerary-photo="day"]').waitFor({state:'detached'});
     assert.equal(await view.page.getByText('No day photo',{exact:true}).count(),0);
