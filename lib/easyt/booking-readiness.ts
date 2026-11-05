@@ -1,3 +1,5 @@
+import {effectiveTripLeg} from './transport-mode-choice.ts';
+import {applyFlightSearchAirports,flightSearchAirportPlan,hasExplicitSavedFlightAirports,type FlightSearchAirport} from './flight-search-airport-choice.ts';
 import {qualifiedCityReturnSearch} from './omio-return-search.ts';
 import { flightPlanningAirports, flightAirportAssumptionLabel } from './flight-airport-assumptions.ts';
 import { tripHealth } from "./review.ts";
@@ -6,8 +8,8 @@ import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
 import { SPREADSHEET_IMPORT_PARSER_VERSION } from "./spreadsheet-import.ts";
-import { buildOmioRouteSearchLink, OMIO_TRACKING_BASE, validOmioDepartureDate } from "./omio-search-link.ts";
-import { travellerTransportBookingForLeg } from "./transport-booking.ts";
+import { buildOmioRouteSearchLink, omioHandoffIssue, OMIO_TRACKING_BASE, validOmioDepartureDate, type OmioHandoffIssue } from "./omio-search-link.ts";
+import { travellerTransportBookingForLeg, travellerTransportBookingMismatchForLeg } from "./transport-booking.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
@@ -101,6 +103,7 @@ export type ResolvedBookingAction = {
 
 export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "car_rental" | "connectivity" | "travel_insurance";
 export type ResolvedAffiliateAction = {
+  omioHandoffIssue?: OmioHandoffIssue;
   returnSearch?: { outboundLegId: string; returnLegId: string };
   provider: string;
   category: CurrentPartnerCategory;
@@ -109,15 +112,30 @@ export type ResolvedAffiliateAction = {
   affiliate: true;
 };
 
+/** Localize the limitation action without overwriting ordinary provider CTAs. */
+export function affiliateHandoffCta(action: ResolvedAffiliateAction, language: "en" | "es" = "en"): string {
+  if (language === "es" && action.provider === "omio" && action.category === "transport") {
+    if (action.href === affiliatePartners.omio.transportUrl) return "Buscar en Omio";
+    if (action.omioHandoffIssue === 'rail-date-outside-sales-window') return "Consultar ruta de tren en Omio";
+  }
+  return action.cta;
+}
+
 /** State only the context supported by the approved link contract. */
 export function affiliateHandoffDetail(
-  action: Pick<ResolvedAffiliateAction, "provider" | "category" | "href">,
+  action: Pick<ResolvedAffiliateAction, "provider" | "category" | "href" | "omioHandoffIssue">,
   language: "en" | "es" = "en",
 ): string | null {
   if (action.provider === "omio" && action.category === "transport") {
+    if (action.href === affiliatePartners.omio.transportUrl && action.omioHandoffIssue === 'departure-airport-required') return language === "es"
+      ? "Búsqueda general: elige el aeropuerto de salida e introduce la ruta, las fechas y el número de viajeros en Omio."
+      : "General search: choose a departure airport and enter your route, dates and traveller count on Omio.";
     if (action.href === affiliatePartners.omio.transportUrl) return language === "es"
       ? "Búsqueda general: introduce la ruta, las fechas y el número de viajeros en Omio."
       : "General search: enter your route, dates and traveller count on Omio.";
+    if (action.omioHandoffIssue === 'rail-date-outside-sales-window') return language === "es"
+      ? "Esta fecha está fuera del plazo habitual de venta de 15 días. Comprueba cuándo salen los billetes y el número de viajeros en Omio."
+      : "This date is beyond the usual 15-day ticket-sale window. Check release dates and traveller count on Omio.";
     return language === "es"
       ? "Se transfieren la ruta y las fechas, pero no el número de viajeros. Compruébalo en Omio antes de reservar."
       : "Route and dates are sent; traveller count is not carried over. Check it on Omio before booking.";
@@ -354,7 +372,8 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     || (leg.mode === "mixed" && hasSupportedOmioSegment(leg));
   if (!supported) return null;
 
-  const pair = qualifiedCityReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
+  const hasAirportOverride = trip.legs.some(candidate => {if(!trip.brief.flightSearchAirportsByLeg?.[candidate.id])return false;const plan=flightSearchAirportPlan(trip,effectiveTripLeg(trip,candidate));return plan?.from.selected||plan?.to.selected;});
+  const pair = hasAirportOverride ? null : qualifiedCityReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
   if (pair) {
     const href = buildOmioRouteSearchLink({ ...pair, mode: "flight", currency: trip.currency, now });
     if (href) return {
@@ -368,11 +387,13 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   const partial = leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null;
   // Flight-search preferences are derived; canonical city endpoints and timing
   // remain unchanged. No airport default establishes a scheduled service.
-  const flightPlan = leg.mode === "flight" ? flightPlanningAirports({ ...leg, fromEndpoint: from, toEndpoint: to }) : null;
+  const flightPlan = leg.mode === "flight" ? flightSearchAirportPlan(trip,leg) : null;
   const searchFrom = flightPlan?.from.endpoint ?? from;
   const searchTo = flightPlan?.to.endpoint ?? to;
-  const airportAssumption = flightAirportAssumptionLabel({ ...leg, fromEndpoint: from, toEndpoint: to });
-  const routeSearchUrl = buildOmioRouteSearchLink({
+  const airportAssumption = flightPlan?.from.selected||flightPlan?.to.selected
+    ? `Flight-search airports: ${searchFrom.name} → ${searchTo.name}. Airport access and onward travel are separate.`
+    : flightAirportAssumptionLabel({ ...leg, fromEndpoint: from, toEndpoint: to });
+  const searchInput = {
     mode: leg.mode,
     originName: searchFrom.name,
     originCountry: searchFrom.country ?? "",
@@ -381,7 +402,9 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     departureDate: resolvedDate,
     currency: trip.currency,
     now,
-  });
+  };
+  const handoffIssue = omioHandoffIssue(searchInput);
+  const routeSearchUrl = buildOmioRouteSearchLink(searchInput);
   return {
     id: `omio-${leg.id}`,
     category: "transport",
@@ -390,8 +413,9 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     detail: [partial
       ? "Compare transport options on Omio before relying on this connection; coverage and schedules vary by route."
       : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare transport options on Omio before booking.`, airportAssumption].filter(Boolean).join(" "),
-    cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
+    cta: !routeSearchUrl ? "Search on Omio" : handoffIssue === 'rail-date-outside-sales-window' ? "Check rail route on Omio" : partial ? "Check transport options on Omio" : "Compare transport on Omio",
     href: routeSearchUrl ?? affiliatePartners.omio.transportUrl,
+    omioHandoffIssue: handoffIssue ?? undefined,
     tripId: trip.id,
     stopId: to.kind === "stop" ? to.id : undefined,
     transferId: leg.id,
@@ -520,4 +544,18 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
   }
 
   return actions;
+}
+
+/** Edit only unbooked planning searches; saved explicit flight parts remain authoritative. */
+export function canEditFlightSearchAirports(trip:EasyTTrip,leg:TripLeg):boolean {
+ const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to');
+ return leg.mode==='flight'&&!!from&&!!to&&!!flightSearchAirportPlan(trip,leg)
+  &&!transportBookingForLeg(trip,leg,from,to)
+  &&!travellerTransportBookingMismatchForLeg(trip,leg)
+  &&!hasExplicitSavedFlightAirports(leg);
+}
+export function setFlightSearchAirports(trip:EasyTTrip,legId:string,value:{from:FlightSearchAirport|null;to:FlightSearchAirport|null}|null,basis:string):EasyTTrip {
+ const source=trip.legs.find(l=>l.id===legId);if(!source)return trip;
+ const leg=effectiveTripLeg(trip,source);if(!canEditFlightSearchAirports(trip,leg))return trip;
+ return applyFlightSearchAirports(trip,leg,value,basis);
 }

@@ -1,3 +1,7 @@
+import flightSearchAirportsFixture from './storybook/flight-search-airports-trip.fixture.json';
+import {requireReadableTripDocument} from '../../lib/easyt/trip-document';
+const flightSearchAirportsTrip = requireReadableTripDocument(flightSearchAirportsFixture);
+import {savedJourneyPartsTrip} from '../../tests/fixtures/saved-journey-parts';
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within, waitFor } from "storybook/test";
@@ -8,6 +12,7 @@ import TripTransportWorkspace from "./trip-transport-workspace";
 import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "@/lib/easyt/transport-mode-choice";
 import { japanTrip } from "../../tests/fixtures/transport-choice";
 import { markTransportLegBooked } from "@/lib/easyt/transport-booking";
+import { assertTransportHeaderFits } from "./storybook/transport-header-layout";
 
 const transportTrip: EasyTTrip = {
   ...cancunReturnTripFixture,
@@ -185,12 +190,26 @@ type Story = StoryObj<typeof meta>;
 export const CanonicalAgenda: Story = {};
 export const NamibiaSelfDrivePlanningEstimates: Story = { args: { trip: namibiaTransportTrip } };
 export const CanonicalAgendaSpanish: Story = { args: { language: "es" } };
-export const CanonicalAgendaMobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
+async function verifyResponsiveTransportHeader(canvasElement: HTMLElement) {
+  await canvasElement.ownerDocument.fonts.ready;
+  assertTransportHeaderFits(canvasElement);
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole("button", { name: /^(Show map|Mostrar mapa)$/ }));
+  await waitFor(() => expect(canvas.getByRole("button", { name: /^(Hide map|Ocultar mapa)$/ })).toBeInTheDocument());
+  assertTransportHeaderFits(canvasElement);
+  await userEvent.click(canvas.getByRole("button", { name: /^(Hide map|Ocultar mapa)$/ }));
+  await waitFor(() => expect(canvas.getByRole("button", { name: /^(Show map|Mostrar mapa)$/ })).toBeInTheDocument());
+  assertTransportHeaderFits(canvasElement);
+}
+
+export const CanonicalAgendaMobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, play: async ({ canvasElement }) => { await verifyResponsiveTransportHeader(canvasElement); } };
+export const CanonicalAgendaSpanishMobile320: Story = { args: { language: "es" }, globals: { viewport: { value: "morrovia320", isRotated: false } }, play: async ({ canvasElement }) => { await verifyResponsiveTransportHeader(canvasElement); } };
 export const CanonicalAgendaMobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const CanonicalAgendaMobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const CanonicalAgendaTablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const CanonicalAgendaDesktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
-export const CanonicalAgendaDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const CanonicalAgendaDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } }, play: async ({ canvasElement }) => { await verifyResponsiveTransportHeader(canvasElement); } };
+export const CanonicalAgendaSpanishDesktop1440: Story = { args: { language: "es" }, globals: { viewport: { value: "morrovia1440", isRotated: false } }, play: async ({ canvasElement }) => { await verifyResponsiveTransportHeader(canvasElement); } };
 export const SelectedJourneyDesktop1440: Story = {
   globals: { viewport: { value: "morrovia1440", isRotated: false } }, tags: ["current-ui"],
   parameters: { a11y: { test: "error" } },
@@ -281,3 +300,54 @@ export const TransportReviewAndBookingStatusesMobile320:Story={...IdentifiableTr
 export const TransportReviewAndBookingStatusesSpanishMobile320:Story={...IdentifiableTransportStatusesSpanishMobile320,parameters:{a11y:{test:'error'},nextjs:{navigation:{query:{review:markedStatusExamples.legs[0].id}}}},play:async({canvasElement})=>{
  await expect(within(canvasElement).getByText('Revisar ruta')).toBeVisible();await verifyTransportStatusLayout(canvasElement,'es');
 }};
+
+// Entirely synthetic parts: exercises presentation, never real service availability.
+export const SavedFlightPartsMobile320: Story = {
+  args: {trip:savedJourneyPartsTrip()}, globals:{viewport:{value:'morrovia320',isRotated:false}},
+  parameters:{a11y:{test:'error'}},
+  play:async({canvasElement})=>{
+    const canvas=within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole('button',{name:/^View details:/}))[0]);
+    await expect(canvas.getByRole('list',{name:'Details to check'})).toHaveTextContent('Tokyo → Synthetic departure airport');
+    const toggle=canvas.getByRole('button',{name:'Journey details'});
+    toggle.focus();await userEvent.keyboard('{Enter}');
+    await expect(canvas.getByRole('list',{name:'Saved journey parts'})).toHaveTextContent('Synthetic departure airport → Synthetic arrival airport');
+    await expect(toggle).toHaveAttribute('aria-expanded','true');
+    await expect(toggle).toHaveFocus();
+    const parts=canvas.getByRole('list',{name:'Saved journey parts'});
+    const bounds=parts.getBoundingClientRect();
+    await expect(bounds.left).toBeGreaterThanOrEqual(0);
+    await expect(bounds.right).toBeLessThanOrEqual(canvasElement.ownerDocument.documentElement.clientWidth+1);
+    await expect(parts.scrollWidth).toBeLessThanOrEqual(parts.clientWidth+1);
+    await verifyResponsiveTransportHeader(canvasElement);
+  },
+};
+export const SavedFlightPartsSpanishMobile320: Story = {
+  args:{trip:savedJourneyPartsTrip(),language:'es'},globals:{viewport:{value:'morrovia320',isRotated:false}},
+  parameters:{a11y:{test:'error'}},
+  play:async({canvasElement})=>{
+    const canvas=within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole('button',{name:/^Ver detalles:/}))[0]);
+    await userEvent.click(canvas.getByRole('button',{name:'Detalles del trayecto'}));
+    await expect(canvas.getByRole('list',{name:'Tramos guardados'})).toHaveTextContent('Vuelo');
+    await expect(canvas.getByRole('list',{name:'Detalles por confirmar'})).toHaveTextContent('No se muestran');
+    await verifyResponsiveTransportHeader(canvasElement);
+  },
+};
+export const SavedCompleteJourneyDesktop1440: Story = {args:{trip:savedJourneyPartsTrip(true)},globals:{viewport:{value:'morrovia1440',isRotated:false}}};
+export const BookedFlightWithMissingTravelDetails: Story = {args:{trip:savedJourneyPartsTrip(false,true)}};
+
+export const EditableFlightSearchAirportsMobile320: Story = {
+ args:{trip:flightSearchAirportsTrip},globals:{viewport:{value:'morrovia320',isRotated:false}},parameters:{a11y:{test:'error'}},
+ play:async({canvasElement})=>{
+  const canvas=within(canvasElement);
+  await userEvent.click((await canvas.findAllByRole('button',{name:/^View details:/}))[0]);
+  await userEvent.click(canvas.getByRole('button',{name:'Change flight-search airports'}));
+  await expect(canvas.getByRole('combobox',{name:'Departure airport'})).toBeVisible();
+  await expect(canvas.getByRole('combobox',{name:'Arrival airport'})).toBeVisible();
+  await expect(canvas.getByText(/Flight search only\./)).toBeVisible();
+  await userEvent.click(canvas.getByRole('button',{name:'Cancel'}));
+  await expect(canvas.queryByRole('combobox',{name:'Departure airport'})).not.toBeInTheDocument();
+ },
+};
+export const EditableFlightSearchAirportsSpanishMobile320: Story = {args:{trip:flightSearchAirportsTrip,language:'es'},globals:{viewport:{value:'morrovia320',isRotated:false}}};

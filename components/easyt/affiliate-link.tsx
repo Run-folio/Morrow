@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { useState, useId, type ReactNode } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/easyt/affiliate-click";
-import { affiliateProviderLabel, affiliateHandoffDetail, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { affiliateProviderLabel, affiliateHandoffDetail, affiliateHandoffCta, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { EasyTLinkButton } from "./easyt-controls";
 import { MorroviaContextualDisclosure } from "./morrovia-feedback";
 import styles from "./affiliate-link.module.css";
@@ -76,8 +76,9 @@ export function MorroviaAffiliateLink({
     onClickSupplement?.();
   };
   const handoffDetail = affiliateHandoffDetail(action, language);
+  const cta = affiliateHandoffCta(action, language);
   const handoffId = useId();
-  const accessibleLabel = `${action.cta}, opens ${providerLabel} in a new tab`;
+  const accessibleLabel = `${cta}, opens ${providerLabel} in a new tab`;
   if (renderAsSurface) {
     return <a
       className={className}
@@ -87,7 +88,7 @@ export function MorroviaAffiliateLink({
       aria-describedby={handoffDetail ? handoffId : undefined}
       data-affiliate-provider={action.provider}
       onClick={onClick}
-    >{children ?? action.cta}{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}<span className="sr-only">{`Opens ${providerLabel} in a new tab.`}</span></a>;
+    >{children ?? cta}{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}<span className="sr-only">{`Opens ${providerLabel} in a new tab.`}</span></a>;
   }
   return <><EasyTLinkButton
     className={className}
@@ -103,5 +104,5 @@ export function MorroviaAffiliateLink({
     iconOnly={iconOnly}
     data-affiliate-provider={action.provider}
     onClick={onClick}
-  >{children ?? action.cta}</EasyTLinkButton>{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}</>;
+  >{children ?? cta}</EasyTLinkButton>{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}</>;
 }

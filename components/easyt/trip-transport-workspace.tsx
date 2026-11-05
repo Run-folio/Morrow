@@ -1,6 +1,9 @@
 "use client";
+import {TripFlightSearchAirports} from './trip-flight-search-airports';
+import {flightSearchAirportPlan} from '@/lib/easyt/flight-search-airport-choice';
 import {adoptTransportComparison} from "@/lib/easyt/transport-comparison";
 import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptions';
+import {transportJourneyParts, journeyPartGapLabel} from '@/lib/easyt/transport-journey-parts';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +31,7 @@ import styles from "./trip-transport-workspace.module.css";
 type Language = "en" | "es";
 
 const copyFor = (language: Language) => language === "es" ? {
+  savedParts: "Tramos guardados", incompleteParts: "Algunos detalles guardados necesitan revisión.", partModes: {flight:"Vuelo",train:"Tren",road:"Carretera",ferry:"Ferri",walk:"A pie",unknown:"Modo por confirmar"},
   eyebrow: "Transporte", heading: "Tus conexiones", journeyDetails: "Detalles del trayecto", findTrains: "Buscar trenes", findFlights: "Buscar vuelos", findTransport: "Buscar transporte",
   empty: "El transporte aparecerá cuando la ruta incluya un trayecto entre lugares.", journey: "trayecto", journeys: "trayectos",
   bookedCount: "reservados", planningEstimates: "estimaciones de planificación", timetableChecks: "consultar horario", serviceChecks: "confirmar servicio", needsChecking: "necesitan comprobarse",
@@ -44,6 +48,7 @@ const copyFor = (language: Language) => language === "es" ? {
   omioFlightDetailsCarried: "Abre una búsqueda de vuelos con esta ruta y fecha. No se transfiere el número de viajeros; la disponibilidad puede variar.",
   omioTrainDetailsCarried: "Abre una búsqueda de trenes con esta ruta y fecha. No se transfiere el número de viajeros; la disponibilidad puede variar.",
 } : {
+  savedParts: "Saved journey parts", incompleteParts: "Some saved journey details need checking.", partModes: {flight:"Flight",train:"Rail",road:"Road",ferry:"Ferry",walk:"Walk",unknown:"Mode to confirm"},
   eyebrow: "Transport", heading: "Your connections", journeyDetails: "Journey details", findTrains: "Find trains", findFlights: "Find flights", findTransport: "Find transport",
   empty: "Transport will appear once the route includes a journey between places.", journey: "journey", journeys: "journeys",
   bookedCount: "booked", planningEstimates: "planning estimates", timetableChecks: "check timetable", serviceChecks: "check service", needsChecking: "need checking",
@@ -263,12 +268,18 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { leg } = item;
   const recommendedLeg = trip.legs.find((candidate) => candidate.id === leg.id) ?? leg;
+  const journeyParts = transportJourneyParts(leg);
   const pendingKey = `transport-choice-${leg.id}`;
   const action = item.booking || item.bookingMismatch || !isFutureDate(item.date) ? null : transportAffiliateActionForLeg(trip, leg, new Date(), item.date);
   const detailNotes = [...new Set([noteForJourney(item, copy, language), detailNoteForJourney(item, copy, language)].filter((value): value is string => Boolean(value)))];
-  const airportAssumption = item.booking || item.bookingMismatch ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
+  const searchAirports = flightSearchAirportPlan(trip,leg);
+  const visibleJourneyGaps = journeyParts.gaps.filter(gap=>gap.kind!=='departure-airport'||!searchAirports?.from.selected);
+  const airportAssumption = item.booking || item.bookingMismatch || searchAirports?.from.selected || searchAirports?.to.selected ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
   return <section className={styles.selectedDetail} aria-live="polite" aria-label={copy.journeyDetails}>
     {airportAssumption ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
+    {journeyParts.incomplete ? <p>{copy.incompleteParts}</p> : null}
+    {visibleJourneyGaps.length ? <ul className={styles.journeyGaps} aria-label={language === "es" ? "Detalles por confirmar" : "Details to check"}>{visibleJourneyGaps.map((gap, index) => <li key={`${gap.kind}-${index}`}>{journeyPartGapLabel(gap, language)}</li>)}</ul> : null}
+    <TripFlightSearchAirports trip={trip} leg={leg} language={language} />
     <div className={styles.connectionActions}>
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
@@ -295,6 +306,7 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
     {action ? <small className={styles.partnerNote}>{visibleAffiliateDisclosure}</small> : null}
     <EasyTButton className={styles.journeyDetailsToggle} size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`journey-estimates-${leg.id}`} onClick={() => setDetailsOpen((open) => !open)}>{copy.journeyDetails}</EasyTButton>
     <div id={`journey-estimates-${leg.id}`} hidden={!detailsOpen} className={styles.journeyDetails}>
+      {journeyParts.parts.length ? <ol className={styles.journeyParts} aria-label={copy.savedParts}>{journeyParts.parts.map((part, index) => <li key={`${part.id}-${index}`}><span>{copy.partModes[part.mode]} · {part.fromEndpoint.name} → {part.toEndpoint.name}</span><small>{transferTimingLabel(part, "total", copy.timeUnknown)}{part.scheduleNeedsChecking ? ` · ${copy.checkService}` : ""}</small></li>)}</ol> : null}
       {detailNotes.map((note) => <p key={note}>{note}</p>)}
       {leg.provider ? <p>{leg.provider}</p> : null}
       {action ? <small>{affiliateDisclosure}</small> : null}
@@ -343,6 +355,6 @@ function isFutureDate(value: string | null) {
 
 function TransportAffiliateAction({ action, trip, leg, label, language }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string; language: Language }) {
   return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} variant="primary" />
+    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch || action.omioHandoffIssue || action.href === affiliatePartners.omio.transportUrl ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} variant="primary" />
   </div>;
 }

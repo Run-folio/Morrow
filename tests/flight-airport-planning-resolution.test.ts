@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {authoredContentKey} from '../lib/easyt/trip-retained-authored-content.ts';
 import test from 'node:test';
+import {transportGuidanceForLeg} from '../lib/easyt/transport-comparison.ts';
 import {buildCanonicalTripLegs} from '../lib/easyt/trip-legs.ts';
 import {resolveCanonicalTransferJourney} from '../lib/easyt/multimodal-transfer-resolution.ts';
 import {flightAirportAssumptionLabel} from '../lib/easyt/flight-airport-assumptions.ts';
@@ -81,7 +82,7 @@ for(const afterRefresh of [false,true])test(`actual Change transport dialog requ
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='TransportModeDialog');assert(declaration);
  const js=ts.transpileModule(`${declaration.getText(ast)};return TransportModeDialog;`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
  const states:unknown[]=[];let cursor=0;
- const dependencies={authoredContentKey,useTransportComparison:()=>({state:{status:afterRefresh?'ready':'idle',...(afterRefresh?{comparison:{candidates:[],assessment:{retrieval:'completed'}}}:{})},allowed:true,cancel:()=>{},refresh:async()=>{}}),React:{Fragment:'fragment',createElement:(type:unknown,props:any,...children:unknown[])=>({type,props:{...props,children:children.flat(Infinity)}})},
+ const dependencies={transportGuidanceForLeg,authoredContentKey,useTransportComparison:()=>({state:{status:afterRefresh?'ready':'idle',...(afterRefresh?{comparison:{candidates:[],assessment:{retrieval:'completed'}}}:{})},allowed:true,cancel:()=>{},refresh:async()=>{}}),React:{Fragment:'fragment',createElement:(type:unknown,props:any,...children:unknown[])=>({type,props:{...props,children:children.flat(Infinity)}})},
   useState:(initial:unknown)=>{const index=cursor++;if(!(index in states))states[index]=initial;return [states[index],(next:unknown)=>{states[index]=next;}];},useId:()=> 'unknown-choice',
   selectedTransportChoiceForLeg,supportedTransportChoicesForLeg,transferTimingLabel,routeEndpointForLeg,formatIsoDate:(date:string)=>date,
   modeLabels:{unknown:'Transport to confirm',flight:'Flight'},EasyTButton:'button',MorroviaContentDialog:'dialog',
@@ -214,16 +215,25 @@ test('actual Transport summary presents a known planning total as Estimated',asy
  const source=readFileSync('components/easyt/trip-transport-workspace.tsx','utf8');
  const ast=ts.createSourceFile('transport.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let summary:import('typescript').JsxElement|undefined;
+ let estimated:import('typescript').Expression|undefined;
  function visit(node:import('typescript').Node){
+  if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='showsEstimatedTiming')estimated=node.initializer;
   if(ts.isJsxElement(node)&&node.openingElement.tagName.getText(ast)==='p'
    &&node.openingElement.attributes.getText(ast).includes('styles.mode'))summary=node;
   ts.forEachChild(node,visit);
- }visit(ast);assert(summary);
- const body=ts.transpileModule(`return (${summary.getText(ast)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
+ }visit(ast);assert(summary);assert(estimated);
+ // Evaluate the owning card's real computation, not a test-supplied boolean.
+ const body=ts.transpileModule(`const showsEstimatedTiming = ${estimated.getText(ast)}; return (${summary.getText(ast)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
  const render=new Function('React','leg','durationMinutes','transferJourneyModeLabel','transferTimingLabel','language','styles',body);
  const leg=(await resolveCanonicalTransferJourney(canonical())).leg;
  const output=render({createElement:(_type:unknown,_props:unknown,...children:unknown[])=>children.flat(Infinity).join('')},leg,leg.doorToDoorMinutes,transferJourneyModeLabel,transferTimingLabel,'en',{mode:'mode'});
  assert.match(output,/Estimated.*~4h.*total/);assert.doesNotMatch(output,/Timing to confirm/);
+ const confirmed={...leg,provenance:'canonical_schedule' as const};
+ const confirmedOutput=render({createElement:(_type:unknown,_props:unknown,...children:unknown[])=>children.flat(Infinity).join('')},confirmed,240,transferJourneyModeLabel,transferTimingLabel,'en',{mode:'mode'});
+ assert.doesNotMatch(confirmedOutput,/Estimated/,'confirmed schedule timing must not borrow the planning qualifier');
+ const unknown={...leg,mode:'unknown' as const,durationMinutes:null,doorToDoorMinutes:null};
+ const unknownOutput=render({createElement:(_type:unknown,_props:unknown,...children:unknown[])=>children.flat(Infinity).join('')},unknown,null,transferJourneyModeLabel,transferTimingLabel,'en',{mode:'mode'});
+ assert.doesNotMatch(unknownOutput,/Estimated|total/,'unknown timing must not acquire a planning total');
 });
 
 

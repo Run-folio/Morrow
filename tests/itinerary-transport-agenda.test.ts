@@ -215,6 +215,9 @@ test("uses the existing Omio eligibility resolver for real origins while suppres
   assert.equal(route.searchParams.get("departureDate"), source.startDate);
   assert.equal(route.searchParams.get("travelMode"), "TRAIN");
   assert.equal(JSON.stringify(source), withBooking, "Origin handoff cannot alter either the trip or its existing booking");
+  const origin = source.legs[0]!;
+  source.brief.bookings.push({ id: `transport-${origin.id}`, type: "transport", title: "Booked arrival", date: source.startDate, confirmation: null, url: null });
+  assert.equal(omioBookingActionForLeg(source, origin, new Date("2026-09-10T12:00:00Z")), null);
   assert.equal(omioBookingActionForLeg(source, source.legs[3]!, new Date("2026-09-10T12:00:00Z")), null);
 });
 

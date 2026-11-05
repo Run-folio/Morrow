@@ -122,3 +122,13 @@
   .bookingForm > :last-of-type { grid-column: auto; }
   .manualBooking { width: 100%; }
 }
+
+/* Saved parts share the existing detail typography and wrap within the mobile agenda. */
+.journeyParts, .journeyGaps { margin: 0; padding-inline-start: 20px; min-width: 0; overflow-wrap: anywhere; }
+.journeyParts { display: grid; gap: 8px; list-style: decimal; }
+.journeyParts li { min-width: 0; }
+.journeyParts span, .journeyParts small { display: block; }
+.journeyGaps { list-style: disc; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
+
+.airportSearch, .airportSearch form { min-width: 0; display: grid; gap: 12px; }
+.airportSearch p { margin: 0; overflow-wrap: anywhere; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }

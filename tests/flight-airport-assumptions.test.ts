@@ -1,3 +1,4 @@
+import {flightSearchAirportPlan} from '../lib/easyt/flight-search-airport-choice.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {flightPlanningAirports,flightAirportAssumptionLabel,FLIGHT_AIRPORT_DEFAULTS} from '../lib/easyt/flight-airport-assumptions.ts';
@@ -91,8 +92,9 @@ test('actual Transport detail keeps assumption visible for retained unmarked boo
  let initializer:import('typescript').Expression|undefined;
  function visit(node:import('typescript').Node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='airportAssumption')initializer=node.initializer;ts.forEachChild(node,visit);}visit(ast);
  assert(initializer);const text=ts.transpileModule(`return (${initializer.getText(ast)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const evaluate=new Function('item','leg','language','flightAirportAssumptionLabel',text);
- const sourceLeg=leg(),item={from:paris,to:london,booking:null,manualBooking:{travellerMarkedBooked:false},bookingMismatch:null};
- assert.match(evaluate(item,sourceLeg,'en',flightAirportAssumptionLabel),/CDG.*LHR/);
- assert.equal(evaluate({...item,booking:{travellerMarkedBooked:true}},sourceLeg,'en',flightAirportAssumptionLabel),null);
+ const evaluate=new Function('item','leg','language','flightAirportAssumptionLabel','searchAirports',text);
+ const sourceLeg=leg(),searchAirports=flightSearchAirportPlan(canonicalRouteFixture(),sourceLeg),item={from:paris,to:london,booking:null,manualBooking:{travellerMarkedBooked:false},bookingMismatch:null};
+ assert.match(evaluate(item,sourceLeg,'en',flightAirportAssumptionLabel,searchAirports),/CDG.*LHR/);
+ assert.equal(evaluate(item,sourceLeg,'en',flightAirportAssumptionLabel,{...searchAirports,from:{...searchAirports!.from,selected:true}}),null,'selected airports must not display an outdated default assumption');
+ assert.equal(evaluate({...item,booking:{travellerMarkedBooked:true}},sourceLeg,'en',flightAirportAssumptionLabel,searchAirports),null);
 });

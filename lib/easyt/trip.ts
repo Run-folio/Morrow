@@ -453,6 +453,8 @@ export type TripBrief = {
   cascadeStatus?: TripCascadeStatus;
   /** The traveller's explicit choice where Morrovia presented meaningful alternatives. */
   decisionSelections?: TripDecisionSelections;
+  /** Optional flight-search preferences; never canonical routing or booking evidence. */
+  flightSearchAirportsByLeg?: Record<string, import("./flight-search-airport-choice.ts").FlightSearchAirportPreference>;
 };
 
 export type TripBudgetPreference = {

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from "typescript";
+import { affiliatePartners } from "../lib/easyt/booking-readiness.ts";
 
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const transport = readFileSync(new URL("../components/easyt/trip-transport-workspace.tsx", import.meta.url), "utf8");
@@ -36,8 +38,9 @@ test("Transport derives its agenda and mutates only the shared canonical leg cho
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "from"\)/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "to"\)/);
   assert.match(projection, /transportBookingForLeg\(trip, leg, fromStop, toStop\)/);
-  assert.match(projection, /itineraryDateForLeg\(trip, leg, to\)/);
+  assert.match(projection, /\.\.\.itineraryDateForLeg\(trip, leg, to\)/);
   assert.match(transportDate, /to\.kind === "end"[\s\S]*date: trip\.endDate, dayNumber: null/);
+
   assert.doesNotMatch(projection, /mutate|setTrip|fetch\(/);
   assert.match(transport, /useTripShellMutation/);
   assert.match(transport, /TripTransportChoiceControl/);
@@ -70,10 +73,12 @@ test("Transport presents a calm chronological journey list with one contextual a
 
 test("transport partners use the existing affiliate handoff and cannot mutate canonical state", () => {
   assert.match(transport, /function TransportAffiliateAction/);
-  assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
+  assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta:/, "shared-link wiring remains intact");
+  assert.match(transport, /action=\{\{ \.\.\.action, cta: [^}]+ \}\}/, "caller copies the action instead of mutating it");
+  assert.match(transport, /cta: [^}]+ \}\}[\s\S]*variant="primary"/, "primary affiliate placement remains intact");
+  assertAffiliateHandoff();
   assert.match(transport, /placement: "itinerary_transfer"/);
-  assert.match(transport, /action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
-  assert.match(transport, /cta: action\.returnSearch \? action\.cta : label \}\}[\s\S]*variant="primary"/);
+
   assert.doesNotMatch(transport, /MorroviaPartnerPromotion|Contact support|Need help/);
   assert.match(transport, /<small>\{affiliateDisclosure\}<\/small>/);
   const action = transport.slice(transport.indexOf("function TransportAffiliateAction"));
@@ -127,7 +132,8 @@ test("Transport summary and cards use traveller-facing states, mode-aware copy, 
   assert.doesNotMatch(transport, /Planning estimate; check live schedules before booking\./);
   assert.match(transport, /Compare car hire/);
   assert.match(transport, /transportAffiliateActionForLeg\(trip, leg/);
-  assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
+  assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta:/);
+  assertAffiliateHandoff();
   assert.match(transport, /affiliateDisclosure/);
   assert.equal((transport.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
 });
@@ -154,4 +160,43 @@ test("the first-class workspace has responsive Storybook coverage and narrow-scr
   assert.match(transportStyles, /\.cardBody h3 \{[\s\S]*overflow-wrap: anywhere/);
   assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*--row-columns: 52px 24px minmax\(0, 1fr\)/);
   assert.match(transportStyles, /\.summary \{[^}]*grid-template-columns: var\(--row-columns\)/, "the summary retains the responsive card columns");
+});
+
+// A changed CTA, lost attribution or mutation of the input action must fail here.
+function assertAffiliateHandoff(source = transport) {
+  const ast = ts.createSourceFile("transport.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declaration = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "TransportAffiliateAction");
+  assert.ok(declaration);
+  const js = ts.transpileModule(declaration.getText(ast), { compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const scope = { React: { createElement: (type: unknown, props: any, ...children: unknown[]) => ({ type, props: { ...props, children } }) }, styles: { omioAction: "omioAction" }, MorroviaAffiliateLink: "affiliate", affiliatePartners };
+  const render = new Function("scope", `with(scope){${js}; return TransportAffiliateAction;}`)(scope);
+  for (const [input, expectedCta] of [
+    [{ href: "https://partner.example/search", cta: "Compare transport" }, "Find trains"],
+    [{ href: "https://partner.example/search", cta: "Return search", returnSearch: { outboundLegId: "out", returnLegId: "back" } }, "Return search"],
+    [{ href: affiliatePartners.omio.transportUrl, cta: "Search on Omio" }, "Search on Omio"],
+    [{ href: affiliatePartners.omio.transportUrl, cta: "Search on Omio", omioHandoffIssue: "departure-airport-required" }, "Search on Omio"],
+    [{ href: "https://partner.example/search", cta: "Check rail route on Omio", omioHandoffIssue: "rail-date-outside-sales-window" }, "Check rail route on Omio"],
+  ] as const) {
+    const action = Object.freeze({ provider: "omio", ...input });
+    const before = JSON.stringify(action);
+    const result = render({ action, trip: { id: "trip" }, leg: { id: "leg", fromStopId: "from", toStopId: "to" }, label: "Find trains", language: "es" });
+    const link = result.props.children[0];
+    assert.equal(link.type, "affiliate");
+    assert.deepEqual(link.props.action, { ...action, cta: expectedCta });
+    assert.deepEqual(link.props.context, { placement: "itinerary_transfer", tripId: "trip", transferId: "leg", originStopId: "from", destinationStopId: "to" });
+    assert.equal(link.props.variant, "primary");
+    assert.equal(link.props.language, "es");
+    assert.equal(JSON.stringify(action), before);
+  }
+}
+
+test("affiliate behavioral checks reject lost return copy, attribution and primary placement", () => {
+  for (const [before, after] of [
+    ["cta: action.returnSearch || action.omioHandoffIssue || action.href === affiliatePartners.omio.transportUrl ? action.cta : label", "cta: label"],
+    ["tripId: trip.id", "tripId: 'wrong-trip'"],
+    ['language={language} variant="primary"', 'language={language} variant="secondary"'],
+  ]) {
+    assert.ok(transport.includes(before), "negative control must alter the production component");
+    assert.throws(() => assertAffiliateHandoff(transport.replace(before, after)), assert.AssertionError);
+  }
 });
