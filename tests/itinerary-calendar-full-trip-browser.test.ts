@@ -60,7 +60,9 @@ test("Dense Calendar opens all twelve activities and exposes multiple saved stay
     await page.goto(story('calendar-dense-twelve-activities'));
     await page.locator('[data-itinerary-activity-id]').nth(11).waitFor();
     assert.equal(await page.locator('[data-itinerary-activity-id]').count(), 12);
+    // Rows render before the inherited Storybook play switches to Calendar.
     const selected = page.locator(`${calendarDays}[data-selected="true"]`);
+    await selected.getByRole('button', { name: 'Show all 12 items for Day 2' }).waitFor();
     assert.equal(await selected.locator('ul li').count(), 5, 'four previews plus More');
     await selected.getByRole('button', { name: 'Show all 12 items for Day 2' }).click();
     assert.equal(await page.locator('[data-itinerary-activity-id]').count(), 12);
@@ -88,7 +90,8 @@ test("Calendar thumbnails load or fall back to category icons without changing s
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(story('calendar-image-fallbacks'));
-      if (width < 1100) await page.locator(calendarDays).nth(1).locator('button').first().click();
+      // Route restoration starts on Day 1; the three image fixtures belong to Day 2.
+      await page.locator(calendarDays).nth(1).locator('button').first().click();
       const rows = page.locator('[data-itinerary-activity-id]');
       await rows.nth(2).waitFor();
       const loaded = page.locator('[data-itinerary-activity-id="calendar-loaded-image"] img');
@@ -102,7 +105,7 @@ test("Calendar thumbnails load or fall back to category icons without changing s
       await failed.locator('svg').waitFor();
       assert.equal(await missing.locator('svg').count(), 1);
       assert.equal(await failed.locator('img').count(), 0);
-      const sizes = await Promise.all([loaded.locator('..'), missing, failed].map(slot => slot.evaluate((el: HTMLElement) => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])));
+      const sizes = await Promise.all([loaded.locator('..'), missing, failed].map(slot => slot.evaluate((el: HTMLElement) => { const css = getComputedStyle(el); return [css.width, css.height]; })));
       assert.deepEqual(sizes[0], sizes[1]);
       assert.deepEqual(sizes[0], sizes[2]);
       await capture(page, `calendar-image-fallbacks-${width}`);
@@ -139,13 +142,15 @@ test("Calendar Move dialog matches drag and cancelling preserves source", { skip
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     await page.goto(story('calendar-image-fallbacks'));
-    await page.locator('[data-itinerary-activity-id]').nth(2).waitFor();
     await page.locator(calendarDays).first().locator('button').first().click();
+    await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).waitFor();
     await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).click();
     await page.getByRole('button', { name: 'Move to…', exact: true }).click();
     const dialog = page.locator('dialog:modal');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.match(await page.locator(calendarDays).first().innerText(), /Walk San Blas before dinner/);
+    // Cancelling Move returns to the existing item details, not the underlying card.
+    await page.getByRole('button', { name: 'Back to day', exact: true }).click();
     await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).click();
     await page.getByRole('button', { name: 'Move to…', exact: true }).click();
     await dialog.locator('select').first().selectOption('day-2');
@@ -350,11 +355,16 @@ test("Rendered Day by day and Calendar preserve identity, ordering and one canon
       await page.goto(story('calendar-image-fallbacks'));
       await page.locator(calendarDays).nth(1).waitFor();
       const title = await page.locator('#trip-shell-title').innerText();
-      const range = await page.locator('[class*="workspaceToolbar"] > div > p').first().innerText();
-      const timeline = await page.locator('[class*="destinationTrack"]').textContent();
-      assert.ok(title.trim().length > 0 && range.includes('2026') && timeline?.includes('Cusco'));
-
+      const dates = page.locator('dl').first().locator('div').filter({ has: page.getByText('Dates', { exact: true }) }).locator('dd');
+      const range = await dates.innerText();
+      // Both views must compare the same canonical day, independent of restored route state.
+      await page.locator(calendarDays).nth(1).locator('button').first().click();
+      if (width < 1100) await page.getByRole('button', { name: 'Close day details', exact: true }).click();
       await page.getByRole('button', { name: 'Day by day', exact: true }).click();
+      const route = page.locator('[data-route-stop-navigation][aria-label="Route destinations"]');
+      const timeline = await route.textContent();
+      const destinations = await route.locator('strong').allTextContents();
+      assert.ok(title.trim().length > 0 && range.includes('2026') && timeline?.includes('Cusco'));
       const daysIds = await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
       for (const view of ['days', 'calendar']) {
         if (view === 'calendar') {
@@ -364,8 +374,14 @@ test("Rendered Day by day and Calendar preserve identity, ordering and one canon
         assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
         assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), daysIds);
         assert.equal(await page.locator('#trip-shell-title').innerText(), title);
-        assert.equal(await page.locator('[class*="workspaceToolbar"] > div > p').first().innerText(), range);
-        assert.equal(await page.locator('[class*="destinationTrack"]').textContent(), timeline);
+        assert.equal(await dates.innerText(), range);
+        if (view === 'days') assert.equal(await route.textContent(), timeline);
+        else {
+          // Calendar owns the same ordered destinations through its weekly overnight bands.
+          const bands = await page.locator('[role="group"][aria-label="Overnight destinations"] > div > span').allTextContents();
+          const calendarDestinations = bands.map(label => label.split(' · ')[0]).filter((name, index, names) => index === 0 || name !== names[index - 1]);
+          assert.deepEqual(calendarDestinations, destinations, 'Calendar must preserve every canonical route destination in order');
+        }
         const order = await page.evaluate((calendar: boolean) => {
           const planner = document.querySelector('[aria-label$=" planner"]')!;
           const ideas = document.querySelector('details[id$="-ideas"]')!;
@@ -376,10 +392,18 @@ test("Rendered Day by day and Calendar preserve identity, ordering and one canon
         assert.deepEqual(order, { plannerBeforeIdeas: true, plannerBeforeContext: true, contextOwnership: true });
         if (view === 'calendar') {
           assert.match(await page.locator('[class*="dayPanel"]').getAttribute('aria-label') ?? '', /Day 2: Cusco/);
-          if (width < 1100) await page.getByRole('heading', { name: /Day 2.*Cusco/ }).waitFor();
+          if (width < 1100) {
+            const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+            await sheet.getByRole('heading', { name: 'Cusco', exact: true }).waitFor();
+            assert.equal(await sheet.locator('[class*="dayHeaderContent"] time').getAttribute('datetime'), '2026-08-22', 'the visible destination heading keeps the exact Day 2 date');
+          }
           else assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el.getBoundingClientRect().left > innerWidth / 2), true);
         }
       }
+      if (width < 1100) await page.getByRole('button', { name: 'Close day details', exact: true }).click();
+      await page.getByRole('button', { name: 'Day by day', exact: true }).click();
+      assert.equal(await route.textContent(), timeline, 'returning from Calendar preserves the exact route timeline');
+      assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), daysIds);
       await page.close();
     }
   } finally { await browser.close(); }
@@ -390,11 +414,12 @@ test("Desktop detail planner completes native drag and cancels outside-drop with
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1600 } });
     await page.goto(story('calendar-image-fallbacks'));
+    await page.locator(calendarDays).nth(1).locator('button').first().click();
     const panel = page.locator('[class*="dayPanel"]');
     const handle = panel.locator('[data-itinerary-drag-handle="calendar-loaded-image"]');
     await handle.waitFor();
     assert.equal(await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches), true);
-    assert.equal(await handle.getAttribute('draggable'), 'true');
+    assert.equal(await panel.locator('[data-itinerary-activity-id="calendar-loaded-image"]').getAttribute('draggable'), 'true', 'the canonical card owns native drag from its handle');
     // Keep source and destination unobscured in one viewport; other acceptance tests retain 1440x1000.
     await page.evaluate(() => {
       const recording = window as unknown as { calendarNativeDragEvents: string[] };
@@ -404,7 +429,7 @@ test("Desktop detail planner completes native drag and cancels outside-drop with
     const before = await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
     const beforePlacement = await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => [n.dataset.itineraryActivityId, n.closest('[data-day-part]')?.getAttribute('data-day-part')]));
     // Actual browser pointer drag from the right-hand planner handle to a non-drop surface.
-    await handle.dragTo(page.locator('[class*="workspaceToolbar"] h2'));
+    await handle.dragTo(page.locator('[class*="workspaceToolbar"]'), { targetPosition: { x: 4, y: 4 } });
     const cancelledEvents = await page.evaluate(() => (window as unknown as { calendarNativeDragEvents: string[] }).calendarNativeDragEvents);
     assert.deepEqual(cancelledEvents, ['dragstart', 'dragend'], 'cancel must initiate and end a real native drag without a drop');
     assert.deepEqual(await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => [n.dataset.itineraryActivityId, n.closest('[data-day-part]')?.getAttribute('data-day-part')])), beforePlacement);
