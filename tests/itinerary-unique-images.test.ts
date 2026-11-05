@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {photoLedItineraryTrip} from './fixtures/photo-led-itinerary.ts';
 import {itineraryPresentationImages} from '../lib/easyt/itinerary-presentation-images.ts';
-import {routeDestinationPhoto} from '../lib/easyt/route-images.ts';
+import {itineraryDestinationPhotos,routeDestinationPhoto} from '../lib/easyt/route-images.ts';
 import type {ItineraryIdea} from '../lib/easyt/trip.ts';
 
 const product=(dayId:string,image:string):ItineraryIdea=>({id:`product-${dayId}`,stopId:'tokyo',dayId,placeId:'viator:28575P41',category:'activity',title:'Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train',source:'live-provider-inventory',provider:'viator',providerProductId:'28575P41',sourceUrl:'https://shop.live.rc.viator.com/tours/Tokyo/Mt-Fuji-and-Hakone/d334-28575P41?pid=unchanged',image,reasons:[],providerMetadata:{provenance:{kind:'live_provider_search',provider:'viator',checkedAt:'2026-11-05T15:19:21.671Z'}}});
@@ -33,10 +33,11 @@ test('unverified supplier permission withholds product imagery even with valid A
 test('activity images are reserved before generic days and never repeated on nonadjacent days',async()=>{
  const {itineraryImageIdentity}=await import('../lib/easyt/itinerary-image-policy.ts');
  const trip=photoLedItineraryTrip();
- const cover=routeDestinationPhoto('Tokyo','Japan')!;
- trip.brief.itineraryIdeas=[{...product('day-3',cover.variants[0].src),title:'Ginza walk',source:'destination-highlight',provider:undefined,providerMetadata:undefined}];
+ const cover=itineraryDestinationPhotos('Tokyo','Japan').find(photo=>photo.key==='day-tokyo-shinjuku-gyoen')!;
+ trip.brief.itineraryIdeas=[{...product('day-3',cover.variants[0].src),title:'Shinjuku Gyo-en',source:'destination-highlight',provider:undefined,providerMetadata:undefined}];
  const selected=itineraryPresentationImages(trip,{reviewedOnly:true}).dayById;
  assert.equal(selected['day-3']?.src,cover.variants[0].src);
+ assert.equal(selected['day-3']?.activityTitle,'Shinjuku Gyo-en');
  assert.notEqual(selected['day-1']?.sourceUrl,cover.sourceUrl,'Earlier generic day cannot consume later activity image');
  const identities=Object.values(selected).filter(Boolean).map(image=>itineraryImageIdentity(image!));
  assert.equal(new Set(identities).size,identities.length);

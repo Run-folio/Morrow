@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { MapPin } from "lucide-react";
 import { routePhotoForSource } from "@/lib/easyt/route-images";
 import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import ResilientImage from "./resilient-image";
@@ -18,12 +17,13 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
   sizes?: string;
 }) {
   const [displayedSource, setDisplayedSource] = useState<string | null>(null);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
   const record = image ? routePhotoForSource(image.src) : null;
   const variants = record ? [...record.variants].sort((a, b) => a.width - b.width) : [];
   const source = variants.find(variant => variant.width >= (compact ? 320 : 768)) ?? variants.at(-1);
   const renderedSource = image ? source?.src ?? image.src : null;
   const onDisplayState = useCallback((displayed: boolean) => setDisplayedSource(displayed ? renderedSource : null), [renderedSource]);
-  const fallback = <span className={styles.fallback} role="img" aria-label={`${language === "es" ? "Foto no disponible" : "Photo unavailable"} · ${destination}`}><MapPin aria-hidden="true" /><span>{language === "es" ? "Sin foto del día" : "No day photo"}</span></span>;
+  if (!image || failedSource === renderedSource) return null;
   return <div className={`${styles.photo} ${compact ? styles.compact : ""} ${className}`} data-itinerary-photo={compact ? "calendar" : "day"} data-itinerary-image-kind={image?.activityTitle ? "activity" : image ? "destination" : "fallback"}>
     <ResilientImage
       src={renderedSource}
@@ -34,7 +34,8 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
       alt={image?.alt ?? ""}
       loading="lazy"
       decoding="async"
-      fallback={fallback}
+      fallback={null}
+      onError={() => setFailedSource(renderedSource)}
       onDisplayState={onDisplayState}
     />
     {image?.activityTitle ? <span className={styles.activityLabel}>{image.activityImageKind === "editorial-place" ? `${language === "es" ? "Foto del lugar" : "Place photo"} · ` : ""}{image.activityTitle}</span> : image?.activityImageKind === "destination-atmosphere" ? <span className={styles.activityLabel}>{language === "es" ? "Foto del destino" : "Destination photo"}</span> : null}

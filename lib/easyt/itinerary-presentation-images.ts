@@ -80,8 +80,7 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = tr
       const record = idea.image ? routePhotoForSource(idea.image) : null;
       const normalize = (text: string) => text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const exactSubject = record?.activitySubjects?.some(subject => normalize(subject) === normalize(idea.title));
-      const sameBase = stop && record?.place.toLowerCase() === stop.name.trim().toLowerCase() && record.country.toLowerCase() === stop.country.trim().toLowerCase();
-      const reviewed = idea.image && (exactSubject || (!record?.activitySubjects?.length && sameBase)) ? routeImageCredit(idea.image) : null;
+      const reviewed = idea.image && exactSubject ? routeImageCredit(idea.image) : null;
       const subjects = stop ? itineraryActivityPhotos(idea.title, stop.name, stop.country).flatMap(photo => {
         const credit = routeImageCredit(photo.variants[0]?.src ?? "");
         return credit ? [{...credit, activityTitle:idea.title, activityImageKind:"editorial-place" as const}] : [];

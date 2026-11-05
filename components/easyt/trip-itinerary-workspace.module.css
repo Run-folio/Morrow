@@ -2187,6 +2187,7 @@
 /* The approved photo-led week and visual agenda share the existing planner. */
 .calendarDay { display: flex; flex-direction: column; }
 .calendarDayPhoto { margin: 0 8px 12px; }
+.calendarDayPhoto:empty { display: none; }
 .calendarDaySelect { min-height: 100px; }
 .calendarDaySelect .calendarCompactDestination { font: 700 15px/1.3 var(--morrovia-ui); }
 .calendarItems { flex: 1; gap: 0; }

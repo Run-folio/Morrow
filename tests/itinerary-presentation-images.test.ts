@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { itineraryPresentationImages } from "../lib/easyt/itinerary-presentation-images.ts";
 import { mediaImagesForExactDestination } from "../lib/easyt/itinerary-media.ts";
-import { routeDestinationPhoto } from "../lib/easyt/route-images.ts";
+import { itineraryDestinationPhotos, routeDestinationPhoto } from "../lib/easyt/route-images.ts";
 import type { EasyTTrip, PlanItem, TripStop } from "../lib/easyt/trip.ts";
 
 function stop(id: string, name: string, country: string, order: number): TripStop {
@@ -115,17 +115,18 @@ test('calendar keeps distinct reviewed destination images and does not fill unco
 
 
 test('reviewed activity photos win only on their scheduled day and stop; provider URLs do not establish rights', () => {
-  const tokyo = routeDestinationPhoto('Tokyo','Japan')!;
+  const tokyo = itineraryDestinationPhotos('Tokyo','Japan').find(photo=>photo.key==='day-tokyo-shinjuku-gyoen')!;
   const kyoto = routeDestinationPhoto('Kyoto','Japan')!;
   const input = trip([stop('tokyo','Tokyo','Japan',0)], [day('one','tokyo',1),day('two','tokyo',2),day('three','tokyo',3)]);
   input.brief.itineraryIdeas = [
-    {id:'valid',stopId:'tokyo',dayId:'two',placeId:'ginza',title:'Ginza walk',category:'activity',image:tokyo.variants[0].src,source:'destination-highlight',reasons:[]},
+    {id:'valid',stopId:'tokyo',dayId:'two',placeId:'shinjuku',title:'Shinjuku Gyo-en',category:'activity',image:tokyo.variants[0].src,source:'destination-highlight',reasons:[]},
     {id:'foreign',stopId:'tokyo',dayId:'one',placeId:'foreign',title:'Wrong city',category:'activity',image:kyoto.variants[0].src,source:'destination-highlight',reasons:[]},
     {id:'provider',stopId:'tokyo',dayId:'three',placeId:'viator',title:'Tour',category:'activity',image:'https://media.tacdn.com/tour.jpg',sourceUrl:'https://viator.com/tour',source:'live-provider-inventory',provider:'viator',reasons:[]},
   ];
   const before=JSON.stringify(input);
   const result=itineraryPresentationImages(input,{reviewedOnly:true});
   assert.equal(result.dayById.two?.sourceUrl,tokyo.sourceUrl);
+  assert.equal(result.dayById.two?.activityTitle,'Shinjuku Gyo-en');
   assert.notEqual(result.dayById.one?.sourceUrl,kyoto.sourceUrl);
   assert.notEqual(result.dayById.three?.src,'https://media.tacdn.com/tour.jpg');
   assert.equal(JSON.stringify(input),before);

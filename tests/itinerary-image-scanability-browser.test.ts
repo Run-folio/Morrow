@@ -9,8 +9,8 @@ import {photoLedItineraryTrip} from './fixtures/photo-led-itinerary.ts';
 
 for(const browserName of ['chromium','webkit'] as const) test(`${browserName}: day photographs stay compact on wide desktop and mobile and every calendar day retains relevant photography`, {skip:!builderBrowserTestsEnabled,timeout:60_000}, async()=>{
  const trip=photoLedItineraryTrip();
- const activityPhoto=itineraryDestinationPhotos('Tokyo','Japan').find(photo=>photo.key==='day-tokyo-big-sight')!;
- trip.brief.itineraryIdeas=[{id:'reviewed-big-sight',stopId:'tokyo',dayId:'day-2',placeId:'big-sight',title:'Tokyo Big Sight visit',category:'activity',image:activityPhoto.variants[0].src,source:'destination-highlight',reasons:[]}];
+ const activityPhoto=itineraryDestinationPhotos('Tokyo','Japan').find(photo=>photo.key==='day-tokyo-shinjuku-gyoen')!;
+ trip.brief.itineraryIdeas=[{id:'reviewed-big-sight',stopId:'tokyo',dayId:'day-2',placeId:'big-sight',title:'Shinjuku Gyo-en',category:'activity',image:activityPhoto.variants[0].src,source:'destination-highlight',reasons:[]}];
  const expected=itineraryPresentationImages(trip,{reviewedOnly:true}).dayById;
  const before=JSON.stringify(trip);
  const view=await renderBuilder({path:`/journey/${trip.id}/itinerary?day=1`,initialTrip:trip,styled:true,browserName});
