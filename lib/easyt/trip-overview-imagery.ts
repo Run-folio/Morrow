@@ -10,6 +10,7 @@ import type { CachedRoutePhoto } from "./route-photo-cache.ts";
 export type OverviewPlaceImage = {
   /** Explicit planned activity associated with this presentation-only image. */
   activityTitle?: string;
+  activityImageKind?: "saved-place" | "editorial-place" | "destination-atmosphere";
   scope?: "country";
   country?: string;
   src: string;

@@ -23,7 +23,7 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
   const source = variants.find(variant => variant.width >= (compact ? 320 : 768)) ?? variants.at(-1);
   const renderedSource = image ? source?.src ?? image.src : null;
   const onDisplayState = useCallback((displayed: boolean) => setDisplayedSource(displayed ? renderedSource : null), [renderedSource]);
-  const fallback = <span className={styles.fallback} role="img" aria-label={`${language === "es" ? "Foto no disponible" : "Photo unavailable"} · ${destination}`}><MapPin aria-hidden="true" /><span>{destination}</span></span>;
+  const fallback = <span className={styles.fallback} role="img" aria-label={`${language === "es" ? "Foto no disponible" : "Photo unavailable"} · ${destination}`}><MapPin aria-hidden="true" /><span>{language === "es" ? "Sin foto del día" : "No day photo"}</span></span>;
   return <div className={`${styles.photo} ${compact ? styles.compact : ""} ${className}`} data-itinerary-photo={compact ? "calendar" : "day"} data-itinerary-image-kind={image?.activityTitle ? "activity" : image ? "destination" : "fallback"}>
     <ResilientImage
       src={renderedSource}
@@ -37,7 +37,7 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
       fallback={fallback}
       onDisplayState={onDisplayState}
     />
-    {image?.activityTitle ? <span className={styles.activityLabel}>{image.activityTitle}</span> : null}
+    {image?.activityTitle ? <span className={styles.activityLabel}>{image.activityImageKind === "editorial-place" ? `${language === "es" ? "Foto del lugar" : "Place photo"} · ` : ""}{image.activityTitle}</span> : image?.activityImageKind === "destination-atmosphere" ? <span className={styles.activityLabel}>{language === "es" ? "Foto del destino" : "Destination photo"}</span> : null}
     {image?.sourceLabel && displayedSource === renderedSource ? <MorroviaPhotoCredit
       size="compact"
       ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"}

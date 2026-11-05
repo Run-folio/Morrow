@@ -39,11 +39,13 @@ test("valid Tokyo alternatives precede duplicate stop and day imagery", () => {
   assert.deepEqual(Object.keys(result.dayById), ["day-1", "day-2", "day-3", "day-4"]);
 });
 
-test("one valid image may repeat rather than borrowing unrelated imagery", () => {
-  const input = trip([stop("delhi-1", "Delhi", "India", 0), stop("delhi-2", "Delhi", "India", 1)], [day("day-1", "delhi-1", 1), day("day-2", "delhi-2", 2)]);
-  const result = itineraryPresentationImages(input);
-  assert.equal(result.stopById["delhi-1"]?.src, result.stopById["delhi-2"]?.src);
-  assert.equal(result.stopById["delhi-1"]?.sourceUrl, routeDestinationPhoto("Delhi", "India")?.sourceUrl);
+test("single-source stop covers remain credited while day covers never repeat", () => {
+  const input = trip([stop("one", "Kanazawa", "Japan", 0), stop("two", "Kanazawa", "Japan", 1)], [day("day-1", "one", 1), day("day-2", "two", 2)]);
+  const result = itineraryPresentationImages(input,{reviewedOnly:true});
+  assert.equal(result.stopById.one?.src, result.stopById.two?.src);
+  assert.equal(result.stopById.one?.sourceUrl, routeDestinationPhoto("Kanazawa", "Japan")?.sourceUrl);
+  assert.ok(result.dayById["day-1"]);
+  assert.equal(result.dayById["day-2"],null);
 });
 
 test("unknown destination and substring-only match have no photo", () => {
@@ -130,8 +132,8 @@ test('reviewed activity photos win only on their scheduled day and stop; provide
 });
 
 test('multi-day reviewed destination pools use distinct assets and stay empty after exhaustion', () => {
- const input=trip([stop('tokyo','Tokyo','Japan',0),stop('delhi','Delhi','India',1),stop('missing','Unknown Base','Japan',2)],Array.from({length:8},(_,i)=>day(String(i),'tokyo',i+1)));
- input.planItems.push(day('single','delhi',9),day('single2','delhi',10),day('none','missing',11));
+ const input=trip([stop('tokyo','Tokyo','Japan',0),stop('single-base','Kanazawa','Japan',1),stop('missing','Unknown Base','Japan',2)],Array.from({length:8},(_,i)=>day(String(i),'tokyo',i+1)));
+ input.planItems.push(day('single','single-base',9),day('single2','single-base',10),day('none','missing',11));
  const result=itineraryPresentationImages(input,{reviewedOnly:true});
  const sources=input.planItems.slice(0,8).map(d=>result.dayById[d.id]?.sourceUrl);
  assert.ok(sources.every(Boolean));

@@ -1,4 +1,5 @@
-import { itineraryImageIdentity, viatorActivityPhoto } from "./itinerary-image-policy.ts";
+import { canonicalImageSource, viatorImageIdentity } from "./image-source-identity.ts";
+import { itineraryImageIdentity } from "./itinerary-image-policy.ts";
 import { mediaImagesForExactDestination } from "./itinerary-media.ts";
 import { itineraryActivityPhotos, itineraryDestinationPhotos, routeImageCredit, routePhotoForSource } from "./route-images.ts";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "./trip-overview-imagery.ts";
@@ -16,7 +17,7 @@ function assignedImage(day: PlanItem, reviewedOnly = false, stop?: TripStop): Ov
     const photo = routePhotoForSource(day.image);
     return !stop || (photo?.place.toLowerCase() === stop.name.trim().toLowerCase() && photo.country.toLowerCase() === stop.country.trim().toLowerCase()) ? reviewed : null;
   }
-  if (reviewedOnly) return null;
+  if (reviewedOnly || viatorImageIdentity(canonicalImageSource(day.image))) return null;
   if (!day.sourceUrl || !/^https?:\/\//.test(day.sourceUrl)) return null;
   return { src: day.image, alt: day.title, sourceUrl: day.sourceUrl, sourceLabel: "Photo source" };
 }
@@ -50,7 +51,7 @@ function firstUnused(images: OverviewPlaceImage[], used: Set<string>): OverviewP
 }
 
 /** Pure, occurrence-keyed presentation choices; no image choice is written to the trip. */
-export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = false }: { reviewedOnly?: boolean } = {}): PresentationImages {
+export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = true }: { reviewedOnly?: boolean } = {}): PresentationImages {
   const stopById: Record<string, OverviewPlaceImage | null> = {};
   const dayById: Record<string, OverviewPlaceImage | null> = {};
   const orderedStops = [...trip.stops].sort((a, b) => a.order - b.order);
@@ -74,7 +75,8 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
     const stop = trip.stops.find(stop => stop.id === day.stopId);
     const scheduled = legacyItineraryIdeas(trip.brief.itineraryIdeas).filter(idea => idea.dayId === day.id && idea.stopId === day.stopId && idea.category === "activity");
     const activityImages = scheduled.flatMap(idea => {
-      const provider = viatorActivityPhoto(idea);
+      // API provenance is not account-specific permission for a new day-cover use.
+      // Supplier photos remain withheld; verified place photographs can still describe the activity.
       const record = idea.image ? routePhotoForSource(idea.image) : null;
       const normalize = (text: string) => text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
       const exactSubject = record?.activitySubjects?.some(subject => normalize(subject) === normalize(idea.title));
@@ -82,13 +84,14 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
       const reviewed = idea.image && (exactSubject || (!record?.activitySubjects?.length && sameBase)) ? routeImageCredit(idea.image) : null;
       const subjects = stop ? itineraryActivityPhotos(idea.title, stop.name, stop.country).flatMap(photo => {
         const credit = routeImageCredit(photo.variants[0]?.src ?? "");
-        return credit ? [{...credit, activityTitle:idea.title}] : [];
+        return credit ? [{...credit, activityTitle:idea.title, activityImageKind:"editorial-place" as const}] : [];
       }) : [];
-      return [provider, reviewed ? {...reviewed, activityTitle:idea.title} : null, ...subjects].filter((image): image is OverviewPlaceImage => Boolean(image));
+      const direct: OverviewPlaceImage[] = reviewed ? [{...reviewed, activityTitle:idea.title, activityImageKind:"saved-place"}] : [];
+      return [...direct, ...subjects];
     });
     const notedPlaces = stop ? day.notes.flatMap(title => itineraryActivityPhotos(title, stop.name, stop.country).flatMap(photo => {
       const credit = routeImageCredit(photo.variants[0]?.src ?? "");
-      return credit ? [{...credit,activityTitle:title}] : [];
+      return credit ? [{...credit,activityTitle:title,activityImageKind:"editorial-place" as const}] : [];
     })) : [];
     const choice = [...activityImages, ...notedPlaces].find(image => !used.has(itineraryImageIdentity(image))) ?? null;
     dayById[day.id] = choice;
@@ -100,7 +103,8 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
     const explicit = stop ? assignedImage(day, reviewedOnly, stop) : null;
     const candidates = candidatesByStop.get(day.stopId) ?? [];
     const choice = [explicit, ...candidates].find((image): image is OverviewPlaceImage => Boolean(image) && !used.has(itineraryImageIdentity(image!))) ?? null;
-    dayById[day.id] = choice;
+    const hasActivity = day.notes.length > 0 || legacyItineraryIdeas(trip.brief.itineraryIdeas).some(idea => idea.dayId === day.id && idea.stopId === day.stopId && idea.category === "activity");
+    dayById[day.id] = choice && hasActivity ? {...choice, activityImageKind: "destination-atmosphere"} : choice;
     if (choice) used.add(itineraryImageIdentity(choice));
   }
   return { stopById, dayById };

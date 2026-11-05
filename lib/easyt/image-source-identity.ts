@@ -25,3 +25,26 @@ export function viatorImageIdentity(source: string): string | null {
     return asset ? `viator-photo:${decodeURIComponent(asset)}` : null;
   } catch { return null; }
 }
+
+const firstPartyHosts = new Set(['morrovia.com', 'www.morrovia.com', 'staging.morrovia.com', 'localhost', '127.0.0.1']);
+const cacheModifier = /^(?:_|t|ts|timestamp|cb|cachebust(?:er)?|cache[-_]?(?:bust|key|version)|v|ver|version|rev|revision|w|width|h|height|q|quality|dpr|auto|fit|crop|format)$/i;
+
+/** Normalize transport/resize modifiers without discarding content identifiers. */
+export function canonicalImageSource(source: string, depth = 0): string {
+  try {
+    const relative = source.startsWith('/') && !source.startsWith('//');
+    const url = new URL(source, relative ? 'https://morrovia.com' : undefined);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return source;
+    const firstParty = relative || (firstPartyHosts.has(url.hostname) && (url.protocol === 'https:' || ['localhost','127.0.0.1'].includes(url.hostname)));
+    if (firstParty && depth < 3 && ['/_next/image','/.netlify/images'].includes(url.pathname)) {
+      const nested = url.searchParams.get('url');
+      if (nested) return canonicalImageSource(nested, depth + 1);
+    }
+    if (firstParty && !url.pathname.startsWith('/api/') && /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(url.pathname)) return decodeURIComponent(url.pathname);
+    url.hash = '';
+    if (url.hostname === 'images.unsplash.com' && /^\/photo-[^/]+$/.test(url.pathname)) { url.search = ''; return url.href; }
+    for (const key of [...url.searchParams.keys()]) if (cacheModifier.test(key) || key.toLowerCase().startsWith('utm_')) url.searchParams.delete(key);
+    url.searchParams.sort();
+    return url.href;
+  } catch { return source; }
+}

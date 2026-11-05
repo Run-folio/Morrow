@@ -118,12 +118,12 @@ test('mobile bottom navigation exactly matches the pre-design navigation and rem
 });
 
 
-test('photo credit remains available when saved days use different variants of the same reviewed photograph', {skip: !builderBrowserTestsEnabled,timeout:45_000}, async () => {
+for(const browserName of ['chromium','webkit']as const)test(`${browserName}: photo credits survive cache-busting and transform URLs`, {skip: !builderBrowserTestsEnabled,timeout:45_000}, async () => {
   const trip=fixture();
   const photo=routeDestinationPhoto('Tokyo','Japan')!;
-  trip.planItems[0].image=photo.variants.at(-1)!.src;
-  trip.planItems[1].image=photo.variants[0].src;
-  const view=await renderBuilder({path:`/journey/${trip.id}/itinerary?day=1`,initialTrip:trip,styled:true});
+  trip.planItems[0].image=`/_next/image?url=${encodeURIComponent(photo.variants.at(-1)!.src+'?v=first')}&w=1280&q=75`;
+  trip.planItems[1].image=`https://staging.morrovia.com${photo.variants[0].src}?cacheBust=second#view`;
+  const view=await renderBuilder({path:`/journey/${trip.id}/itinerary?day=1`,initialTrip:trip,styled:true,browserName});
   try {
     await view.page.route('**/journey/immersive/*.webp',(route: Route)=>route.fulfill({contentType:'image/webp',body:readFileSync(`public${new URL(route.request().url()).pathname}`)}));
     await view.page.reload();

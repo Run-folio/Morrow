@@ -1,4 +1,4 @@
-import { commonsImageIdentity } from "./image-source-identity.ts";
+import { canonicalImageSource, commonsImageIdentity } from "./image-source-identity.ts";
 import itineraryInventory from "../../public/journey/immersive/itinerary-image-inventory.json" with { type: "json" };
 import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
 import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
@@ -36,6 +36,19 @@ const reusableEditorialPhotos = reviewedEditorialInventory.filter(photo => photo
 const destinationPhotos: RoutePhotoRecord[] = [...destinationInventory, ...publishedStopInventory, ...reusableEditorialPhotos];
 const reviewedItineraryPhotos = itineraryInventory as RoutePhotoRecord[];
 const editorialPhotos: RoutePhotoRecord[] = [...reviewedItineraryPhotos, ...reviewedEditorialInventory, ...destinationPhotos, ...routeImageInventory];
+
+// Build immutable lookup indexes once; URL normalization is not repeated per catalogue variant during render.
+const photoByVariant = new Map<string, RoutePhotoRecord>();
+const photoByCommonsFile = new Map<string, RoutePhotoRecord>();
+const verifiedIdentityByCommonsFile = new Map<string, string>();
+for (const photo of editorialPhotos) {
+  for (const variant of photo.variants) for (const source of [variant.src, canonicalImageSource(variant.src)]) {
+    if (!photoByVariant.has(source)) photoByVariant.set(source, photo);
+  }
+  const file = commonsImageIdentity(photo.sourceUrl);
+  if (file && !photoByCommonsFile.has(file)) photoByCommonsFile.set(file, photo);
+  if (file && photo.assetIdentity && !verifiedIdentityByCommonsFile.has(file)) verifiedIdentityByCommonsFile.set(file, photo.assetIdentity);
+}
 
 const canonicalRouteImages: Record<string, string> = {
   "japan-slow": "/journey/immersive/place-kyoto-1536.webp",
@@ -85,10 +98,11 @@ export function routeImagePhoto(routeKey: string): RoutePhotoRecord | null {
 }
 
 export function routePhotoForSource(image: string): RoutePhotoRecord | null {
-  const exact = editorialPhotos.find(photo => photo.variants.some(variant => variant.src === image));
+  const normalized = canonicalImageSource(image);
+  const exact = photoByVariant.get(image) ?? photoByVariant.get(normalized);
   if (exact) return exact;
-  const identity = commonsImageIdentity(image);
-  return identity ? editorialPhotos.find(photo => commonsImageIdentity(photo.sourceUrl) === identity) ?? null : null;
+  const identity = commonsImageIdentity(normalized);
+  return identity ? photoByCommonsFile.get(identity) ?? null : null;
 }
 
 export function routeImageCredit(image: string) {
@@ -125,6 +139,6 @@ export function itineraryActivityPhotos(title: string, place: string, country: s
 /** Share verified hashes across catalogue entries for the same Commons file. */
 export function routePhotoAssetIdentity(photo: RoutePhotoRecord): string {
   const file = commonsImageIdentity(photo.sourceUrl);
-  const verified = file ? editorialPhotos.find(candidate => candidate.assetIdentity && commonsImageIdentity(candidate.sourceUrl) === file)?.assetIdentity : undefined;
+  const verified = file ? verifiedIdentityByCommonsFile.get(file) : undefined;
   return photo.assetIdentity ?? verified ?? file ?? photo.sourceUrl;
 }

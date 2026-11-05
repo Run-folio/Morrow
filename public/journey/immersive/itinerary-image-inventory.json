@@ -1078,5 +1078,489 @@
         "bytes": 265250
       }
     ]
+  },
+  {
+    "key": "day-delhi-india-gate",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Nikhilb239",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:India_Gate,_New_Delhi_from_West.jpg",
+    "assetIdentity": "commons-sha1:baf69ea4bd364a661b54e9a2206d940d6043b06f",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "India Gate viewed from the west, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "India Gate"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-india-gate-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 11948
+      },
+      {
+        "src": "/journey/immersive/day-delhi-india-gate-768.webp",
+        "width": 768,
+        "height": 596,
+        "bytes": 56704
+      },
+      {
+        "src": "/journey/immersive/day-delhi-india-gate-1280.webp",
+        "width": 1280,
+        "height": 993,
+        "bytes": 168348
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-humayun",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Jakub Hałun",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:20191205_Grobowiec_Humajuna_w_Delhi_1055_6794.jpg",
+    "assetIdentity": "commons-sha1:da70214c0f1c64c3e92556dc437264ea212f6b02",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Humayun's Tomb and its gardens, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Humayun's Tomb"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-humayun-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 8910
+      },
+      {
+        "src": "/journey/immersive/day-delhi-humayun-768.webp",
+        "width": 768,
+        "height": 511,
+        "bytes": 34058
+      },
+      {
+        "src": "/journey/immersive/day-delhi-humayun-1280.webp",
+        "width": 1280,
+        "height": 851,
+        "bytes": 84544
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-qutb",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Syed Sajidul Islam",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Art_work_on_the_wall_of_Qutb_Minar_Complex.jpg",
+    "assetIdentity": "commons-sha1:d5460411dd45e3128c74dd30fdde5da102669bdc",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Carved stonework at the Qutb Minar complex, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Qutb Minar Complex"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-qutb-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 24344
+      },
+      {
+        "src": "/journey/immersive/day-delhi-qutb-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 104374
+      },
+      {
+        "src": "/journey/immersive/day-delhi-qutb-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 247744
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-red-fort",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Lucky181993",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lahori_Gate_(Red_Fort),_Delhi,_India_(2017).jpg",
+    "assetIdentity": "commons-sha1:81e55555b3f1df5970c5db80b887298ce5bb5762",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Lahori Gate of the Red Fort, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Red Fort",
+      "Lahori Gate"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-red-fort-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 10632
+      },
+      {
+        "src": "/journey/immersive/day-delhi-red-fort-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 45288
+      },
+      {
+        "src": "/journey/immersive/day-delhi-red-fort-1280.webp",
+        "width": 1280,
+        "height": 960,
+        "bytes": 112948
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-jama-masjid",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Pinakpani",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Courtyard_of_Jama_Masjid,_in_Delhi_01.jpg",
+    "assetIdentity": "commons-sha1:03a3917e8f6a251bb96a53790ae6009b56fc5155",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Courtyard of Jama Masjid, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Jama Masjid"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-jama-masjid-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 14914
+      },
+      {
+        "src": "/journey/immersive/day-delhi-jama-masjid-768.webp",
+        "width": 768,
+        "height": 432,
+        "bytes": 48638
+      },
+      {
+        "src": "/journey/immersive/day-delhi-jama-masjid-1280.webp",
+        "width": 1280,
+        "height": 720,
+        "bytes": 117498
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-lotus",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Bijay chaurasia",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lotus_Temple-Panoroma-Visit_During_WCI_2016-_IMG_6471.jpg",
+    "assetIdentity": "commons-sha1:9e0b37d06f4535372549592b545b2bc35da24f10",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Lotus Temple and reflecting pools, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Lotus Temple"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-lotus-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 9910
+      },
+      {
+        "src": "/journey/immersive/day-delhi-lotus-768.webp",
+        "width": 768,
+        "height": 418,
+        "bytes": 28814
+      },
+      {
+        "src": "/journey/immersive/day-delhi-lotus-1280.webp",
+        "width": 1280,
+        "height": 698,
+        "bytes": 65482
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-lodhi",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Tarun Kumar Sambhariya",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lodhi_Garden_Tomb_2019.jpg",
+    "assetIdentity": "commons-sha1:aabba3c9094cc5d7bc1b68a0fd5372381f4ab6e3",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Historic tomb in Lodhi Gardens, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Lodhi Gardens",
+      "Lodhi Garden"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-lodhi-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 19424
+      },
+      {
+        "src": "/journey/immersive/day-delhi-lodhi-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 75838
+      },
+      {
+        "src": "/journey/immersive/day-delhi-lodhi-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 176994
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-akshardham",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Shiprasarangi",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Akshardham_Temple_Delhi_2.jpg",
+    "assetIdentity": "commons-sha1:869e9359a99a5f8c65cc2e1ec3737f5502e87cf9",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Akshardham temple grounds, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Akshardham Temple",
+      "Swaminarayan Akshardham"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-akshardham-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 7618
+      },
+      {
+        "src": "/journey/immersive/day-delhi-akshardham-768.webp",
+        "width": 768,
+        "height": 432,
+        "bytes": 22004
+      },
+      {
+        "src": "/journey/immersive/day-delhi-akshardham-1280.webp",
+        "width": 1280,
+        "height": 720,
+        "bytes": 40514
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-chandni-chowk",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Juan Antonio Segal from Madrid, Spain",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chandni_Chowk._Delhi,_India_(23129638199).jpg",
+    "assetIdentity": "commons-sha1:52786dae7673bdc24d12cc92017997eb26ceb327",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Street scene at Chandni Chowk, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Chandni Chowk"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-chandni-chowk-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 20328
+      },
+      {
+        "src": "/journey/immersive/day-delhi-chandni-chowk-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 68364
+      },
+      {
+        "src": "/journey/immersive/day-delhi-chandni-chowk-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 142880
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-rashtrapati",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Scott Dexter from Brooklyn, USA",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Rashtrapati_Bhavan_Wide_New_Delhi_India.jpg",
+    "assetIdentity": "commons-sha1:b8d11f065a1c8c0efd924205464f7e22fb99a873",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Rashtrapati Bhavan and its forecourt, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Rashtrapati Bhavan"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-rashtrapati-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 6692
+      },
+      {
+        "src": "/journey/immersive/day-delhi-rashtrapati-768.webp",
+        "width": 768,
+        "height": 510,
+        "bytes": 24188
+      },
+      {
+        "src": "/journey/immersive/day-delhi-rashtrapati-1280.webp",
+        "width": 1280,
+        "height": 849,
+        "bytes": 58152
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-connaught",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Slyronit",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Connaught_Place,_New_Delhi_at_night.jpg",
+    "assetIdentity": "commons-sha1:de7a9b171a31ca697be0e70f30c4220870111267",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Connaught Place illuminated at night, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Connaught Place"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-connaught-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 11936
+      },
+      {
+        "src": "/journey/immersive/day-delhi-connaught-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 38900
+      },
+      {
+        "src": "/journey/immersive/day-delhi-connaught-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 80638
+      }
+    ]
+  },
+  {
+    "key": "day-delhi-safdarjung",
+    "place": "Delhi",
+    "country": "India",
+    "author": "Arjunfotografer",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Night_view_of_Safdurjung%27s_Tomb.jpg",
+    "assetIdentity": "commons-sha1:ec437fa3e0dce6be13c3ce1ddc8d63a8f7525d24",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Safdarjung's Tomb illuminated at night, Delhi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Safdarjung's Tomb",
+      "Safdarjung Tomb"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-delhi-safdarjung-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 7026
+      },
+      {
+        "src": "/journey/immersive/day-delhi-safdarjung-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 23766
+      },
+      {
+        "src": "/journey/immersive/day-delhi-safdarjung-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 57606
+      }
+    ]
   }
 ]
