@@ -1,0 +1,252 @@
+[
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 308.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/describe-trip-mobile.jpg",
+    "title": "A few stops. Or a few words.",
+    "width": 320
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 308.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/shape-route-mobile.jpg",
+    "title": "Start with a route that makes sense.",
+    "width": 320
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 308.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/trip-workspace-mobile.jpg",
+    "title": "Know what needs attention next.",
+    "width": 320
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 308.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/map-workspace-mobile.jpg",
+    "title": "See how the whole trip connects.",
+    "width": 320
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 308.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/itinerary-workspace-mobile.jpg",
+    "title": "Make the itinerary yours.",
+    "width": 320
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 378.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/describe-trip-mobile.jpg",
+    "title": "A few stops. Or a few words.",
+    "width": 390
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 378.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/shape-route-mobile.jpg",
+    "title": "Start with a route that makes sense.",
+    "width": 390
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 378.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/trip-workspace-mobile.jpg",
+    "title": "Know what needs attention next.",
+    "width": 390
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 378.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/map-workspace-mobile.jpg",
+    "title": "See how the whole trip connects.",
+    "width": 390
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 700,
+    "loaded": true,
+    "overflow": false,
+    "right": 378.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/itinerary-workspace-mobile.jpg",
+    "title": "Make the itinerary yours.",
+    "width": 390
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 800,
+    "loaded": true,
+    "overflow": false,
+    "right": 418.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/describe-trip-mobile.jpg",
+    "title": "A few stops. Or a few words.",
+    "width": 430
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 800,
+    "loaded": true,
+    "overflow": false,
+    "right": 418.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/shape-route-mobile.jpg",
+    "title": "Start with a route that makes sense.",
+    "width": 430
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 800,
+    "loaded": true,
+    "overflow": false,
+    "right": 418.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/trip-workspace-mobile.jpg",
+    "title": "Know what needs attention next.",
+    "width": 430
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 800,
+    "loaded": true,
+    "overflow": false,
+    "right": 418.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/map-workspace-mobile.jpg",
+    "title": "See how the whole trip connects.",
+    "width": 430
+  },
+  {
+    "dialogX": 11.99652862548828,
+    "height": 800,
+    "loaded": true,
+    "overflow": false,
+    "right": 418.0034866333008,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/itinerary-workspace-mobile.jpg",
+    "title": "Make the itinerary yours.",
+    "width": 430
+  },
+  {
+    "dialogX": 44.001739501953125,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 723.7760925292969,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/describe-trip.jpg",
+    "title": "A few stops. Or a few words.",
+    "width": 768
+  },
+  {
+    "dialogX": 44.001739501953125,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 723.7760925292969,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/shape-route.jpg",
+    "title": "Start with a route that makes sense.",
+    "width": 768
+  },
+  {
+    "dialogX": 44.001739501953125,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 723.7760925292969,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/trip-workspace.jpg",
+    "title": "Know what needs attention next.",
+    "width": 768
+  },
+  {
+    "dialogX": 44.001739501953125,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 723.7760925292969,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/map-workspace.jpg",
+    "title": "See how the whole trip connects.",
+    "width": 768
+  },
+  {
+    "dialogX": 44.001739501953125,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 723.7760925292969,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/itinerary-workspace.jpg",
+    "title": "Make the itinerary yours.",
+    "width": 768
+  },
+  {
+    "dialogX": 130,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 1310,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/describe-trip.jpg",
+    "title": "A few stops. Or a few words.",
+    "width": 1440
+  },
+  {
+    "dialogX": 130,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 1310,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/shape-route.jpg",
+    "title": "Start with a route that makes sense.",
+    "width": 1440
+  },
+  {
+    "dialogX": 130,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 1310,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/trip-workspace.jpg",
+    "title": "Know what needs attention next.",
+    "width": 1440
+  },
+  {
+    "dialogX": 130,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 1310,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/map-workspace.jpg",
+    "title": "See how the whole trip connects.",
+    "width": 1440
+  },
+  {
+    "dialogX": 130,
+    "height": 900,
+    "loaded": true,
+    "overflow": false,
+    "right": 1310,
+    "src": "http://localhost:6019/journey/product-shots/tour/current/itinerary-workspace.jpg",
+    "title": "Make the itinerary yours.",
+    "width": 1440
+  }
+]

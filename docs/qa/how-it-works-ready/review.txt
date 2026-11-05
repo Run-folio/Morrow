@@ -1,0 +1,4 @@
+Independent read-only review by /root/review_tour, 2026-11-05.
+Source: no critical or important findings; canonical IDs, coordinates, future dates and source licences checked.
+Final image review: all ten captures acceptable. Earlier overview framing and mobile map camera findings corrected and re-reviewed.
+Final reviewer: Approved for review handoff. No remaining critical or important findings. git diff --check passes.

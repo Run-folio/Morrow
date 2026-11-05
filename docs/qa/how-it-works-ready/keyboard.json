@@ -1,0 +1,7 @@
+{
+  "initialFocus": "Close product tour",
+  "shiftTabFromClose": "Skip tour",
+  "tabFromSkip": "Close product tour",
+  "escape": "Closes dialog and restores How it works trigger focus",
+  "result": "pass"
+}

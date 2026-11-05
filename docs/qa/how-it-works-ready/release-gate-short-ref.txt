@@ -1,0 +1,1100 @@
+
+> morrovia@1.0.0 release:gate
+> node scripts/release-gate-smoke.mjs
+
+
+> morrovia@1.0.0 audit:ui
+> node scripts/ui-convergence-audit.mjs --strict
+
+Morrovia UI convergence enforcement
+- native-control: 191 accepted debt occurrences
+- native-date-input: 0 accepted debt occurrences
+- native-number-input: 0 accepted debt occurrences
+- native-dialog: 0 accepted debt occurrences
+- native-confirm: 0 accepted debt occurrences
+- legacy-ui-import: 0 accepted debt occurrences
+- deprecated-ui-owner: 0 accepted debt occurrences
+- raw-color: 1875 accepted debt occurrences
+- large-accent-surface: 0 accepted debt occurrences
+- raw-radius: 549 accepted debt occurrences
+- raw-shadow: 167 accepted debt occurrences
+- raw-font-family: 0 accepted debt occurrences
+- page-local-font-role: 0 accepted debt occurrences
+- raw-page-width: 2 accepted debt occurrences
+- inline-color: 55 accepted debt occurrences
+- inline-radius: 14 accepted debt occurrences
+- inline-shadow: 3 accepted debt occurrences
+- inline-font-family: 0 accepted debt occurrences
+- documented local exceptions: 76
+
+> morrovia@1.0.0 test:ui-convergence
+> node --test tests/ui-convergence-enforcement.test.mjs && node --experimental-strip-types --test tests/ui-convergence.test.ts
+
+✔ a representative raw token violation fails and its canonical correction passes (13.460916ms)
+✔ large workspace surfaces reject accent washes while compact accents remain available (7.310292ms)
+✔ token-aware typography and shadow rules ignore canonical values without overlooking raw declarations (2.641375ms)
+✔ page-local font roles and retired UI owners cannot be introduced (5.081417ms)
+✔ a narrow exception needs a substantive reason and applies only to the next matching line (5.652458ms)
+✔ Google provider colours have exact mark-only exceptions while Login and other files stay strict (5.566791ms)
+✔ per-file baselines cannot offset new drift and accepted debt can only be lowered (6.79725ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123.195541
+(node:91071) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/ui-convergence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ persistent account and recovery truth uses the canonical status banner (3.966167ms)
+✔ Storybook covers every persistent status tone at desktop and mobile widths (0.666292ms)
+✔ the convergence guard audits production and shared component roots (0.646709ms)
+✔ Account uses the canonical paper token and Google branding is narrowly documented (1.188875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.230083
+
+> morrovia@1.0.0 test:runtime-health
+> node --experimental-strip-types --test tests/runtime-health.test.ts
+
+(node:91108) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/runtime-health.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ health fails closed when critical database, auth, or base-url configuration is absent (1.361583ms)
+✔ health rejects invalid or mismatched public/auth URLs without revealing their values (0.326875ms)
+✔ health does not claim a configured database is unreachable when another critical check prevents probing it (0.110541ms)
+✔ health reports a successful database probe only after complete critical configuration (0.188375ms)
+✔ health exposes a valid hosting commit without changing readiness (0.246875ms)
+✔ empty or malformed hosting metadata reports unknown without exposing its value (1.02575ms)
+✔ build configuration forwards only bounded hosting provenance to the runtime (0.97975ms)
+✔ a database failure is a 503-ready unhealthy state without provider error detail (0.191917ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 129.203166
+
+> morrovia@1.0.0 typecheck
+> tsc --project tsconfig.typecheck.json --noEmit --incremental false
+
+
+> morrovia@1.0.0 typecheck
+> tsc --project tsconfig.typecheck.json --noEmit --incremental false
+
+
+> morrovia@1.0.0 test:prompt-engine
+> node --experimental-strip-types --test tests/prompt-engine-harness.test.ts
+
+(node:91462) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/prompt-engine-harness.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ prompt engine gauntlet has 16 complete, reviewable cases (0.3745ms)
+✔ deterministic prompt capture and recorded plan boundary match the baseline (202.014375ms)
+✔ regional traveller intent counts as preserved only when its unresolved scope survives (130.736208ms)
+✔ Spanish aliases retain one origin and the ordered Japanese route intent (10.379167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 585.283958
+
+> morrovia@1.0.0 test:planner-shadow
+> node --experimental-strip-types --test tests/planner-shadow.test.ts
+
+(node:91510) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/planner-shadow.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ shadow mode is opt-in and cannot enable in production (0.607375ms)
+✔ review contract drops invented canonical IDs and unknown enum values (14.503833ms)
+✔ off and failure paths keep deterministic input unchanged and issue one bounded call (5.901209ms)
+✔ API request contract defaults to a deterministic disabled shadow response (1.594916ms)
+✔ shadow configuration without a key remains an unavailable advisory fallback (1.139167ms)
+✔ provider failures are classified without exposing provider messages (4.53175ms)
+✔ Groq client makes one bounded, schema-constrained fixture request (11.671667ms)
+✔ Groq client captures aggregate rate-limit headers without retaining response text (1.822292ms)
+✔ Groq client safely classifies rejected models and malformed provider output (2.976958ms)
+✔ Groq rate limits retain only retry timing and stop the advisory call (1.5ms)
+✔ Groq client reduces schema errors to a safe category without provider text (1.589208ms)
+✔ provider timeout remains one advisory fallback (6.591375ms)
+✔ prompt gauntlet shadow audit stays aggregate-only and bounded (177.615458ms)
+✔ audit records invented geography as a sanitized unsupported-certainty safety concern (6.4295ms)
+✔ an ambiguity already surfaced by the deterministic engine is redundant, not useful signal (25.144625ms)
+✔ live audit pacing is sequential, conservative, and preserves a complete partial report (28.247333ms)
+✔ live pacing waits for a provider token reset before the next advisory call (29.742625ms)
+✔ live audit ends cleanly after a rate-limit response and does not present it as complete (6.088709ms)
+✔ live pacing environment can only reduce the conservative default (0.160709ms)
+✔ hybrid evaluation replays sanitized fixtures and never uses a live provider (205.837584ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 752.222333
+
+> morrovia@1.0.0 test:builder-gate
+> node --experimental-strip-types --test tests/trip-builder-gate.test.ts tests/trip-builder-layout.test.ts tests/builder-seed-coordination.test.ts tests/trip-builder-entry-session.test.ts tests/homepage-async-entry.test.ts tests/trip-builder-async-edit-session.test.ts tests/trip-builder-pending-build.test.ts tests/builder-recovery-build-ack.test.ts tests/trip-builder-projection-liveness.test.mjs tests/builder-persistence-lifecycle.test.mjs tests/builder-reorder-input-overflow.test.mjs tests/discovery-direction-coordination.test.ts tests/builder-clarification-focus.test.ts tests/builder-clarification-ownership.test.ts tests/staging-africa-latency-exception.test.ts tests/staging-south-korea-latency-exception.test.ts tests/builder-discovery-canonical-read.test.ts tests/osaka-destination-planning.test.ts tests/osaka-seoul-transport.test.ts tests/reviewed-bali-destinations.test.ts tests/trip-recovery-classification.test.ts tests/search-past-dates.test.ts tests/search-date-picker.test.ts tests/generated-trip-title.test.ts tests/trip-display.test.ts tests/new-search-past-dates.test.ts tests/new-trip-starter.test.ts tests/new-trip-starter-preservation.test.ts
+
+(node:91547) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/builder-clarification-focus.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual deferred shell focus cannot blur an already edited combobox and close its menu (222.59425ms)
+✔ actual autocomplete typing retires completed search without changing focus ownership (40.398208ms)
+✔ initial shell entry still focuses its heading when focus remains outside the dialog (8.459959ms)
+✔ deferred shell focus respects a deliberately focused current dialog button (22.201666ms)
+✔ retired shell focus is cancelled and cannot steal restored focus even if its frame is delivered (42.564042ms)
+✔ an old shell frame cannot retarget the heading of a replacement dialog (18.518792ms)
+✔ a closed shell schedules no heading focus (20.198208ms)
+✔ shell Tab wrapping, guarded Escape, scroll lock and return focus keep their actual behavior (12.68175ms)
+✔ actual autocomplete blur still closes its menu when focus leaves its root (36.182875ms)
+✔ actual autocomplete keeps its menu while focus moves to an option inside its root (40.886625ms)
+✔ actual single-area semantic loop waits for the accepted shortlist state before its next click (68.769375ms)
+(node:91548) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/builder-clarification-ownership.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ earlier accepted choice cannot advance a dismissed and reopened two-item chooser (709.486416ms)
+✔ current accepted first choice advances exactly once to the next mention (133.418875ms)
+✔ current accepted final choice completes the legitimate session (133.036792ms)
+✔ rejected acceptance leaves the active chooser unchanged (114.53975ms)
+✔ late accepted choice cannot navigate after dismiss (435.340083ms)
+✔ late accepted choice cannot navigate after same-mention-reopen (546.261833ms)
+✔ late accepted choice cannot navigate after owner (264.710917ms)
+✔ late accepted choice cannot navigate after document (202.455042ms)
+✔ late accepted choice cannot navigate after editor (305.111667ms)
+✔ late accepted choice cannot navigate after unmount (217.825417ms)
+✔ late accepted choice cannot navigate after mention (386.874625ms)
+(node:91549) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/builder-discovery-canonical-read.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ durable multi-base Discovery completes with held rendered publication (941.292875ms)
+✔ durable multi-base Discovery completes with held rendered publication and reviewed order (748.708834ms)
+✔ Discovery refuses an undurable second base despite the current editor (283.40125ms)
+✔ durable late second base cannot complete after view retires confirmation (294.64925ms)
+✔ durable late second base cannot complete after search retires confirmation (455.41325ms)
+✔ durable late second base cannot complete after owner retires confirmation (208.975792ms)
+✔ durable late second base cannot complete after document retires confirmation (219.364ms)
+✔ durable late second base cannot complete after editor retires confirmation (259.68775ms)
+✔ durable late second base cannot complete after unmount retires confirmation (357.853333ms)
+✔ legacy Discovery without an editor continues to use its rendered mutation owner (64.703958ms)
+✔ real landmark visit handler confirms durable Agra with held rendered publication (338.65475ms)
+✔ real landmark visit refuses an undurable relationship and preserves its accepted base (158.933875ms)
+✔ durable Agra cannot confirm a visit after view retires Discovery (92.127ms)
+✔ durable Agra cannot confirm a visit after search retires Discovery (92.871833ms)
+✔ durable Agra cannot confirm a visit after owner retires Discovery (130.516708ms)
+✔ durable Agra cannot confirm a visit after document retires Discovery (108.257625ms)
+✔ durable Agra cannot confirm a visit after editor retires Discovery (76.20675ms)
+✔ durable Agra cannot confirm a visit after unmount retires Discovery (80.53725ms)
+✔ real visit handler without an editor retains the legacy rendered stop and selection owner (72.504833ms)
+(node:91550) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/fixtures/batch14-route-documents.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reserved-before-body: none (92.17025ms)
+✔ reserved-before-body: new-raw (40.127916ms)
+✔ reserved-before-body: owner (25.664125ms)
+✔ reserved-before-body: foreign-body (20.419833ms)
+✔ reserved-before-body: foreign-head (12.583208ms)
+✔ inspection-before-body: none (39.247792ms)
+✔ inspection-before-body: new-raw (42.874666ms)
+✔ inspection-before-body: owner (21.226333ms)
+✔ inspection-before-body: foreign-body (18.690417ms)
+✔ inspection-before-body: foreign-head (10.950292ms)
+✔ body-before-input: none (38.953541ms)
+✔ body-before-input: new-raw (71.178083ms)
+✔ body-before-input: owner (27.229292ms)
+✔ body-before-input: foreign-body (23.922083ms)
+✔ body-before-input: foreign-head (27.812125ms)
+✔ input-before-pointer: none (38.168791ms)
+✔ input-before-pointer: new-raw (78.1915ms)
+✔ input-before-pointer: owner (20.174708ms)
+✔ input-before-pointer: foreign-body (20.957291ms)
+✔ input-before-pointer: foreign-head (21.535ms)
+✔ pointer-before-readback: none (38.918042ms)
+✔ pointer-before-readback: new-raw (59.229916ms)
+✔ pointer-before-readback: owner (21.455375ms)
+✔ pointer-before-readback: foreign-body (24.385833ms)
+✔ pointer-before-readback: foreign-head (28.951792ms)
+✔ unreserved command retires on new raw input without invoking canonical storage (13.684667ms)
+✔ same-handle foreign mutation can be produced by the current native writer API (22.2675ms)
+✔ account ACK with optional native cache failure permits the next owned edit (121.234667ms)
+(node:91551) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/builder-recovery-build-ack.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Build during the first recovered account save waits for its canonical ACK before build-status (214.855917ms)
+✔ waiting for the existing owned recovery flush preserves the original Build barrier and succeeds (32.303958ms)
+✔ new raw intent during the owned flush retires the original Build request (22.656834ms)
+✔ a genuine initial recovery conflict remains protected and prevents Build navigation (21.762417ms)
+✔ actual Build refuses unmount during the initial owned recovery wait (36.548458ms)
+✔ actual Build refuses changeOwner during the initial owned recovery wait (18.861ms)
+(node:91552) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/helpers/recovery-indexeddb-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ created → built → edit → reorder can overflow paired input, then reload and edit again (1045.187ms)
+✔ an independent recovery remains protected even when paired input would need overflow (496.128041ms)
+✔ an exact guest cache source admits paired input overflow without a recovery handle (322.495334ms)
+✔ a concurrent branch during paired input quota is preserved and cannot be accepted (764.868625ms)
+(node:91553) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/builder-seed-coordination.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual seed reserves the existing lookup queue before native write/readback, and autosave cannot start a second writer (1124.234583ms)
+✔ retired actual seed cannot report another readback as a competing recovery or mount a stale editor (559.963208ms)
+✔ seed failure releases the reservation and reports refusal without a false device acknowledgement (443.956459ms)
+✔ actual recovery callback cannot acknowledge an editor snapshot for a retired seed (307.297709ms)
+✔ current unsuccessful seed drains queued lookup failures so their existing retry status is reachable (635.960416ms)
+✔ actual discovery functional update cannot replace a seed across native write, readback and editor-ready handoff (832.753208ms)
+✔ actual transfer functional update cannot replace a seed across native write, readback and editor-ready handoff (770.857708ms)
+✔ a started actual autosave cannot publish protection after its initial editor generation retires (409.841375ms)
+✔ actual brief input retires initialization synchronously during write (409.107417ms)
+✔ actual destination-add input retires initialization synchronously during write (422.074125ms)
+✔ actual origin input retires initialization synchronously during write (311.173209ms)
+✔ actual end input retires initialization synchronously during write (287.057541ms)
+✔ actual dates input retires initialization synchronously during write (247.740708ms)
+✔ actual fixed-label input retires initialization synchronously during write (230.496125ms)
+✔ actual fixed-date input retires initialization synchronously during write (229.181875ms)
+✔ actual brief input retires initialization synchronously during readback (245.382458ms)
+✔ actual destination-add input retires initialization synchronously during readback (252.970541ms)
+✔ actual origin input retires initialization synchronously during readback (263.599416ms)
+✔ actual end input retires initialization synchronously during readback (244.344833ms)
+✔ actual dates input retires initialization synchronously during readback (214.869916ms)
+✔ actual fixed-label input retires initialization synchronously during readback (204.632708ms)
+✔ actual fixed-date input retires initialization synchronously during readback (202.963583ms)
+✔ actual brief input retires initialization synchronously during editor-initializing (196.585792ms)
+✔ actual destination-add input retires initialization synchronously during editor-initializing (205.391291ms)
+✔ actual origin input retires initialization synchronously during editor-initializing (201.817208ms)
+✔ actual end input retires initialization synchronously during editor-initializing (200.459583ms)
+✔ actual dates input retires initialization synchronously during editor-initializing (201.617917ms)
+✔ actual fixed-label input retires initialization synchronously during editor-initializing (235.013916ms)
+✔ actual fixed-date input retires initialization synchronously during editor-initializing (358.032708ms)
+✔ a retired actual recovery consumer cannot install an entry or start a native writer (77.051417ms)
+✔ a current entry never acknowledges a foreign incoming trip (87.891875ms)
+✔ a seed joins the generation writer first started by an autosave whose optional effect cleaned up (199.8415ms)
+✔ successful seed and exact handoff cannot relabel or clear protection from another generation (369.465709ms)
+✔ actual preservation cannot publish feedback or navigation into raw input entered during write (222.300834ms)
+✔ actual preservation cannot publish feedback or navigation into raw input entered during readback (211.989375ms)
+✔ actual preservation captures its source and accepts only the exact verified generation (120.87325ms)
+✔ actual ready handoff cannot release a newly installed intake receipt or foreign feedback (166.423667ms)
+✔ actual reviewed device retry starts a fresh guarded writer after native refusal and still waits for editor-ready handoff (216.854208ms)
+✔ actual reviewed device retry preserves a competing protected recovery and never seeds it (193.160625ms)
+✔ actual explicit retry does not duplicate a held writer and preserves a newer raw input on completion (355.991417ms)
+✔ actual explicit retry reports an unknown read/write rejection only into its own current generation (194.626542ms)
+✔ actual seeded initialization failure retries with a fresh exact entry while its closure still captures the old seed (210.399916ms)
+✔ actual legacy onEndChange retains local input but refuses the old held seed (184.222416ms)
+✔ actual legacy onEndModeChange retains local input but refuses the old held seed (178.062042ms)
+✔ actual legacy onEndSelect retains local input but refuses the old held seed (176.12525ms)
+✔ actual legacy onStartSelect retains local input but refuses the old held seed (178.235875ms)
+✔ actual legacy internal date handler retires initialization in the same event stack (182.028583ms)
+✔ actual legacy internal travellers handler retires initialization in the same event stack (201.354792ms)
+✔ actual legacy internal budget handler retires initialization in the same event stack (190.47525ms)
+✔ actual parent input capture retires before an invalid date picker raw-text handler publishes its unparsed input (215.19525ms)
+✔ actual pre-editor remove control preserves its visible change and refuses the old held seed (248.746416ms)
+✔ actual pre-editor order control preserves its visible change and refuses the old held seed (255.750542ms)
+✔ actual pre-editor night control preserves its visible change and refuses the old held seed (246.272459ms)
+✔ actual pre-editor undo control preserves its visible change and refuses the old held seed (256.708667ms)
+✔ actual pre-editor provider clarification keeps its selected point and invalidates the original seed (270.104541ms)
+✔ actual accepted brief capture preserves its existing stale-response refusal (241.1745ms)
+✔ actual accepted brief capture retires its replaced source (206.521459ms)
+✔ actual pre-editor planning-area source boundary refuses stale initialization (236.226958ms)
+✔ actual pre-editor transport-choice source boundary refuses stale initialization (226.255333ms)
+✔ actual pre-editor build-status source boundary refuses stale initialization (204.56575ms)
+✔ actual explicit Discovery clarification source replacement retires before a held add-stop validation continues (196.548208ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation (pointer) (166.007167ms)
+✔ partial native entry retry protects a competing body (pointer) (161.411916ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (pointer) (184.067875ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (receipt) (178.97825ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation with required homepage receipt (pending-pointer) (179.386083ms)
+✔ partial native entry retry reuses its frozen body despite later render recomputation (retired) (156.686042ms)
+✔ authored input cannot replay the creation source after rerender (fresh, new) (170.981375ms)
+✔ authored input cannot replay the creation source after rerender (fresh, resumed) (168.999125ms)
+✔ authored input cannot replay the creation source after rerender (route-handoff, new) (166.655917ms)
+✔ authored input cannot replay the creation source after rerender (route-handoff, resumed) (162.0355ms)
+✔ creation replay remains bound to its selected owner (40.365542ms)
+✔ creation replay remains bound to its selected hydration (38.024833ms)
+✔ advisory rerender can retain the selected creation source within the same input revision (44.335791ms)
+(node:91554) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/discovery-direction-coordination.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual Discovery direction button waits for accepted direction before advancing the step (91.779625ms)
+✔ actual Discovery direction button does not advance after a refused durable action (23.915834ms)
+✔ actual Discovery direction button retains synchronous story fixture compatibility (19.571208ms)
+✔ actual Builder Discovery action returns a failed durable acknowledgement to its component (217.446625ms)
+✔ actual Builder Discovery action cannot return success after its view retires (204.48175ms)
+✔ actual Builder Discovery callback from a retired render cannot start another durable action (152.571792ms)
+(node:91555) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/generated-trip-title.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fresh six-stop round trip displays the first three destinations and retains every stop and airport endpoint (7.774792ms)
+✔ generated title retains a genuine origin-city destination, intentional repeats and airport-like destination text (2.136125ms)
+✔ explicitly clearing a custom name regenerates a destination-only title without changing the route (1.445084ms)
+✔ builder regeneration preserves explicit custom names and unknown saved-title provenance (2.318834ms)
+✔ known generated titles regenerate from new destinations during an explicit builder rebuild (3.246917ms)
+✔ legacy generated display reads destinations without rewriting saved identity or route data (2.380875ms)
+✔ automatic display follows accepted stop order and handles an empty route (0.491667ms)
+✔ duplicate displays its explicit title: Hong Kong & Coron & Honolulu copy (2.223334ms)
+✔ duplicate displays its explicit title: Airport adventures copy (2.894667ms)
+✔ duplicate displays its explicit title: Summer route alternative (1.757541ms)
+(node:91556) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/homepage-async-entry.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Homepage hydration stays disabled until both-store owner-scoped read resolves (112.700542ms)
+✔ actual Homepage hydration enables fresh guest and signed-in input beside an unchanged foreign pending handoff (35.968125ms)
+✔ unknown/protected Homepage reads retain same-owner memory and do not manufacture empty durable input (32.009375ms)
+✔ owner change, unmount and superseded hydration reject late results (26.054375ms)
+✔ the visible retry rereads a transient unknown without discarding same-owner typed memory (25.937292ms)
+✔ same-owner unchanged receipt resume awaits preservation and retains explicit recovery navigation (77.718166ms)
+✔ competing receipt during preservation prevents stale same-owner resume navigation (44.577666ms)
+✔ edited Describe input with a legacy completed receipt must not redeem the old trip identity (58.956875ms)
+✔ actual Homepage Stops submit remains pending until canonical recovery and its receipt commit together (61.674208ms)
+✔ Plan with stops does not reopen an edited receipt trip whose route no longer matches the visible input (29.68025ms)
+✔ title-only edits keep the completed homepage trip identity (34.143208ms)
+✔ route mutation during preservation cannot redeem a completed receipt (35.923708ms)
+✔ new input or owner while preservation is pending cannot navigate (74.686792ms)
+✔ fresh reservation supersedes only the exact completed receipt observed under lock (6.878958ms)
+✔ unchanged authenticated canonical trip resumes its completed homepage receipt (38.482334ms)
+✔ fresh reservation never overwrites a concurrently changed raw homepage snapshot (3.04725ms)
+✔ explicit pending continuation uses the actual resume callback without clearing current selection (24.706416ms)
+(node:91557) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/new-search-past-dates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ fresh New trip intake rejects restored yesterday before passing it to Builder (104.450625ms)
+✔ fresh New trip intake rejects raw past, invalid and reversed dates (44.91975ms)
+✔ fresh New trip intake accepts today, future, flexible and start-only dates (48.256167ms)
+✔ saved pending intake remains owned by the existing resume flow (9.149791ms)
+✔ raw New trip date edits retire navigation through the existing input update (16.571166ms)
+(node:91558) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/new-trip-starter-preservation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ New refuses a reservation arriving after starter mount and preserves current and frozen branches (130.336625ms)
+✔ New awaits write and refuses newer input during canonical read (12.240125ms)
+✔ New accepts exact persisted controls without writing (6.970375ms)
+✔ New refuses late preservation after owner (55.402292ms)
+✔ New refuses late preservation after session (39.843959ms)
+✔ New refuses late preservation after unmount (8.86425ms)
+✔ New refuses protected canonical input (8.889791ms)
+✔ New refuses unavailable canonical input (4.92425ms)
+✔ Resume refuses unsaved controls with a valid saved reservation (11.901667ms)
+✔ Resume rechecks canonical pair and opens exact checkpoint for unchanged controls (15.809666ms)
+✔ Resume refuses changed pair, owner and both-store protection (67.489166ms)
+✔ empty untouched New may navigate without manufacturing a saved input (43.723834ms)
+✔ Resume retires after input, session or unmount changes during canonical read (43.438292ms)
+✔ actual native/IndexedDB divergence refuses New and keeps every copy (19.51625ms)
+✔ explicit save after completed checkpoint keeps raw endpoint and releases only current form (77.856084ms)
+✔ explicit current save refuses pending-HOME without replacing prior input (32.55975ms)
+✔ explicit current save refuses competing-input without replacing prior input (35.592042ms)
+✔ explicit current save refuses pointer without replacing prior input (14.452166ms)
+✔ explicit current save refuses CAS-race without replacing prior input (19.118875ms)
+✔ pending-mode typing never releases a completed receipt automatically (39.884459ms)
+✔ raw edit survives native storage getter denial and synchronously retires New (27.636625ms)
+✔ Import cannot bypass a pending-mode release for partial or competing input (46.585125ms)
+✔ explicit current save without a receipt lock preserves every input and pending checkpoint (14.71475ms)
+(node:91559) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/new-trip-starter.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ New trip restores both inactive mode inputs and canonical repeated occurrences (3.878209ms)
+✔ New trip uses production capture, destination and endpoint controls with owner scoped intake (6.521ms)
+✔ New trip persists edited intake without carrying a completed receipt (1.659458ms)
+✔ fresh-only Builder composition has one New trip heading and no duplicate first-place editor (4.775333ms)
+(node:91561) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/osaka-destination-planning.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual fresh Osaka autocomplete presents one reviewed city and selects its intact maintained tuple (434.968083ms)
+✔ fresh Osaka grouping is independent of candidate order and never alters source objects (22.411083ms)
+✔ Osaka saved selections and intentional repeated visits retain each occurrence and source identity (274.269417ms)
+✔ Osaka namesakes, gateways, districts and stale or contradictory tuples cannot borrow the fresh group (5.163917ms)
+(node:91571) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/osaka-seoul-transport.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ maintained Osaka to Seoul uses reviewed directional evidence and a broad planning total (24.4275ms)
+✔ pinned reference Osaka to Seoul uses reviewed directional evidence and a broad planning total (5.41975ms)
+✔ legacy identity with pinned binding Osaka to Seoul uses reviewed directional evidence and a broad planning total (1.179042ms)
+✔ normal worker can resolve an unknown Osaka to Seoul leg from service evidence without changing input (4.235375ms)
+✔ maintained osaka to seoul no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (18.414625ms)
+✔ maintained seoul to osaka no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (8.419042ms)
+✔ pinned reference osaka to seoul no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (49.738625ms)
+✔ pinned reference seoul to osaka no-flight, authored own-car, saved timetable, provider and booked facts remain authoritative (84.808167ms)
+✔ reviewed city corridors do not infer Seoul to Tokyo or airport substitutions (76.814917ms)
+✔ maintained Seoul to Osaka uses separately reviewed reverse evidence (10.121917ms)
+✔ pinned reference Seoul to Osaka uses separately reviewed reverse evidence (2.0185ms)
+✔ legacy identity with pinned binding Seoul to Osaka uses separately reviewed reverse evidence (0.462042ms)
+✔ catalog and GeoNames city representations work independently in both directions (120.649834ms)
+✔ maintained 35-night Builder reorder retains choices without applying a forward choice to the reverse leg (323.933958ms)
+✔ pinned reference 35-night Builder reorder retains choices without applying a forward choice to the reverse leg (330.939458ms)
+✔ osaka to seoul mismatched source point, provider pin, place id and country cannot borrow reviewed service evidence (51.779333ms)
+✔ seoul to osaka mismatched source point, provider pin, place id and country cannot borrow reviewed service evidence (70.526625ms)
+(node:91572) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/reviewed-bali-destinations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reviewed Bali discovery offers exact Ubud and Bali Kuta offline without resolving the island intent (1102.720333ms)
+✔ reviewed Bali base identities expose the exact DPS gateway without changing their points (10.34125ms)
+✔ reviewed Bali coverage fails closed on a changed reference snapshot instead of falling through to live guesses (2.458375ms)
+✔ reviewed membership rejects changed tuple {"canonicalPlaceId":"reference:geonames:7378343"} (2.67325ms)
+✔ reviewed membership rejects changed tuple {"providerId":"reference:geonames:1639002@wrong"} (2.33025ms)
+✔ reviewed membership rejects changed tuple {"coordinates":[115,-8]} (0.602417ms)
+✔ reviewed membership rejects changed tuple {"parentCountries":["China"]} (0.464083ms)
+✔ reviewed membership rejects changed tuple {"parentCountries":["Indonesia","China"]} (0.534208ms)
+✔ reviewed membership rejects changed tuple {"canonicalName":"Other Kuta"} (0.556917ms)
+✔ reviewed membership rejects changed tuple {"placeType":"island"} (1.101ms)
+✔ reviewed membership rejects changed tuple {"routability":"needs_base_selection"} (1.086833ms)
+✔ province, foreign, unknown and missing island identities cannot use reviewed Bali membership (0.688917ms)
+✔ Bali text search and explicit base revalidation use the same offline exact membership (57.70425ms)
+✔ explicit reference:geonames:1622846 inbound uses DPS flight and separate ground-access segments offline (56.753709ms)
+✔ explicit reference:geonames:1622846 outbound uses DPS flight and separate ground-access segments offline (5.224417ms)
+✔ explicit reference:geonames:1639002 inbound uses DPS flight and separate ground-access segments offline (5.484875ms)
+✔ explicit reference:geonames:1639002 outbound uses DPS flight and separate ground-access segments offline (10.686708ms)
+✔ Bali gateway support preserves exclusions, booked facts, other Kuta and same-island journeys (14.172ms)
+✔ reviewed gateway projection cannot move the pinned airport by changing a self-consistent tuple (0.425875ms)
+✔ custom destination stores and explicit unknown overrides remain authoritative (1.655833ms)
+✔ reviewed registry fields match the actual accepted reference records, including the DPS airport (0.686667ms)
+✔ explicit accepted Bali base builds and round-trips canonical trip identity in isolated device storage (21.754791ms)
+✔ unverified changed base geography and explicitly selected airports never become an assumed Bali stay (2.945916ms)
+(node:91573) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/search-date-picker.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ calendar exposes date cells inside week rows for 2026-02 (42.759875ms)
+✔ calendar exposes date cells inside week rows for 2026-09 (19.659416ms)
+✔ calendar exposes date cells inside week rows for 2026-08 (5.808292ms)
+✔ Search picker disables yesterday while today is selectable (3.319584ms)
+✔ Search picker rechecks local today when a previously enabled day is picked after midnight (4.874041ms)
+✔ the shared picker still permits historical trip dates unless Search opts in (25.572375ms)
+✔ complete-range mode does not submit a partial start selection (6.438625ms)
+✔ complete-range end uses the local selected start while canonical props are unchanged (34.661167ms)
+✔ closing a partial complete-range selection makes no submission (7.451542ms)
+✔ complete-range trigger is busy until its submitted range settles (2.128458ms)
+✔ complete-range end permits a valid range before the original start (55.022958ms)
+(node:91582) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/search-past-dates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Search blocks yesterday from restored input before reserving or navigating (10.280708ms)
+✔ Search blocks unaccepted typed past dates instead of using the previous valid range (2.598125ms)
+✔ Search rejects reversed ranges with a clear date message (1.768208ms)
+✔ Search accepts today, equal endpoints, future ranges, open dates and start-only dates (3.604792ms)
+✔ Search blocks a malformed typed date and requires applying valid typed text (1.352708ms)
+✔ Search reevaluates restored dates against the current local day after midnight (0.2315ms)
+✔ Search uses the traveller's local today on both sides of the UTC date boundary (338.624875ms)
+✔ typing a Search date retires an in-flight continuation before publishing the raw draft (7.850708ms)
+(node:91590) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/staging-africa-latency-exception.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ multi-area acceptance exposes a fixed target and bounded completion (2.049959ms)
+✔ South Korea 1440px reports 0ms without completing functional checks (0.830791ms)
+✔ South Korea 1440px reports 2499.9ms without completing functional checks (0.104916ms)
+✔ South Korea 1440px reports 2500ms without completing functional checks (0.381375ms)
+✔ South Korea 1440px reports 3171.7ms without completing functional checks (0.167708ms)
+✔ South Korea 1440px reports 6869.5ms without completing functional checks (0.093375ms)
+✔ South Korea 390px reports 0ms without completing functional checks (0.080958ms)
+✔ South Korea 390px reports 2499.9ms without completing functional checks (0.089334ms)
+✔ South Korea 390px reports 2500ms without completing functional checks (0.095166ms)
+✔ South Korea 390px reports 3171.7ms without completing functional checks (0.193042ms)
+✔ South Korea 390px reports 6869.5ms without completing functional checks (0.110167ms)
+✔ Africa 1440px reports 0ms without completing functional checks (0.080083ms)
+✔ Africa 1440px reports 2499.9ms without completing functional checks (0.080875ms)
+✔ Africa 1440px reports 2500ms without completing functional checks (0.065041ms)
+✔ Africa 1440px reports 3171.7ms without completing functional checks (0.054666ms)
+✔ Africa 1440px reports 6869.5ms without completing functional checks (0.035667ms)
+✔ Africa 390px reports 0ms without completing functional checks (0.065416ms)
+✔ Africa 390px reports 2499.9ms without completing functional checks (0.0325ms)
+✔ Africa 390px reports 2500ms without completing functional checks (0.031583ms)
+✔ Africa 390px reports 3171.7ms without completing functional checks (0.034291ms)
+✔ Africa 390px reports 6869.5ms without completing functional checks (0.044583ms)
+✔ invalid or uncompleted elapsed time NaN fails closed (0.439084ms)
+✔ invalid or uncompleted elapsed time Infinity fails closed (0.071792ms)
+✔ invalid or uncompleted elapsed time -Infinity fails closed (0.052084ms)
+✔ invalid or uncompleted elapsed time -1 fails closed (0.045334ms)
+✔ invalid or uncompleted elapsed time 15000 fails closed (0.043625ms)
+✔ unreviewed report context Japan 390px one_way fails closed (0.095958ms)
+✔ unreviewed report context Africa 430px one_way fails closed (0.051875ms)
+✔ unreviewed report context South Korea 390px return_to_start fails closed (0.048375ms)
+(node:91594) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/staging-south-korea-latency-exception.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ main 1440px keeps performance failures visible after functional qualification (69.58425ms)
+✔ main 390px keeps performance failures visible after functional qualification (98.197542ms)
+✔ staging 1440px keeps performance failures visible after functional qualification (71.128958ms)
+✔ staging 390px keeps performance failures visible after functional qualification (163.662875ms)
+✔ codex/other 1440px keeps performance failures visible after functional qualification (66.434ms)
+✔ codex/other 390px keeps performance failures visible after functional qualification (69.590917ms)
+✔ local 1440px keeps performance failures visible after functional qualification (59.031959ms)
+✔ local 390px keeps performance failures visible after functional qualification (130.673584ms)
+✔ clean performance requires both completed area measurements below 2500ms (62.603167ms)
+✔ qualification rejects no records (60.762042ms)
+✔ qualification rejects missing Africa (62.577ms)
+✔ qualification rejects pending recovery (60.736209ms)
+✔ qualification rejects failed recovery (124.53975ms)
+✔ qualification rejects raised target (70.881916ms)
+✔ qualification rejects concealed miss (116.520667ms)
+✔ qualification rejects concealed pass (88.187709ms)
+✔ qualification rejects invalid elapsed (65.789959ms)
+✔ qualification rejects invalid driver elapsed (62.959542ms)
+✔ qualification rejects wrong trip type (59.450083ms)
+✔ qualification rejects wrong width (54.368167ms)
+✔ qualification rejects raised completion bound (65.790334ms)
+✔ qualification rejects completion beyond bound (63.206583ms)
+✔ qualification rejects wrong scope (56.828167ms)
+✔ qualification rejects extra unreviewed record (76.841792ms)
+✔ functional failed case still blocks qualification (96.573083ms)
+✔ functional cancelled case still blocks qualification (61.080042ms)
+✔ functional missing case still blocks qualification (78.458291ms)
+(node:91606) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-builder-async-edit-session.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ session-scoped automatic deferral keeps explicit writes durable and resumes latest work once (92.336125ms)
+✔ a successful response during deferral cannot write a projection (35.091625ms)
+✔ a rejected response during deferral cannot write a projection (18.242708ms)
+✔ projection admission rechecks deferral before reservation (37.791875ms)
+✔ projection admission rechecks deferral before reservation and preserves release during cleanup (39.825167ms)
+✔ deferral preserves an already reserved projection save and explicit acceptance waits for its readback (26.688084ms)
+✔ deferral release while a reserved write remains pending wakes current work after it finishes (18.064292ms)
+✔ deferral is instance-owned, idempotent, and cannot strand a replacement or erase newer raw input (29.048125ms)
+✔ hydration awaits authoritative draft read and rejects an owner change during the read (6.895834ms)
+✔ held device transaction cannot advance accepted trip, Undo retention or account queue (35.72175ms)
+✔ atomic accepted edit consumes only its exact raw field after durable verification (25.475792ms)
+✔ held accepted edit rejects owner change and preserves raw bytes (7.612208ms)
+✔ held accepted edit rejects dispose change and preserves raw bytes (3.696792ms)
+✔ held raw input is visible in memory but stays pending and cannot release cloud saving (28.977708ms)
+✔ failed atomic draft retention keeps accepted document and unconsumed raw bytes (27.256125ms)
+✔ stale projection response cannot start a durable write after a newer raw input (14.36425ms)
+✔ reserved projection finishes its canonical commit while preserving newer input and refusing stale feedback (28.147541ms)
+✔ held exact ACK serializes a later edit and never retires its new recovery (63.885584ms)
+✔ exact account ACK remains account truth when optional canonical cache fails (19.207667ms)
+✔ Undo remains awaited and carries CAS ancestry behind a held earlier save (84.7155ms)
+✔ promotion remaps preserved raw input and a pre-promotion Undo frame after newer edits (123.690125ms)
+✔ raw discard retains bytes until its verified write and refuses failed discard (6.444375ms)
+✔ the existing synchronous API retains immediate boolean and acceptance returns (3.777416ms)
+✔ failed promotion draft retention preserves exact ownerless recovery and raw input (31.793708ms)
+✔ failed promotion recovery retention preserves exact ownerless recovery and raw input (19.369667ms)
+✔ failed authoritative draft hydration cannot overwrite unknown raw bytes (1.920166ms)
+✔ projection retry awaits retained failure state without consuming independent raw input (28.056042ms)
+✔ network retry keeps exact current handle and waits for async status before account submission (25.804834ms)
+✔ latest promotion is a durable identity continuation without a new accepted edit revision (30.246792ms)
+✔ pre-promotion Undo waits for held ACK journaling and retains durable remap (75.677666ms)
+✔ an exact ACK waits for a held newer raw write instead of invalidating its durable continuation (23.864417ms)
+✔ an explicitly unacknowledged result cannot claim account success despite optional cache status (8.824375ms)
+✔ actual Discovery checkpoint verifies the accepted session document instead of a stale rendered owner ref (217.491ms)
+✔ actual Discovery checkpoint refuses a newer raw input while projection readback is pending (128.775792ms)
+✔ actual Discovery checkpoint cannot confirm after its view retires during readback (92.8315ms)
+✔ actual Discovery checkpoint cannot acknowledge a different rendered trip scope (69.721084ms)
+✔ actual night controls retain two rapid activations across awaited device acceptance (35.564834ms)
+✔ reserved night activation finishes while newer raw input retires the queued second activation (26.117417ms)
+✔ queued night activations stop after native refusal without an automatic second write (15.302833ms)
+✔ accepted edit waits for the current projection readback without rebasing newer traveller input (28.15925ms)
+✔ actual Build waits for an in-flight projection commit before accepting planned status (43.849334ms)
+✔ waiting Build cannot accept planned status after its mounted scope retires (35.536125ms)
+✔ waiting Build cannot cross an owner rotation during canonical readback (23.980167ms)
+✔ waiting Build preserves a newer unsubmitted raw input and refuses the stale request (33.65475ms)
+✔ mounted Builder dispatch waits for durable acceptance before publishing Undo and success (10.612917ms)
+✔ mounted Builder dispatch cannot publish a completed acceptance after unmount (8.36375ms)
+✔ mounted Builder preservation refuses a held acceptance instead of fabricating device durability (81.33725ms)
+✔ actual Build follows an origin command issued before Build while its acceptance is pending (31.940292ms)
+✔ reserved accepted edit retains newer raw bytes with a revision above the committed draft (5.866458ms)
+✔ actual Build refuses later-command while a prior origin is pending (15.764167ms)
+✔ actual Build refuses prior-refusal while a prior origin is pending (14.359625ms)
+✔ actual Build refuses editor-replaced while a prior origin is pending (17.455542ms)
+✔ actual Build retains the existing explicit ownerless promotion path from pending recovery (37.026542ms)
+✔ actual Build request retires when raw input changes before its effect starts (18.869667ms)
+✔ actual Build cannot navigate after newer raw input arrives during account flush (25.330208ms)
+✔ discard queued behind a reserved commit settles against its accepted source (8.429541ms)
+✔ fresh Build can follow an obsolete retired command and a verified discard (25.412875ms)
+✔ actual Build must reassess a pending origin clear after its acceptance (32.812584ms)
+✔ guest Build retirement renders no account failure or unverified device assurance (59.547833ms)
+✔ Build assessment publication is bound to its settled render: none (3.176834ms)
+✔ Build assessment publication is bound to its settled render: document (3.6ms)
+✔ Build assessment publication is bound to its settled render: revision (9.255333ms)
+✔ Build assessment publication is bound to its settled render: owner (4.088708ms)
+✔ Build assessment publication is bound to its settled render: unmount (3.141958ms)
+✔ discard superseded during its reserved write keeps newer raw and persists the higher revision (4.604959ms)
+✔ Build status refuses a source changed by projection after its assessment (9.542959ms)
+✔ Build assessment refuses failed projection persistence (21.236125ms)
+✔ Build assessment refuses held projection persistence (36.152ms)
+✔ actual build navigation rechecks none after the async persistence return (30.675ms)
+✔ actual build navigation rechecks failed after the async persistence return (33.42575ms)
+✔ actual build navigation rechecks held after the async persistence return (30.235791ms)
+✔ actual build navigation rechecks new-raw after the async persistence return (51.875417ms)
+✔ actual build navigation rechecks owner after the async persistence return (30.90575ms)
+✔ actual build navigation rechecks unmount after the async persistence return (26.160792ms)
+✔ actual map navigation rechecks none after the async persistence return (28.408416ms)
+✔ actual map navigation rechecks failed after the async persistence return (30.418083ms)
+✔ actual map navigation rechecks held after the async persistence return (27.470042ms)
+✔ actual map navigation rechecks new-raw after the async persistence return (34.854958ms)
+✔ actual map navigation rechecks owner after the async persistence return (33.159875ms)
+✔ actual map navigation rechecks unmount after the async persistence return (30.849ms)
+✔ verified discard preserves only actual newer field intent: unrelated (3.960084ms)
+✔ verified discard preserves only actual newer field intent: same-field (2.73125ms)
+✔ verified discard preserves only actual newer field intent: same-field-aba (4.047417ms)
+✔ unverified discard cannot remove input after write-failure (3.412167ms)
+✔ unverified discard cannot remove input after owner (2.406042ms)
+✔ Build assesses a healthy same-command projection at assessment 1 (34.523ms)
+✔ Build assesses a healthy same-command projection at assessment 2 (26.665334ms)
+✔ mounted transfer work completes while ineligible generated recommendation lookup is held (278.84925ms)
+✔ route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing (118.46625ms)
+✔ raw input during held ACK stays visible and persists after canonical installation (12.554834ms)
+✔ queued date intent settles and remains device-durable after ACK timeout rejection (16.790333ms)
+✔ import manual retry success: one request, honest terminal state and durable reopen (78.481917ms)
+✔ import manual retry failure: one request, honest terminal state and durable reopen (46.504708ms)
+✔ import manual retry rejection: one request, honest terminal state and durable reopen (67.755834ms)
+✔ import retry late response cannot cross owner boundary (18.876041ms)
+✔ import retry late response cannot cross navigation boundary (21.59775ms)
+✔ import retry late response cannot cross dates boundary (46.323125ms)
+✔ import explicit retry runs actual Builder worker: insufficient (43.495125ms)
+✔ import explicit retry runs actual Builder worker: unavailable (33.830083ms)
+✔ import explicit retry runs actual Builder worker: network (38.208416ms)
+✔ import explicit retry runs actual Builder worker: incomplete (40.937459ms)
+✔ import explicit retry runs actual Builder worker: mismatch (37.640833ms)
+✔ rapid repeated import retry clicks before durability schedule at most one lookup (24.237209ms)
+✔ actual page quota retry clears stale failure and publishes the matching Undo frame once (15.076209ms)
+✔ quota refusal retains an exact explicit change for manual retry without reporting a save (13.997625ms)
+✔ repeated quota retries serialize and keep the change pending until a verified write (5.915416ms)
+✔ quota retry cannot replay after owner (2.751375ms)
+✔ quota retry cannot replay after raw-input (4.325917ms)
+✔ quota retry cannot replay after new-command (6.631583ms)
+✔ quota retry cannot replay after dispose (5.115625ms)
+✔ quota retry preserves a separately written recovery instead of selecting a winner (4.603375ms)
+✔ account conflict after a quota retry retains the device change without another account write (8.3805ms)
+✔ security refusal never becomes a retryable quota command (3.277084ms)
+✔ readback refusal never becomes a retryable quota command (3.204792ms)
+✔ pointer refusal never becomes a retryable quota command (3.369583ms)
+✔ unknown refusal never becomes a retryable quota command (3.582333ms)
+(node:91608) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-builder-entry-session.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ entry rejects explicit recoveryDurable=false before readback or handoff (45.339792ms)
+✔ entry rejects explicit readbackConfirmed=false before readback or handoff (23.688667ms)
+✔ entry rejects explicit pointerAcknowledged=false before readback or handoff (3.006958ms)
+✔ entry rejects explicit receiptAcknowledged=false before readback or handoff (3.632708ms)
+✔ entry rejects owner readback rather than adopting physical bytes (4.75125ms)
+✔ entry rejects trip readback rather than adopting physical bytes (3.005833ms)
+✔ entry rejects write readback rather than adopting physical bytes (12.703625ms)
+✔ entry rejects backend readback rather than adopting physical bytes (2.568375ms)
+✔ entry rejects body readback rather than adopting physical bytes (4.669875ms)
+✔ entry freezes source and receipt and transfers once only after real async editor draft initialization completes (9.370416ms)
+✔ entry lifetime retirement at write cannot mount or confer feedback authority (2.698083ms)
+✔ entry lifetime retirement at readback cannot mount or confer feedback authority (4.296916ms)
+✔ entry lifetime retirement at ready cannot mount or confer feedback authority (4.525417ms)
+✔ canonical source with no opened exact handle refuses an arbitrary newer local recovery (4.615ms)
+✔ actual initialization scheduler holds actor work until exact session handoff commits (813.118833ms)
+✔ entry preserves actual SecurityError body failure and refuses handoff (15.028416ms)
+✔ entry preserves actual QuotaExceededError body failure and refuses handoff (17.470125ms)
+✔ entry preserves actual InvalidStateError body failure and refuses handoff (8.323375ms)
+✔ entry derives pointer failure only after verified body (2.169ms)
+✔ entry derives receipt failure only after verified body (2.779541ms)
+✔ entry retains explicit unknown failure without reclassifying an unattempted acknowledgement (4.961083ms)
+✔ entry retains explicit protected-recovery failure without reclassifying an unattempted acknowledgement (5.126667ms)
+✔ entry retains explicit pointer-incomplete failure without reclassifying an unattempted acknowledgement (3.117375ms)
+✔ entry retains explicit receipt-incomplete failure without reclassifying an unattempted acknowledgement (2.085709ms)
+(node:91620) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-builder-gate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ populated Builder directly exposes explicit, Same as start and unknown journey ends (1.257291ms) # SKIP
+﹣ editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged (0.11925ms) # SKIP
+﹣ canonical published handoff stays ready while optional enrichment is pending in Chromium and WebKit (0.058709ms) # SKIP
+✔ valid builder document passes the authoritative invariant (21.277084ms)
+✔ a canonical coordinate-less stop can advance while enrichment remains unknown (1.701ms)
+✔ a coordinate-less stop without canonical identity still requires review (5.607667ms)
+✔ the exact Cancún endpoint and opening-stay trip can advance to dates and nights (255.623625ms)
+✔ a viable itinerary is not rejected across the exploratory duration range (20.387375ms)
+✔ progress tab cannot bypass unresolved place review (1.859542ms)
+✔ non-critical unresolved traveller intent needs attention without blocking a valid canonical route (2.122959ms)
+✔ France attention follows an explicit Paris base selection, never geography alone (31.279292ms)
+✔ a conflicting traveller place role remains a hard readiness conflict (1.2505ms)
+﹣ Build requires explicit continuation without adding unresolved intent and recovery preserves it (0.257541ms) # SKIP
+﹣ Overview recovery deep-link opens the exact retained Builder mention (0.076542ms) # SKIP
+﹣ post-Build Kruger recovery preserves the unresolved reminder until canonical evidence exists (0.049417ms) # SKIP
+﹣ a provider-backed nearby place cannot bypass Kruger's missing canonical identity (0.066541ms) # SKIP
+﹣ provider unavailability never makes an unverified model base actionable (0.05475ms) # SKIP
+﹣ populated Builder only presents route-stop search results whose selected evidence can be added canonically (0.045917ms) # SKIP
+﹣ the inline Add a stop field stays ready for consecutive canonical additions on mobile and desktop (0.042125ms) # SKIP
+﹣ mobile Builder keeps destination intents visible while the single Add flow is open (0.037042ms) # SKIP
+✔ an entered origin may reach validation but cannot build while unverified (0.911208ms)
+✔ unreviewed geography blocks an otherwise authored itinerary (0.769583ms)
+✔ empty trip cannot advance, build, persist or navigate (0.532541ms)
+✔ three required stops under a hard maximum of two surfaces the structured conflict (1.408083ms)
+✔ eight retained stops in three days fail on zero-night stops and coverage (0.504959ms)
+✔ invalid document persistence is rejected for missing itinerary coverage (0.724375ms)
+✔ date and night-allocation contradictions block final persistence (0.298041ms)
+✔ the final validator blocks build, persistence and navigation through the same gate (0.891792ms)
+✔ the builder gate preserves distinct feasible and unknown realism outcomes (0.872208ms)
+✔ Builder applies a country-continuity proposal by occurrence-safe stop IDs (0.37875ms)
+(node:91634) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-builder-layout.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a useful route requires a valid stop occurrence, independently of endpoint context (1.015375ms)
+﹣ direct Builder entry offers capture, first place and import without mandatory steps or empty route (0.072042ms) # SKIP
+﹣ useful homepage and template handoffs show route timing immediately (0.052917ms) # SKIP
+﹣ mobile route map disclosure releases the map height (0.041791ms) # SKIP
+﹣ area-only handoff stays in clarification without an empty route or retired intake (0.048459ms) # SKIP
+﹣ versioned direct, area and Describe handoffs hydrate the unified Builder under their reserved identity (0.047667ms) # SKIP
+﹣ homepage handoff adopts its durable recovery URL once and restores on reload (0.034917ms) # SKIP
+﹣ legacy step query cannot switch an empty Builder into timing and preserves other parameters (0.041458ms) # SKIP
+✔ Builder workspace height and capture width remain content-driven (3.757834ms)
+✔ desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints (2.301333ms)
+✔ the unified route workspace projects canonical occurrences beside the map (2.732667ms)
+✔ versioned homepage hydration reserves identity before replay and keeps one Builder document owner (1.288709ms)
+✔ homepage lookup cannot overwrite a newer point when its seed had no coordinates (344.437583ms)
+✔ homepage lookup preserves a later authoritative name change (33.427125ms)
+✔ homepage lookup preserves a later authoritative country change (22.3815ms)
+✔ homepage lookup preserves a later authoritative canonical identity change (26.148208ms)
+✔ homepage lookup preserves a later authoritative provider identity change (22.536834ms)
+✔ homepage lookup cannot overwrite newer evidence at an identical identity, provider and point (12.422083ms)
+✔ homepage target guard allows an unchanged target after an unrelated accepted budget edit (40.272209ms)
+✔ before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed (9.320875ms)
+✔ before canonical hydration, identical-point newer evidence invalidates the held homepage lookup (20.734042ms)
+✔ before canonical hydration, compatible homepage enrichment waits for its mounted canonical owner (28.096292ms)
+✔ a fatal initial map failure leaves the route workspace usable (2.483ms)
+✔ Builder spacing and healthy route copy use the focused production treatment (5.579166ms)
+✔ the Journey shell and immersive closing share one production footer owner (1.230125ms)
+✔ clarification presentation separates action-required geography from confirmed stay bases (3.571625ms)
+✔ the activated Builder keeps one compact details and validation hierarchy (5.215667ms)
+✔ Journey is the only Add stop entry point after a route exists (2.156625ms)
+✔ night allocation is compact Route metadata instead of a separate band (4.192417ms)
+✔ Builder hierarchy has production Storybook coverage at every required width (5.837791ms)
+✔ night allocation reads canonical arrival and departure transfer impacts (3.452875ms)
+✔ manual night edits use canonical rebalance, durable stop intent and shared feedback (1.882666ms)
+﹣ first-place selection creates route timing without requiring endpoint context (0.10925ms) # SKIP
+﹣ passive validation preserves Starting from focus while typing after the first place (0.0465ms) # SKIP
+﹣ first-place resolution keeps the pending selection visible and prevents competing capture (0.036666ms) # SKIP
+﹣ endpoint-only handoff does not create an overnight route or timing table (0.0545ms) # SKIP
+﹣ direct text capture uses the existing parser then replaces capture with the populated route (0.119667ms) # SKIP
+﹣ legacy populated links focus summary or timing once while the whole route stays mounted (0.041625ms) # SKIP
+(node:91641) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-builder-pending-build.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Build waits for the held route worker before guest completion (222.919708ms)
+✔ Build waits for the held route worker before account completion (165.597875ms)
+✔ Build waits for the held route worker before promotion completion (140.586959ms)
+✔ Build settles after terminal route failed while preserving unknown timing (56.461958ms)
+✔ Build settles after terminal route conflict while preserving unknown timing (60.802209ms)
+✔ Build waiting for route details refuses input retirement (53.860458ms)
+✔ Build waiting for route details refuses owner retirement (41.290666ms)
+✔ Build waiting for route details refuses unmount retirement (54.60875ms)
+✔ Build waiting for route details refuses editor retirement (47.398333ms)
+✔ the navigation receipt refuses a durably saved trip with route work still pending (28.538959ms)
+✔ Build returns review on deferred projection after provider response, then supports a deliberate retry (93.524792ms)
+✔ Build returns review on deferred projection after provider error, then supports a deliberate retry (84.524042ms)
+✔ stopped Build restores en feedback and preserves review and retry action semantics (3.027083ms)
+✔ stopped Build restores en feedback and preserves explicit recovery action semantics (2.721083ms)
+✔ stopped Build restores es feedback and preserves review and retry action semantics (1.846458ms)
+✔ stopped Build restores es feedback and preserves explicit recovery action semantics (1.582375ms)
+(node:91646) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/lib/easyt/trip-builder-async-edit-session.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Build assessment reaches an honest outcome: native, provider response (503.114375ms)
+✔ Build assessment reaches an honest outcome: native, provider error (301.2725ms)
+✔ Build assessment reaches an honest outcome: indexeddb-body, provider response (228.092917ms)
+✔ Build assessment reaches an honest outcome: indexeddb-body, provider error (165.044833ms)
+✔ Build assessment reaches an honest outcome: indexeddb-input, provider response (292.471833ms)
+✔ Build assessment reaches an honest outcome: indexeddb-input, provider error (282.427167ms)
+✔ delayed native route response stays pending until actual worker outcome (265.848125ms)
+✔ delayed indexeddb-body route response stays pending until actual worker outcome (193.324084ms)
+✔ delayed indexeddb-input route response stays pending until actual worker outcome (292.97ms)
+✔ completed domain input does not start another provider call or write on retry (272.327ms)
+✔ completed IDB body does not start another provider call or write on explicit necessary-work retry (147.26475ms)
+✔ stale native worker cannot publish blocked or completed work after input (197.536875ms)
+✔ stale native worker cannot publish blocked or completed work after owner (185.570875ms)
+✔ stale native worker cannot publish blocked or completed work after dispose (174.526875ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after input (138.56475ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after owner (116.084ms)
+✔ stale indexeddb-body worker cannot publish blocked or completed work after dispose (117.586041ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after input (209.59675ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after owner (190.726292ms)
+✔ stale indexeddb-input worker cannot publish blocked or completed work after dispose (390.793916ms)
+✔ native projection storage refusal settles through the existing error and keeps the accepted document (183.322958ms)
+✔ indexeddb-body projection storage refusal settles through the existing error and keeps the accepted document (124.203333ms)
+✔ indexeddb-input projection storage refusal settles through the existing error and keeps the accepted document (195.1135ms)
+✔ a provider response with no usable progress settles for review rather than hanging (163.971125ms)
+✔ historical promotion stays fenced after native route outcome, provider response (207.96825ms)
+✔ historical promotion stays fenced after native route outcome, provider error (209.482875ms)
+✔ historical promotion stays fenced after indexeddb-body route outcome, provider response (151.456958ms)
+✔ historical promotion stays fenced after indexeddb-body route outcome, provider error (136.646917ms)
+✔ historical promotion stays fenced after indexeddb-input route outcome, provider response (244.90025ms)
+✔ historical promotion stays fenced after indexeddb-input route outcome, provider error (235.691667ms)
+✔ assessment observes delayed verified native completion without authorizing historical promotion (205.219333ms)
+✔ assessment observes delayed verified indexeddb-input completion without authorizing historical promotion (283.839ms)
+✔ assessment observation deadline cannot turn unfinished work into success (195.309584ms)
+(node:91649) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-display.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ formats known generated titles from the first three destination stops (1.909416ms)
+✔ preserves a traveller-authored title (0.52375ms)
+✔ renaming changes only identity fields and clearing restores the geographic title (0.910333ms)
+✔ generated identity preserves ordered destination occurrences, origin stays and Unicode (2.778375ms)
+✔ route edits update automatic identity but never replace a custom override (5.005208ms)
+(node:91650) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/trip-recovery-classification.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ clean canonical trip has no recovery state (1.029208ms)
+✔ only the mounted owner's exact pending handle is a current save (0.204ms)
+✔ the exact mounted failed write is a current save failure (0.113458ms)
+✔ the same failed record becomes historical after reload (3.521708ms)
+✔ canonical-equivalent recovery is safe to reconcile (1.524666ms)
+✔ the exact ownerless recovery is the active local document after reload (1.134209ms)
+✔ a different ownerless recovery remains protected as genuine divergence (0.65725ms)
+✔ the active ownerless recovery handle permits the next exactly-once local edit (9.349083ms)
+✔ a prior canonical snapshot is historical-superseded only through semantic comparison (2.06375ms)
+✔ a newer timestamp alone never discards unique traveller edits (0.408ms)
+✔ save header and dashboard source keep historical recovery separate and trip-scoped (3.4305ms)
+✔ dashboard groups detached recoveries behind one calm disclosure while keeping each review path (1.12625ms)
+✔ detached-copy copy distinguishes an unconfirmed account save from a previously reported deletion (0.230166ms)
+✔ detached-copy presentation retains the warning, complete account comparison and individual review links (0.168458ms)
+ℹ tests 613
+ℹ suites 0
+ℹ pass 589
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 24
+ℹ todo 0
+ℹ duration_ms 20451.541333
+
+> morrovia@1.0.0 test:itinerary-focus
+> node --experimental-strip-types --test tests/itinerary-card-focus-return.test.ts
+
+(node:91712) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/tests/itinerary-card-focus-return.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ card edit return reveals original focus without smooth motion (1.188459ms)
+✔ card edit return reveals replacement focus without smooth motion (0.186875ms)
+✔ card return preserves an already open sequence editor (0.076583ms)
+✔ card return does not focus a different day or invent a missing replacement (0.094208ms)
+✔ original and replaced card targets share the existing sticky-header scroll clearance token (0.711833ms)
+✔ card return restores disclosure after the accepted edit render, before revealing focus (0.172041ms)
+✔ focus return waits for the editor-closed layout commit (7.68ms)
+✔ focus commit hook is registered before every workspace early return (0.341292ms)
+✔ card edit entry has one focus owner at the editor layout commit (7.429458ms)
+✔ ordinary row editing retires a previous card handoff before taking focus ownership (5.135583ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 372.9715
+
+> morrovia@1.0.0 build
+> node --experimental-strip-types scripts/build-physical-land-refinement.ts --check && next build && node scripts/check-client-reference-manifests.mjs && node --experimental-strip-types scripts/generate-offline-shell-manifest.mjs
+
+(node:91751) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/build-physical-land-refinement.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{ components: 1, bytes: 152525, checked: true }
+   ▲ Next.js 15.5.21
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 28.4s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/51) ...
+   Generating static pages (12/51) 
+   Generating static pages (25/51) 
+   Generating static pages (38/51) 
+ ✓ Generating static pages (51/51)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                                         Size  First Load JS
+┌ ƒ /                                                                            20.2 kB        1.05 MB
+├ ○ /_not-found                                                                     1 kB         106 kB
+├ ƒ /api/auth/[...all]                                                             280 B         105 kB
+├ ƒ /api/easyt/admin/access                                                        280 B         105 kB
+├ ƒ /api/easyt/admin/audit                                                         280 B         105 kB
+├ ƒ /api/easyt/admin/feedback/[feedbackId]                                         280 B         105 kB
+├ ƒ /api/easyt/admin/routes/[routeKey]                                             280 B         105 kB
+├ ƒ /api/easyt/admin/users/delete                                                  280 B         105 kB
+├ ƒ /api/easyt/booking-import                                                      280 B         105 kB
+├ ƒ /api/easyt/booking-import/[candidateId]                                        280 B         105 kB
+├ ƒ /api/easyt/calendar-export/callback                                            280 B         105 kB
+├ ƒ /api/easyt/calendar-export/connect                                             280 B         105 kB
+├ ƒ /api/easyt/calendar-export/destinations                                        280 B         105 kB
+├ ƒ /api/easyt/calendar-export/disconnect                                          280 B         105 kB
+├ ƒ /api/easyt/contact                                                             280 B         105 kB
+├ ƒ /api/easyt/email/inbound                                                       280 B         105 kB
+├ ƒ /api/easyt/email/webhook                                                       280 B         105 kB
+├ ƒ /api/easyt/feedback                                                            280 B         105 kB
+├ ƒ /api/easyt/feedback/survey                                                     280 B         105 kB
+├ ƒ /api/easyt/gifts/[token]                                                       280 B         105 kB
+├ ƒ /api/easyt/profile                                                             280 B         105 kB
+├ ƒ /api/easyt/public-routes/[routeKey]                                            280 B         105 kB
+├ ƒ /api/easyt/stamped                                                             280 B         105 kB
+├ ƒ /api/easyt/trips                                                               280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]                                                      280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/calendar-export                                      280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot                                              280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-stop-nights/apply             280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-transport-preference/apply    280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/set-trip-preference/apply            280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/gift                                                 280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/pdf                                                  280 B         105 kB
+├ ƒ /api/easyt/trips/[tripId]/promote                                              280 B         105 kB
+├ ƒ /api/health                                                                    280 B         105 kB
+├ ƒ /api/internal/openai-smoke                                                     280 B         105 kB
+├ ƒ /api/internal/viator-sandbox                                                   280 B         105 kB
+├ ƒ /api/journey-accommodation-search                                              280 B         105 kB
+├ ƒ /api/journey-activity-inventory                                                280 B         105 kB
+├ ƒ /api/journey-booking-readiness                                                 280 B         105 kB
+├ ƒ /api/journey-capture                                                           280 B         105 kB
+├ ƒ /api/journey-day-trips                                                         280 B         105 kB
+├ ƒ /api/journey-discover                                                          280 B         105 kB
+├ ƒ /api/journey-geocode                                                           280 B         105 kB
+├ ƒ /api/journey-local-search                                                      280 B         105 kB
+├ ƒ /api/journey-outdoors                                                          280 B         105 kB
+├ ƒ /api/journey-passport-requirements                                             280 B         105 kB
+├ ƒ /api/journey-place                                                             280 B         105 kB
+├ ƒ /api/journey-place-enrichment                                                  280 B         105 kB
+├ ƒ /api/journey-place-photo                                                       280 B         105 kB
+├ ƒ /api/journey-plan                                                              280 B         105 kB
+├ ƒ /api/journey-readiness                                                         280 B         105 kB
+├ ƒ /api/journey-road-routes                                                       280 B         105 kB
+├ ƒ /api/journey-route-image                                                       280 B         105 kB
+├ ƒ /api/journey-routes                                                            280 B         105 kB
+├ ƒ /api/journey-transfer-resolution                                               280 B         105 kB
+├ ● /case-study/[slug]                                                           3.42 kB         447 kB
+├   ├ /case-study/rio
+├   ├ /case-study/returns-kiosk
+├   ├ /case-study/returns-platform
+├   └ /case-study/farfetch
+├ ○ /journey                                                                       346 B        1.75 MB
+├ ƒ /journey/[tripId]                                                              29 kB        1.07 MB
+├ ƒ /journey/[tripId]/explore                                                    20.8 kB        1.09 MB
+├ ƒ /journey/[tripId]/itinerary                                                  70.8 kB        1.15 MB
+├ ƒ /journey/[tripId]/map                                                        4.18 kB        1.78 MB
+├ ƒ /journey/[tripId]/prep                                                         280 B         105 kB
+├ ƒ /journey/[tripId]/stay                                                       13.4 kB        1.65 MB
+├ ƒ /journey/[tripId]/transport                                                  18.3 kB        1.61 MB
+├ ○ /journey/about                                                               1.34 kB         968 kB
+├ ƒ /journey/admin                                                               2.66 kB         969 kB
+├ ƒ /journey/admin/audit                                                         2.66 kB         969 kB
+├ ƒ /journey/admin/emails                                                        2.66 kB         969 kB
+├ ƒ /journey/admin/feedback                                                      2.39 kB         969 kB
+├ ƒ /journey/admin/routes                                                        3.54 kB         970 kB
+├ ƒ /journey/admin/users                                                         4.53 kB         971 kB
+├ ○ /journey/affiliate-disclosure                                                1.19 kB         968 kB
+├ ƒ /journey/contact                                                             2.98 kB         970 kB
+├ ○ /journey/cookies                                                             3.51 kB         970 kB
+├ ƒ /journey/dashboard                                                           20.1 kB         999 kB
+├ ƒ /journey/discover                                                            15.5 kB         982 kB
+├ ○ /journey/forgot-password                                                     3.35 kB         970 kB
+├ ƒ /journey/gift/[token]                                                        3.44 kB         973 kB
+├ ○ /journey/help                                                                8.53 kB         975 kB
+├ ○ /journey/home                                                                  280 B         105 kB
+├ ƒ /journey/login                                                               7.43 kB         974 kB
+├ ƒ /journey/my-routes/[tripId]                                                  18.1 kB        1.23 MB
+├ ○ /journey/new                                                                  157 kB        1.21 MB
+├ ○ /journey/new/import                                                           127 kB        1.11 MB
+├ ○ /journey/passport                                                            9.66 kB         976 kB
+├ ○ /journey/plan                                                                  364 B        1.75 MB
+├ ƒ /journey/plan-next                                                           7.46 kB        1.54 MB
+├ ƒ /journey/prep                                                                  280 B         105 kB
+├ ○ /journey/privacy                                                             15.8 kB         982 kB
+├ ƒ /journey/profile                                                             12.6 kB         979 kB
+├ ○ /journey/reset-password                                                      4.31 kB         971 kB
+├ ƒ /journey/routes/[slug]                                                       7.44 kB        1.25 MB
+├ ƒ /journey/stamped                                                             10.6 kB        1.22 MB
+├ ○ /journey/terms                                                               1.38 kB         968 kB
+├ ○ /journey/trip                                                                11.5 kB         981 kB
+├ ○ /manifest.webmanifest                                                          280 B         105 kB
+├ ○ /more-about-me                                                                 223 B         443 kB
+├ ○ /ornament                                                                    4.91 kB         297 kB
+├ ○ /photography                                                                 2.17 kB         445 kB
+├ ○ /rio                                                                         3.91 kB         296 kB
+├ ○ /robots.txt                                                                    280 B         105 kB
+└ ○ /sitemap.xml                                                                   280 B         105 kB
++ First Load JS shared by all                                                     105 kB
+  ├ chunks/22-634ba73d65267b5b.js                                                46.9 kB
+  ├ chunks/3c5af4f1-a25554e163d7d792.js                                          54.2 kB
+  └ other shared chunks (total)                                                  3.34 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+{
+  "root": "/Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia",
+  "dist": ".next",
+  "boundariesChecked": 15,
+  "failures": []
+}
+(node:91942) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/lib/easyt/offline-reader-floor.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/generate-offline-shell-manifest.mjs:66
+  if (typeof buildCommit !== 'string' || (buildCommit !== '' && !/^[a-f0-9]{40}$/i.test(buildCommit))) throw new Error('Invalid offline commit identity');
+                                                                                                             ^
+
+Error: Invalid offline commit identity
+    at writeOfflineShellManifest (file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/generate-offline-shell-manifest.mjs:66:110)
+    at file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/generate-offline-shell-manifest.mjs:107:20
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.14.1
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npm run build
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execFileSync (node:child_process:961:15)
+    at run (file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/release-gate-smoke.mjs:13:3)
+    at file:///Users/shaun/Documents/Codex/2026-11-03/task-7/morrovia/scripts/release-gate-smoke.mjs:41:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 91725,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.14.1

@@ -1,0 +1,19 @@
+{
+  "command": "COMMIT_REF=957e7c36b78847c09752b55cd59da0f35ffec57a npm run release:gate",
+  "exitCode": 0,
+  "testCounts": {
+    "tests": 666,
+    "pass": 642,
+    "fail": 0,
+    "skipped": 24,
+    "cancelled": 0,
+    "todo": 0
+  },
+  "clientReferenceBoundaries": 15,
+  "offlineAssets": 228,
+  "storybookBuildExitCode": 0,
+  "focusedTourTests": {
+    "pass": 7,
+    "fail": 0
+  }
+}
