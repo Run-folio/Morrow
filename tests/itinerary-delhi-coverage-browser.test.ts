@@ -24,7 +24,7 @@ for(const browserName of['chromium','webkit']as const)test(`${browserName}: Delh
   await view.page.reload();await view.page.setViewportSize({width:1440,height:1000});await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
   const cards=view.page.locator('#itinerary-calendar article');assert.equal(await cards.count(),29);
   for(let index=0;index<29;index++){
-   const day=trip.planItems[index],photo=cards.nth(index).locator('[data-itinerary-photo="calendar"]');await photo.scrollIntoViewIfNeeded();
+   const day=trip.planItems[index],photo=cards.nth(index).locator('[data-itinerary-photo="calendar"]');await cards.nth(index).scrollIntoViewIfNeeded();
    const img=photo.locator('img');
    if(expected[day.id]){
     await view.page.waitForFunction((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0,await img.elementHandle());
