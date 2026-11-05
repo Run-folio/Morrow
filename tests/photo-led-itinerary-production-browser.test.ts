@@ -24,7 +24,11 @@ test('built production itinerary renders reviewed photos, keeps bottom navigatio
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  try{
   await page.route('**/*',(route:Route)=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
-  await page.addInitScript((entries:[string,string][])=>{for(const[k,v]of entries)if(!localStorage.getItem(k))localStorage.setItem(k,v)},[...values.entries()]);
+  await page.addInitScript((entries:[string,string][])=>{
+    if(sessionStorage.getItem('photo-production-qualification-seeded'))return;
+    sessionStorage.setItem('photo-production-qualification-seeded','1');
+    for(const[k,v]of entries)if(!localStorage.getItem(k))localStorage.setItem(k,v);
+  },[...values.entries()]);
   await page.goto(`${base}/journey/${trip.id}/itinerary?day=4`,{waitUntil:'domcontentloaded'});
   await page.getByRole('button',{name:'Skip workspace guide',exact:true}).click({timeout:2500}).catch(()=>{});
   await page.getByRole('heading',{name:'Japan',level:1,exact:true}).waitFor();
@@ -46,6 +50,9 @@ test('built production itinerary renders reviewed photos, keeps bottom navigatio
   await page.getByRole('heading',{name:'Japan qualification route',level:1,exact:true}).waitFor();
   await page.reload({waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Japan qualification route',level:1,exact:true}).waitFor();
+  await page.locator('section[aria-label="Day 4 planner"]').waitFor();
+  await page.getByRole('heading',{name:'Tokyo → Kyoto',exact:true}).waitFor();
+  await page.waitForFunction(()=>[...document.images].some(img=>img.closest('[data-itinerary-photo="day"]')&&img.complete&&img.naturalWidth>0));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:'output/playwright/production-photo-agenda-390.png',fullPage:true});
   assert.deepEqual(errors,[]);
