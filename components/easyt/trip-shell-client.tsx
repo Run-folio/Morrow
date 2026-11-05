@@ -61,13 +61,13 @@ export function useOptionalTripShellMutation() {
   return useContext(TripShellMutationContext);
 }
 
-/** @param {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} state @param {"pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle"} action @returns {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} */
-function reduceTripTitleDisclosure(state: { expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }, action: "pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle") {
+/** @param {{ dismissed: boolean; hovered: boolean; focused: boolean }} state @param {"pointer-enter" | "pointer-leave" | "focus" | "blur" | "dismiss"} action @returns {{ dismissed: boolean; hovered: boolean; focused: boolean }} */
+function reduceTripTitleDisclosure(state: { dismissed: boolean; hovered: boolean; focused: boolean }, action: "pointer-enter" | "pointer-leave" | "focus" | "blur" | "dismiss") {
   if (action === "pointer-enter") return { ...state, hovered: true, dismissed: false };
   if (action === "pointer-leave") return { ...state, hovered: false, dismissed: state.focused ? state.dismissed : false };
   if (action === "focus") return { ...state, focused: true, dismissed: false };
   if (action === "blur") return { ...state, focused: false, dismissed: state.hovered ? state.dismissed : false };
-  return state.expanded ? { ...state, expanded: false, dismissed: true } : { ...state, expanded: true, dismissed: false };
+  return { ...state, dismissed: true };
 }
 
 export function TripShellIdentityAndActions() {
@@ -79,8 +79,8 @@ export function TripShellIdentityAndActions() {
   useEffect(() => setDetailsOpen(false), [pathname, trip.id, trip.ownerId]);
   const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";
   const displayTitle = tripOverviewDisplayTitle(mutation.trip);
-  const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });
-  const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
+  const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { dismissed: false, hovered: false, focused: false });
+  const { dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const overnightPlaceCount = overnightAccommodationStops(trip).length;
@@ -206,17 +206,19 @@ export function TripShellIdentityAndActions() {
             variant="quiet"
             size="small"
             type="button"
-            aria-expanded={titleExpanded}
+            aria-describedby="trip-title-edit-hint"
             onPointerEnter={() => dispatchTitleDisclosure("pointer-enter")}
             onPointerLeave={() => dispatchTitleDisclosure("pointer-leave")}
             onFocus={() => dispatchTitleDisclosure("focus")}
             onBlur={() => dispatchTitleDisclosure("blur")}
-            onClick={() => dispatchTitleDisclosure("toggle")}
+            onKeyDown={(event) => { if (event.key === "Escape") dispatchTitleDisclosure("dismiss"); }}
+            onClick={openRename}
           ><span>{displayTitle}</span></EasyTButton>
-          <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
+          <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: (titleHovered || titleFocused) && !titlePreviewDismissed ? "block" : "none" }}>{displayTitle}</span>
         </span>
         </>}
       </h1>
+      <span id="trip-title-edit-hint" className={styles.srOnly}>Edit trip name</span>
       {renameOpen ? <div className={styles.tripTitleEditorActions}>
         <p id="trip-title-hint">{Array.from(draft.trim()).length}/80 characters · Leave blank to use the destination-based name.</p>
         {renameError ? <p id="trip-title-error" role="alert">{renameError}</p> : null}

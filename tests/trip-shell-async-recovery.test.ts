@@ -371,7 +371,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
     setOwner: (value: string) => { sessionOwner = value; props = { ...props, trip: { ...props.trip, ownerId: value } }; mutation.trip = props.trip; } };
 }
 
-test('rename dialog stays open until the scoped durable mutation is accepted', async t => {
+test('inline rename stays open until the scoped durable mutation is accepted', async t => {
   const saved = deferred<boolean>();
   const h = clientHarness(t, {}, { mutateTrip: () => saved.promise });
   const renameOwner = (node: any): any => !node ? null : Array.isArray(node)
@@ -379,11 +379,11 @@ test('rename dialog stays open until the scoped durable mutation is accepted', a
       ? node : renameOwner(node.props?.children);
   const action = renameOwner(h.renderIdentity()); assert.ok(action, 'current workspace exposes the shared rename callback');
   action.props.onRenameTrip();
-  findNode(h.renderIdentity(), h.Field).props.onChange({ target: { value: 'Accepted name' } });
-  findNode(h.renderIdentity(), h.Form).props.onSubmit();
-  await tick(); assert.equal(findNode(h.renderIdentity(), h.Form).props.open, true);
+  findNode(h.renderIdentity(), 'input').props.onChange({ target: { value: 'Accepted name' } });
+  findNode(h.renderIdentity(), 'form').props.onSubmit({preventDefault() {}});
+  await tick(); assert.ok(findNode(h.renderIdentity(), 'input'), 'inline editor remains open until durable acceptance');
   saved.resolve(true); await tick();
-  assert.equal(findNode(h.renderIdentity(), h.Form).props.open, false);
+  assert.equal(findNode(h.renderIdentity(), 'input'), undefined);
 });
 
 test('discard dialog remains pending until exact discard and the remaining recovery read finish', async t => {

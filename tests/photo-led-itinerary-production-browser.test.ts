@@ -13,7 +13,7 @@ const base=process.env.MORROVIA_BASE_URL??'http://127.0.0.1:4187';
 if(enabled&&!['127.0.0.1','localhost'].includes(new URL(base).hostname))throw Error('This qualification targets only an isolated local app');
 const require=createRequire(import.meta.url);
 
-test('built production itinerary renders reviewed photos, keeps bottom navigation and persists in-place rename', {skip:!enabled,timeout:90_000}, async()=>{
+test('built production itinerary renders reviewed photos, keeps bottom navigation and persists direct title editing', {skip:!enabled,timeout:90_000}, async()=>{
  const {chromium}=require(process.env.MORROVIA_PLAYWRIGHT_MODULE??`${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`);
  const browser=await chromium.launch({headless:true,channel:'chrome'});
  const trip=photoLedItineraryTrip(),values=new Map<string,string>();
@@ -44,8 +44,7 @@ test('built production itinerary renders reviewed photos, keeps bottom navigatio
   const nav=page.getByRole('navigation',{name:'Trip workspace',exact:true});
   assert.equal(await nav.getByRole('link',{name:'Itinerary',exact:true}).getAttribute('aria-current'),'page');
   assert.deepEqual(await nav.locator('a,button').allTextContents(),['Overview','Itinerary','Map','Transport','More']);
-  await page.getByRole('button',{name:'Trip menu',exact:true}).click();
-  await page.getByRole('menuitem',{name:'Rename trip',exact:true}).click();
+  await page.locator('#trip-shell-title').getByRole('button').click();
   const name=page.locator('#trip-shell-title').getByRole('textbox',{name:'Trip name',exact:true});
   await name.fill('Japan qualification route');await name.press('Enter');
   await page.getByRole('heading',{name:'Japan qualification route',level:1,exact:true}).waitFor();

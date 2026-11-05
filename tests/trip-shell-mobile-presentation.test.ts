@@ -49,7 +49,7 @@ test("ordinary device promotion is one shared shell row while recovery remains p
 
 test("slim trip identity retains status, truncated title disclosure, all stats, save feedback and actions", () => {
   const identity = client.slice(client.indexOf('<div className={styles.tripIdentity}>'), client.indexOf('<div className={styles.headerActions}>'));
-  assert.match(identity, /<p className=\{styles\.eyebrow\}>\{status\}<\/p>[\s\S]*<h1 id="trip-shell-title">[\s\S]*<span className=\{styles\.tripTitleDisclosure\}>[\s\S]*<EasyTButton[\s\S]*aria-expanded=\{titleExpanded\}[\s\S]*onPointerEnter=\{\(\) => dispatchTitleDisclosure\("pointer-enter"\)\}[\s\S]*onPointerLeave=\{\(\) => dispatchTitleDisclosure\("pointer-leave"\)\}[\s\S]*onFocus=\{\(\) => dispatchTitleDisclosure\("focus"\)\}[\s\S]*onBlur=\{\(\) => dispatchTitleDisclosure\("blur"\)\}[\s\S]*onClick=\{\(\) => dispatchTitleDisclosure\("toggle"\)\}[\s\S]*<span>\{displayTitle\}<\/span>[\s\S]*<\/EasyTButton>[\s\S]*<span className=\{styles\.tripTitleFull\} aria-hidden="true" style=\{\{ display: titleExpanded \|\| \(\(titleHovered \|\| titleFocused\) && !titlePreviewDismissed\) \? "block" : "none" \}\}>\{displayTitle\}<\/span>[\s\S]*<\/span>[\s\S]*<\/h1>[\s\S]*\{metadata\}/);
+  assert.match(identity, /<p className=\{styles\.eyebrow\}>\{status\}<\/p>[\s\S]*<h1 id="trip-shell-title">[\s\S]*<span className=\{styles\.tripTitleDisclosure\}>[\s\S]*<EasyTButton[\s\S]*aria-describedby="trip-title-edit-hint"[\s\S]*onPointerEnter=\{\(\) => dispatchTitleDisclosure\("pointer-enter"\)\}[\s\S]*onPointerLeave=\{\(\) => dispatchTitleDisclosure\("pointer-leave"\)\}[\s\S]*onFocus=\{\(\) => dispatchTitleDisclosure\("focus"\)\}[\s\S]*onBlur=\{\(\) => dispatchTitleDisclosure\("blur"\)\}[\s\S]*onClick=\{openRename\}[\s\S]*<span>\{displayTitle\}<\/span>[\s\S]*<\/EasyTButton>[\s\S]*<span className=\{styles\.tripTitleFull\} aria-hidden="true" style=\{\{ display: \(titleHovered \|\| titleFocused\) && !titlePreviewDismissed \? "block" : "none" \}\}>\{displayTitle\}<\/span>[\s\S]*<\/span>[\s\S]*<\/h1>[\s\S]*\{metadata\}/);
   const metadata = client.slice(client.indexOf("const metadata = ("), client.indexOf("const leadingActions ="));
   assert.match(metadata, /<dl className=\{styles\.metadata\}>/);
   assert.match(metadata, /<dd>\{dateFacts\.rangeLabel\}<\/dd>/);
@@ -102,20 +102,17 @@ test("long multi-country title has desktop and mobile presentation fixtures", ()
   assert.match(stories, /export const LongMultiCountryTitleMobile390:[\s\S]*?morrovia390/);
 });
 
-test("title disclosure behavior previews on hover/focus, toggles on activation, and can be dismissed", () => {
-  const reducerSource = client.match(/\/\*\* @param \{\{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean \}\} state @param \{"pointer-enter" \| "pointer-leave" \| "focus" \| "blur" \| "toggle"\} action @returns \{\{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean \}\} \*\/\s*(function reduceTripTitleDisclosure\([\s\S]*?\n\})/);
+test("full-title preview follows hover/focus, supports Escape dismissal, and resets after blur", () => {
+  const reducerSource = client.match(/(function reduceTripTitleDisclosure\([\s\S]*?\n\})/);
   assert.ok(reducerSource, "production disclosure reducer is present");
   const reducerJavascript = typescript.transpileModule(reducerSource[1], { compilerOptions: { target: typescript.ScriptTarget.ES2020 } }).outputText;
   const reduce = new Function(`${reducerJavascript}; return reduceTripTitleDisclosure;`)();
-  const closed = { expanded: false, dismissed: false, hovered: false, focused: false };
+  const closed = { dismissed: false, hovered: false, focused: false };
   const focused = reduce(closed, "focus");
   assert.deepEqual(focused, { ...closed, focused: true }, "keyboard focus previews the title");
-  const pointerLeaves = reduce(focused, "pointer-leave");
-  assert.deepEqual(pointerLeaves, focused, "pointer leave does not hide a still-focused title");
-  const opened = reduce(pointerLeaves, "toggle");
-  assert.deepEqual(opened, { ...focused, expanded: true }, "activation opens the title");
-  const dismissed = reduce(opened, "toggle");
-  assert.deepEqual(dismissed, { ...focused, dismissed: true }, "second activation closes it while focus remains");
-  const blurred = reduce(dismissed, "blur");
-  assert.deepEqual(blurred, closed, "leaving focus resets dismissal for the next preview");
+  assert.deepEqual(reduce(focused, "pointer-leave"), focused, "pointer leave retains a focused preview");
+  const dismissed = reduce(focused, "dismiss");
+  assert.deepEqual(dismissed, { ...focused, dismissed: true }, "Escape dismisses the preview while focused");
+  assert.deepEqual(reduce(dismissed, "blur"), closed, "leaving focus resets dismissal");
+  assert.deepEqual(reduce(closed, "pointer-enter"), {...closed, hovered:true}, "pointer hover previews full text");
 });

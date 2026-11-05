@@ -1,3 +1,15 @@
+# Direct title activation — 2026-11-05
+
+Branch `codex/title-click-inline-edit`, based on staged `64adb5e`. Selecting the actual title now calls the existing guarded inline rename flow. Native button activation supplies click/tap, Enter and Space. The heading's full accessible name is preserved and a screen-reader description identifies the edit action. Full-title hover/focus previews remain available, with Escape dismissal. The obsolete click-to-expand state and expanded ARIA state are removed. No save, persistence, recovery, identity or navigation implementation changed.
+
+Reused the existing EasyTButton, native title input, title preview, form, focus return and guarded rename handler. No new styling, components or tokens. The inline-cancel Storybook interaction now activates the title and targets the current inline form. A stale dialog-based recovery test now asserts the same deferred durable acceptance against the existing native inline editor; no recovery assertion was removed.
+
+A Chromium/WebKit regression failed before implementation because title selection never opened an input. The final browser checks exercise 1440/390/320px widths, direct click/Enter/Space, full-name preview, Escape and Cancel, focus return, a single field in the original title line, Unicode length validation, WCAG A/AA, save/reload and the retained menu entry. Focus movement in the preview test was corrected to leave and reenter the title between iterations, matching real keyboard focus events.
+
+86 focused title/display/async recovery regressions passed. Independent read-only review reported no actionable findings and separately reran 81 title/presentation/recovery tests. Final browser, typecheck, strict UI audit, Storybook and exact-commit production qualifications are retained in output/qa/title-direct-edit. Screenshots are under output/playwright/trip-title-direct-edit-*. All browser work uses disposable synthetic local trips; no active tabs, account data or shared staging was changed. No deployment is authorized or performed.
+
+---
+
 # Per-day imagery policy correction — 2026-11-05
 
 Supersedes the calendar suppression policy below. Branch `codex/itinerary-daily-image-policy` preserves the compact image heights and all existing trip/title/recovery/navigation behavior. The supplied screenshot shows the suppression rule hid later days; that rule is removed. Calendar and selected-day views now share the same choices and always render a photo slot with an honest unavailable state when no safe photo exists.

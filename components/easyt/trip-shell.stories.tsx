@@ -116,13 +116,13 @@ export const InlineNameCancel: Story = {
   args: { ...Overview.args, trip: { ...trip, id: "interaction-inline-cancel", ownerId: null }, orientationAutoStart: false, cacheTrip: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Edit trip name" }));
-    const form = canvas.getByRole("form", { name: "Edit trip name" });
+    await userEvent.click(within(canvasElement.querySelector("#trip-shell-title") as HTMLElement).getByRole("button"));
+    const form = canvas.getByRole("form", { name: "Rename trip" });
     const field = within(form).getByRole("textbox", { name: "Trip name" });
     await expect(field).toHaveFocus();
     await userEvent.type(field, "Sample draft");
     await userEvent.keyboard("{Escape}");
-    await expect(canvas.queryByRole("form", { name: "Edit trip name" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("form", { name: "Rename trip" })).not.toBeInTheDocument();
   },
 };
 /** Device-only sample: no account session, API or recovery fixture is required. */
@@ -133,7 +133,7 @@ export const InteractionReview: Story = {
     trip: { ...trip, id: `interaction-review-name-${crypto.randomUUID()}`, ownerId: null },
     orientationAutoStart: false,
     cacheTrip: false,
-    children: <p style={{ padding: 24 }}>Try Edit name, Save name, and Cancel or Escape. This synthetic trip is stored only in this preview’s browser.</p>,
+    children: <p style={{ padding: 24 }}>Select the title, Save name, and Cancel or Escape. This synthetic trip is stored only in this preview’s browser.</p>,
   },
 };
 export const GenuineHistoricalDeviceDivergence: Story = { ...Overview, render: () => <HistoricalRecoveryShell /> };
