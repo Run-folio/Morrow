@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Pencil, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Route, Sparkles } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -102,11 +102,8 @@ export function TripShellIdentityAndActions() {
   if (renameIntentRef.current.scope !== renderScope) renameIntentRef.current = { scope: renderScope, session: {}, open: false, draft: "", error: "" };
   const [renameState, setRenameState] = useState(() => renameIntentRef.current);
   const [renamePending, setRenamePending] = useState<object | null>(null);
-  const [inlineRenameSession, setInlineRenameSession] = useState<object | null>(null);
-  const inlineRenameTriggerRef = useRef<HTMLButtonElement>(null);
   const visibleRename = renameState.scope === renderScope ? renameState : renameIntentRef.current;
   const { open: renameOpen, draft, error: validationError, session: renderSession } = visibleRename;
-  const inlineRename = renameOpen && inlineRenameSession === renderSession;
   useEffect(() => {
     renameMountedRef.current = true;
     return () => { renameMountedRef.current = false; renameMountGenerationRef.current += 1; renameRequestRef.current += 1; renamePendingRef.current = null; };
@@ -139,15 +136,6 @@ export function TripShellIdentityAndActions() {
     renameRequestRef.current += 1;
     updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });
   };
-  const cancelRename = () => {
-    if (!sessionIsCurrent()) return;
-    renameRequestRef.current += 1;
-    updateRenameIntent({ ...renameIntentRef.current, open: false });
-    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());
-  };
-  const returnInlineFocus = () => {
-    if (inlineRename) window.requestAnimationFrame(() => inlineRenameTriggerRef.current?.focus());
-  };
   const saveRename = async () => {
     if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;
     const request = ++renameRequestRef.current;
@@ -160,7 +148,6 @@ export function TripShellIdentityAndActions() {
     }
     if (isCurrent() && normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) {
       updateRenameIntent({ ...renameIntentRef.current, open: false });
-      returnInlineFocus();
       return true;
     }
     const operation = {};
@@ -170,7 +157,6 @@ export function TripShellIdentityAndActions() {
         ? renameTripIdentity(current, normalizedTitle) : current, "trip-title");
       if (changed !== true || !isCurrent()) return false;
       updateRenameIntent({ ...renameIntentRef.current, open: false });
-      returnInlineFocus();
       return true;
     } catch { return false; }
     finally {
@@ -238,7 +224,6 @@ export function TripShellIdentityAndActions() {
         <EasyTButton type="button" size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton>
       </div> : null}
       </form>
-
       {metadata}
     </div>
     <div className={styles.headerActions}>
@@ -250,7 +235,6 @@ export function TripShellIdentityAndActions() {
     <TripMobileSheet open={detailsOpen} title="Trip details" onClose={() => setDetailsOpen(false)}>
       <p>{tripDisplayTitle(trip)}</p><p>{status}</p><div className={styles.tripDetailsMetadata}>{metadata}</div>
     </TripMobileSheet>
-
   </>;
 }
 

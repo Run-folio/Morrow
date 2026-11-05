@@ -1797,18 +1797,8 @@ export default function TripItineraryWorkspace({
           onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
         /></div> : null}
 
-        {dayComposition ? <SelectedDayStayContext
-          composition={dayComposition}
-          tripId={workingTrip.id}
-          onSelect={stayBooking ? (trigger) => {
-            selectedItemOriginRef.current = trigger;
-            setSelectedItemId(`stay:${stayBooking.id}`);
-          } : undefined}
-        /> : null}
-
-
-
         {dayComposition ? <div ref={setPlannerElement} className={styles.details} aria-busy={dayPending || undefined}>
+
           <RichItineraryDayPlanner
             composition={dayComposition}
             compactMobile={mobile}
@@ -1868,6 +1858,15 @@ export default function TripItineraryWorkspace({
           />
 
         </div> : null}
+
+        {dayComposition ? <SelectedDayStayContext
+          composition={dayComposition}
+          tripId={workingTrip.id}
+          onSelect={stayBooking ? (trigger) => {
+            selectedItemOriginRef.current = trigger;
+            setSelectedItemId(`stay:${stayBooking.id}`);
+          } : undefined}
+        /> : null}
 
           {mobile && dayComposition ? <div className={styles.mobileAddPlan}>
             {!itineraryDayParts.some(part => dayComposition.planned[part].some(item => item.source !== "day-note")) && !dayComposition.unslotted.some(item => item.source !== "day-note") ? <p>{language === "es" ? "Aún no hay planes." : "No plans added yet."}</p> : null}
@@ -2327,7 +2326,7 @@ function SelectedDayStayContext({ composition, tripId, onSelect }: {
   const content = <><strong>{stay.title}</strong>{stay.detail ? <span>{stay.detail}</span> : null}</>;
   return <section className={styles.stayContext} data-state={stay.state} aria-label={`Stay: ${stay.title}${stay.detail ? `, ${stay.detail}` : ""}`}>
     <BedDouble aria-hidden="true" />
-    {onSelect ? <EasyTButton className={styles.stayContextSelect} variant="quiet" onClick={(event) => onSelect(event.currentTarget)}>{content}</EasyTButton> : <div className={styles.stayContextCopy}>{content}</div>}
+    {onSelect ? <EasyTButton className={styles.stayContextSelect} variant="quiet" onClick={(event) => onSelect(event.currentTarget)}><span>{content}</span></EasyTButton> : <div className={styles.stayContextCopy}>{content}</div>}
     <EasyTLinkButton href={stayWorkspaceHref(tripId, composition.tonight.stopId)} size="small" variant="quiet">
       {stay.state === "missing" ? "Plan stay" : "Open Stay"}
     </EasyTLinkButton>

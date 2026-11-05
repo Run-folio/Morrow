@@ -17,14 +17,15 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
   className?: string;
 }) {
   const [displayedSource, setDisplayedSource] = useState<string | null>(null);
-  const onDisplayState = useCallback((displayed: boolean) => setDisplayedSource(displayed ? image?.src ?? null : null), [image?.src]);
   const record = image ? routePhotoForSource(image.src) : null;
   const variants = record ? [...record.variants].sort((a, b) => a.width - b.width) : [];
   const source = variants.find(variant => variant.width >= (compact ? 320 : 768)) ?? variants.at(-1);
+  const renderedSource = image ? source?.src ?? image.src : null;
+  const onDisplayState = useCallback((displayed: boolean) => setDisplayedSource(displayed ? renderedSource : null), [renderedSource]);
   const fallback = <span className={styles.fallback} role="img" aria-label={`${language === "es" ? "Foto no disponible" : "Photo unavailable"} · ${destination}`}><MapPin aria-hidden="true" /><span>{destination}</span></span>;
   return <div className={`${styles.photo} ${compact ? styles.compact : ""} ${className}`} data-itinerary-photo={compact ? "calendar" : "day"}>
     <ResilientImage
-      src={image ? source?.src ?? image.src : null}
+      src={renderedSource}
       srcSet={variants.length > 1 ? variants.map(variant => `${variant.src} ${variant.width}w`).join(", ") : undefined}
       sizes={compact ? "(max-width: 1099px) 12vw, 9vw" : "(max-width: 760px) calc(100vw - 48px), (max-width: 1099px) 70vw, 380px"}
       width={source?.width ?? 768}
@@ -35,7 +36,7 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
       fallback={fallback}
       onDisplayState={onDisplayState}
     />
-    {image?.sourceLabel && displayedSource === image.src ? <MorroviaPhotoCredit
+    {image?.sourceLabel && displayedSource === renderedSource ? <MorroviaPhotoCredit
       size="compact"
       language={language}
       credit={image.sourceLabel}

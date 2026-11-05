@@ -25,7 +25,8 @@ test("mobile day orientation stays compact and scrolls its own rail", () => {
 
 test("Calendar uses a sticky content Close target without a separate visible sheet heading", () => {
   assert.doesNotMatch(itinerary, /styles\.calendarSheetHeader|copy\.dayDetails/);
-  assert.match(itinerary, /<h2 data-calendar-sheet-heading tabIndex=\{-1\}>\{stop\?\.name \?\? active\.title\}<\/h2>/);
+  assert.match(itinerary, /<h2 data-calendar-sheet-heading tabIndex=\{-1\}>/);
+  assert.match(itinerary, /mobile && incomingLeg/);
   assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
   assert.match(itinerary, /<time dateTime=\{active\.date\}>\{displayDayDate\(active\.date, language\)\}<\/time>/);
   assert.match(itinerary, /icon=\{X\} iconOnly variant="quiet" aria-label="Close day details" onClick=\{closeCalendarSheet\}/);
@@ -114,7 +115,10 @@ test("Calendar keeps day cards selectable while removing redundant empty-card an
 });
 
 test("both itinerary views keep the existing photo-credit control with the thumbnail", () => {
-  assert.match(itinerary, /className=\{styles\.dayHeaderMedia\}[\s\S]*?\{dayHeroCredit\}/);
+  assert.match(itinerary, /<ItineraryDayPhoto image=\{dayHero\}[\s\S]*?className=\{styles\.dayHeaderMedia\}/);
+  const photo = readFileSync(new URL("../components/easyt/itinerary-day-photo.tsx", import.meta.url), "utf8");
+  assert.match(photo, /<MorroviaPhotoCredit/);
+  assert.match(photo, /displayedSource === renderedSource/);
   assert.doesNotMatch(itinerary, /calendarDayHeroCredit/);
   assert.match(styles, /\.dayHeaderMedia\s*\{[^}]*position:\s*relative/);
   assert.match(stories, /export const CalendarAttributedPhoto: Story/);

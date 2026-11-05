@@ -1,3 +1,57 @@
+# Photo-led itinerary design QA
+
+final result: passed
+
+The user approved the new rendered mobile direction on 2026-11-05, explicitly preserving bottom navigation. This is a production adaptation of the approved concepts, not a replacement of the app shell or a pixel clone of the concept branding.
+
+## Evidence and normalization
+
+- Desktop visual truth: `../references/concept-1.png`, 1602 × 982 pixels (Library libfile_dd7a110a063c8191aeca3c6ddb698c27).
+- Mobile visual truth: `../references/concept-2.png`, 852 × 1846 pixels (Library libfile_51eb3d5e8ad0819195fdf54703fc0da1).
+- Rendered desktop: `output/playwright/photo-calendar-1440.png`, CSS viewport 1440 × 1100, deviceScaleFactor 1, full-page capture.
+- Rendered mobile: `output/playwright/photo-agenda-390.png`, CSS viewport 390 × 1000, deviceScaleFactor 1, full-page capture. Additional 320, 768 and 1024 captures are in the same directory.
+- Combined visual comparisons: `output/playwright/mobile-design-comparison.png` and `output/playwright/desktop-design-comparison.png`. Source mobile normalized to 390px wide; implementation cropped to the date-strip/agenda region at native 390px. Both desktop images normalized to 800px wide. Full-page captures remain available for shell and bottom-navigation context.
+- State: synthetic Japan trip, selected Day 4 Tokyo → Kyoto, reviewed Kyoto destination image, authored morning/afternoon/evening plans, selected stay without booking confirmation. Calendar covers a real seven-day sequence across two ISO weeks. Map is a synthetic boundary; no real bookings, account writes or provider image requests.
+- Content differs from concept sample dates, route and number of populated dayparts. Comparison evaluates structure and responsive hierarchy, rather than inventing matching travel facts or photographs.
+
+## Comparison history and fixes
+
+1. Initial visual inspection found [P2] the selected stay title and status competing horizontally on a narrow screen. The existing stay control now wraps its identity in the shared grid treatment. Browser geometry asserts status below title at 390/320px. Revised capture shows the corrected stack.
+2. Independent review found [P2] visual planner → stay order differed from DOM/keyboard order. The stay now follows the planner in DOM as well as visually. Browser checks include Tab from the final activity menu to the stay, plus DOM and visual geometry order.
+3. Independent review found [P2] credit could disappear when two days referenced different variants of the same photograph. Display ownership now tracks the normalized rendered source. A browser test reproduced the missing credit, then passed after the fix; it also opens the photo information disclosure and dismisses with Escape.
+
+## Required fidelity surfaces
+
+- Typography: existing Morrovia display/UI/meta fonts retained; title, daypart, activity and metadata roles remain distinct. Long unbroken title at 48px remains contained at 320px. No new font dependency.
+- Layout rhythm: desktop retains seven date columns, destination night bands and selected-day panel. Mobile uses the horizontal date strip, route title/date, full-width photo, travel, dayparts, selected stay and Add plan. The app shell and bottom-navigation spacing/controls are unchanged.
+- Colors/tokens: uses existing ink, lilac, signal, paper, radius and focus tokens. Existing purple primary buttons and selected-tab treatment are intentionally preserved instead of copying the concept's pink button fill.
+- Images: reviewed local destination assets, responsive variants, lazy loading, intrinsic dimensions and attributed disclosures. Relevant images may repeat; no fabricated activity photo or provider-image reuse is introduced. Missing/failed imagery keeps a labelled destination fallback.
+- Content: preserves actual activities, travel estimates/check-schedule language and selected-versus-booked stay state. Extra context, notes, recovery feedback and editing remain available. The concept's unsupported example facts are not copied into product data.
+
+## Accessibility, interactions and performance
+
+- Axe WCAG A/AA checks: zero violations in the itinerary region at desktop and mobile sizes.
+- Keyboard: day-tab arrows, selected-day context, photo disclosure Escape, Add-plan dismissal and planner-to-stay focus order verified.
+- Saving: mobile Evening add persists across a fresh same-context page and day navigation. Existing retained-recovery suite passes ten scenarios, including competing and failed acknowledgements.
+- Bottom navigation: runtime comparison to frozen pre-design itinerary checks exact labels, links, active state, CSS colors/font/position and bounding box; More opens/closes. Navigation source and stylesheet have no changes relative to f77be29.
+- Long trip: 84 calendar days render lazy photos, make no route-image lookup requests and reuse at most three local image variants across two destinations.
+- Console/page errors: none in the six new browser checks. Two existing compact-calendar checks also pass, including enlarged long destination text.
+
+## Verification limits
+
+- 149 focused domain/presentation/title tests pass. Broader 200-test source-assertion selection has 191 passes and nine failures reproduced on unchanged f77be29: stale Transport agenda/affiliate/state assertions, old timeline drag markup, map pin/handoff/policy assertions, old calendar context placement and pre-title-fix shell markup. These are recorded pre-existing failures; this work introduces no additional failure in that selection.
+- Typecheck, strict UI audit, convergence checks and Storybook build pass.
+- No deployment, live account/SQL save, production Next build, or hosted acceptance test was performed. The existing showcase Incognito session was not touched.
+
+## Follow-up polish
+
+- Additional reviewed destination galleries can reduce repetition later; uniqueness per date is deliberately not required.
+- Source/regression assertion maintenance remains separate from this design change.
+
+---
+
+# Prior QA history (preserved)
+
 # #330 Transport workspace QA — 2026-09-22
 
 Final result: passed

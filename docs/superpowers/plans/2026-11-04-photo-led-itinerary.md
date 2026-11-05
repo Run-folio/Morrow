@@ -12,6 +12,7 @@
 
 ## Constraints
 
+- Preserve bottom navigation exactly: components, labels, ordering, destinations, styling and behavior. Explicit user restriction on 2026-11-05.
 - Keep title fix f77be29 and all existing editing, travel/stay detail, draft and recovery behavior.
 - Use reviewed destination imagery; repeated relevant images and honest no-photo states are valid.
 - No new source acquisition, provider-photo reuse, booking claims or deployment.
@@ -33,3 +34,16 @@
 3. Add reusable itinerary photo presentation and compose it into calendar/day detail. Adjust existing CSS hierarchy and place the existing stay context after the planner on mobile. Preserve existing event callbacks and semantic controls.
 4. Run focused image, composition, calendar, day-part, editing and recovery tests; browser checks at 1440/1024/768/390/320; typecheck, UI compliance and Storybook build. Compare screenshots to both approved references and record design QA.
 5. Request independent review; fix material findings; commit isolated changes and hand back screenshots, exact verification and remaining gaps. No deployment.
+
+
+## Execution record — 2026-11-05
+
+- Tasks 1–3 completed in preserved WIP 9a7785d; title fix f77be29 retained.
+- User selected the new rendered mobile direction and required bottom navigation to remain unchanged. Source diff and runtime baseline comparison confirm this.
+- Independent review found two P2 issues: visual/keyboard stay ordering and credit loss for two variants of one image. Both were reproduced RED and verified GREEN in browser tests; stay now follows planner in DOM, and credit ownership follows actual normalized source.
+- Visual comparison found stay title/status competing horizontally. A failing geometry check was added and the existing stacked identity wrapper restored.
+- Final: 149 focused tests, six new browser checks, two existing mobile calendar checks and ten retained-recovery checks pass. Typecheck, strict UI audit, convergence and Storybook build pass. Broad source-assertion selection has nine unchanged baseline failures (191/200 pass), recorded in design-qa.md and output/qa.
+- Current QA report is prepended to design-qa.md while retaining all prior QA history. Comparison and screenshot artifacts are local under output/playwright.
+- Ruling: keep the existing design-system fonts, colors, navigation and action styles rather than copying concept chrome; the user approved the rendered adaptation, and requires existing navigation unchanged.
+- Ruling: reuse a relevant reviewed destination cover when distinct assets are unavailable; no per-day sourcing or provider-photo reuse introduced.
+- No merge, push, deployment, production SQL/OAuth save or hosted acceptance performed. Branch and isolated checkout preserved for parent integration.
