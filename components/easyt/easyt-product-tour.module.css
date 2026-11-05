@@ -11,3 +11,5 @@
 .stepCopy{display:grid;gap:16px}.stepCopy>p:not(.label){margin:0;color:var(--morrovia-ink-soft);font:var(--morrovia-type-supporting-body)}
 .progress{margin-right:8px;color:var(--morrovia-muted);font:var(--morrovia-type-metadata)}.dots{align-items:center}
 @media(max-width:680px){.visual{padding-top:48px}.mediaFrame{background:var(--morrovia-paper)}.stepCopy{gap:12px}}
+
+.example a{color:inherit;text-underline-offset:3px}.example a:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}

@@ -486,7 +486,7 @@ const goldenTriangleMapPlanTrip: EasyTTrip = {
 
 function TripMapStory({ storyTrip, presentation = "shell", storyState, activityAction }: { storyTrip: EasyTTrip; presentation?: "shell" | "focused"; storyState?: JourneyMapPlannerWorkspaceProps["storyState"]; activityAction?: ResolvedAffiliateAction | null }) {
   if (presentation === "focused") return <JourneyMapPlannerWorkspace trip={storyTrip} presentation="focused" storyState={storyState} activityAction={activityAction} />;
-  return <TripShell trip={storyTrip} orientationAutoStart={false}><TripMapWorkspace trip={storyTrip} storyState={storyState} activityAction={activityAction} /></TripShell>;
+  return <TripShell trip={storyTrip} cacheTrip={false} orientationAutoStart={false}><TripMapWorkspace trip={storyTrip} storyState={storyState} activityAction={activityAction} /></TripShell>;
 }
 
 const meta = {
@@ -509,6 +509,7 @@ type Story = StoryObj<typeof meta>;
 export const ActivePlanning: Story = {};
 
 export const TourCapture: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/tour-cusco-sacred-valley-arequipa/map", segments: ["map"] } } },
   args: { storyTrip: tourTripFixture, storyState: { mapMode: "overview", destinationExpanded: true } },
 };
 

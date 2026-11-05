@@ -648,6 +648,7 @@ export const SelectedActivityMissingImageMobile390: Story = {
 };
 
 export const TourCapture: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/tour-cusco-sacred-valley-arequipa/itinerary", segments: ["itinerary"], query: { day: "2" } } } },
   args: { trip: tourTripFixture, selectedDayNumber: 2 },
 };
 

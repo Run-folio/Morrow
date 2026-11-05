@@ -262,6 +262,7 @@ export const CompactPhotoCreditCard: Story = {
 };
 
 export const TourCapture: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/tour-cusco-sacred-valley-arequipa", segments: [] } } },
   args: {
     trip: tourTripFixture,
     initialPrepActions: prepActions.map((action) => ({ ...action, tripId: tourTripFixture.id })),

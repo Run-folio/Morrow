@@ -1,0 +1,103 @@
+{
+  "capturedAt": "2026-11-05",
+  "stagingBase": "64adb5eb3de905604ba2ff73dddb0b7aee653bb1",
+  "photoManifest": "../source/manifest.json",
+  "captures": [
+    {
+      "file": "describe-trip.jpg",
+      "sha256": "33d6a86c28fd7365d48a0ab580ba4ca7d897148b22fe10e305dddd245fa2e666",
+      "story": "morrovia-05-product-patterns-homepage-trip-starter--first-visit",
+      "presentation": "desktop",
+      "photographs": [],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "describe-trip-mobile.jpg",
+      "sha256": "d5d90ea63e356684f323df456cddc647c321ec5951d9f85915d343809ecade6e",
+      "story": "morrovia-05-product-patterns-homepage-trip-starter--first-visit",
+      "presentation": "mobile",
+      "photographs": [],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "shape-route.jpg",
+      "sha256": "880c9b724e75fe85b1861c594f5dee593bcea4c26f9598ec685ae98fe76c35f3",
+      "story": "morrovia-05-product-patterns-builder-route-allocation--all-allocated",
+      "presentation": "desktop",
+      "photographs": [],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "shape-route-mobile.jpg",
+      "sha256": "2227520d9a922018fdeb1f57fb446bb5b1f57e42af63b8aea94c5b696dcbe7b7",
+      "story": "morrovia-05-product-patterns-builder-route-allocation--all-allocated",
+      "presentation": "mobile",
+      "photographs": [],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "trip-workspace.jpg",
+      "sha256": "b3fefeee5e5c6ac5cdeae7dd3896f9b7471e1f5b5d9103ab937e1a1d7190e63a",
+      "story": "morrovia-05-product-patterns-trip-workspace-overview--tour-capture",
+      "presentation": "desktop",
+      "photographs": [
+        "cusco",
+        "sacred-valley",
+        "arequipa"
+      ],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "trip-workspace-mobile.jpg",
+      "sha256": "5cd83038729eba62ba1c04d628cadc194db0c16e69408378d1627e6eed938800",
+      "story": "morrovia-05-product-patterns-trip-workspace-overview--tour-capture",
+      "presentation": "mobile",
+      "photographs": [
+        "cusco",
+        "sacred-valley",
+        "arequipa"
+      ],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "map-workspace.jpg",
+      "sha256": "478d54b065fd9b0f37813e01803bf28e736d9eba3d1c37eed6235a238fc4e53b",
+      "story": "morrovia-05-product-patterns-trip-workspace-map--tour-capture",
+      "presentation": "desktop",
+      "photographs": [
+        "cusco",
+        "sacred-valley",
+        "arequipa"
+      ],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "map-workspace-mobile.jpg",
+      "sha256": "6368503b6f82341cee0a5ba4ee63e7fdc9d8e5bb7ea4406d268855a53b90183f",
+      "story": "morrovia-05-product-patterns-trip-workspace-map--tour-capture",
+      "presentation": "mobile",
+      "photographs": [
+        "cusco",
+        "sacred-valley",
+        "arequipa"
+      ],
+      "note": "Current production components with fictional fixture data."
+    },
+    {
+      "file": "itinerary-workspace.jpg",
+      "sha256": "a8adca7adcadbc9ad63f520ceb7a918ef2bb1a89ca3a172a2581f27f76b3c908",
+      "story": "morrovia-05-product-patterns-trip-workspace-itinerary--tour-capture",
+      "presentation": "desktop",
+      "photographs": [],
+      "note": "Current production controls only; photography excluded from itinerary crop."
+    },
+    {
+      "file": "itinerary-workspace-mobile.jpg",
+      "sha256": "caaa610b8a1025b645bae854f9b6c5019d2d08e1671a5b11692ab29c8d6db3a1",
+      "story": "morrovia-05-product-patterns-trip-workspace-itinerary--tour-capture",
+      "presentation": "mobile",
+      "photographs": [],
+      "note": "Current production controls only; photography excluded from itinerary crop."
+    }
+  ]
+}

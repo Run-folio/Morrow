@@ -1,0 +1,38 @@
+[
+  {
+    "key": "cusco",
+    "author": "Azzedine Rouichi",
+    "sourceUrl": "https://unsplash.com/photos/a-view-of-a-city-from-a-high-point-of-view-g9U5KGu_m3Q",
+    "downloadUrl": "https://images.unsplash.com/photo-1578521571129-8e0cef6d6c0f?auto=format&fit=max&fm=jpg&q=85&w=1200",
+    "license": "Unsplash License",
+    "licenseUrl": "https://unsplash.com/license",
+    "verifiedAt": "2026-11-05",
+    "localPath": "/journey/product-shots/tour/source/cusco.jpg",
+    "sha256": "ad14c111b398adbc321c93ea801c77555388d1148c9474f88d748c871bec79ee",
+    "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+  },
+  {
+    "key": "sacred-valley",
+    "author": "Paul Daly",
+    "sourceUrl": "https://unsplash.com/photos/rocky-mountains-hQljmSHzn4E",
+    "downloadUrl": "https://images.unsplash.com/photo-1568729670692-0d2de9a3c027?auto=format&fit=max&fm=jpg&q=85&w=1200",
+    "license": "Unsplash License",
+    "licenseUrl": "https://unsplash.com/license",
+    "verifiedAt": "2026-11-05",
+    "localPath": "/journey/product-shots/tour/source/sacred-valley.jpg",
+    "sha256": "4cf8e4685eb45ee22b9eddd9c6724147b34976dada6525e2a0ac9dc0bc0efbb2",
+    "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+  },
+  {
+    "key": "arequipa",
+    "author": "Mayur Arvind",
+    "sourceUrl": "https://unsplash.com/photos/a-panoramic-view-of-a-city-with-a-mountain-in-the-background-hpc4DFyjY40",
+    "downloadUrl": "https://images.unsplash.com/photo-1727161797764-3f7f83bf3adf?auto=format&fit=max&fm=jpg&q=85&w=1200",
+    "license": "Unsplash License",
+    "licenseUrl": "https://unsplash.com/license",
+    "verifiedAt": "2026-11-05",
+    "localPath": "/journey/product-shots/tour/source/arequipa.jpg",
+    "sha256": "602bf0def5b0997f4da7f74271f91706ba29904247cda552734f07e8841d7a11",
+    "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+  }
+]
