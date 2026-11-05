@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { canonicalTripRevisionCanReplace } from '../lib/easyt/trip-continuity.ts';
-import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from '../lib/easyt/trip-mutation-persistence.ts';
+import { createTripMutationPersistenceQueue, newestTripMutationCanonical, tripMutationCanStart } from '../lib/easyt/trip-mutation-persistence.ts';
 import * as tripDisplay from '../lib/easyt/trip-display.ts';
 import { workspaceViewFromPathname } from '../lib/easyt/trip-workspace-links.ts';
 import * as workspaceDiagnostic from '../lib/easyt/workspace-recovery-diagnostic.ts';
@@ -76,7 +76,7 @@ function mutationHarness(overrides: Record<string, any> = {}) {
     '@/lib/auth-client': { authClient: { useSession: () => ({ data: owner ? { user: { id: owner } } : null, isPending: false }) } },
     '@/lib/easyt/storage': storage,
     '@/lib/easyt/itinerary-mutations': { cloneItineraryMutationDocument: structuredClone },
-    '@/lib/easyt/trip-mutation-persistence': { createTripMutationPersistenceQueue, newestTripMutationCanonical },
+    '@/lib/easyt/trip-mutation-persistence': { createTripMutationPersistenceQueue, newestTripMutationCanonical, tripMutationCanStart },
     '@/lib/easyt/trip-continuity': { canonicalTripRevisionCanReplace },
     '@/lib/easyt/feedback-survey': { isMeaningfulFeedbackAcknowledgement: () => true },
   }).useTripMutationPersistence;

@@ -258,7 +258,10 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
 
   const mutateTrip = useCallback((update: (current: EasyTTrip) => EasyTTrip, pendingKey: string, feedbackAction?: MeaningfulFeedbackAction): Promise<boolean> => {
     const scope = renderScope;
-    if (!canMutate || !enabled || !recoveryReadyRef.current || !scopeIsCurrent(scope)) return Promise.resolve(false);
+    // Transport consumes canMutate before enabling its controls. Preserve the
+    // established admission checks for other workspaces: a pending guest
+    // refetch must not silently reject an enabled device-only edit.
+    if (!enabled || !recoveryReadyRef.current || !scopeIsCurrent(scope)) return Promise.resolve(false);
     updatePending(pendingKey, 1);
     const operation = localWriteTailRef.current.then(async () => {
       if (!scopeIsCurrent(scope) || !recoveryReadyRef.current) return false;
@@ -328,7 +331,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     pendingLocalWritesRef.current.add(operation); localWriteTailRef.current = operation.catch(() => false);
     void operation.finally(() => { pendingLocalWritesRef.current.delete(operation); updatePending(pendingKey, -1); }).catch(() => undefined);
     return operation;
-  }, [canMutate, enabled, enqueueAccountSave, reportRecoveryReadFailure, renderScope, scopeIsCurrent, session?.user?.id, updatePending]);
+  }, [enabled, enqueueAccountSave, reportRecoveryReadFailure, renderScope, scopeIsCurrent, session?.user?.id, updatePending]);
 
   useEffect(() => {
     const sessionOwnerId = session?.user?.id, recovery = recoveryHandleRef.current;

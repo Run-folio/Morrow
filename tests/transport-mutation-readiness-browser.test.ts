@@ -52,11 +52,13 @@ for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: gu
   await page.evaluate(()=>window.dispatchEvent(new Event('guest-refetch-start')));
   await page.getByText('Checking this trip…',{exact:true}).waitFor();
   assert.equal(await mark.isEnabled(),false);
-  await page.evaluate(()=>window.dispatchEvent(new Event('guest-refetch-end')));
-  await page.getByText('Checking this trip…',{exact:true}).waitFor({state:'hidden'});
   await page.evaluate(()=>(window as Window&{__releaseGuestWrite?:()=>void}).__releaseGuestWrite?.());
   await card.locator('[data-tone="booked"]').waitFor();
   const undo=card.getByRole('button',{name:'Undo booked mark',exact:true});
+  assert.equal(await undo.isEnabled(),false,'new transport actions still wait while the accepted guest write finishes');
+  await page.getByText('Checking this trip…',{exact:true}).waitFor();
+  await page.evaluate(()=>window.dispatchEvent(new Event('guest-refetch-end')));
+  await page.getByText('Checking this trip…',{exact:true}).waitFor({state:'hidden'});
   await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent==='Undo booked mark');return b&&!b.disabled});
   await undo.click();await card.locator('[data-tone="not-booked"]').waitFor();
   assert.equal(accountWrites,0);assert.equal(await page.evaluate(()=>localStorage.getItem('synthetic-unrelated-retained-data')),'preserve');assert.deepEqual(view.errors,[]);
