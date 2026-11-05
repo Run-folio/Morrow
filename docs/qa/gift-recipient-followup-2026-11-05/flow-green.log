@@ -1,0 +1,130 @@
+(node:89788) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/analytics.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ analytics paths omit query data and collapse opaque workspace IDs (0.588542ms)
+✔ analytics link destinations never retain query data or external paths (0.337458ms)
+✔ analytics payload cleaning removes empty values without changing safe coarse metadata (0.439417ms)
+✔ save failures are reduced to machine-safe categories (0.639583ms)
+✔ analytics is a safe no-op outside the browser and without configuration (0.28875ms)
+✔ route_started emits only coarse public route metadata after consent (0.688417ms)
+✔ route_started is a no-op without analytics consent (0.196ms)
+✔ recommendation performance emits only coarse bounded lane metadata (0.417542ms)
+✔ workspace orientation analytics stays off before consent (0.141459ms)
+✔ workspace orientation analytics contains only coarse guide metadata (0.182708ms)
+✔ Viator affiliate clicks use the dedicated, privacy-safe event (0.104584ms)
+✔ Omio affiliate clicks carry placement and opaque trip-transfer identifiers only (0.634042ms)
+✔ commercial click reporting maps either established event to one stable KPI record (0.223625ms)
+✔ Overview practical-task affiliate clicks retain their scoped placement (0.052667ms)
+✔ Trip.com category handoffs retain their canonical commercial categories (0.123916ms)
+✔ commercial clicks remain consent-gated (0.080125ms)
+✔ homepage route impressions carry only catalogue metadata and respect consent (0.100041ms)
+✔ gift analytics paths cannot retain a capability while public and private route shapes stay usable (0.087041ms)
+(node:89789) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/email-system.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ all repository-owned templates render Morrovia-branded HTML and meaningful plaintext (2.382125ms)
+✔ transactional subjects are concise and trip invitations keep private details out of the subject (0.379708ms)
+✔ traveller-authored content is escaped while Unicode and long content remain intact (0.3965ms)
+✔ action URLs reject unsafe schemes and preserve secure token links exactly in plaintext (0.654166ms)
+✔ canonical application links use configured current origins and reject cross-origin input (0.279542ms)
+✔ email delivery is disabled in tests and non-production by default, with an exact staging allowlist (1.188416ms)
+✔ the provider boundary enforces the Morrovia sender, plaintext, reply-to and Resend idempotency header (26.676125ms)
+✔ a durable duplicate reservation prevents a second provider request (0.432875ms)
+✔ provider failures expose only a bounded error code and categorical event detail (1.478ms)
+✔ provider network failure reports a privacy-safe unavailable category (1.116792ms)
+✔ blocked staging recipients fail before the provider and report policy only (0.148334ms)
+✔ trip invitation and email-event persistence own retry idempotency without storing raw tokens (3.51175ms)
+✔ configured sender addresses cannot control the user-facing display name (0.223416ms)
+(node:89790) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 1-character local part is not hinted to a signed-out viewer (72.613125ms)
+✔ 1-character local part is not hinted to another account (1.122667ms)
+✔ 2-character local part is not hinted to a signed-out viewer (1.2705ms)
+✔ 2-character local part is not hinted to another account (0.739083ms)
+✔ 14-character local part is not hinted to a signed-out viewer (0.908333ms)
+✔ 14-character local part is not hinted to another account (2.581875ms)
+✔ the matching account sees its own address and only the capability token crosses the claim client boundary (0.910958ms)
+✔ expired invitation does not reveal recipient hints to a signed-out viewer (0.78375ms)
+✔ expired invitation does not reveal recipient hints to another account (1.402875ms)
+✔ expired matching invitation keeps the account's own address but does not expose a claim action (1.334833ms)
+✔ gift page fails closed for missing preview (0.640625ms)
+✔ gift page fails closed for unavailable preview (0.577209ms)
+(node:89791) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-preview-privacy.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ public pending gift preview serializes only the five permitted fields (3.856583ms)
+✔ public claimed gift preview serializes only the five permitted fields (0.972958ms)
+✔ public revoked gift preview serializes only the five permitted fields (1.293209ms)
+✔ public expired gift preview serializes only the five permitted fields (1.203583ms)
+✔ preview preserves a null shared note without consulting private properties or repository serialization (0.67375ms)
+✔ missing preview is non-cacheable and returns only the generic error (0.926416ms)
+✔ unavailable preview is non-cacheable and returns only the generic error (0.583666ms)
+✔ unauthenticated claim rejects before reading or mutating a gift (0.841167ms)
+✔ authenticated claim passes the exact token and owner to the existing claim boundary (0.562084ms)
+✔ authenticated missing claim retains the existing 404 contract (0.531625ms)
+✔ recipient rejection remains authoritative at the existing claim boundary (0.642208ms)
+(node:89792) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/posthog-replay.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ replay requires an explicit production rollout and exact approved HTTPS origin (167.098791ms)
+✔ missing, rejected, malformed, obsolete and legacy consent never initialize or start replay (5.252542ms)
+✔ current grant starts once across repeat initialization and consent notifications (1.176792ms)
+✔ withdrawal stops replay before reset and prevents later events until a fresh grant (2.828042ms)
+✔ strict replay masking covers text, inputs, attributes and disables extra capture (1.141042ms)
+✔ throwing analytics vendors or identity reset cannot prevent recorder withdrawal and opt-out (1.93975ms)
+✔ replay vendor failure cannot block existing consented product analytics (0.544167ms)
+✔ event sanitization also strips replay-generated session entry URLs and referrers (1.609583ms)
+✔ replay send boundary drops CSSOM, plugin, unknown and compressed payloads (1.797291ms)
+✔ default-off rollout preserves event dispatch and disables all remote config (1.429ms)
+✔ privacy proposal describes optional masked replay in English and Spanish without activation claims (2.367375ms)
+✔ automatic nested person metadata cannot retain capability URLs or referrers (0.952875ms)
+✔ SDK top-level person context is stripped without mutating the original capture (0.482417ms)
+(node:89793) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/private-session-boundary.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ private profile and passport context is namespaced by exact owner (15.087125ms)
+✔ an A to B switch fails closed before stale private props can render (0.226542ms)
+✔ session expiry is distinct from an account switch so an open document can remain intact (0.097584ms)
+✔ reauth preserves the exact child Map query and hash (0.325542ms)
+✔ network rejection becomes a deterministic settled mutation result (0.850625ms)
+✔ email-verification messaging can use the same configuration predicate as auth (0.3455ms)
+(node:89794) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/trip-library-actions.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ pending account boundary cannot start any library action (82.33625ms)
+✔ expired account boundary cannot start any library action (16.238791ms)
+✔ mismatch account boundary cannot start any library action (15.867916ms)
+✔ signed-out account boundary cannot start any library action (13.208ms)
+✔ guest scope has no account mutation path (9.586167ms)
+✔ archive,restore and duplicate reuse the existing PATCH contract and exact owner acknowledgement (29.889833ms)
+✔ wrong-owner or wrong-source acknowledgements cannot reconcile or report success (18.3165ms)
+✔ delete requires an explicit confirmation intent and reconciles only after successful DELETE (9.361833ms)
+✔ failed DELETE preserves the confirmation and its error without reconciling recovery (8.391916ms)
+✔ pending save refusal prevents account actions without issuing a request (10.691583ms)
+✔ an owner switch while waiting for the save boundary retires the action before fetch (13.657709ms)
+✔ late account response after scope change cannot reconcile or populate another trip (9.5745ms)
+✔ gift submission retains recipient confirmation and the existing idempotent request contract (12.664625ms)
+✔ an owner switch retires an open gift and ignores its late response (6.032416ms)
+✔ A→B→A cannot revive an action waiting for the original save boundary (10.073375ms)
+✔ A→B→A cannot revive a stale successful response or an unsent dialog (5.67675ms)
+✔ an obsolete finally cannot release the new action slot after a scope cycle (7.734625ms)
+✔ unmount retires a response and prevents stale event handlers from starting more work (9.333208ms)
+✔ the real settled-copy query reads current recovery refs even before React renders a failed ACK (4.922084ms)
+✔ starting a new owner action cannot retag a retired gift,recipient or deletion intent (9.383791ms)
+✔ a new action after A→B→A does not revive an old confirmation or gift (6.189583ms)
+ℹ tests 94
+ℹ suites 0
+ℹ pass 94
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 725.0925

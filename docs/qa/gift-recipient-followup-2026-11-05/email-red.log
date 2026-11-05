@@ -1,0 +1,31 @@
+(node:88624) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/email-system.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ trip invitation and email-event persistence own retry idempotency without storing raw tokens (1.231333ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 103.732
+
+✖ failing tests:
+
+test at tests/email-system.test.ts:244:1
+✖ trip invitation and email-event persistence own retry idempotency without storing raw tokens (1.231333ms)
+  Error: ENOENT: no such file or directory, open 'db/migrations/0014_morrovia_email_idempotency.sql'
+      at readFileSync (node:fs:440:20)
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/email-system.test.ts:246:21)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: 'db/migrations/0014_morrovia_email_idempotency.sql'
+  }

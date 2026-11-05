@@ -33,3 +33,7 @@ The adjacent email run has **60 passes and one failure** (`targeted.log`): `trip
 The server-rendered gift page still intentionally shows a masked recipient address to a token holder: its full domain, up to two local-part characters and partial length information remain visible. Very short local parts may be fully visible before appended dots. That existing page policy is outside this JSON patch. This candidate must not be described as eliminating every recipient-identity disclosure.
 
 These tests prove route payloads/headers and claim delegation; they do not verify a running Next.js server, deployed CDN behavior or actual database enforcement. No hosted check or real gift invitation was attempted. Deployment remains unapproved; any later staging qualification must check the exact approved revision and preserve all existing user data.
+
+## Follow-up
+
+The recipient hints and email source/test dependency described above are addressed in the subsequent local candidate. See [follow-up qualification and remaining risk](../gift-recipient-followup-2026-11-05/README.md). This preserves the earlier report as historical evidence; no deployment has occurred.

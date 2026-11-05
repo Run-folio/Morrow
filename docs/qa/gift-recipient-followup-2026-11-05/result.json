@@ -1,0 +1,40 @@
+{
+  "baseStaging": "64adb5eb3de905604ba2ff73dddb0b7aee653bb1",
+  "previousLocalCandidate": "4543a235def801309908fb25993ec0d9015a5429",
+  "pageRed": {
+    "tests": 12,
+    "passed": 4,
+    "failed": 8
+  },
+  "flowGreen": {
+    "tests": 94,
+    "passed": 94,
+    "failed": 0,
+    "skipped": 0
+  },
+  "releaseGate": {
+    "exitCode": 0,
+    "tests": 666,
+    "pass": 642,
+    "fail": 0,
+    "skipped": 24,
+    "buildId": "jJFvsEkVSIUaCKQoTC-jt"
+  },
+  "historicalMigrationSource": "a803a757a538d432ce0bbe30ca7b0e315c7d81ed",
+  "deletionCommit": "effa3d99c838659f623a10b2edd3057299f3cac6",
+  "migrationSqlExecuted": false,
+  "productionDataAccessed": false,
+  "externalStateChanged": false,
+  "deployed": false,
+  "review": "No blocking findings; independent57/57 relevant checks passed",
+  "remainingRisks": [
+    "Live sites unchanged until approved deployment",
+    "Full migration chain remains incomplete; 15 historical migrations still missing",
+    "Database schema and index/data compatibility not verified",
+    "Hosted Next.js Flight/CDN/session flow not verified"
+  ],
+  "restoredMigrationSha256": {
+    "0005_easyt_email_events.sql": "f7ab5ed8a082c10bc86aed5b84e6fa7c3bf922ea380d3c820fb87a075c7741bd",
+    "0014_morrovia_email_idempotency.sql": "de83b790e1dcad5a4e5bac3de2ccc83f0992d38cac1bca22272a45b6007f0695"
+  }
+}

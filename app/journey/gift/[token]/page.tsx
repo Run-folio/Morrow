@@ -14,13 +14,6 @@ export const metadata = { title: "A trip for you" };
 
 type PageProps = { params: Promise<{ token: string }> };
 
-function maskEmail(email: string) {
-  const [local = "", domain = ""] = email.split("@");
-  if (!domain) return "this email address";
-  const visible = local.slice(0, Math.min(2, local.length));
-  return `${visible}${"•".repeat(Math.max(3, local.length - visible.length))}@${domain}`;
-}
-
 export default async function GiftTripPage({ params }: PageProps) {
   const { token } = await params;
   const gift = await getTripGiftPreview(token).catch(() => null);
@@ -29,7 +22,6 @@ export default async function GiftTripPage({ params }: PageProps) {
   const next = `/journey/gift/${encodeURIComponent(token)}`;
   const accountMatches = session?.user?.email?.toLowerCase() === gift.recipientEmail.toLowerCase();
   const expired = gift.status === "expired";
-  const recipientLabel = accountMatches ? gift.recipientEmail : maskEmail(gift.recipientEmail);
 
   return (
     <main className={styles.page}>
@@ -43,7 +35,7 @@ export default async function GiftTripPage({ params }: PageProps) {
             {gift.senderName} has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.
           </p>
           {gift.note ? <blockquote className={styles.giftNote}>“{gift.note}”</blockquote> : null}
-          <p className={styles.giftRecipient}>For {recipientLabel}</p>
+          {accountMatches ? <p className={styles.giftRecipient}>For {gift.recipientEmail}</p> : null}
           {expired ? (
             <p className={styles.syncError}>This invitation expired before it was claimed.</p>
           ) : accountMatches ? (

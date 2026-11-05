@@ -246,6 +246,7 @@ test("trip invitation and email-event persistence own retry idempotency without 
   const migration = readFileSync("db/migrations/0014_morrovia_email_idempotency.sql", "utf8");
   const route = readFileSync("app/api/easyt/trips/[tripId]/gift/route.ts", "utf8");
   const client = readFileSync("app/journey/dashboard/dashboard-client.tsx", "utf8");
+  const actions = readFileSync("components/easyt/use-trip-library-actions.ts", "utf8");
   assert.match(repository, /on conflict \(idempotency_key\)[\s\S]*do nothing/);
   assert.match(repository, /event\.status === "failed"/);
   assert.match(repository, /createHmac\("sha256", secret!\)/);
@@ -253,7 +254,9 @@ test("trip invitation and email-event persistence own retry idempotency without 
   assert.match(migration, /unique index[\s\S]*idempotency_key/);
   assert.match(route, /request\.headers\.get\("idempotency-key"\)/);
   assert.match(route, /recipientEmail: gift\.recipientEmail/);
-  assert.match(client, /crypto\.randomUUID\(\)/);
+  assert.match(client, /useTripLibraryActions\(\{ownerId,ownerScope,boundary,language/);
+  assert.match(actions, /crypto\.randomUUID\(\)/);
+  assert.match(actions, /"idempotency-key": giftRequestRef\.current\.key/);
   assert.doesNotMatch(repository, /idempotency_key[^\n]*token/i);
 });
 

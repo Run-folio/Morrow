@@ -1,0 +1,170 @@
+(node:88482) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ 1-character local part is not hinted to a signed-out viewer (54.729666ms)
+✖ 1-character local part is not hinted to another account (0.98875ms)
+✖ 2-character local part is not hinted to a signed-out viewer (1.158667ms)
+✖ 2-character local part is not hinted to another account (0.720583ms)
+✖ 14-character local part is not hinted to a signed-out viewer (3.229834ms)
+✖ 14-character local part is not hinted to another account (0.945042ms)
+✔ the matching account sees its own address and only the capability token crosses the claim client boundary (1.247375ms)
+✖ expired invitation does not reveal recipient hints to a signed-out viewer (0.68175ms)
+✖ expired invitation does not reveal recipient hints to another account (0.596291ms)
+✔ expired matching invitation keeps the account's own address but does not expose a claim action (0.704584ms)
+✔ gift page fails closed for missing preview (0.450584ms)
+✔ gift page fails closed for unavailable preview (0.284125ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 4
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 310.35625
+
+✖ failing tests:
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 1-character local part is not hinted to a signed-out viewer (54.729666ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 1-character local part is not hinted to another account (0.98875ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 2-character local part is not hinted to a signed-out viewer (1.158667ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al•••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al•••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 2-character local part is not hinted to another account (0.720583ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al•••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al•••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 14-character local part is not hinted to a signed-out viewer (3.229834ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al••••••••••••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al••••••••••••@private-recipient.test</p><div class="giftClaimActions"><p class="muted">Sign in or create an account with the invited email address to add this trip to My trips.</p><a class="primaryLink" href="/journey/login?next=%2Fjourney%2Fgift%2Fsynthetic-token"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-keyhole" aria-hidden="true"><circle cx="12" cy="16" r="1"></circle><rect x="3" y="10" width="18" height="12" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg> Sign in to claim</a></div></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:49:41
+✖ 14-character local part is not hinted to another account (0.945042ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al••••••••••••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:52:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For al••••••••••••@private-recipient.test</p><p class="syncError">This invitation was sent to a different email address. Sign in with the invited account to claim it.</p></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:75:39
+✖ expired invitation does not reveal recipient hints to a signed-out viewer (0.68175ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation expired before it was claimed.</p></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:77:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation expired before it was claimed.</p></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/gift-page-privacy.test.ts:75:39
+✖ expired invitation does not reveal recipient hints to another account (0.596291ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /private-recipient\.test|•|giftRecipient/. Input:
+
+  '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation expired before it was claimed.</p></div></section></main>'
+
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-page-privacy.test.ts:77:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="page"><nav>Navigation</nav><section class="giftClaimPage"><div class="giftClaimCard"><span class="giftClaimIcon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></span><p class="eyebrow">A trip has been gifted to you</p><h1>Synthetic invitation</h1><p class="giftClaimCopy">Synthetic sender has shared their plan with you. Claiming it creates your own editable copy. Their original stays theirs.</p><blockquote class="giftNote">“Shared synthetic note”</blockquote><p class="giftRecipient">For a•••@private-recipient.test</p><p class="syncError">This invitation expired before it was claimed.</p></div></section></main>',
+    expected: /private-recipient\.test|•|giftRecipient/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }

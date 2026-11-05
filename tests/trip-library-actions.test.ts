@@ -71,10 +71,11 @@ test('unmount retires a response and prevents stale event handlers from starting
 test('the real settled-copy query reads current recovery refs even before React renders a failed ACK',()=>{
   const source=readFileSync(new URL('../components/easyt/use-trip-mutation-persistence.ts',import.meta.url),'utf8');
   const start=source.indexOf('  const isAccountCopySettled = useCallback('),end=source.indexOf('\n  const adoptDeviceTrip',start);assert.ok(start>=0&&end>start);
-  const scope:any={useCallback:(fn:any)=>fn,enabled:true,initialTrip:{id:'trip-a',ownerId:'owner-a'},session:{user:{id:'owner-a'}},tripRef:{current:{id:'trip-a',ownerId:'owner-a'}},recoveryReadyRef:{current:true},conflictRef:{current:false},recoveryHandleRef:{current:null},hasPendingSaves:()=>false,scopeIsCurrent:()=>true};
+  const scope:any={useCallback:(fn:any)=>fn,enabled:true,renderScope:'owner-a:trip-a',retainedEquivalentRef:{current:null},initialTrip:{id:'trip-a',ownerId:'owner-a'},session:{user:{id:'owner-a'}},tripRef:{current:{id:'trip-a',ownerId:'owner-a'}},recoveryReadyRef:{current:true},conflictRef:{current:false},recoveryHandleRef:{current:null},hasPendingSaves:()=>false,scopeIsCurrent:(value:string)=>value===scope.renderScope};
   const js=ts.transpileModule(source.slice(start,end)+'\nreturn isAccountCopySettled;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
   const ready=new Function('scope',`with(scope){${js}}`)(scope);assert.equal(ready(),true);
-  for(const [ref,value]of [['recoveryReadyRef',false],['conflictRef',true],['recoveryHandleRef',{writeId:'unacknowledged'}]]as const){const old=scope[ref].current;scope[ref].current=value;assert.equal(ready(),false);scope[ref].current=old;}
+  const currentScope=scope.scopeIsCurrent;scope.scopeIsCurrent=()=>false;assert.equal(ready(),false,'retired render scopes cannot share an unsettled account copy');scope.scopeIsCurrent=currentScope;
+  for(const [ref,value]of [['recoveryReadyRef',false],['conflictRef',true],['recoveryHandleRef',{writeId:'unacknowledged'}],['retainedEquivalentRef',{writeId:'awaiting-ack'}]]as const){const old=scope[ref].current;scope[ref].current=value;assert.equal(ready(),false);scope[ref].current=old;}
   scope.hasPendingSaves=()=>true;assert.equal(ready(),false);scope.hasPendingSaves=()=>false;scope.tripRef.current={id:'trip-b',ownerId:'owner-a'};assert.equal(ready(),false);scope.tripRef.current={id:'trip-a',ownerId:'owner-b'};assert.equal(ready(),false);
 });
 

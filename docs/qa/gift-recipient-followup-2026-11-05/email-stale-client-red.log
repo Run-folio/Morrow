@@ -1,0 +1,14 @@
+✖ trip invitation and email-event persistence own retry idempotency without storing raw tokens (3.425583ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.044625
+✖ failing tests:
+✖ trip invitation and email-event persistence own retry idempotency without storing raw tokens (3.425583ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /crypto\.randomUUID\(\)/. Input:
+    expected: /crypto\.randomUUID\(\)/,
+    operator: 'match',
