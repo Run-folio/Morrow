@@ -7,10 +7,11 @@ import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
-import { SPREADSHEET_IMPORT_PARSER_VERSION } from "./spreadsheet-import.ts";
 import { buildOmioRouteSearchLink, omioHandoffIssue, OMIO_TRACKING_BASE, validOmioDepartureDate, type OmioHandoffIssue } from "./omio-search-link.ts";
-import { travellerTransportBookingForLeg, travellerTransportBookingMismatchForLeg } from "./transport-booking.ts";
+import { transportBookingForLeg, travellerTransportBookingForLeg, travellerTransportBookingMismatchForLeg } from "./transport-booking.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
+
+export {transportBookingForLeg} from "./transport-booking.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
@@ -281,37 +282,6 @@ const stopDatesAreStable = (stop: TripStop, trip: EasyTTrip) => Boolean(
 
 const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionSelections?.transportByLeg[leg.id];
 
-const normalise = (value: string) => value.trim().toLocaleLowerCase();
-
-export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pick<TripStop, "name">, to?: Pick<TripStop, "name">) {
-  const manual = travellerTransportBookingForLeg(trip, leg);
-  if (manual) return manual.travellerMarkedBooked === false ? undefined : manual;
-  if (trip.brief.capturedIntent?.parserVersion === SPREADSHEET_IMPORT_PARSER_VERSION) {
-    // Spreadsheet bookings are attached to a dated, canonical leg at import.
-    // Matching their free-text endpoint names again would attach an unmatched
-    // booking to a different occurrence or date after review.
-    const importedBookingId = leg.routeMetadata.importedBookingId;
-    return (trip.brief.bookings ?? []).find((booking) => booking.type === "transport"
-      && !booking.transportLegBinding
-      && (booking.id === leg.id
-        || booking.id === `transport-${leg.id}`
-        || (typeof importedBookingId === "string" && booking.id === importedBookingId)));
-  }
-  const fromName = normalise(from?.name ?? "");
-  const toName = normalise(to?.name ?? "");
-  return (trip.brief.bookings ?? []).find((booking) => {
-    if (booking.type !== "transport" || booking.transportLegBinding) return false;
-    if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
-    const explicitFrom = normalise(booking.transportDetails?.from ?? "");
-    const explicitTo = normalise(booking.transportDetails?.to ?? "");
-    if (explicitFrom || explicitTo) return explicitFrom === fromName && explicitTo === toName;
-    const title = normalise(booking.title);
-    const fromIndex = title.indexOf(fromName);
-    const toIndex = title.indexOf(toName, fromIndex + fromName.length);
-    return Boolean(fromName && toName && fromName !== toName && fromIndex >= 0 && toIndex > fromIndex);
-  });
-}
-
 /** Truthful transport completion derived only from saved canonical bookings. */
 export function transportBookingProgress(trip: EasyTTrip) {
   const total = trip.legs.length;
@@ -372,8 +342,7 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     || (leg.mode === "mixed" && hasSupportedOmioSegment(leg));
   if (!supported) return null;
 
-  const hasAirportOverride = trip.legs.some(candidate => {if(!trip.brief.flightSearchAirportsByLeg?.[candidate.id])return false;const plan=flightSearchAirportPlan(trip,effectiveTripLeg(trip,candidate));return plan?.from.selected||plan?.to.selected;});
-  const pair = hasAirportOverride ? null : qualifiedFlightReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
+  const pair = qualifiedFlightReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
   if (pair) {
     const href = buildOmioRouteSearchLink({ ...pair, mode: "flight", currency: trip.currency, now });
     if (href) return {
@@ -388,9 +357,10 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   // Flight-search preferences are derived; canonical city endpoints and timing
   // remain unchanged. No airport default establishes a scheduled service.
   const flightPlan = leg.mode === "flight" ? flightSearchAirportPlan(trip,leg) : null;
+  if(flightPlan?.sameAirport)return null;
   const searchFrom = flightPlan?.from.endpoint ?? from;
   const searchTo = flightPlan?.to.endpoint ?? to;
-  const airportAssumption = flightPlan?.from.selected||flightPlan?.to.selected
+  const airportAssumption = flightPlan?.from.selected||flightPlan?.to.selected||flightPlan?.to.inherited
     ? `Flight-search airports: ${searchFrom.name} → ${searchTo.name}. Airport access and onward travel are separate.`
     : flightAirportAssumptionLabel({ ...leg, fromEndpoint: from, toEndpoint: to });
   const searchInput = {

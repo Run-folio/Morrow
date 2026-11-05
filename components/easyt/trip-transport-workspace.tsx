@@ -278,7 +278,7 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const detailNotes = [...new Set([noteForJourney(item, copy, language), detailNoteForJourney(item, copy, language)].filter((value): value is string => Boolean(value)))];
   const searchAirports = flightSearchAirportPlan(trip,leg);
   const visibleJourneyGaps = journeyParts.gaps.filter(gap=>gap.kind!=='departure-airport'||!searchAirports?.from.selected);
-  const airportAssumption = item.booking || item.bookingMismatch || searchAirports?.from.selected || searchAirports?.to.selected ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
+  const airportAssumption = item.booking || item.bookingMismatch || searchAirports?.from.selected || searchAirports?.to.selected || searchAirports?.to.inherited ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
   return <section className={styles.selectedDetail} aria-live="polite" aria-label={copy.journeyDetails}>
     {airportAssumption ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
     {journeyParts.incomplete ? <p>{copy.incompleteParts}</p> : null}

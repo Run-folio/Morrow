@@ -1,4 +1,5 @@
-import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./trip.ts";
+import {SPREADSHEET_IMPORT_PARSER_VERSION} from "./spreadsheet-import.ts";
+import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg, TripStop } from "./trip.ts";
 import { effectiveTripLeg } from "./transport-mode-choice.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 
@@ -128,4 +129,35 @@ export function sameTransportBookingBinding(booking: TripBooking, leg: TripLeg, 
     fromLabel: from.name,
     toLabel: to.name,
   }));
+}
+
+const normalise = (value: string) => value.trim().toLocaleLowerCase();
+
+export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pick<TripStop, "name">, to?: Pick<TripStop, "name">) {
+  const manual = travellerTransportBookingForLeg(trip, leg);
+  if (manual) return manual.travellerMarkedBooked === false ? undefined : manual;
+  if (trip.brief.capturedIntent?.parserVersion === SPREADSHEET_IMPORT_PARSER_VERSION) {
+    // Spreadsheet bookings are attached to a dated, canonical leg at import.
+    // Matching their free-text endpoint names again would attach an unmatched
+    // booking to a different occurrence or date after review.
+    const importedBookingId = leg.routeMetadata.importedBookingId;
+    return (trip.brief.bookings ?? []).find((booking) => booking.type === "transport"
+      && !booking.transportLegBinding
+      && (booking.id === leg.id
+        || booking.id === `transport-${leg.id}`
+        || (typeof importedBookingId === "string" && booking.id === importedBookingId)));
+  }
+  const fromName = normalise(from?.name ?? "");
+  const toName = normalise(to?.name ?? "");
+  return (trip.brief.bookings ?? []).find((booking) => {
+    if (booking.type !== "transport" || booking.transportLegBinding) return false;
+    if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
+    const explicitFrom = normalise(booking.transportDetails?.from ?? "");
+    const explicitTo = normalise(booking.transportDetails?.to ?? "");
+    if (explicitFrom || explicitTo) return explicitFrom === fromName && explicitTo === toName;
+    const title = normalise(booking.title);
+    const fromIndex = title.indexOf(fromName);
+    const toIndex = title.indexOf(toName, fromIndex + fromName.length);
+    return Boolean(fromName && toName && fromName !== toName && fromIndex >= 0 && toIndex > fromIndex);
+  });
 }

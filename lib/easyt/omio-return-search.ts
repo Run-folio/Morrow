@@ -4,6 +4,7 @@ import {routeEndpointForLeg,stopEndpoint} from './trip-legs.ts';
 import {transferEndpointGeographicallyReady} from './geographic-binding.ts';
 import {effectiveTripLeg} from './transport-mode-choice.ts';
 import {flightPlanningAirports} from './flight-airport-assumptions.ts';
+import {flightSearchAirportPlan} from './flight-search-airport-choice.ts';
 import {validOmioDepartureDate} from './omio-search-link.ts';
 
 const searchPlace=(p:CanonicalRouteEndpoint|null):p is CanonicalRouteEndpoint=>!!p&&(['city','town'].includes(p.geographicBinding?.placeType??'')
@@ -33,5 +34,10 @@ export function qualifiedFlightReturnSearch(trip:EasyTTrip,requested:TripLeg,now
  if(!validOmioDepartureDate(departureDate,now)||!validOmioDepartureDate(returnDate,now)||returnDate!<=departureDate!||trip.stops[0]?.arrivalDate!==departureDate||trip.stops.at(-1)?.departureDate!==returnDate)return null;
  if(itineraryDateForLeg(trip,out,ot).date!==departureDate||itineraryDateForLeg(trip,back,bt).date!==returnDate)return null;
  if(agendaDate!==undefined&&agendaDate!==(requested.id===out.id?departureDate:returnDate))return null;
- return {outboundLegId:out.id,returnLegId:back.id,originName:of.name,originCountry:of.country!,destinationName:ot.name,destinationCountry:ot.country!,departureDate:departureDate!,returnDate:returnDate!};
+ const outward=flightSearchAirportPlan(trip,out),inward=flightSearchAirportPlan(trip,back);
+ if(!outward||!inward||outward.stale||inward.stale||outward.sameAirport||inward.sameAirport)return null;
+ const customized=outward.from.selected||outward.to.selected||inward.from.selected||inward.to.selected||inward.to.inherited;
+ if(customized&&(!samePlace(outward.from.endpoint,inward.to.endpoint)||!samePlace(outward.to.endpoint,inward.from.endpoint)))return null;
+ const origin=customized?outward.from.endpoint:of,destination=customized?outward.to.endpoint:ot;
+ return {outboundLegId:out.id,returnLegId:back.id,originName:origin.name,originCountry:origin.country!,destinationName:destination.name,destinationCountry:destination.country!,departureDate:departureDate!,returnDate:returnDate!};
 }

@@ -6,6 +6,10 @@ import {cityReturnTrip} from './fixtures/omio-return.ts';
 import {savedJourneyPartsTrip} from './fixtures/saved-journey-parts.ts';
 import {referencePlaceById,searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
 import {REFERENCE_SNAPSHOT_ID} from '../lib/easyt/place-reference.ts';
+import {airportChoiceFromSuggestion,flightSearchAirportBasis} from '../lib/easyt/flight-search-airport-choice.ts';
+import {setFlightSearchAirports} from '../lib/easyt/booking-readiness.ts';
+import {selectedTransferPlace} from './fixtures/accepted-transfer-place.ts';
+import {returnTripForPlaces} from './fixtures/gateway-return.ts';
 
 function suggestion(code:string){
   const candidate=searchReferencePlaces(code)[0];assert.ok(candidate);
@@ -13,6 +17,57 @@ function suggestion(code:string){
   return {...candidate,name:record.canonicalName,country:candidate.parentCountries![0],canonicalPlaceId:record.canonicalPlaceId,
     coordinates:[...record.coordinates],placeType:record.placeType,scheduledService:record.scheduledService,
     referenceSnapshotId:REFERENCE_SNAPSHOT_ID,providerId:record.providerId,provenance:[{id:record.providerId}]};
+}
+
+for(const browserName of ['chromium','webkit'] as const)for(const language of ['en','es'] as const){
+ test(`${browserName} ${language}: identical inherited return airports are flagged and remain editable`,{skip:!builderBrowserTestsEnabled,timeout:45_000},async()=>{
+  const row=searchReferencePlaces('Manchester',{explicitCountryNames:['United Kingdom']}).find(p=>p.placeType==='city')!;assert(row);
+  const origin=selectedTransferPlace('Manchester','United Kingdom',row.canonicalPlaceId!,'endpoint'),london=selectedTransferPlace('London','United Kingdom','reference:geonames:2643743','stop');
+  const source=returnTripForPlaces(origin,[london]);source.legs=source.legs.map(leg=>({...leg,mode:'flight',provenance:'planning_estimate',routeMetadata:{}}));
+  const trip=setFlightSearchAirports(source,source.legs[0].id,{from:airportChoiceFromSuggestion(suggestion('LHR'))!,to:airportChoiceFromSuggestion(suggestion('MAN'))!},flightSearchAirportBasis(source,source.legs[0])!);
+  const view=await renderBuilder({initialTrip:trip,path:`/journey/${trip.id}/transport`,browserName,styled:true,offlineOnly:true,language});
+  try{
+   const page=view.page;await page.setViewportSize({width:320,height:1000});const card=page.locator('[data-transport-leg-id]').last();
+   await card.locator('[data-transport-summary] button').press('Enter');
+   assert.match(await card.getByRole('alert').innerText(),language==='es'?/mismo aeropuerto/:/same airport/);
+   assert.equal(await card.locator('a[data-affiliate-provider="omio"]').count(),0);
+   const edit=card.getByRole('button',{name:language==='es'?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+   await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>/^(Change flight-search airports|Cambiar aeropuertos de búsqueda)$/.test(b.textContent??'')&&!b.disabled));
+   assert.equal(await edit.isEnabled(),true);await edit.press('Enter');
+   await card.getByRole('form',{name:language==='es'?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(view.errors,[]);
+  }finally{await view.close();}
+ });
+ test(`${browserName} ${language}: return airport inherits outbound, explicit choice wins, reset and reload preserve it`,{skip:!builderBrowserTestsEnabled,timeout:90_000},async()=>{
+  const es=language==='es',source=cityReturnTrip(),out=source.legs[0],back=source.legs.at(-1)!,gatwick=airportChoiceFromSuggestion(suggestion('LGW'))!;
+  const trip=setFlightSearchAirports(source,out.id,{from:gatwick,to:null},flightSearchAirportBasis(source,out)!),before=structuredClone(trip),stansted=suggestion('STN');
+  const view=await renderBuilder({initialTrip:trip,path:`/journey/${trip.id}/transport`,browserName,styled:true,offlineOnly:true,language,geocodeCandidates:{STN:[stansted]}});
+  try{
+   const page=view.page;await page.setViewportSize({width:320,height:1000});
+   const card=page.locator(`[data-transport-leg-id="${back.id}"]`);
+   const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-summary] button');if(await button.getAttribute('aria-expanded')==='false')await button.press('Enter');};
+   const inherited=()=>card.getByText(es?/igual que en la ida/:/same as outbound/);
+   const edit=()=>card.getByRole('button',{name:es?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+   const form=()=>card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
+   await open();await inherited().waitFor();assert.doesNotMatch(await card.innerText(),/Heathrow/);
+   const link=card.locator('a[data-affiliate-provider="omio"]');let search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
+   assert.equal(search.searchParams.get('departurePosTerm'),`${gatwick.endpoint.name}, ${gatwick.endpoint.country}`);
+   assert.equal(search.searchParams.get('departureDate'),trip.startDate);assert.equal(search.searchParams.get('returnDate'),trip.endDate);
+   await edit().press('Enter');const arrival=form().getByRole('combobox',{name:es?'Aeropuerto de llegada':'Arrival airport',exact:true});
+   assert.equal(await arrival.inputValue(),'');assert.equal(await arrival.getAttribute('placeholder'),gatwick.endpoint.name);
+   await arrival.fill('STN');await page.getByRole('option').filter({hasText:stansted.name}).first().click();
+   await form().getByRole('button',{name:es?'Guardar aeropuertos':'Save airports',exact:true}).click();
+   await card.getByText(new RegExp(stansted.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))).first().waitFor();assert.equal(await inherited().count(),0);
+   search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
+   assert.equal(search.searchParams.get('arrivalPosTerm'),`${stansted.name}, ${stansted.country}`);assert.equal(search.searchParams.get('departureDate'),trip.endDate);assert.equal(search.searchParams.has('returnDate'),false);
+   await page.reload();await open();await card.getByText(new RegExp(stansted.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))).first().waitFor();
+   await edit().press('Enter');await form().getByRole('button',{name:es?'Restablecer aeropuertos':'Reset search airports',exact:true}).click();await inherited().waitFor();
+   await page.reload();await open();await inherited().waitFor();assert.doesNotMatch(await card.innerText(),/Heathrow/);
+   for(const width of [320,390,1280]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+   const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});await page.setViewportSize({width:320,height:1000});await page.screenshot({path:`${artifacts}/return-default-${browserName}-${language}-320.png`,fullPage:true});}
+   assert.deepEqual(trip,before);assert.deepEqual(view.errors,[]);
+  }finally{await view.close();}
+ });
 }
 
 for(const language of ['en','es'] as const){

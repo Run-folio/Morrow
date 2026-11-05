@@ -4,6 +4,9 @@ import {REFERENCE_SNAPSHOT_ID,referenceGeographicAcceptanceMatches} from './plac
 import {countryCodeFor} from './country-registry.ts';
 import {flightPlanningAirports} from './flight-airport-assumptions.ts';
 import {routeEndpointForLeg} from './trip-legs.ts';
+import {sameJourneyPlace} from './journey-endpoints.ts';
+import {effectiveTripLeg} from './transport-mode-choice.ts';
+import {transportBookingForLeg,travellerTransportBookingMismatchForLeg} from './transport-booking.ts';
 import type {CanonicalRouteEndpoint,EasyTTrip,TripLeg} from './trip.ts';
 
 const trustedAirports=new Map((identities.airports as [string,string,string,number,number][]).map(row=>[row[0],row]));
@@ -42,7 +45,7 @@ export function flightSearchAirportBasis(trip:EasyTTrip,leg:TripLeg):string|null
 export function hasExplicitSavedFlightAirports(leg:TripLeg):boolean {
  return Array.isArray(leg.segments)&&leg.segments.some(s=>s?.mode==='flight'&&[s.fromEndpoint,s.toEndpoint].some(e=>e?.kind==='gateway'||e?.geographicBinding?.placeType==='transport_gateway'||(typeof e?.canonicalPlaceId==='string'&&e.canonicalPlaceId.startsWith('reference:ourairports:'))));
 }
-export function flightSearchAirportPlan(trip:EasyTTrip,leg:TripLeg) {
+function localFlightSearchAirportPlan(trip:EasyTTrip,leg:TripLeg,returnDefault:FlightSearchAirport|null=null) {
  const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to');
  if(!from||!to)return null;
  const baseline=flightPlanningAirports({...leg,fromEndpoint:from,toEndpoint:to});
@@ -53,11 +56,32 @@ export function flightSearchAirportPlan(trip:EasyTTrip,leg:TripLeg) {
   &&(!stored.from||countryCodeFor(stored.from.endpoint.country)===countryCodeFor(from.country))
   &&(!stored.to||countryCodeFor(stored.to.endpoint.country)===countryCodeFor(to.country))?stored:null;
  if(current&&(current.from||current.to)){
-  const a=current.from?.endpoint??baseline.from.endpoint,b=current.to?.endpoint??baseline.to.endpoint;
+  const a=current.from?.endpoint??baseline.from.endpoint,b=current.to?.endpoint??returnDefault?.endpoint??baseline.to.endpoint;
   if(!a.canonicalPlaceId?.startsWith('reference:ourairports:')||!b.canonicalPlaceId?.startsWith('reference:ourairports:')||a.canonicalPlaceId===b.canonicalPlaceId)current=null;
  }
- return {from:{...baseline.from,...(current?.from?{endpoint:current.from.endpoint,assumed:false}:{}),selected:!!current?.from},
-  to:{...baseline.to,...(current?.to?{endpoint:current.to.endpoint,assumed:false}:{}),selected:!!current?.to},preference:current,stale:!!stored&&!current,basis};
+ const inherited=returnDefault&&!current?.to&&(!stored||current)?returnDefault:null;
+ const fromEndpoint=current?.from?.endpoint??baseline.from.endpoint,toEndpoint=current?.to?.endpoint??inherited?.endpoint??baseline.to.endpoint;
+ return {from:{...baseline.from,...(current?.from?{endpoint:current.from.endpoint,assumed:false}:{}),selected:!!current?.from,inherited:false},
+  to:{...baseline.to,...(current?.to?{endpoint:current.to.endpoint,assumed:false}:inherited?{endpoint:inherited.endpoint,assumed:false}:{}),selected:!!current?.to,inherited:!!inherited},
+  sameAirport:!!fromEndpoint.canonicalPlaceId&&fromEndpoint.canonicalPlaceId===toEndpoint.canonicalPlaceId,preference:current,stale:!!stored&&!current,basis};
+}
+/** Derived return default only: no choice is copied into the saved trip. */
+function originalOutboundSearchAirport(trip:EasyTTrip,leg:TripLeg):FlightSearchAirport|null {
+ if(trip.brief.intent?.route?.journeyEnd.mode!=='same_as_start'||leg.mode!=='flight'
+  ||trip.legs.at(-1)?.id!==leg.id||hasExplicitSavedFlightAirports(leg))return null;
+ const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to'),first=trip.legs[0];
+ if(!from||!to||to.kind!=='end'||!first||first.id===leg.id||!transferEndpointGeographicallyReady(to)
+  ||transportBookingForLeg(trip,leg,from,to)||travellerTransportBookingMismatchForLeg(trip,leg))return null;
+ if(!validAirport(trip.brief.flightSearchAirportsByLeg?.[first.id]?.from))return null;
+ const outbound=effectiveTripLeg(trip,first),origin=routeEndpointForLeg(trip,outbound,'from');
+ if(outbound.segments!==undefined&&(!Array.isArray(outbound.segments)||outbound.segments.some(s=>!s||!s.fromEndpoint||!s.toEndpoint)))return null;
+ if(outbound.mode!=='flight'||!origin||!['origin','stop'].includes(origin.kind)||!transferEndpointGeographicallyReady(origin)
+  ||!sameJourneyPlace({...origin,coordinates:origin.coordinates??undefined},{...to,coordinates:to.coordinates??undefined}))return null;
+ const plan=localFlightSearchAirportPlan(trip,outbound);
+ return plan?.from.selected&&!plan.stale?plan.preference?.from??null:null;
+}
+export function flightSearchAirportPlan(trip:EasyTTrip,leg:TripLeg) {
+ return localFlightSearchAirportPlan(trip,leg,originalOutboundSearchAirport(trip,leg));
 }
 /** Storage projection only. The booking boundary must authorize mutation first. */
 export function applyFlightSearchAirports(trip:EasyTTrip,leg:TripLeg,value:{from:FlightSearchAirport|null;to:FlightSearchAirport|null}|null,basis:string):EasyTTrip {
@@ -67,7 +91,7 @@ export function applyFlightSearchAirports(trip:EasyTTrip,leg:TripLeg,value:{from
  else {
   if((value.from!==null&&!validAirport(value.from))||(value.to!==null&&!validAirport(value.to)))return trip;
   const baseline=flightPlanningAirports({...leg,fromEndpoint:routeEndpointForLeg(trip,leg,'from')!,toEndpoint:routeEndpointForLeg(trip,leg,'to')!})!;
-  const from=value.from?.endpoint??baseline.from.endpoint,to=value.to?.endpoint??baseline.to.endpoint;
+  const from=value.from?.endpoint??baseline.from.endpoint,to=value.to?.endpoint??originalOutboundSearchAirport(trip,leg)?.endpoint??baseline.to.endpoint;
   if(!from.canonicalPlaceId?.startsWith('reference:ourairports:')||!to.canonicalPlaceId?.startsWith('reference:ourairports:')||from.canonicalPlaceId===to.canonicalPlaceId)return trip;
   const outerFrom=routeEndpointForLeg(trip,leg,'from')!,outerTo=routeEndpointForLeg(trip,leg,'to')!;
   if(countryCodeFor(from.country)!==countryCodeFor(outerFrom.country)||countryCodeFor(to.country)!==countryCodeFor(outerTo.country))return trip;

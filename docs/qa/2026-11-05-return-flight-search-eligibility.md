@@ -25,7 +25,7 @@ No supported path that drops a canonical return leg was reproduced. A manually t
 
 Both qualifying terminal flight cards share the same tracked URL with original endpoint names, departure date and return date. City behavior is retained. The action description now says "Return flight search" because its endpoints may include airports or towns. Original trip data is unchanged by resolving an action.
 
-Limits remain intentional: one-way/unknown ends have no inferred return; open-jaw or ambiguous multi-stop routes, explicit saved flight segments, airport overrides and mismatched dates continue to use individual searches. Airport choices are never ignored to force pairing. Omio can select a different mode and does not carry traveller count in the existing contract; the existing visible EN/ES warning remains. This is a search handoff, not a reservation or a verified itinerary.
+Limits remain intentional: one-way/unknown ends have no inferred return; open-jaw or ambiguous multi-stop routes, explicit saved flight segments and mismatched dates continue to use individual searches. The [outbound-airport default follow-up](2026-11-05-return-to-outbound-airport-default.md) permits airport overrides to pair only when their effective endpoints are exactly reciprocal. Airport choices are never ignored to force pairing. Omio can select a different mode and does not carry traveller count in the existing contract; the existing visible EN/ES warning remains. This is a search handoff, not a reservation or a verified itinerary.
 
 ## Verification
 
