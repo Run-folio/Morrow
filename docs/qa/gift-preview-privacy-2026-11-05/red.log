@@ -1,0 +1,226 @@
+✖ public pending gift preview serializes only the five permitted fields (4.836417ms)
+✖ public claimed gift preview serializes only the five permitted fields (1.94725ms)
+✖ public revoked gift preview serializes only the five permitted fields (0.950792ms)
+✖ public expired gift preview serializes only the five permitted fields (0.60425ms)
+✖ preview preserves a null shared note without consulting private properties or repository serialization (0.879208ms)
+✖ missing preview is non-cacheable and returns only the generic error (0.813208ms)
+✖ unavailable preview is non-cacheable and returns only the generic error (0.559875ms)
+✔ unauthenticated claim rejects before reading or mutating a gift (0.729583ms)
+✔ authenticated claim passes the exact token and owner to the existing claim boundary (0.576292ms)
+✔ authenticated missing claim retains the existing 404 contract (0.579208ms)
+✔ recipient rejection remains authoritative at the existing claim boundary (0.417458ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 4
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 347.451166
+
+✖ failing tests:
+
+test at tests/gift-preview-privacy.test.ts:61:68
+✖ public pending gift preview serializes only the five permitted fields (4.836417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      gift: {
+  +     document: {
+  +       bookings: [
+  +         'private-booking'
+  +       ]
+  +     },
+        expiresAt: '2026-12-01T00:00:00.000Z',
+  +     futurePrivateField: 'private-future-field',
+        note: 'Shared invitation note',
+  +     ownerId: 'private-owner',
+  +     recipientEmail: 'private-recipient@example.test',
+  +     senderEmail: 'private-sender@example.test',
+        senderName: 'Synthetic sender',
+        status: 'pending',
+  +     tokenHash: 'private-token-hash',
+        tripTitle: 'Synthetic trip'
+      }
+    }
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:65:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'pending', expiresAt: '2026-12-01T00:00:00.000Z', recipientEmail: 'private-recipient@example.test', senderEmail: 'private-sender@example.test', ownerId: 'private-owner', document: [Object], tokenHash: 'private-token-hash', futurePrivateField: 'private-future-field' } },
+    expected: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'pending', expiresAt: '2026-12-01T00:00:00.000Z' } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:61:68
+✖ public claimed gift preview serializes only the five permitted fields (1.94725ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      gift: {
+  +     document: {
+  +       bookings: [
+  +         'private-booking'
+  +       ]
+  +     },
+        expiresAt: '2026-12-01T00:00:00.000Z',
+  +     futurePrivateField: 'private-future-field',
+        note: 'Shared invitation note',
+  +     ownerId: 'private-owner',
+  +     recipientEmail: 'private-recipient@example.test',
+  +     senderEmail: 'private-sender@example.test',
+        senderName: 'Synthetic sender',
+        status: 'claimed',
+  +     tokenHash: 'private-token-hash',
+        tripTitle: 'Synthetic trip'
+      }
+    }
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:65:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'claimed', expiresAt: '2026-12-01T00:00:00.000Z', recipientEmail: 'private-recipient@example.test', senderEmail: 'private-sender@example.test', ownerId: 'private-owner', document: [Object], tokenHash: 'private-token-hash', futurePrivateField: 'private-future-field' } },
+    expected: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'claimed', expiresAt: '2026-12-01T00:00:00.000Z' } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:61:68
+✖ public revoked gift preview serializes only the five permitted fields (0.950792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      gift: {
+  +     document: {
+  +       bookings: [
+  +         'private-booking'
+  +       ]
+  +     },
+        expiresAt: '2026-12-01T00:00:00.000Z',
+  +     futurePrivateField: 'private-future-field',
+        note: 'Shared invitation note',
+  +     ownerId: 'private-owner',
+  +     recipientEmail: 'private-recipient@example.test',
+  +     senderEmail: 'private-sender@example.test',
+        senderName: 'Synthetic sender',
+        status: 'revoked',
+  +     tokenHash: 'private-token-hash',
+        tripTitle: 'Synthetic trip'
+      }
+    }
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:65:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'revoked', expiresAt: '2026-12-01T00:00:00.000Z', recipientEmail: 'private-recipient@example.test', senderEmail: 'private-sender@example.test', ownerId: 'private-owner', document: [Object], tokenHash: 'private-token-hash', futurePrivateField: 'private-future-field' } },
+    expected: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'revoked', expiresAt: '2026-12-01T00:00:00.000Z' } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:61:68
+✖ public expired gift preview serializes only the five permitted fields (0.60425ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      gift: {
+  +     document: {
+  +       bookings: [
+  +         'private-booking'
+  +       ]
+  +     },
+        expiresAt: '2026-12-01T00:00:00.000Z',
+  +     futurePrivateField: 'private-future-field',
+        note: 'Shared invitation note',
+  +     ownerId: 'private-owner',
+  +     recipientEmail: 'private-recipient@example.test',
+  +     senderEmail: 'private-sender@example.test',
+        senderName: 'Synthetic sender',
+        status: 'expired',
+  +     tokenHash: 'private-token-hash',
+        tripTitle: 'Synthetic trip'
+      }
+    }
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:65:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'expired', expiresAt: '2026-12-01T00:00:00.000Z', recipientEmail: 'private-recipient@example.test', senderEmail: 'private-sender@example.test', ownerId: 'private-owner', document: [Object], tokenHash: 'private-token-hash', futurePrivateField: 'private-future-field' } },
+    expected: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: 'Shared invitation note', status: 'expired', expiresAt: '2026-12-01T00:00:00.000Z' } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:72:1
+✖ preview preserves a null shared note without consulting private properties or repository serialization (0.879208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      gift: {
+  +     recipientEmail: 'private-recipient@example.test'
+  -     expiresAt: '2026-12-01T00:00:00.000Z',
+  -     note: null,
+  -     senderName: 'Synthetic sender',
+  -     status: 'pending',
+  -     tripTitle: 'Synthetic trip'
+      }
+    }
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:77:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { gift: { recipientEmail: 'private-recipient@example.test' } },
+    expected: { gift: { tripTitle: 'Synthetic trip', senderName: 'Synthetic sender', note: null, status: 'pending', expiresAt: '2026-12-01T00:00:00.000Z' } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:83:13
+✖ missing preview is non-cacheable and returns only the generic error (0.813208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  null !== 'no-store'
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:87:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'no-store',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/gift-preview-privacy.test.ts:83:13
+✖ unavailable preview is non-cacheable and returns only the generic error (0.559875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  null !== 'no-store'
+
+      at TestContext.<anonymous> (file:///private/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/morrovia-gift-preview-baseline-x8_scmgq/tests/gift-preview-privacy.test.ts:87:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'no-store',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

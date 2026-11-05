@@ -1,0 +1,111 @@
+(node:87549) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/analytics.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ analytics paths omit query data and collapse opaque workspace IDs (1.515125ms)
+✔ analytics link destinations never retain query data or external paths (0.261708ms)
+✔ analytics payload cleaning removes empty values without changing safe coarse metadata (0.192084ms)
+✔ save failures are reduced to machine-safe categories (0.497416ms)
+✔ analytics is a safe no-op outside the browser and without configuration (0.312834ms)
+✔ route_started emits only coarse public route metadata after consent (0.432875ms)
+✔ route_started is a no-op without analytics consent (0.159041ms)
+✔ recommendation performance emits only coarse bounded lane metadata (0.207709ms)
+✔ workspace orientation analytics stays off before consent (0.170541ms)
+✔ workspace orientation analytics contains only coarse guide metadata (0.324166ms)
+✔ Viator affiliate clicks use the dedicated, privacy-safe event (0.19725ms)
+✔ Omio affiliate clicks carry placement and opaque trip-transfer identifiers only (0.223833ms)
+✔ commercial click reporting maps either established event to one stable KPI record (0.375875ms)
+✔ Overview practical-task affiliate clicks retain their scoped placement (0.172458ms)
+✔ Trip.com category handoffs retain their canonical commercial categories (0.18275ms)
+✔ commercial clicks remain consent-gated (0.225ms)
+✔ homepage route impressions carry only catalogue metadata and respect consent (0.295125ms)
+✔ gift analytics paths cannot retain a capability while public and private route shapes stay usable (0.205875ms)
+(node:87550) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/auth-email-flow.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ signup waits for the explicit verification send before reporting success (19.227834ms)
+✔ signup provider failure remains recoverable and never reports sent (0.266833ms)
+✔ unverified sign-in requests one acknowledged replacement link (2.31225ms)
+✔ ordinary sign-in failures do not send verification mail (0.236125ms)
+✔ verification is not duplicated by Better Auth automatic hooks (0.848042ms)
+✔ check-email and sign-in handoffs contain the email but never a password (0.441542ms)
+✔ auth UI owns truthful check-email, loading and shared password controls (1.049125ms)
+(node:87551) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/email-verification-lifecycle.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ new signup creates one unverified account and explicit send acknowledges the provider (619.293167ms)
+✔ provider failure is visible while the created account remains recoverable (1074.184084ms)
+✔ the Better Auth adapter stores only a hashed replay tombstone (565.896959ms)
+✔ repeat signup does not duplicate an unverified account and supports a safe new send (621.830166ms)
+✔ a newly issued resend capability can be used without claiming older-link invalidation (2118.514291ms)
+✔ unverified sign-in fails closed without an unacknowledged automatic send (618.50425ms)
+✔ valid verification authenticates once and clean replay is rejected without a new session (621.066417ms)
+✔ same-browser revisit keeps the first session without creating or rotating another (557.31625ms)
+✔ concurrent consumption of one verification capability creates exactly one session (559.254209ms)
+✔ invalid and expired verification tokens fail safely (551.047041ms)
+(node:87552) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/gift-preview-privacy.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ public pending gift preview serializes only the five permitted fields (6.614916ms)
+✔ public claimed gift preview serializes only the five permitted fields (1.664125ms)
+✔ public revoked gift preview serializes only the five permitted fields (0.979958ms)
+✔ public expired gift preview serializes only the five permitted fields (1.232541ms)
+✔ preview preserves a null shared note without consulting private properties or repository serialization (1.082375ms)
+✔ missing preview is non-cacheable and returns only the generic error (1.788709ms)
+✔ unavailable preview is non-cacheable and returns only the generic error (1.126709ms)
+✔ unauthenticated claim rejects before reading or mutating a gift (1.93475ms)
+✔ authenticated claim passes the exact token and owner to the existing claim boundary (1.43475ms)
+✔ authenticated missing claim retains the existing 404 contract (1.749625ms)
+✔ recipient rejection remains authoritative at the existing claim boundary (0.899167ms)
+(node:87553) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/google-auth.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ existing email authentication still resolves to its Better Auth user (184.20875ms)
+✔ new and returning Google sign-in use one canonical Better Auth user (23.443542ms)
+✔ a verified same-email Google identity links to the existing verified owner and preserves trips (70.869167ms)
+✔ same-email linking fails closed when either side lacks verified ownership (137.873083ms)
+✔ Google cancellation and provider failure return bounded, recoverable errors (11.030333ms)
+✔ stale OAuth state fails safely and Google logout invalidates the Better Auth session (6.973209ms)
+✔ HTTPS OAuth state and session cookies retain Better Auth security attributes (4.45425ms)
+✔ OAuth return targets preserve internal deep links and reject external or ambiguous URLs (0.249916ms)
+✔ production auth config, logout, deletion and analytics keep provider secrets out of client boundaries (1.593375ms)
+✔ environment helpers keep production origins exact and credentials server-only (0.968042ms)
+(node:87554) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/posthog-replay.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ replay requires an explicit production rollout and exact approved HTTPS origin (170.007ms)
+✔ missing, rejected, malformed, obsolete and legacy consent never initialize or start replay (5.726208ms)
+✔ current grant starts once across repeat initialization and consent notifications (5.517ms)
+✔ withdrawal stops replay before reset and prevents later events until a fresh grant (1.598583ms)
+✔ strict replay masking covers text, inputs, attributes and disables extra capture (0.753042ms)
+✔ throwing analytics vendors or identity reset cannot prevent recorder withdrawal and opt-out (2.33625ms)
+✔ replay vendor failure cannot block existing consented product analytics (0.762333ms)
+✔ event sanitization also strips replay-generated session entry URLs and referrers (0.696625ms)
+✔ replay send boundary drops CSSOM, plugin, unknown and compressed payloads (0.5135ms)
+✔ default-off rollout preserves event dispatch and disables all remote config (0.524875ms)
+✔ privacy proposal describes optional masked replay in English and Spanish without activation claims (1.13825ms)
+✔ automatic nested person metadata cannot retain capability URLs or referrers (0.623583ms)
+✔ SDK top-level person context is stripped without mutating the original capture (0.656667ms)
+(node:87555) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/private-session-boundary.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ private profile and passport context is namespaced by exact owner (8.8345ms)
+✔ an A to B switch fails closed before stale private props can render (0.358708ms)
+✔ session expiry is distinct from an account switch so an open document can remain intact (0.163042ms)
+✔ reauth preserves the exact child Map query and hash (0.456084ms)
+✔ network rejection becomes a deterministic settled mutation result (0.726875ms)
+✔ email-verification messaging can use the same configuration predicate as auth (0.237333ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8461.729042

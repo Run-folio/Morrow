@@ -10,11 +10,20 @@ export async function GET(_request: Request, context: RouteContext) {
   const { token } = await context.params;
   try {
     const gift = await getTripGiftPreview(token);
+    // A capability token grants this invitation preview, not recipient identity
+    // or any present/future internal fields returned by the repository.
+    const headers = { "Cache-Control": "no-store" };
     return gift
-      ? NextResponse.json({ gift })
-      : NextResponse.json({ error: "Invitation not found." }, { status: 404 });
+      ? NextResponse.json({ gift: {
+        tripTitle: gift.tripTitle,
+        senderName: gift.senderName,
+        note: gift.note,
+        status: gift.status,
+        expiresAt: gift.expiresAt,
+      } }, { headers })
+      : NextResponse.json({ error: "Invitation not found." }, { status: 404, headers });
   } catch {
-    return NextResponse.json({ error: "Unable to load invitation." }, { status: 503 });
+    return NextResponse.json({ error: "Unable to load invitation." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
 

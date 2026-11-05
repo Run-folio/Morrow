@@ -1,0 +1,122 @@
+
+> morrovia@1.0.0 release:gate
+> node scripts/release-gate-smoke.mjs
+
+
+> morrovia@1.0.0 audit:ui
+> node scripts/ui-convergence-audit.mjs --strict
+
+Morrovia UI convergence enforcement
+- native-control: 191 accepted debt occurrences
+- native-date-input: 0 accepted debt occurrences
+- native-number-input: 0 accepted debt occurrences
+- native-dialog: 0 accepted debt occurrences
+- native-confirm: 0 accepted debt occurrences
+- legacy-ui-import: 0 accepted debt occurrences
+- deprecated-ui-owner: 0 accepted debt occurrences
+- raw-color: 1876 accepted debt occurrences
+- large-accent-surface: 0 accepted debt occurrences
+- raw-radius: 549 accepted debt occurrences
+- raw-shadow: 167 accepted debt occurrences
+- raw-font-family: 0 accepted debt occurrences
+- page-local-font-role: 0 accepted debt occurrences
+- raw-page-width: 2 accepted debt occurrences
+- inline-color: 55 accepted debt occurrences
+- inline-radius: 14 accepted debt occurrences
+- inline-shadow: 3 accepted debt occurrences
+- inline-font-family: 0 accepted debt occurrences
+- documented local exceptions: 76
+
+> morrovia@1.0.0 test:ui-convergence
+> node --test tests/ui-convergence-enforcement.test.mjs && node --experimental-strip-types --test tests/ui-convergence.test.ts
+
+✔ a representative raw token violation fails and its canonical correction passes (21.291875ms)
+✔ large workspace surfaces reject accent washes while compact accents remain available (2.482834ms)
+✔ token-aware typography and shadow rules ignore canonical values without overlooking raw declarations (1.364917ms)
+✔ page-local font roles and retired UI owners cannot be introduced (1.925666ms)
+✔ a narrow exception needs a substantive reason and applies only to the next matching line (2.437333ms)
+✔ Google provider colours have exact mark-only exceptions while Login and other files stay strict (2.414875ms)
+✔ per-file baselines cannot offset new drift and accepted debt can only be lowered (1.774959ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.633708
+(node:85764) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/ui-convergence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ persistent account and recovery truth uses the canonical status banner (1.016875ms)
+✔ Storybook covers every persistent status tone at desktop and mobile widths (0.13625ms)
+✔ the convergence guard audits production and shared component roots (0.256042ms)
+✔ Account uses the canonical paper token and Google branding is narrowly documented (0.525334ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.97275
+
+> morrovia@1.0.0 test:runtime-health
+> node --experimental-strip-types --test tests/runtime-health.test.ts
+
+(node:85801) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/tests/runtime-health.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ health fails closed when critical database, auth, or base-url configuration is absent (0.621458ms)
+✔ health rejects invalid or mismatched public/auth URLs without revealing their values (0.119291ms)
+✔ health does not claim a configured database is unreachable when another critical check prevents probing it (0.060125ms)
+✔ health reports a successful database probe only after complete critical configuration (0.070042ms)
+✔ health exposes a valid hosting commit without changing readiness (0.107416ms)
+✔ empty or malformed hosting metadata reports unknown without exposing its value (0.424333ms)
+✔ build configuration forwards only bounded hosting provenance to the runtime (0.543208ms)
+✔ a database failure is a 503-ready unhealthy state without provider error detail (0.081458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75.566
+
+> morrovia@1.0.0 typecheck
+> tsc --project tsconfig.typecheck.json --noEmit --incremental false
+
+tests/gift-preview-privacy.test.ts(27,37): error TS2502: 'context' is referenced directly or indirectly in its own type annotation.
+tests/gift-preview-privacy.test.ts(58,32): error TS2339: Property 'GET' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(70,46): error TS2339: Property 'GET' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(79,45): error TS2339: Property 'GET' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(87,32): error TS2339: Property 'POST' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(97,32): error TS2339: Property 'POST' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(105,74): error TS2339: Property 'POST' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+tests/gift-preview-privacy.test.ts(113,32): error TS2339: Property 'POST' does not exist on type '{ calls: { previewTokens: string[]; ownerReads: number; claims: unknown[][]; }; }'.
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npm run typecheck
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execFileSync (node:child_process:961:15)
+    at run (file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/scripts/release-gate-smoke.mjs:13:3)
+    at file:///Users/shaun/Documents/Codex/2026-11-03/task-4/combined-candidate/scripts/release-gate-smoke.mjs:20:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 2,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 85813,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.14.1

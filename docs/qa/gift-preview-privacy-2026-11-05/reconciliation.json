@@ -1,0 +1,35 @@
+{
+  "base": "64adb5eb3de905604ba2ff73dddb0b7aee653bb1",
+  "unfinishedPatch": "/Users/shaun/Documents/Codex/2026-11-03/task-3/staging-security-review",
+  "postByteIdentical": true,
+  "repositoryUnchanged": true,
+  "pageUnchanged": true,
+  "analyticsChangesNotReapplied": true,
+  "red": {
+    "tests": 11,
+    "passed": 4,
+    "failed": 7
+  },
+  "privacyFocused": {
+    "tests": 75,
+    "passed": 75,
+    "failed": 0,
+    "skipped": 0
+  },
+  "adjacentEmailBaselineFailure": "tests/email-system.test.ts: trip invitation and email-event persistence own retry idempotency without storing raw tokens; missing tracked migration db/migrations/0014_morrovia_email_idempotency.sql",
+  "deployed": false,
+  "externalStateChanged": false,
+  "realDataAccessed": false,
+  "stagingApproval": "Required from Shaun",
+  "qualificationLimit": "Server-rendered page retains masked recipient domain/local-prefix hints; real Next/CDN/account/database flow not exercised",
+  "releaseGate": {
+    "exitCode": 0,
+    "tests": 666,
+    "pass": 642,
+    "fail": 0,
+    "skipped": 24,
+    "buildId": "BQJZqzjVjPr33PDVcvA3Q",
+    "assets": 227
+  },
+  "independentReview": "No blocking findings in JSON endpoint scope; 11/11 tests passed with actual NextResponse"
+}
