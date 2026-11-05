@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const origin = process.env.MORROVIA_CALENDAR_PREVIEW_ORIGIN;
 const enabled = Boolean(origin);
-async function fixture(run, { story='populated', width=390, day=2 }={}) {
+async function fixture(run, { story='populated', width=390, day=2, initialDay }={}) {
   const { chromium }=require(process.env.MORROVIA_PLAYWRIGHT_PATH || 'playwright');
   const browser=await chromium.launch({channel:'chrome',headless:true});
   const page=await browser.newPage({viewport:{width,height:844}});
@@ -16,11 +16,16 @@ async function fixture(run, { story='populated', width=390, day=2 }={}) {
   // Count at every native modal opening, catching transient stacking as well as settled DOM.
   await page.addInitScript(()=>{window.__modalCounts=[];const show=HTMLDialogElement.prototype.showModal;HTMLDialogElement.prototype.showModal=function(){show.call(this);window.__modalCounts.push(document.querySelectorAll('dialog:modal').length);};});
   try {
-    await page.goto(`${origin}/iframe.html?id=morrovia-mobile-workspace--${story}&viewMode=story`);
+    // Current canonical production workspace fixtures retain the legacy Tokyo
+    // activity data; Calendar supplies the reviewed Peru transfer day.
+    const storyId = story === 'empty' ? 'calendar' : 'hierarchy-tokyo-populated';
+    await page.goto(`${origin}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-itinerary--${storyId}&viewMode=story${initialDay ? `&day=${initialDay}` : ''}`);
     await page.getByRole('button',{name:'Calendar',exact:true}).click({timeout:45000});
     await page.getByRole('button',{name:new RegExp(`^Day ${day},`)}).click();
     await run(page);
-    assert.ok((await page.evaluate(()=>window.__modalCounts)).every(n=>n<=1),'no transition may stack native modal dialogs');
+    const modalCounts = await page.evaluate(()=>window.__modalCounts);
+    assert.ok(modalCounts.length > 0, 'the fixture must exercise native modal transitions');
+    assert.ok(modalCounts.every(n=>n===1),'each native modal opening must leave exactly one active modal');
   } catch(error) { console.error('Fixture failure', await page.evaluate(()=>({url:location.href,dialogs:[...document.querySelectorAll('dialog[open]')].map(e=>({label:e.getAttribute('aria-label'),modal:e.matches(':modal')})),inputs:[...document.querySelectorAll('input')].map(e=>({value:e.value,visible:!!e.getClientRects().length})),headings:[...document.querySelectorAll('h2')].map(e=>e.textContent)}))); throw error; } finally {await browser.close();}
 }
 async function oneModal(page){await page.waitForFunction(()=>document.querySelectorAll('dialog:modal').length===1);assert.equal(await page.locator('dialog:modal').count(),1);}
@@ -28,7 +33,7 @@ for(const kind of ['transfer','activity','move','add']) test(`Calendar ${kind} u
  await fixture(async p=>{
   if(kind==='transfer') await p.getByRole('button',{name:/Sacred Valley.*Arequipa/}).first().click();
   if(kind==='activity') await p.getByRole('button',{name:/^Shinjuku Gyo-en/}).click();
-  if(kind==='move'){await p.locator('summary[aria-label="Organise Shinjuku Gyo-en"]').click();await p.locator('details[open]').getByRole('button',{name:'Move to another day',exact:true}).click();}
+  if(kind==='move'){await p.locator('summary[aria-label="Details and actions for Shinjuku Gyo-en"]').click();await p.locator('details[open]').getByRole('button',{name:'Move to another day',exact:true}).click();}
   if(kind==='add') await p.getByRole('button',{name:'Add plan',exact:true}).click();
   assert.equal(await p.locator('dialog:modal').count(),1,`${kind} must replace or suspend its day surface`);
  },kind==='transfer'?{story:'empty',day:6}:{});
@@ -104,14 +109,14 @@ test('Add editor preserves text through viewport interruption then saves to chos
 
 test('Move save selects target day and Undo preserves the original activity',{skip:!enabled},async()=>{
  await fixture(async p=>{
-  await p.locator('summary[aria-label="Organise Shinjuku Gyo-en"]').click();
+  await p.locator('summary[aria-label="Details and actions for Shinjuku Gyo-en"]').click();
   await p.locator('details[open]').getByRole('button',{name:'Move to another day',exact:true}).click();
   await p.locator('dialog:modal select').first().selectOption('day-3');
   await p.getByRole('button',{name:'Move activity',exact:true}).click();
   await p.getByRole('button',{name:/^Shinjuku Gyo-en/}).waitFor();await oneModal(p);
   assert.equal(new URL(p.url()).searchParams.get('day'),'3');
   await p.getByRole('button',{name:'Undo',exact:true}).click();
-  await p.waitForFunction(()=>!document.querySelector('summary[aria-label="Organise Shinjuku Gyo-en"]'));
+  await p.waitForFunction(()=>!document.querySelector('summary[aria-label="Details and actions for Shinjuku Gyo-en"]'));
   await p.getByRole('button',{name:'Close day details',exact:true}).click();
   await p.getByRole('button',{name:/^Day 2, Tokyo,/}).click();
   await p.getByRole('button',{name:/^Shinjuku Gyo-en/}).waitFor();
@@ -147,16 +152,19 @@ test('same-day browser Back/Forward preserves an active Add draft and never stac
   await p.getByRole('button',{name:'Add plan',exact:true}).click();
   await p.getByRole('button',{name:'New plan',exact:true}).click();
   await p.getByLabel('Add your own',{exact:true}).fill('History draft');
-  // Native Back follows the browser history entry, without assuming duplicate same-day entries.
+  // Seed the same day in the shell's real URL restoration boundary. Otherwise
+  // this fixture starts on Day 1 and Back changes days rather than views.
   await p.evaluate(()=>history.back());
   await p.waitForFunction(()=>new URL(location.href).searchParams.get('itineraryView')!=='calendar');
+  assert.equal(new URL(p.url()).searchParams.get('day'),'2');
   assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'History draft');await oneModal(p);
   await p.evaluate(()=>history.forward());
   await p.waitForFunction(()=>new URL(location.href).searchParams.get('itineraryView')==='calendar');
   assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'History draft');await oneModal(p);
+  assert.equal(new URL(p.url()).searchParams.get('day'),'2');
   await p.getByRole('button',{name:'Close Add panel',exact:true}).click();
   await p.getByRole('heading',{name:'Tokyo',exact:true}).waitFor();
- });
+ },{initialDay:2});
 });
 
 test('authored activity removal suspends details, cancel returns, confirm and Undo retain action parity',{skip:!enabled},async()=>{

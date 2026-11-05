@@ -12,6 +12,44 @@ const screenshots = process.env.MORROVIA_SCREENSHOT_DIR;
 const story = (name: string) => `${url}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-itinerary--${name}&viewMode=story`;
 const calendarDays = '#itinerary-calendar article[class*="calendarDay"]';
 
+// The responsive date navigation uses a native select on desktop and the canonical picker on mobile.
+async function selectedDay(page: any) {
+  await page.waitForFunction(() => {
+    const toolbar = document.querySelector('[class*="workspaceToolbar"]');
+    return matchMedia('(max-width: 700px)').matches
+      ? toolbar?.querySelector('button[aria-haspopup="dialog"]')
+      : toolbar?.querySelector('select');
+  });
+  const select = page.locator('[class*="workspaceToolbar"] select');
+  if (await select.count()) return select.inputValue();
+  const label = await page.locator('[class*="workspaceToolbar"] button[aria-haspopup="dialog"]').textContent();
+  const match = label?.match(/ · Day (\d+) · /);
+  assert.ok(match, 'the mobile date control must expose its canonical day');
+  return `day-${match[1]}`;
+}
+
+async function chooseDay(page: any, dayNumber: number) {
+  await selectedDay(page);
+  const select = page.locator('[class*="workspaceToolbar"] select');
+  if (await select.count()) await select.selectOption(`day-${dayNumber}`);
+  else {
+    await page.getByRole('button', { name: 'Choose a day', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Choose a day', exact: true })
+      .getByRole('button', { name: new RegExp(` · Day ${dayNumber} · `) }).click();
+  }
+}
+
+async function openMorningAdd(page: any, sheet: any) {
+  const direct = sheet.getByRole('button', { name: /^Add plan to .*morning$/ });
+  if (await direct.count()) await direct.first().click();
+  else {
+    await sheet.getByRole('button', { name: 'Add plan', exact: true }).click();
+    const chooser = page.getByRole('dialog', { name: 'Add a plan', exact: true });
+    await chooser.getByRole('button', { name: 'Morning', exact: true }).click();
+    await chooser.getByRole('button', { name: 'New plan', exact: true }).click();
+  }
+}
+
 async function capture(page: any, name: string) {
   if (!screenshots) return;
   mkdirSync(screenshots, { recursive: true });
@@ -35,13 +73,12 @@ test("Calendar exposes every day and keeps seven weekday columns at all review w
       });
       assert.equal(layout.columns, 7);
       assert.equal(layout.overflow, false, `${width}px must not clip the page`);
-      const select = page.locator('header select').first();
-      const last = await select.locator('option').last().getAttribute('value');
-      await select.selectOption(last!);
+      const last = 'day-65';
+      await chooseDay(page, 65);
       await page.locator(`${calendarDays}[data-selected="true"] button`).first().waitFor();
-      assert.equal(await select.inputValue(), last);
+      assert.equal(await selectedDay(page), last);
       await page.getByRole('button', { name: 'Day by day', exact: true }).click();
-      assert.equal(await select.inputValue(), last, 'orientation must preserve selected day');
+      assert.equal(await selectedDay(page), last, 'orientation must preserve selected day');
       await page.getByRole('button', { name: 'Calendar', exact: true }).click();
       assert.equal(await page.locator(calendarDays).count(), 65);
       await capture(page, `calendar-65-days-${width}`);
@@ -168,7 +205,7 @@ test("Touch Calendar opens a day sheet and returns keyboard focus to the overvie
     await page.goto(story('calendar-image-fallbacks'));
     await page.locator(calendarDays).nth(2).waitFor();
     await page.locator(calendarDays).nth(2).locator('button').first().tap();
-    assert.equal(await page.locator('header select').first().inputValue(), 'day-3');
+    assert.equal(await selectedDay(page), 'day-3');
     await page.getByRole('button', { name: 'Close day details', exact: true }).tap();
     assert.equal(await page.locator('#itinerary-calendar [aria-pressed="true"]').first().evaluate((el: HTMLElement) => el === document.activeElement), true);
     assert.equal(await page.locator('#itinerary-calendar button[draggable="true"]').count(), 0);
@@ -210,14 +247,16 @@ test("Mobile day sheet opens explicitly, stays closed on restore, and returns an
       await page.locator(calendarDays).nth(64).waitFor();
       const sheet = page.locator('dialog[class*="calendarDaySheet"]');
       assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.open), false, 'restore is passive');
-      await page.locator('header select').first().selectOption('day-3');
+      await chooseDay(page, 3);
       assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.open), false, 'date navigation is passive');
       const cell = page.locator(calendarDays).nth(1).locator('button').first();
       await cell.focus();
       await cell.press(width === 320 ? 'Space' : 'Enter');
       await sheet.waitFor({ state: 'visible' });
       assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal') && el.contains(document.activeElement)), true);
-      assert.match(await sheet.innerText(), /Day 2/i);
+      assert.match(await sheet.getAttribute('aria-label') ?? '', /^Day 2: Cusco$/);
+      assert.equal(await sheet.locator('[data-calendar-sheet-heading]').textContent(), 'Cusco');
+      assert.equal(await sheet.locator('[class*="dayHeaderContent"] time').getAttribute('datetime'), '2026-08-22');
       assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
       await page.keyboard.press('Escape');
       await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.open);
@@ -243,7 +282,7 @@ test("Mobile day sheet preserves Add drafts through child-modal resize and commi
     await page.locator(calendarDays).nth(1).locator('button').first().click();
     const sheet = page.locator('dialog[class*="calendarDaySheet"]');
     const before = await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
-    await sheet.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    await openMorningAdd(page, sheet);
     const add = page.locator('dialog[class*="contextualAddDialog"]');
     await add.getByLabel('Add your own', { exact: true }).fill('Preserved mobile draft');
     for (const width of [899, 900, 901, 1099, 1100, 1101, 390]) {
@@ -257,7 +296,7 @@ test("Mobile day sheet preserves Add drafts through child-modal resize and commi
     await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="contextualAddDialog"]')?.open);
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true, 'child Escape must keep day sheet open');
     assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), before);
-    await sheet.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    await openMorningAdd(page, sheet);
     await add.getByLabel('Add your own', { exact: true }).fill('Confirmed mobile plan');
     await add.getByRole('button', { name: 'Add to Morning', exact: true }).click();
     await sheet.getByRole('button', { name: 'Confirmed mobile plan', exact: true }).waitFor();
@@ -277,21 +316,29 @@ test("Mobile item details, Move and Remove Escape keep the day and canonical act
     const sheet = page.locator('dialog[class*="calendarDaySheet"]');
     const activity = sheet.getByRole('button', { name: 'Walk San Blas before dinner', exact: true });
     await activity.click();
+    await page.waitForFunction(() => document.querySelector('[data-calendar-item-back]') === document.activeElement);
     const before = await sheet.locator('[data-itinerary-activity-id]').count();
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('dialog[class*="calendarDaySheet"]')?.matches(':modal'));
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
     await activity.click();
+    await page.waitForFunction(() => document.querySelector('[data-calendar-item-back]') === document.activeElement);
     await sheet.getByRole('button', { name: 'Move to…', exact: true }).click();
     await page.locator('dialog:modal').last().waitFor();
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('dialog[class*="calendarDaySheet"]')?.matches(':modal'));
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    await sheet.getByRole('button', { name: 'Back to day', exact: true }).click();
     await activity.click();
+    await page.waitForFunction(() => document.querySelector('[data-calendar-item-back]') === document.activeElement);
     await sheet.getByRole('button', { name: 'Remove', exact: true }).click();
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('dialog[class*="calendarDaySheet"]')?.matches(':modal'));
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
     assert.equal(await sheet.locator('[data-itinerary-activity-id]').count(), before);
     const detail = sheet.locator('dialog[class*="calendarItemDialog"]');
-    assert.equal(await detail.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true, 'Remove dismissal returns to the item overlay');
+    assert.equal(await detail.evaluate((el: HTMLDialogElement) => el.open && Boolean(el.closest('dialog:modal')) && el.contains(document.activeElement)), true, 'Remove dismissal returns focus to the item presentation in its existing modal owner');
+    assert.equal(await page.locator('dialog:modal').count(), 1, 'compact item details keep one native modal owner');
     for (const name of ['Close', 'Back to day']) {
       assert.equal(await detail.getByRole('button', { name, exact: true }).evaluate((el: HTMLElement) => {
         const r = el.getBoundingClientRect();
@@ -302,6 +349,7 @@ test("Mobile item details, Move and Remove Escape keep the day and canonical act
     await capture(page, 'calendar-mobile-sheet-item-320');
     await detail.getByRole('button', { name: 'Back to day', exact: true }).click();
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    await page.waitForFunction(() => document.activeElement?.closest('[data-itinerary-activity-id]')?.getAttribute('data-itinerary-activity-id') === 'day-1-activity-walk san blas before dinner');
     assert.equal(await activity.evaluate((el: HTMLElement) => document.activeElement === el), true);
   } finally { await browser.close(); }
 });
@@ -337,9 +385,11 @@ test("Desktop detail adapts across both breakpoints and returns to the same mobi
       await page.setViewportSize({ width, height: 844 });
       await page.waitForFunction((compact: boolean) => document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.matches(':modal') === compact, width < 1100);
       assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
-      assert.equal(await page.locator('header select').first().inputValue(), 'day-1');
+      assert.equal(await selectedDay(page), 'day-1');
     }
+    await sheet.getByRole('button', { name: 'Back to day', exact: true }).waitFor();
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('dialog[class*="calendarDaySheet"]')?.matches(':modal'));
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
     await sheet.getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).waitFor();
     await page.keyboard.press('Escape');

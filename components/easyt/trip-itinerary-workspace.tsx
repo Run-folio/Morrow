@@ -663,8 +663,9 @@ export default function TripItineraryWorkspace({
   }, [calendarEditorActive]);
   const calendarSuspended = calendarEditorActive || calendarEditorReturning;
   useEffect(() => {
-    if (calendarCompact && calendarEditorActive) setCalendarSheetRequested(true);
-  }, [calendarCompact, calendarEditorActive]);
+    // An explicit detail opened on desktop must return to its day after adapting to mobile.
+    if (calendarCompact && (calendarEditorActive || calendarDetailOpen)) setCalendarSheetRequested(true);
+  }, [calendarCompact, calendarEditorActive, calendarDetailOpen]);
   useEffect(() => {
     if (!calendarModalActive && !(workspaceView === "calendar" && (selectedItemId || selectedRecommendation))) return;
     const previousOverflow = document.body.style.overflow;

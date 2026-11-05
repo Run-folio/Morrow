@@ -446,7 +446,15 @@ export function MorroviaContentDialog({
     onCancel={(event) => { if (event.target !== event.currentTarget) return; event.preventDefault(); onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     onKeyDown={(event) => {
-      if (inline || (event.target as HTMLElement).closest("dialog:modal") !== event.currentTarget || event.key !== "Tab") return;
+      if (inline || (event.target as HTMLElement).closest("dialog:modal") !== event.currentTarget) return;
+      if (event.key === "Escape") {
+        if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
       const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
         .filter((element) => element.getClientRects().length > 0);
       const first = focusable[0];
