@@ -10,7 +10,7 @@ import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptio
 import {transportJourneyParts, journeyPartGapLabel} from '@/lib/easyt/transport-journey-parts';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import workspaceHeading from "./trip-workspace-heading.module.css";
 import { AlertCircle, AlertTriangle, Check, Circle, ArrowRight, CarFront, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
@@ -160,6 +160,10 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const items = useMemo(() => itineraryTransportAgenda(trip), [trip]);
   const missingReturn=useMemo(()=>missingReturnJourney(trip),[trip]);
   const [restoredLegId,setRestoredLegId]=useState<string|null>(null);
+  const repairScope=JSON.stringify([trip.id,trip.ownerId]);
+  const repairAttempt=useRef(0);
+  const [repairFailure,setRepairFailure]=useState<{scope:string;message:string}|null>(null);
+  const repairError=repairFailure?.scope===repairScope?repairFailure.message:null;
   const searchParams = useSearchParams();
   const orientation = parseTransportWorkspaceTarget(trip, searchParams);
   const [selectedLegId, setSelectedLegId] = useState<string | null>(orientation.legId ?? null);
@@ -172,13 +176,18 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const selected = items.find((item) => item.leg.id === selectedLegId) ?? null;
   const headingId = "transport-workspace-heading";
   const restoreReturn=async()=>{
-    const fingerprint=builderDocumentFingerprint(trip);let addedId:string|null=null;
-    const saved=await mutation.mutateTrip(current=>{
-      const result=prepareMissingReturnJourneyRepair(requireReadableTripDocument(current),fingerprint);
-      if(!result.ok){if(result.reason==='not-needed')return current;throw new Error(language==='es'?'La ruta cambió. Revisa el regreso antes de añadirlo.':'This route changed. Review the return journey before adding it.');}
-      addedId=result.legId;return result.trip;
-    },'restore-return-journey');
-    if(saved&&addedId)setRestoredLegId(addedId);
+    const fingerprint=builderDocumentFingerprint(trip),attempt=++repairAttempt.current;let addedId:string|null=null;
+    setRepairFailure(null);
+    try{
+      const saved=await mutation.mutateTrip(current=>{
+        const result=prepareMissingReturnJourneyRepair(requireReadableTripDocument(current),fingerprint);
+        if(!result.ok){if(result.reason==='not-needed')return current;throw new Error('Return repair refused');}
+        addedId=result.legId;return result.trip;
+      },'restore-return-journey');
+      if(saved&&addedId&&attempt===repairAttempt.current)setRestoredLegId(addedId);
+    }catch{
+      if(attempt===repairAttempt.current)setRepairFailure({scope:repairScope,message:language==='es'?'La ruta cambió. Revisa el regreso antes de añadirlo.':'This route changed. Review the return journey before adding it.'});
+    }
   };
   const selectJourney = (id: string, toggle = false) => {
     const nextId = toggle && selectedLegId === id ? null : id;
@@ -222,7 +231,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
       </EasyTButton> : null}
     </header>
 
-    {mutation.error ? <MorroviaStatusBanner tone="danger" title={language === "es" ? "No se pudo guardar este cambio" : "Couldn’t save this change"} detail={mutation.error} />
+    {mutation.error || repairError ? <MorroviaStatusBanner tone="danger" title={language === "es" ? "No se pudo guardar este cambio" : "Couldn’t save this change"} detail={mutation.error || repairError!} />
       : !mutation.canMutate ? <MorroviaSaveStatus state="saving" label={language === "es" ? "Comprobando el viaje…" : "Checking this trip…"} /> : null}
 
     {missingReturn.kind!=='not-needed'?<MorroviaStatusBanner tone="warning"
