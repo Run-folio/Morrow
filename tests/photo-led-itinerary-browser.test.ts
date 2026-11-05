@@ -92,7 +92,7 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
 
 test('mobile bottom navigation exactly matches the pre-design navigation and remains usable', {skip: !builderBrowserTestsEnabled, timeout:60_000}, async () => {
   const trip = fixture();
-  const frozen = new Map([[resolve('components/easyt/trip-itinerary-workspace.tsx'), execFileSync('git',['show','f77be29:components/easyt/trip-itinerary-workspace.tsx'],{encoding:'utf8'})]]);
+  const frozen = new Map([[resolve('components/easyt/trip-itinerary-workspace.tsx'), execFileSync('git',['show','acddff5:components/easyt/trip-itinerary-workspace.tsx'],{encoding:'utf8'})]]);
   const snapshots: unknown[] = [];
   for (const sourceOverrides of [frozen,undefined]) {
     const view = await renderBuilder({path:`/journey/${trip.id}/itinerary?day=4`,initialTrip:trip,styled:true,sourceOverrides});
@@ -106,7 +106,7 @@ test('mobile bottom navigation exactly matches the pre-design navigation and rem
         return {text:element.innerText,position:css.position,bottom:css.bottom,background:css.backgroundColor,color:css.color,font:css.font,box:{x:box.x,y:box.y,width:box.width,height:box.height}, controls:[...element.querySelectorAll('a,button')].map(el=>({tag:el.tagName,label:el.getAttribute('aria-label'),text:el.textContent,href:el.getAttribute('href'),current:el.getAttribute('aria-current')}))};
       }));
       await nav.getByRole('button',{name:'More',exact:true}).click();
-      await view.page.getByRole('dialog').waitFor();
+      await view.page.getByRole('dialog',{name:'More trip sections',exact:true}).waitFor();
       await view.page.keyboard.press('Escape');
       await nav.getByRole('link',{name:'Transport',exact:true}).waitFor();
       assert.deepEqual(view.errors,[]);

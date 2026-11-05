@@ -288,12 +288,19 @@ test("Calendar preserves trip title, date and timeline while naming selected-day
     && node.openingElement.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText() === "id"
       && prop.initializer && ts.isStringLiteral(prop.initializer) && prop.initializer.text === "trip-shell-title"), "shared trip heading");
   const visible: ts.Expression[] = [];
-  function visitVisible(node: ts.JsxElement) {
-    if (node.openingElement.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText() === "aria-hidden"
+  function visitVisible(node: ts.Node) {
+    if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText() === "aria-hidden"
       && prop.initializer && ts.isStringLiteral(prop.initializer) && prop.initializer.text === "true")) return;
-    for (const child of node.children) {
-      if (ts.isJsxElement(child)) visitVisible(child);
-      else if (ts.isJsxExpression(child) && child.expression) visible.push(child.expression);
+    if (ts.isJsxElement(node) || ts.isJsxFragment(node)) {
+      for (const child of node.children) visitVisible(child);
+    } else if (ts.isJsxExpression(node) && node.expression) {
+      if (ts.isConditionalExpression(node.expression)) {
+        assert.equal(node.expression.condition.getText(), "renameOpen");
+        const editor=node.expression.whenTrue;
+        assert.ok(ts.isJsxSelfClosingElement(editor) && editor.tagName.getText()==="input", "rename stays in the shared title line");
+        assert.equal(sourceAttribute(editor, "value").getText(), "draft", "editing displays the exact draft");
+        visitVisible(node.expression.whenFalse);
+      } else visible.push(node.expression);
     }
   }
   visitVisible(heading); assert.equal(visible.length, 1, "one visible shared identity, independent of disclosure markup");

@@ -38,6 +38,7 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
     />
     {image?.sourceLabel && displayedSource === renderedSource ? <MorroviaPhotoCredit
       size="compact"
+      ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"}
       language={language}
       credit={image.sourceLabel}
       photoLabel={image.alt}
