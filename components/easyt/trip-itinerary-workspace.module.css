@@ -2197,7 +2197,7 @@
 .calendarStay { background: var(--morrovia-lilac); border-radius: 0 0 var(--morrovia-radius) var(--morrovia-radius); }
 .dayHeader,
 .dayHeader[data-photo="true"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 16px; }
-.dayHeaderMedia { grid-column: 1 / -1; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.dayHeaderMedia { grid-column: 1 / -1; width: 100%; height: clamp(112px, 16vw, 192px); aspect-ratio: auto; }
 .dayHeaderContent { grid-column: 1; }
 .mobileDayMap { grid-column: 2; grid-row: 1; }
 .dayHeaderMedia > img { position: static; }
@@ -2218,7 +2218,7 @@
   .dayHeaderContent p > span,
   .dayHeaderContent p > i { display: none; }
   .dayHeaderContent .dayRole { display: none; }
-  .dayHeaderMedia { margin-top: 4px; aspect-ratio: 16 / 7; }
+  .dayHeaderMedia { margin-top: 4px; height: 140px; aspect-ratio: auto; }
   .dayHeader,
   .dayHeader[data-photo="true"] { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
   .mobileDayMap { grid-column: 1; grid-row: 3; justify-self: end; }

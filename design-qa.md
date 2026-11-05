@@ -1,3 +1,15 @@
+# Itinerary image scanability correction — 2026-11-05
+
+Isolated from deployed staging `06f96fede92e7bfce1a2c426ef5e0233cb46e332` on `codex/itinerary-image-scanability`. A fresh disposable browser reproduced the staging issue without writing user trips or calling image providers: the 2048px day view rendered a 623.25px-tall photo and repeated the Tokyo/Kyoto covers across all seven calendar days.
+
+Day photos now cap at 192px on desktop and 140px on mobile; calendar thumbnails remain 96px. Calendar selection shows a reviewed source photograph once, recognizing responsive variants as the same source. Later days stay text-led with all content and controls. Selected-day imagery, credits, honest image failures, saved trips and bottom navigation retain their existing behavior. No new assets, provider requests, fabricated activity matches or persistence changes were introduced. Responsive image sizes reflect the calendar sidebar versus full day view.
+
+Verification: 160 focused domain/title/calendar regressions passed; nine mounted browser checks passed across Chromium and WebKit, including widths 320–2048px, exact navigation comparison, photo credit switching, saved-plan reload, accessibility, draft/modal behavior and an 84-day trip. Typecheck, strict UI audit and Storybook build passed. Independent read-only review found no actionable findings and separately reran all nine imagery unit tests and diff checks. Production qualification is recorded separately in output/qa after the exact candidate commit is built.
+
+Evidence: output/qa/staging-image-reproduction.json, output/playwright/staging-image-before-2048.png, staging-calendar-before-2048.png, compact-day-photo-2048-chromium.png, compact-calendar-2048-chromium.png and compact-day-photo-390-chromium.png. Equivalent WebKit captures are retained. The staging reproduction uses synthetic local recovery, blocks external origins and API mutations, and leaves the showcase session untouched. No deployment performed.
+
+---
+
 # Integration qualification — 2026-11-05
 
 The nine previously recorded source-assertion failures have been investigated and reconciled against current production behavior. No application, navigation, endpoint, persistence or recovery behavior was changed for this reconciliation. Exact contracts are retained: the date helper owns end dates; return-search CTAs retain their resolved label; protected/device-ineligible rows cannot drag; pointer capture only records scroll/focus outside the map; return links retain day/view/hash; the renderer owns idempotent cleanup; mobile details hide their underlying context; title/date metadata remains owned by the shared shell.

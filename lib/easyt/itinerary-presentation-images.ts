@@ -1,5 +1,5 @@
 import { mediaImagesForExactDestination } from "./itinerary-media.ts";
-import { routeImageCredit } from "./route-images.ts";
+import { routeImageCredit, routePhotoForSource } from "./route-images.ts";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "./trip-overview-imagery.ts";
 import type { EasyTTrip, PlanItem, TripStop } from "./trip.ts";
 
@@ -70,4 +70,20 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
     if (choice) usedDays.add(choice.src);
   }
   return { stopById, dayById };
+}
+
+
+/** Calendar photography is a destination cue, not a promise of a new scene per date.
+ * Reuse the day selector's reviewed choices, but show each underlying asset once.
+ * Selected-day images and saved trip data remain untouched. */
+export function itineraryCalendarImages(trip: Pick<EasyTTrip, "planItems">, dayImages: PresentationImages["dayById"]): Record<string, OverviewPlaceImage | null> {
+  const selected: Record<string, OverviewPlaceImage | null> = {};
+  const used = new Set<string>();
+  for (const day of [...trip.planItems].sort((a, b) => a.dayNumber - b.dayNumber)) {
+    const image = dayImages[day.id] ?? null;
+    const identity = image ? routePhotoForSource(image.src)?.sourceUrl ?? image.sourceUrl ?? image.src : null;
+    selected[day.id] = identity && !used.has(identity) ? image : null;
+    if (identity) used.add(identity);
+  }
+  return selected;
 }

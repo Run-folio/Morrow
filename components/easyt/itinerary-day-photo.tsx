@@ -9,12 +9,13 @@ import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import styles from "./itinerary-day-photo.module.css";
 
 /** Non-blocking presentation of reviewed destination photography, never a new lookup. */
-export default function ItineraryDayPhoto({ image, destination, language = "en", compact = false, className = "" }: {
+export default function ItineraryDayPhoto({ image, destination, language = "en", compact = false, className = "", sizes }: {
   image: OverviewPlaceImage | null;
   destination: string;
   language?: "en" | "es";
   compact?: boolean;
   className?: string;
+  sizes?: string;
 }) {
   const [displayedSource, setDisplayedSource] = useState<string | null>(null);
   const record = image ? routePhotoForSource(image.src) : null;
@@ -27,7 +28,7 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
     <ResilientImage
       src={renderedSource}
       srcSet={variants.length > 1 ? variants.map(variant => `${variant.src} ${variant.width}w`).join(", ") : undefined}
-      sizes={compact ? "(max-width: 1099px) 12vw, 9vw" : "(max-width: 760px) calc(100vw - 48px), (max-width: 1099px) 70vw, 380px"}
+      sizes={sizes ?? (compact ? "(max-width: 1099px) 12vw, 9vw" : "(max-width: 760px) calc(100vw - 48px), (max-width: 1099px) 70vw, 60vw")}
       width={source?.width ?? 768}
       height={source?.height ?? 512}
       alt={image?.alt ?? ""}

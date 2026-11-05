@@ -60,7 +60,7 @@ import { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
-import { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";
+import { itineraryCalendarImages, itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";
 import { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
@@ -717,6 +717,7 @@ export default function TripItineraryWorkspace({
     return accepted && isCurrent();
   };
   const presentationImages = useMemo(() => itineraryPresentationImages(workingTrip, { reviewedOnly: true }), [workingTrip]);
+  const calendarImages = useMemo(() => itineraryCalendarImages(workingTrip, presentationImages.dayById), [workingTrip, presentationImages]);
   const destinations = useMemo(() => itineraryRouteTrackStops(workingTrip, activeDayId, presentationImages.stopById, language), [workingTrip, activeDayId, presentationImages, language]);
   useEffect(() => {
     if (presentation !== "shell") return;
@@ -1711,7 +1712,7 @@ export default function TripItineraryWorkspace({
       </nav> : null}
       {workspaceView === "calendar" ? <ItineraryCalendar
         tripId={workingTrip.id}
-        dayImages={presentationImages.dayById}
+        dayImages={calendarImages}
         onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); focusCalendarDayDetails(day.id); }}
         weeks={calendarWeeks}
         selectedDayId={active.id}
@@ -1773,7 +1774,7 @@ export default function TripItineraryWorkspace({
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
           {mobile ? <EasyTLinkButton className={styles.mobileDayMap} href={mapPlanHref} icon={MapIcon} size="small" variant="secondary">{language === "es" ? "Ver mapa" : "Explore map"}</EasyTLinkButton> : null}
-          <ItineraryDayPhoto image={dayHero} destination={stop?.name ?? active.title} language={language} className={styles.dayHeaderMedia} />
+          <ItineraryDayPhoto image={dayHero} destination={stop?.name ?? active.title} language={language} className={styles.dayHeaderMedia} sizes={workspaceView === "calendar" ? "(max-width: 1099px) calc(100vw - 48px), 380px" : "(max-width: 900px) calc(100vw - 48px), (max-width: 1200px) 70vw, calc(100vw - 640px)"} />
         </header>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
@@ -2393,7 +2394,7 @@ function ItineraryCalendar({ tripId, dayImages, onOpenDay, weeks, selectedDayId,
             {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
-          <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id] ?? null} destination={day.stop?.name ?? day.day.title} language={language} /></div>
+          {dayImages[day.id] ? <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id]} destination={day.stop?.name ?? day.day.title} language={language} /></div> : null}
           {previewItems.length ? <ul className={styles.calendarItems}>
             {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
             {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}

@@ -28,7 +28,8 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
     const photos = view.page.locator('#itinerary-calendar [data-itinerary-photo]');
     await photos.first().waitFor({timeout:3000});
-    assert.equal(await photos.count(),7);
+    assert.equal(await photos.count(),2);
+    assert.equal(await view.page.locator('#itinerary-calendar article').count(),7);
     assert.equal(await photos.locator('img:not([loading="lazy"])').count(),0);
     assert.ok(await photos.first().locator('img').getAttribute('srcset'));
     mkdirSync('output/playwright',{recursive:true});
@@ -181,9 +182,12 @@ test('84-day photo calendar reuses local responsive images without per-day provi
     await view.page.reload();
     await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
     const photos=view.page.locator('#itinerary-calendar [data-itinerary-photo]');
-    assert.equal(await photos.count(),84);
+    assert.equal(await photos.count(),2);
+    assert.equal(await view.page.locator('#itinerary-calendar article').count(),84);
     assert.equal(await photos.locator('img:not([loading="lazy"])').count(),0);
-    await photos.last().scrollIntoViewIfNeeded();
+    await view.page.locator('#itinerary-calendar article').last().scrollIntoViewIfNeeded();
+    await view.page.locator('#itinerary-calendar article').last().getByRole('button',{name:/^Day 84,/}).click();
+    await view.page.locator('section[aria-label="Day 84 planner"]').waitFor();
     assert.equal(lookups,0);
     assert.ok(assets.size<=3,`84 days should share a small number of image variants, saw ${assets.size}`);
     assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

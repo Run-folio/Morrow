@@ -34,7 +34,8 @@ test('built production itinerary renders reviewed photos, keeps bottom navigatio
   await page.getByRole('heading',{name:'Japan',level:1,exact:true}).waitFor();
   await page.locator('[data-itinerary-photo="day"] img').waitFor();
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
-  assert.equal(await page.locator('#itinerary-calendar [data-itinerary-photo]').count(),7);
+  assert.equal(await page.locator('#itinerary-calendar [data-itinerary-photo]').count(),2);
+  assert.equal(await page.locator('#itinerary-calendar article').count(),7);
   mkdirSync('output/playwright',{recursive:true});
   await page.screenshot({path:'output/playwright/production-photo-calendar-1440.png',fullPage:true});
   await page.setViewportSize({width:390,height:1000});

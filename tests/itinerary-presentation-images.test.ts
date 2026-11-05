@@ -82,3 +82,30 @@ test('reviewed-only mode repeats a relevant cover and leaves uncovered places em
   assert.equal(images.dayById.a?.src, images.dayById.b?.src);
   assert.equal(images.dayById.c, null);
 });
+
+test('calendar shows each reviewed asset once, even when saved days use different responsive variants', async () => {
+  const presentation = await import('../lib/easyt/itinerary-presentation-images.ts');
+  assert.equal(typeof presentation.itineraryCalendarImages, 'function');
+  const photo = routeDestinationPhoto('Tokyo', 'Japan')!;
+  const input = trip([stop('tokyo', 'Tokyo', 'Japan', 0)], [day('one','tokyo',1,photo.variants[0].src),day('two','tokyo',2,photo.variants.at(-1)!.src)]);
+  const selected = itineraryPresentationImages(input, {reviewedOnly:true});
+  const before = JSON.stringify(input);
+  const calendar = presentation.itineraryCalendarImages(input, selected.dayById);
+  assert.equal(calendar.one?.sourceUrl, photo.sourceUrl);
+  assert.equal(calendar.two, null);
+  assert.equal(JSON.stringify(input), before);
+  assert.equal(selected.dayById.two?.src, photo.variants.at(-1)!.src, 'Selected-day photography remains available');
+});
+
+test('calendar keeps distinct reviewed destination images and does not fill uncovered days with unrelated photos', async () => {
+  const presentation = await import('../lib/easyt/itinerary-presentation-images.ts');
+  assert.equal(typeof presentation.itineraryCalendarImages, 'function');
+  const input = trip([stop('tokyo','Tokyo','Japan',0),stop('kyoto','Kyoto','Japan',1),stop('unknown','Uncovered Place','Japan',2)], [day('one','tokyo',1),day('two','tokyo',2),day('three','kyoto',3),day('four','unknown',4)]);
+  const selected = itineraryPresentationImages(input, {reviewedOnly:true});
+  const calendar = presentation.itineraryCalendarImages(input,selected.dayById);
+  assert.ok(calendar.one?.licenseUrl);
+  assert.equal(calendar.two,null);
+  assert.ok(calendar.three?.licenseUrl);
+  assert.notEqual(calendar.one?.sourceUrl,calendar.three?.sourceUrl);
+  assert.equal(calendar.four,null);
+});

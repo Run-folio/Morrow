@@ -2,13 +2,14 @@
   position: relative;
   min-width: 0;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: clamp(112px, 16vw, 192px);
+  max-height: 192px;
   overflow: hidden;
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-lilac);
 }
 .photo > img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.compact { aspect-ratio: 4 / 3; }
+.compact { height: 96px; }
 .fallback { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; gap: 8px; padding: 12px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); text-align: center; }
 .fallback svg { width: 18px; height: 18px; flex: none; }
 .fallback span { overflow-wrap: anywhere; }
