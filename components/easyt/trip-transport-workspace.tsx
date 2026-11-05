@@ -6,7 +6,7 @@ import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import workspaceHeading from "./trip-workspace-heading.module.css";
-import { AlertCircle, ArrowRight, CarFront, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, Circle, ArrowRight, CarFront, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
 import { affiliateDisclosure, visibleAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
@@ -227,9 +227,12 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
   const Icon = iconForLeg(leg.mode);
   const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   const state = transportPresentationState(leg, item.booking?.type === "transport");
-  const status = !item.booking && isPassengerServiceLeg(leg) ? copy.notBooked : presentationLabel(state, leg, copy, transportBookingMarkedByTraveller(item.manualBooking));
+  const isNotBooked = !item.booking && isPassengerServiceLeg(leg);
+  const status = isNotBooked ? copy.notBooked : presentationLabel(state, leg, copy, transportBookingMarkedByTraveller(item.manualBooking));
   const showsEstimatedTiming = durationMinutes !== null && leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm";
-  const showStatus = !(status === copy.planningEstimate && showsEstimatedTiming);
+  const showStatus = status !== copy.planningEstimate;
+  const statusTone = state === "booked" ? "booked" : isNotBooked ? "not-booked" : "attention";
+  const StatusIcon = state === "booked" ? Check : isNotBooked ? Circle : AlertTriangle;
   const duplicateUnknownMode = status === copy.needsCheckingStatus && leg.mode === "unknown" && durationMinutes === null;
   const Chevron = selected ? ChevronUp : ChevronDown;
   return <div className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
@@ -238,11 +241,11 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
       <div className={styles.cardBody}>
         <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
-        {duplicateUnknownMode ? null : <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{showsEstimatedTiming ? language === "es" ? "Estimado · " : "Estimated · " : ""}{transferTimingLabel(leg)} total</>}</p>}
+        {duplicateUnknownMode ? null : <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{showsEstimatedTiming ? language === "es" ? "Estimado · " : "Estimated · " : ""}{transferTimingLabel(leg)} total</>}{status === copy.planningEstimate && !showsEstimatedTiming ? <><i aria-hidden="true">·</i>{copy.planningEstimate}</> : null}</p>}
       </div>
       <div className={styles.cardEnd}>
-        {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
-        {showStatus ? <span className={styles.status} data-tone={state === "booked" ? "booked" : state === "planning-estimate" ? "estimate" : "attention"}>{status}</span> : null}
+        {forReview ? <span className={styles.status} data-tone="attention"><AlertTriangle aria-hidden="true" focusable="false" /><span>{language === "es" ? "Revisar ruta" : "Route check"}</span></span> : null}
+        {showStatus ? <span className={styles.status} data-tone={statusTone}><StatusIcon aria-hidden="true" focusable="false" /><span>{status}</span></span> : null}
         <span className={styles.chevron} aria-hidden="true"><Chevron /></span>
       </div>
       <EasyTButton className={styles.summaryToggle} size="small" variant="quiet" iconOnly aria-expanded={selected}

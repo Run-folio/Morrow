@@ -245,3 +245,39 @@ const refreshTrip = japanTrip();
 const refreshCandidates = refreshTrip.legs[0].routeMetadata.multimodalResolution as {candidates:{summaryMode:string}[]};
 refreshCandidates.candidates = refreshCandidates.candidates.filter(candidate => candidate.summaryMode === 'train');
 export const SingleConnectionRefresh: Story = { args: {trip: refreshTrip} };
+
+// Fictional status combinations for visual/interaction acceptance, not service evidence.
+const statusExamples:EasyTTrip={...transportTrip,id:'synthetic-transport-status-examples',title:'Synthetic transport status examples',brief:{...transportTrip.brief,bookings:[]},legs:transportTrip.legs.slice(0,3).map((leg,index)=>({...leg,mode:index===2?'unknown':'flight',durationMinutes:index===2?null:180,doorToDoorMinutes:index===2?null:180,headlineMinutes:null,provenance:'planning_estimate',confidence:'unknown',scheduleNeedsChecking:true,provider:null,segments:undefined,routeMetadata:{}}))};
+const markedStatusExamples=markTransportLegBooked(statusExamples,statusExamples.legs[0].id);
+async function verifyTransportStatusLayout(canvasElement:HTMLElement,language:'en'|'es'='en') {
+ const canvas=within(canvasElement);
+ await expect(canvas.getByText(language==='es'?'Reservado · marcado por ti':'Booked · marked by you')).toBeVisible();
+ await expect(canvas.getByText(language==='es'?'No reservado':'Not booked')).toBeVisible();
+ await expect(canvas.getByText(language==='es'?'Necesita comprobarse':'Needs checking')).toBeVisible();
+ const overlaps=(a:DOMRect,b:DOMRect)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;
+ for(const summary of canvasElement.querySelectorAll<HTMLElement>('[data-transport-summary]')) {
+  const badges=[...summary.querySelectorAll<HTMLElement>('[data-tone]')];
+  for(const badge of badges){
+   await expect(badge.querySelector('svg')).toHaveAttribute('aria-hidden','true');
+   await expect(badge.querySelector('svg')).toHaveAttribute('focusable','false');
+   const bounds=badge.getBoundingClientRect(),text=badge.querySelector<HTMLElement>('span')!;
+   await expect(bounds.left).toBeGreaterThanOrEqual(0);
+   await expect(bounds.right).toBeLessThanOrEqual(canvasElement.ownerDocument.documentElement.clientWidth+1);
+   await expect(badge.scrollWidth).toBeLessThanOrEqual(badge.clientWidth+1);
+   await expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth+1);
+   const chevron=badge.parentElement!.lastElementChild!.getBoundingClientRect();
+   await expect(overlaps(bounds,chevron)).toBe(false);
+  }
+  for(let i=1;i<badges.length;i++)await expect(overlaps(badges[i-1].getBoundingClientRect(),badges[i].getBoundingClientRect())).toBe(false);
+ }
+
+}
+export const IdentifiableTransportStatusesDesktop1440:Story={args:{trip:markedStatusExamples},globals:{viewport:{value:'morrovia1440',isRotated:false}},parameters:{a11y:{test:'error'}},play:async({canvasElement})=>verifyTransportStatusLayout(canvasElement)};
+export const IdentifiableTransportStatusesMobile320:Story={args:{trip:markedStatusExamples},globals:{viewport:{value:'morrovia320',isRotated:false}},parameters:{a11y:{test:'error'}},play:async({canvasElement})=>verifyTransportStatusLayout(canvasElement)};
+export const IdentifiableTransportStatusesSpanishMobile320:Story={args:{trip:markedStatusExamples,language:'es'},globals:{viewport:{value:'morrovia320',isRotated:false}},parameters:{a11y:{test:'error'}},play:async({canvasElement})=>verifyTransportStatusLayout(canvasElement,'es')};
+export const TransportReviewAndBookingStatusesMobile320:Story={...IdentifiableTransportStatusesMobile320,parameters:{a11y:{test:'error'},nextjs:{navigation:{query:{review:markedStatusExamples.legs[0].id}}}},play:async({canvasElement})=>{
+ await expect(within(canvasElement).getByText('Route check')).toBeVisible();await verifyTransportStatusLayout(canvasElement);
+}};
+export const TransportReviewAndBookingStatusesSpanishMobile320:Story={...IdentifiableTransportStatusesSpanishMobile320,parameters:{a11y:{test:'error'},nextjs:{navigation:{query:{review:markedStatusExamples.legs[0].id}}}},play:async({canvasElement})=>{
+ await expect(within(canvasElement).getByText('Revisar ruta')).toBeVisible();await verifyTransportStatusLayout(canvasElement,'es');
+}};
