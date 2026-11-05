@@ -221,3 +221,12 @@ export function createTripMutationPersistenceQueue(persist: PersistTripMutation)
     },
   };
 }
+
+/** A visible edit must not accept activation before its owner and recovery scope are ready. */
+export function tripMutationCanStart(input: {
+  enabled: boolean; sessionPending: boolean; recoveryReady: boolean; scopeCurrent: boolean;
+  ownerId: string | null; sessionOwnerId: string | null; protectedRecovery: boolean;
+}): boolean {
+  return input.enabled && !input.sessionPending && input.recoveryReady && input.scopeCurrent
+    && !input.protectedRecovery && (input.ownerId === null || input.ownerId === input.sessionOwnerId);
+}

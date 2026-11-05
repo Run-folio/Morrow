@@ -13,6 +13,7 @@ import { AlertCircle, AlertTriangle, Check, Circle, ArrowRight, CarFront, Chevro
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
 import { affiliateDisclosure, visibleAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
+import { MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
 import { affiliatePartners, transportAffiliateActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { itineraryTransportAgenda, transportJourneyKnowledge, transportPresentationState, unmatchedTravellerTransportBookings, type ItineraryTransportAgendaLeg, type TransportPresentationState } from "@/lib/easyt/itinerary-transport-agenda";
@@ -199,9 +200,12 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
       </EasyTButton> : null}
     </header>
 
+    {mutation.error ? <MorroviaStatusBanner tone="danger" title={language === "es" ? "No se pudo guardar este cambio" : "Couldn’t save this change"} detail={mutation.error} />
+      : !mutation.canMutate ? <MorroviaSaveStatus state="saving" label={language === "es" ? "Comprobando el viaje…" : "Checking this trip…"} /> : null}
+
     {unmatchedBookings.map((booking) => <div className={styles.bookingMismatch} role="alert" key={booking.id}>
       <p>{copy.missingLegMismatch} <strong>{booking.title}</strong></p>
-      <EasyTButton size="small" variant="quiet" disabled={mutation.isPending(`transport-unmark-${booking.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, booking.id), `transport-unmark-${booking.id}`)}>{copy.unmarkBooked}</EasyTButton>
+      <EasyTButton size="small" variant="quiet" disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${booking.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, booking.id), `transport-unmark-${booking.id}`)}>{copy.unmarkBooked}</EasyTButton>
     </div>)}
 
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
@@ -284,24 +288,24 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
       {item.bookingMismatch ? null : item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
-        pending={mutation.isPending(`transport-booking-${leg.id}`)}
+        pending={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)}
         onMark={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}
         onUnmark={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.manualBooking!.id), `transport-booking-${leg.id}`)}
         onSave={(details) => mutation.mutateTrip((current) => updateTravellerTransportBookingDetails(current, leg.id, details), `transport-booking-${leg.id}`)} />
         : item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton>
-          : !item.booking && isPassengerServiceLeg(leg) ? <EasyTButton size="small" variant="secondary" disabled={mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
+          : !item.booking && isPassengerServiceLeg(leg) ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
       <TripTransportChoiceControl onAdoptComparison={(comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
         if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
         const next=adoptTransportComparison(current,comparison,candidateId);
         if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
         return next;
-      },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
+      },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={!mutation.canMutate || mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
         onChange={(identity) => mutation.mutateTrip((current) => identity
           ? selectTripLegTransportChoice(current, leg.id, identity)
           : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
     </div>
     {item.bookingMismatch ? <div className={styles.bookingMismatch} role="alert"><p>{copy.routeMismatch}</p>
-      <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={mutation.isPending(`transport-unmark-${item.bookingMismatch.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.bookingMismatch!.id), `transport-unmark-${item.bookingMismatch!.id}`)}>{copy.unmarkBooked}</EasyTButton>
+      <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${item.bookingMismatch.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.bookingMismatch!.id), `transport-unmark-${item.bookingMismatch!.id}`)}>{copy.unmarkBooked}</EasyTButton>
     </div> : null}
     {action ? <small className={styles.partnerNote}>{visibleAffiliateDisclosure}</small> : null}
     <EasyTButton className={styles.journeyDetailsToggle} size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`journey-estimates-${leg.id}`} onClick={() => setDetailsOpen((open) => !open)}>{copy.journeyDetails}</EasyTButton>

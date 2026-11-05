@@ -21,7 +21,7 @@ import {
   type TripRecoveryRecord,
 } from "@/lib/easyt/storage";
 import { cloneItineraryMutationDocument } from "@/lib/easyt/itinerary-mutations";
-import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from "@/lib/easyt/trip-mutation-persistence";
+import { createTripMutationPersistenceQueue, newestTripMutationCanonical, tripMutationCanStart } from "@/lib/easyt/trip-mutation-persistence";
 import { canonicalTripRevisionCanReplace } from "@/lib/easyt/trip-continuity";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { isMeaningfulFeedbackAcknowledgement, type MeaningfulFeedbackAction } from "@/lib/easyt/feedback-survey";
@@ -47,7 +47,7 @@ class TripMutationDeviceBoundaryError extends Error {
 
 /** One shared document: verified recovery -> serialized CAS -> exact account ACK. */
 export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: boolean) {
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   const [trip, setTripState] = useState(initialTrip);
   const [saveState, setSaveState] = useState<TripMutationSaveState>("idle");
   const [failure, setFailure] = useState<TripMutationFailure>(null);
@@ -121,6 +121,9 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     const identity = tripIdentity(initialTrip), current = tripRef.current;
     const sameDocument = current.id === initialTrip.id && current.ownerId === initialTrip.ownerId;
     const sameScope=classifiedScopeRef.current===renderScope;
+    // Pending refetch blocks new intent via canMutate; keep an already
+    // classified scope ready so an in-flight guest write can finish.
+    if(sessionPending)return;
     if(initialTrip.ownerId&&session?.user?.id!==initialTrip.ownerId){
       recoveryReadyRef.current=false;setRecoveryReady(false);setRecoveryClassifiedFor(null);setFailure("auth");setError("Sign in to this trip’s account before editing or syncing it.");setSaveState("error");return;
     }
@@ -155,7 +158,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       } catch (caught) { if (isCurrent()) reportRecoveryReadFailure(caught); }
     })();
     return () => { cancelled = true; };
-  }, [initialTrip, renderScope, session?.user?.id, reportRecoveryReadFailure, scopeIsCurrent]);
+  }, [initialTrip, renderScope, session?.user?.id, sessionPending, reportRecoveryReadFailure, scopeIsCurrent]);
 
   const updatePending = useCallback((key: string, delta: 1 | -1) => {
     if (!mountedRef.current) return;
@@ -249,9 +252,13 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     return pendingSave;
   }, [cacheSavedTrip, handleSaveFailure, scopeIsCurrent]);
 
+  const canMutate = tripMutationCanStart({enabled, sessionPending: sessionPending === true, recoveryReady,
+    scopeCurrent: classifiedScopeRef.current === renderScope && scopeIsCurrent(renderScope),
+    ownerId: trip.ownerId, sessionOwnerId: session?.user?.id ?? null, protectedRecovery: conflictRef.current});
+
   const mutateTrip = useCallback((update: (current: EasyTTrip) => EasyTTrip, pendingKey: string, feedbackAction?: MeaningfulFeedbackAction): Promise<boolean> => {
     const scope = renderScope;
-    if (!enabled || !recoveryReadyRef.current || !scopeIsCurrent(scope)) return Promise.resolve(false);
+    if (!canMutate || !enabled || !recoveryReadyRef.current || !scopeIsCurrent(scope)) return Promise.resolve(false);
     updatePending(pendingKey, 1);
     const operation = localWriteTailRef.current.then(async () => {
       if (!scopeIsCurrent(scope) || !recoveryReadyRef.current) return false;
@@ -321,7 +328,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     pendingLocalWritesRef.current.add(operation); localWriteTailRef.current = operation.catch(() => false);
     void operation.finally(() => { pendingLocalWritesRef.current.delete(operation); updatePending(pendingKey, -1); }).catch(() => undefined);
     return operation;
-  }, [enabled, enqueueAccountSave, reportRecoveryReadFailure, renderScope, scopeIsCurrent, session?.user?.id, updatePending]);
+  }, [canMutate, enabled, enqueueAccountSave, reportRecoveryReadFailure, renderScope, scopeIsCurrent, session?.user?.id, updatePending]);
 
   useEffect(() => {
     const sessionOwnerId = session?.user?.id, recovery = recoveryHandleRef.current;
@@ -400,7 +407,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   }, [conflictTrip]);
 
   return {
-    acceptCanonicalTrip, adoptCanonicalTrip, adoptDeviceTrip, conflictTrip,
+    acceptCanonicalTrip, adoptCanonicalTrip, adoptDeviceTrip, canMutate, conflictTrip,
     currentRecoveryWrite: recoveryHandleRef.current, error, failure, hasPendingSaves, historicalRecovery,
     recoveryClassifiedFor, recoveryReady, isAccountCopySettled, isPending: (key: string) => Boolean(pendingKeys[key]),
     lastAcknowledgedMutation, mutateTrip, openConflictCloudCopy, saveState, trip, waitForPending,
