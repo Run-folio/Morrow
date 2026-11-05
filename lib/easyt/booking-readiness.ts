@@ -1,6 +1,6 @@
 import {effectiveTripLeg} from './transport-mode-choice.ts';
 import {applyFlightSearchAirports,flightSearchAirportPlan,hasExplicitSavedFlightAirports,type FlightSearchAirport} from './flight-search-airport-choice.ts';
-import {qualifiedCityReturnSearch} from './omio-return-search.ts';
+import {qualifiedFlightReturnSearch} from './omio-return-search.ts';
 import { flightPlanningAirports, flightAirportAssumptionLabel } from './flight-airport-assumptions.ts';
 import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
@@ -373,12 +373,12 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   if (!supported) return null;
 
   const hasAirportOverride = trip.legs.some(candidate => {if(!trip.brief.flightSearchAirportsByLeg?.[candidate.id])return false;const plan=flightSearchAirportPlan(trip,effectiveTripLeg(trip,candidate));return plan?.from.selected||plan?.to.selected;});
-  const pair = hasAirportOverride ? null : qualifiedCityReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
+  const pair = hasAirportOverride ? null : qualifiedFlightReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
   if (pair) {
     const href = buildOmioRouteSearchLink({ ...pair, mode: "flight", currency: trip.currency, now });
     if (href) return {
       id: `omio-return-${pair.outboundLegId}-${pair.returnLegId}`, category: "transport", provider: affiliatePartners.omio.provider,
-      title: `Return search: ${pair.originName} → ${pair.destinationName}`, detail: "City-level flight search. Confirm airports, schedules and fares on Omio.",
+      title: `Return search: ${pair.originName} → ${pair.destinationName}`, detail: "Return flight search. Confirm airports, schedules and fares on Omio.",
       cta: "Return search", href, tripId: trip.id, transferId: leg.id, originStopId: from.id, destinationStopId: to.id,
       returnSearch: { outboundLegId: pair.outboundLegId, returnLegId: pair.returnLegId }, affiliate: true, livePrice: false,
     };

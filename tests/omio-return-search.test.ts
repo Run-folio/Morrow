@@ -3,6 +3,13 @@ import test from 'node:test';
 import {buildOmioRouteSearchLink,OMIO_TRACKING_BASE} from '../lib/easyt/omio-search-link.ts';
 import {omioBookingActionForLeg,buildBookingReadiness} from '../lib/easyt/booking-readiness.ts';
 import {cityReturnTrip} from './fixtures/omio-return.ts';
+import {gatewayReturnTrip,returnTripForPlaces} from './fixtures/gateway-return.ts';
+import {selectedTransferPlace} from './fixtures/accepted-transfer-place.ts';
+import {readTripDocument,prepareTripDocumentForWrite} from '../lib/easyt/trip-document.ts';
+import {itineraryTransportAgenda} from '../lib/easyt/itinerary-transport-agenda.ts';
+import {prepareAcceptedBuilderEdit,type BuilderAcceptedEdit} from '../lib/easyt/trip-builder-edit.ts';
+import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
+import {prepareBuilderNecessaryProjection} from '../lib/easyt/trip-builder-reconciliation.ts';
 const now=new Date('2026-10-27T00:00:00Z');
 const inner=(url:string)=>new URL(new URL(url).searchParams.get('u')!);
 test('shared helper validates return flight dates and preserves both URL encoding layers',()=>{
@@ -33,4 +40,72 @@ test('explicit saved gateway snapshots and malformed segments cannot masquerade 
 test('both agenda dates must agree before either side offers a return search',()=>{
  const trip=cityReturnTrip();trip.planItems=[{id:'shifted',stopId:trip.stops[0].id,dayNumber:1,date:'2026-12-12',type:'arrival',title:'Later arrival',reason:'',notes:[],startsAt:null,endsAt:null,bookingUrl:null,latitude:null,longitude:null}];
  assert.notEqual(omioBookingActionForLeg(trip,trip.legs[1],now,trip.endDate)?.cta,'Return search');
+});
+
+test('validated airport-to-town return retains both legs across serialization and sends both dates',()=>{
+ const original=gatewayReturnTrip(),before=structuredClone(original);
+ const read=readTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(original))));assert.equal(read.kind,'readable');
+ if(read.kind!=='readable')return;
+ const trip=read.trip;assert.equal(trip.legs.length,2);assert.equal(itineraryTransportAgenda(trip).length,2);
+ assert.equal(trip.legs[1].toEndpoint?.name,'London Gatwick Airport');
+ const actions=trip.legs.map(leg=>omioBookingActionForLeg(trip,leg,now)!);
+ assert.ok(actions.every(action=>action?.returnSearch),'both flight legs must expose the closed return search');
+ assert.equal(actions[0].href,actions[1].href);
+ const search=inner(actions[0].href);assert.equal(search.searchParams.get('departurePosTerm'),'London Gatwick Airport, United Kingdom');
+ assert.equal(search.searchParams.get('arrivalPosTerm'),'Cairns, Australia');
+ assert.equal(search.searchParams.get('departureDate'),'2026-12-11');assert.equal(search.searchParams.get('returnDate'),'2026-12-21');
+ assert.deepEqual(original,before);
+});
+
+test('one-way gateway trip is not silently converted into a return journey',()=>{
+ const trip=gatewayReturnTrip({mode:'unknown'}),before=structuredClone(trip);
+ assert.equal(trip.brief.intent.route.tripType,'one_way');assert.equal(trip.legs.length,1);assert.equal(itineraryTransportAgenda(trip).length,1);
+ const action=omioBookingActionForLeg(trip,trip.legs[0],now)!;assert.ok(action);assert.equal(action.returnSearch,undefined);
+ assert.equal(inner(action.href).searchParams.has('returnDate'),false);assert.deepEqual(trip,before);
+});
+
+test('pairing covers accepted town and airport identities rather than a named route exception',()=>{
+ const town=selectedTransferPlace('Cairns','Australia','reference:geonames:2172797','endpoint');
+ const airport=selectedTransferPlace('Cairns','Australia','reference:ourairports:26904','endpoint');
+ const london=selectedTransferPlace('London','United Kingdom','reference:geonames:2643743','stop');
+ const paris=selectedTransferPlace('Paris','France','reference:geonames:2988507','stop');
+ for(const [from,to] of [[town,london],[airport,paris]]) {
+  const trip=returnTripForPlaces(from,[to]),before=structuredClone(trip);
+  assert.equal(trip.legs.length,2);
+  const typedBefore=structuredClone(trip),actions=trip.legs.map(leg=>omioBookingActionForLeg(trip,leg,now)!);
+  assert.ok(actions.every(action=>action?.returnSearch));assert.equal(actions[0].href,actions[1].href);
+  const search=inner(actions[0].href);assert.equal(search.searchParams.get('departurePosTerm'),`${from.name}, ${from.country}`);
+  assert.equal(search.searchParams.get('arrivalPosTerm'),`${to.name}, ${to.country}`);assert.equal(search.searchParams.get('returnDate'),trip.endDate);
+  assert.deepEqual(trip,typedBefore);assert.equal(before.brief.intent.route.journeyEnd.mode,'same_as_start');
+ }
+});
+
+test('multi-stop open-jaw return retains final gateway leg and its own date without fabricating a closed search',()=>{
+ const base=gatewayReturnTrip(),origin=base.brief.intent.route.origin!;
+ const cairns=selectedTransferPlace('Cairns','Australia','reference:geonames:2172797','stop');
+ const chengdu=selectedTransferPlace('Chengdu','China','reference:geonames:1815286','stop');
+ const source=returnTripForPlaces(origin,[cairns,chengdu]),read=readTripDocument(JSON.parse(JSON.stringify(source)));assert.equal(read.kind,'readable');
+ if(read.kind!=='readable')return;
+ const trip=read.trip,before=structuredClone(trip);assert.equal(trip.legs.length,3);assert.equal(itineraryTransportAgenda(trip).length,3);
+ const back=trip.legs.at(-1)!,action=omioBookingActionForLeg(trip,back,now)!;assert.ok(action);assert.equal(action.returnSearch,undefined);
+ const search=inner(action.href);assert.equal(search.searchParams.get('departureDate'),trip.endDate);assert.equal(search.searchParams.has('returnDate'),false);
+ assert.equal(back.toEndpoint?.name,'London Gatwick Airport');assert.deepEqual(trip,before);
+});
+
+test('supported one-way/return and date edits preserve the intended gateway topology through reload',()=>{
+ let trip=gatewayReturnTrip();
+ for(const [edit,count] of [
+  [{kind:'type',tripType:'one_way'},1],
+  [{kind:'type',tripType:'return_to_start'},2],
+  [{kind:'dates',startDate:'2026-12-13',endDate:'2026-12-23'},2],
+ ] as [BuilderAcceptedEdit,number][]) {
+  const before=structuredClone(trip),edited=prepareAcceptedBuilderEdit(trip,edit,builderDocumentFingerprint(trip));assert.ok(edited.ok);
+  const projected=prepareBuilderNecessaryProjection(trip,edited.trip,edited.scope);assert.ok(projected.ok);
+  const read=readTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(projected.trip))));assert.equal(read.kind,'readable');
+  if(read.kind!=='readable')return;
+  assert.deepEqual(trip,before);trip=read.trip;
+  assert.equal(trip.legs.length,count);const agenda=itineraryTransportAgenda(trip);assert.equal(agenda.length,count);
+  if(count===2){assert.equal(trip.legs.at(-1)!.toEndpoint?.name,'London Gatwick Airport');assert.equal(agenda.at(-1)!.date,trip.endDate);}
+ }
+ assert.equal(trip.endDate,'2026-12-23');
 });
