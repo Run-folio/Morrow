@@ -142,5 +142,941 @@
         "bytes": 192468
       }
     ]
+  },
+  {
+    "key": "day-tokyo-shinjuku-gyoen",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "Kakidai",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Shinjuku_Gyoen_National_Garden_-_sakura_3.JPG",
+    "assetIdentity": "commons-sha1:a24648662d66a4bf614864d949bb00e84438e472",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Cherry blossoms and the pond at Shinjuku Gyo-en, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Shinjuku Gyo-en",
+      "Shinjuku Gyoen",
+      "Shinjuku Gyoen National Garden"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-shinjuku-gyoen-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 14450
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-shinjuku-gyoen-768.webp",
+        "width": 768,
+        "height": 500,
+        "bytes": 63222
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-shinjuku-gyoen-1280.webp",
+        "width": 1280,
+        "height": 834,
+        "bytes": 172218
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-park-tower",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "FLOEP",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Shinjuku_Park_Tower_2018_from_MetGovBld.jpg",
+    "assetIdentity": "commons-sha1:ed7c223dc0d716666bb43ca41287335636eb7cec",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Shinjuku Park Tower seen from the Tokyo Metropolitan Government Building",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Shinjuku Park Tower"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-park-tower-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 24518
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-park-tower-768.webp",
+        "width": 768,
+        "height": 1365,
+        "bytes": 181012
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-park-tower-1280.webp",
+        "width": 1280,
+        "height": 2276,
+        "bytes": 391088
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-sensoji",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "Joli Rumi",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sensoji_temple,_Asakusa,_Tokyo,_Japan.jpg",
+    "assetIdentity": "commons-sha1:c1b4229d0aa74defe322ffaf94d9c168a3f58524",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Senso-ji temple entrance in Asakusa, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Senso-ji",
+      "Sensoji",
+      "Asakusa & Senso-ji"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-sensoji-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 24248
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-sensoji-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 103878
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-sensoji-1280.webp",
+        "width": 1280,
+        "height": 960,
+        "bytes": 252636
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-meiji",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "Tokuzo in Edomura",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Courtyard_of_Meiji_Shrine_20190717.jpg",
+    "assetIdentity": "commons-sha1:b11f026972f611335ea0ef5857ebaf7fef3960a3",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Courtyard of Meiji Shrine, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Meiji Jingu",
+      "Meiji Shrine"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-meiji-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 13518
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-meiji-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 53870
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-meiji-1280.webp",
+        "width": 1280,
+        "height": 854,
+        "bytes": 134244
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-shibuya",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "David Kernan",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Shibuya_Crossing,_Aerial.jpg",
+    "assetIdentity": "commons-sha1:3abb12c212e38c662a406c48dd9a526c881404f3",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Shibuya Crossing illuminated at night, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Shibuya Crossing"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-shibuya-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 23962
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-shibuya-768.webp",
+        "width": 768,
+        "height": 432,
+        "bytes": 96902
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-shibuya-1280.webp",
+        "width": 1280,
+        "height": 720,
+        "bytes": 241416
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-rainbow-bridge",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "DXR",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Rainbow_Bridge,_Tokyo,_South_view_from_Odaiba_20190419_1.jpg",
+    "assetIdentity": "commons-sha1:dbd0ad00c0e7305a1045f3a65204ff3e254093a6",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Rainbow Bridge viewed from Odaiba, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Rainbow Bridge"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-rainbow-bridge-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 8076
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-rainbow-bridge-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 31914
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-rainbow-bridge-1280.webp",
+        "width": 1280,
+        "height": 854,
+        "bytes": 82744
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-ueno",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "EllieBellie25",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hanami_Matsuri_picknick_in_Ueno_park,_Tokyo_Japan.jpg",
+    "assetIdentity": "commons-sha1:d9897235f2a1f21e35d7928012d1462b1737d600",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Picnics beneath cherry trees in Ueno Park, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Ueno Park"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-ueno-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 24882
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-ueno-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 111454
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-ueno-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 282108
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-station",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "Zairon",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marunouchi_%26_Tokyo_Station_2.jpg",
+    "assetIdentity": "commons-sha1:d26ab6e6a1598ad0f262c2df11410aae8e597e9f",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Marunouchi and Tokyo Station",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Tokyo Station",
+      "Tokyo Station Marunouchi"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-station-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 11682
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-station-768.webp",
+        "width": 768,
+        "height": 577,
+        "bytes": 48634
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-station-1280.webp",
+        "width": 1280,
+        "height": 961,
+        "bytes": 120538
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-fushimi",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Double_torii_path_at_Fushimi_Inari_Taisha_Shrine,_Kyoto,_Japan.jpg",
+    "assetIdentity": "commons-sha1:c2704db21582ce24f62dd5b841278a85f7dc348f",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Two paths of red torii at Fushimi Inari Taisha, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Fushimi Inari",
+      "Fushimi Inari Taisha"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-fushimi-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 17268
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-fushimi-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 77428
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-fushimi-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 202460
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-arashiyama",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bamboo_Forest,_Arashiyama,_Kyoto,_Japan.jpg",
+    "assetIdentity": "commons-sha1:67725e96b45c553d7a1726de7861753008ea3a38",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Bamboo forest at Arashiyama, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Arashiyama Bamboo Grove"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-arashiyama-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 17054
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-arashiyama-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 73880
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-arashiyama-1280.webp",
+        "width": 1280,
+        "height": 854,
+        "bytes": 196994
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-kiyomizu",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Martin Falbisoner",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kiyomizu-dera,_Kyoto,_November_2016_-01.jpg",
+    "assetIdentity": "commons-sha1:5f0b7dd2d20de6c62acc346b453c04c397c155f2",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Kiyomizu-dera and autumn foliage, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Kiyomizu-dera"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-kiyomizu-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 18548
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-kiyomizu-768.webp",
+        "width": 768,
+        "height": 472,
+        "bytes": 72926
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-kiyomizu-1280.webp",
+        "width": 1280,
+        "height": 787,
+        "bytes": 200114
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-nishiki",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Sergiy Galyonkin from Raleigh, USA",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Nishiki_Market,_Kyoto_-_Flickr_-_Sergiy_Galyonkin.jpg",
+    "assetIdentity": "commons-sha1:d158e7425f036d4fe95201c41609e4eded9cc7b0",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Food stalls at Nishiki Market, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Nishiki Market"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-nishiki-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 20624
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-nishiki-768.webp",
+        "width": 768,
+        "height": 824,
+        "bytes": 94800
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-nishiki-1280.webp",
+        "width": 1280,
+        "height": 1372,
+        "bytes": 188632
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-nijo",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Jakub Hałun",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Southeast_Watchtower_of_the_Nij%C5%8D_Castle_in_Kyoto,_20240820_1617_5145.jpg",
+    "assetIdentity": "commons-sha1:1490ff351a84be22810334358cc57c61c63b0c06",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Southeast watchtower of Nijō Castle, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Nijo Castle",
+      "Nijō Castle"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-nijo-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 13800
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-nijo-768.webp",
+        "width": 768,
+        "height": 615,
+        "bytes": 61390
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-nijo-1280.webp",
+        "width": 1280,
+        "height": 1026,
+        "bytes": 143998
+      }
+    ]
+  },
+  {
+    "key": "day-fuji-kawaguchi",
+    "place": "Mount Fuji",
+    "country": "Japan",
+    "author": "Suicasmo",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mount_Fuji_from_Lake_Kawaguchi_20170206.jpg",
+    "assetIdentity": "commons-sha1:8205eb956cc96fcd184b6de83c7ae0067d7bc57d",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Mount Fuji viewed across Lake Kawaguchi",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Mount Fuji",
+      "Mt Fuji and Hakone 1-Day Bus Tour Return by Bullet Train"
+    ],
+    "activityBases": [
+      "Tokyo"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-fuji-kawaguchi-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 7216
+      },
+      {
+        "src": "/journey/immersive/day-fuji-kawaguchi-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 29340
+      },
+      {
+        "src": "/journey/immersive/day-fuji-kawaguchi-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 78824
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-ginkakuji",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sunlight_through_clouds_and_view_of_Ginkaku-ji_Temple_from_above,_Kyoto,_Japan.jpg",
+    "assetIdentity": "commons-sha1:3ac842242e58ec2812a35063d8a41a076a41bda0",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Ginkaku-ji temple grounds viewed from above, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Ginkaku-ji"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-ginkakuji-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 15124
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-ginkakuji-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 62148
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-ginkakuji-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 162982
+      }
+    ]
+  },
+  {
+    "key": "day-seoul-gyeongbokgung",
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Frank Schulenburg",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Gyeonghoeru_(Royal_Banquet_Hall)_at_Gyeongbokgung_Palace,_Seoul.jpg",
+    "assetIdentity": "commons-sha1:16c2381eb4b5debec07cd48f90d03afc91fe08f3",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Gyeonghoeru pavilion at Gyeongbokgung Palace, Seoul",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Gyeongbokgung Palace"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-seoul-gyeongbokgung-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 10356
+      },
+      {
+        "src": "/journey/immersive/day-seoul-gyeongbokgung-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 40760
+      },
+      {
+        "src": "/journey/immersive/day-seoul-gyeongbokgung-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 105440
+      }
+    ]
+  },
+  {
+    "key": "day-seoul-bukchon",
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bukchon-ro_11-gil_street_with_hanok_houses_in_Bukchon_Hanok_Village_Seoul.jpg",
+    "assetIdentity": "commons-sha1:460acc0555e2acf326ea6db12380aa15c01365ec",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Traditional houses along a street in Bukchon Hanok Village, Seoul",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Bukchon Hanok Village"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-seoul-bukchon-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 18042
+      },
+      {
+        "src": "/journey/immersive/day-seoul-bukchon-768.webp",
+        "width": 768,
+        "height": 493,
+        "bytes": 72248
+      },
+      {
+        "src": "/journey/immersive/day-seoul-bukchon-1280.webp",
+        "width": 1280,
+        "height": 822,
+        "bytes": 189016
+      }
+    ]
+  },
+  {
+    "key": "day-seoul-namsan",
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Rtflakfizer",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Namsan_Tower_sunset,_Seoul.jpg",
+    "assetIdentity": "commons-sha1:9251728618371e1e66980525183be664e5550fe2",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Namsan Tower silhouetted at sunset, Seoul",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "N Seoul Tower",
+      "Namsan Tower"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-seoul-namsan-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 5962
+      },
+      {
+        "src": "/journey/immersive/day-seoul-namsan-768.webp",
+        "width": 768,
+        "height": 574,
+        "bytes": 17652
+      },
+      {
+        "src": "/journey/immersive/day-seoul-namsan-1280.webp",
+        "width": 1280,
+        "height": 956,
+        "bytes": 35966
+      }
+    ]
+  },
+  {
+    "key": "day-seoul-cheonggyecheon",
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cheonggyecheon_stream_at_sunrise_with_trees_in_Seoul.jpg",
+    "assetIdentity": "commons-sha1:8b313347955431735857b0593462d1c4f9049719",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Cheonggyecheon stream at sunrise, Seoul",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Cheonggyecheon"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-seoul-cheonggyecheon-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 14912
+      },
+      {
+        "src": "/journey/immersive/day-seoul-cheonggyecheon-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 61154
+      },
+      {
+        "src": "/journey/immersive/day-seoul-cheonggyecheon-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 153648
+      }
+    ]
+  },
+  {
+    "key": "day-seoul-changdeokgung",
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Exterior_front_view_of_the_pavilion_Samsamwa_with_blue_sky_at_Changdeokgung_Palace_in_Seoul.jpg",
+    "assetIdentity": "commons-sha1:40271d17f6f969859e9079ef0c6798ca0e84eb81",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Samsamwa pavilion at Changdeokgung Palace, Seoul",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Changdeokgung Palace"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-seoul-changdeokgung-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 22520
+      },
+      {
+        "src": "/journey/immersive/day-seoul-changdeokgung-768.webp",
+        "width": 768,
+        "height": 480,
+        "bytes": 89536
+      },
+      {
+        "src": "/journey/immersive/day-seoul-changdeokgung-1280.webp",
+        "width": 1280,
+        "height": 800,
+        "bytes": 222066
+      }
+    ]
+  },
+  {
+    "key": "day-ninh-trang-an",
+    "place": "Ninh Bình",
+    "country": "Vietnam",
+    "author": "Jakub Hałun",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Trang_An_Landscape_Complex,_Ninh_Binh_Province,_20240202_1410_5232.jpg",
+    "assetIdentity": "commons-sha1:34bdc0ad06c2d777a5ae0fbb80b1a0fa7ef83500",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Limestone cliffs and the river at Tràng An, Ninh Bình",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Tràng An",
+      "Trang An"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-ninh-trang-an-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 19782
+      },
+      {
+        "src": "/journey/immersive/day-ninh-trang-an-768.webp",
+        "width": 768,
+        "height": 513,
+        "bytes": 84980
+      },
+      {
+        "src": "/journey/immersive/day-ninh-trang-an-1280.webp",
+        "width": 1280,
+        "height": 855,
+        "bytes": 230954
+      }
+    ]
+  },
+  {
+    "key": "day-ninh-tam-coc",
+    "place": "Ninh Bình",
+    "country": "Vietnam",
+    "author": "Prof Flitwick",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tourist_boats_in_Tam_Coc,_Vietnam.jpg",
+    "assetIdentity": "commons-sha1:5154f67d04d157ed8d03efe9b608ca85ee3debb0",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Tourist boats at Tam Cốc, Ninh Bình",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Tam Cốc",
+      "Tam Coc"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-ninh-tam-coc-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 16986
+      },
+      {
+        "src": "/journey/immersive/day-ninh-tam-coc-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 58304
+      },
+      {
+        "src": "/journey/immersive/day-ninh-tam-coc-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 125830
+      }
+    ]
+  },
+  {
+    "key": "day-ninh-bai-dinh",
+    "place": "Ninh Bình",
+    "country": "Vietnam",
+    "author": "Viethavvh",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ch%C3%B9a_B%C3%A1i_%C4%90%C3%ADnh.jpg",
+    "assetIdentity": "commons-sha1:1588043a40bd15f3d59c629402d0866fd19bd4c0",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Bái Đính pagoda and surrounding limestone landscape, Ninh Bình",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "activitySubjects": [
+      "Bái Đính",
+      "Bai Dinh Pagoda"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-ninh-bai-dinh-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 18962
+      },
+      {
+        "src": "/journey/immersive/day-ninh-bai-dinh-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 96768
+      },
+      {
+        "src": "/journey/immersive/day-ninh-bai-dinh-1280.webp",
+        "width": 1280,
+        "height": 960,
+        "bytes": 265250
+      }
+    ]
   }
 ]

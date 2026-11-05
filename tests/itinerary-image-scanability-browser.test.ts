@@ -29,7 +29,7 @@ for(const browserName of ['chromium','webkit'] as const) test(`${browserName}: d
   await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
   const sources=await view.page.locator('#itinerary-calendar [data-itinerary-photo] img').evaluateAll((images:HTMLImageElement[])=>images.map(img=>img.getAttribute('src')));
   assert.equal(sources.length,7,'Every covered day retains a photograph');
-  assert.equal(new Set(sources).size,6,'Reviewed alternatives vary before a relevant fallback repeats');
+  assert.equal(new Set(sources).size,7,'Every day uses a distinct reviewed photograph');
   assert.equal(await view.page.locator('#itinerary-calendar article').count(),7,'Every day and its controls remain present');
   await view.page.screenshot({path:`output/playwright/daily-calendar-2048-${browserName}.png`,fullPage:true});
   for(const day of trip.planItems){

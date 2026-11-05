@@ -12,11 +12,19 @@ test('curated itinerary files retain their reviewed subject, author, licence and
   'day-tokyo-big-sight':['Tokyo_Big_Sight_at_Night.jpg','Masato Ohta from Tokyo, Japan.','CC BY 2.0'],
   'day-kyoto-ninenzaka':['Pedestrian_road_with_pavements_and_paper_umbrellas,_Higashiyama-ku,_Kyoto,_Japan,_early_morning.jpg','Basile Morin','CC BY-SA 4.0'],
  };
+ expected['day-tokyo-shinjuku-gyoen' as keyof typeof expected]=['Shinjuku_Gyoen_National_Garden_-_sakura_3.JPG','Kakidai','CC BY-SA 3.0'];
+ expected['day-tokyo-park-tower' as keyof typeof expected]=['Shinjuku_Park_Tower_2018_from_MetGovBld.jpg','FLOEP','CC0'];
  const credits=readFileSync('public/journey/immersive/credits.html','utf8');
  for(const photo of inventory){
-  const [file,author,license]=expected[photo.key as keyof typeof expected];
-  assert.equal(decodeURIComponent(new URL(photo.sourceUrl).pathname),`/wiki/File:${file}`);
-  assert.equal(photo.author,author);assert.equal(photo.license,license);
+  const known=expected[photo.key as keyof typeof expected];
+  if(known){
+   const [file,author,license]=known;
+   assert.equal(decodeURIComponent(new URL(photo.sourceUrl).pathname),`/wiki/File:${file}`);
+   assert.equal(photo.author,author);assert.equal(photo.license,license);
+  }
+  assert.equal(new URL(photo.sourceUrl).hostname,'commons.wikimedia.org');
+  assert.ok(photo.author.trim());
+  assert.ok(photo.alt.trim());
   assert.ok(isReusableWikimediaLicense(photo.license,photo.licenseUrl));
   assert.ok(credits.includes(`id="${photo.key}"`));
   assert.match(photo.changes,/Resized and converted to WebP/);

@@ -192,7 +192,7 @@ test('84-day photo calendar reuses local responsive images without per-day provi
     await view.page.locator('#itinerary-calendar article').last().getByRole('button',{name:/^Day 84,/}).click();
     await view.page.locator('section[aria-label="Day 84 planner"]').waitFor();
     assert.equal(lookups,0);
-    assert.ok(assets.size<=8,`84 days should share a bounded pool of six reviewed photos and responsive variants, saw ${assets.size}`);
+    assert.ok(assets.size<=24,`84 days should share a bounded reviewed local pool and responsive variants, saw ${assets.size}`);
     assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.deepEqual(view.errors,[]);
   } finally {await view.close();}

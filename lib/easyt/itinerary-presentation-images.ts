@@ -1,5 +1,6 @@
+import { itineraryImageIdentity, viatorActivityPhoto } from "./itinerary-image-policy.ts";
 import { mediaImagesForExactDestination } from "./itinerary-media.ts";
-import { itineraryDestinationPhotos, routeImageCredit, routePhotoForSource } from "./route-images.ts";
+import { itineraryActivityPhotos, itineraryDestinationPhotos, routeImageCredit, routePhotoForSource } from "./route-images.ts";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "./trip-overview-imagery.ts";
 import { legacyItineraryIdeas, type EasyTTrip, type PlanItem, type TripStop } from "./trip.ts";
 
@@ -67,31 +68,46 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
     if (choice) usedStops.add(choice.src);
   }
 
-  const uses = new Map<string, number>();
-  const identity = (image: OverviewPlaceImage) => routePhotoForSource(image.src)?.sourceUrl ?? image.sourceUrl ?? image.src;
-  const leastUsed = (images: OverviewPlaceImage[]) => [...images].sort((a,b) => (uses.get(identity(a)) ?? 0) - (uses.get(identity(b)) ?? 0))[0] ?? null;
+  const used = new Set<string>();
+  // Reserve actual planned activities before earlier generic days can consume their photographs.
   for (const day of orderedDays) {
     const stop = trip.stops.find(stop => stop.id === day.stopId);
-    // Saved provider URLs alone do not establish permission to reuse a photo.
-    const activityImages = legacyItineraryIdeas(trip.brief.itineraryIdeas).filter(idea => idea.dayId === day.id && idea.stopId === day.stopId && idea.category === "activity")
-      .flatMap(idea => {
-        if (!idea.image || !stop) return [];
-        const photo = routePhotoForSource(idea.image);
-        const credit = routeImageCredit(idea.image);
-        return credit && photo?.place.toLowerCase() === stop.name.trim().toLowerCase() && photo.country.toLowerCase() === stop.country.trim().toLowerCase() ? [credit] : [];
-      });
+    const scheduled = legacyItineraryIdeas(trip.brief.itineraryIdeas).filter(idea => idea.dayId === day.id && idea.stopId === day.stopId && idea.category === "activity");
+    const activityImages = scheduled.flatMap(idea => {
+      const provider = viatorActivityPhoto(idea);
+      const record = idea.image ? routePhotoForSource(idea.image) : null;
+      const normalize = (text: string) => text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      const exactSubject = record?.activitySubjects?.some(subject => normalize(subject) === normalize(idea.title));
+      const sameBase = stop && record?.place.toLowerCase() === stop.name.trim().toLowerCase() && record.country.toLowerCase() === stop.country.trim().toLowerCase();
+      const reviewed = idea.image && (exactSubject || (!record?.activitySubjects?.length && sameBase)) ? routeImageCredit(idea.image) : null;
+      const subjects = stop ? itineraryActivityPhotos(idea.title, stop.name, stop.country).flatMap(photo => {
+        const credit = routeImageCredit(photo.variants[0]?.src ?? "");
+        return credit ? [{...credit, activityTitle:idea.title}] : [];
+      }) : [];
+      return [provider, reviewed ? {...reviewed, activityTitle:idea.title} : null, ...subjects].filter((image): image is OverviewPlaceImage => Boolean(image));
+    });
+    const notedPlaces = stop ? day.notes.flatMap(title => itineraryActivityPhotos(title, stop.name, stop.country).flatMap(photo => {
+      const credit = routeImageCredit(photo.variants[0]?.src ?? "");
+      return credit ? [{...credit,activityTitle:title}] : [];
+    })) : [];
+    const choice = [...activityImages, ...notedPlaces].find(image => !used.has(itineraryImageIdentity(image))) ?? null;
+    dayById[day.id] = choice;
+    if (choice) used.add(itineraryImageIdentity(choice));
+  }
+  for (const day of orderedDays) {
+    if (dayById[day.id]) continue;
+    const stop = trip.stops.find(stop => stop.id === day.stopId);
     const explicit = stop ? assignedImage(day, reviewedOnly, stop) : null;
     const candidates = candidatesByStop.get(day.stopId) ?? [];
-    const unusedExplicit = explicit && !uses.has(identity(explicit)) ? explicit : null;
-    const choice = leastUsed(activityImages) ?? unusedExplicit ?? leastUsed(candidates);
+    const choice = [explicit, ...candidates].find((image): image is OverviewPlaceImage => Boolean(image) && !used.has(itineraryImageIdentity(image!))) ?? null;
     dayById[day.id] = choice;
-    if (choice) uses.set(identity(choice), (uses.get(identity(choice)) ?? 0) + 1);
+    if (choice) used.add(itineraryImageIdentity(choice));
   }
   return { stopById, dayById };
 }
 
 
-/** Calendar and selected-day presentation share choices, including deliberate relevant reuse. */
+/** Calendar and selected-day presentation share choices, without introducing a second selection policy. */
 export function itineraryCalendarImages(trip: Pick<EasyTTrip, "planItems">, dayImages: PresentationImages["dayById"]): Record<string, OverviewPlaceImage | null> {
   return Object.fromEntries(trip.planItems.map(day => [day.id, dayImages[day.id] ?? null]));
 }

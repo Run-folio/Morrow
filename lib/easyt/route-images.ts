@@ -1,3 +1,4 @@
+import { commonsImageIdentity } from "./image-source-identity.ts";
 import itineraryInventory from "../../public/journey/immersive/itinerary-image-inventory.json" with { type: "json" };
 import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
 import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
@@ -7,6 +8,9 @@ import editorialInventory from "../../public/journey/immersive/editorial-image-i
 import { homepageFirstPartyPhotoSlots, routeEditorialImagery } from "./route-editorial-imagery.ts";
 
 export type RoutePhotoRecord = {
+  assetIdentity?: string;
+  activitySubjects?: string[];
+  activityBases?: string[];
   key: string;
   place: string;
   country: string;
@@ -81,7 +85,10 @@ export function routeImagePhoto(routeKey: string): RoutePhotoRecord | null {
 }
 
 export function routePhotoForSource(image: string): RoutePhotoRecord | null {
-  return editorialPhotos.find(photo => photo.variants.some(variant => variant.src === image)) ?? null;
+  const exact = editorialPhotos.find(photo => photo.variants.some(variant => variant.src === image));
+  if (exact) return exact;
+  const identity = commonsImageIdentity(image);
+  return identity ? editorialPhotos.find(photo => commonsImageIdentity(photo.sourceUrl) === identity) ?? null : null;
 }
 
 export function routeImageCredit(image: string) {
@@ -105,4 +112,19 @@ export function itineraryDestinationPhotos(place: string, country: string): Rout
   return [...destinationPhotos, ...routeImageInventory, ...reviewedItineraryPhotos]
     .filter(photo => photo.place.toLowerCase() === place.trim().toLowerCase() && photo.country.toLowerCase() === country.trim().toLowerCase())
     .filter((photo, index, photos) => photos.findIndex(candidate => candidate.sourceUrl === photo.sourceUrl) === index);
+}
+
+/** Exact reviewed place names, scoped to their destination or declared excursion base. */
+export function itineraryActivityPhotos(title: string, place: string, country: string): RoutePhotoRecord[] {
+  const normalize = (text: string) => text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return reviewedItineraryPhotos.filter(photo => photo.country === country
+    && [photo.place, ...(photo.activityBases ?? [])].some(base => normalize(base) === normalize(place))
+    && photo.activitySubjects?.some(subject => normalize(subject) === normalize(title)));
+}
+
+/** Share verified hashes across catalogue entries for the same Commons file. */
+export function routePhotoAssetIdentity(photo: RoutePhotoRecord): string {
+  const file = commonsImageIdentity(photo.sourceUrl);
+  const verified = file ? editorialPhotos.find(candidate => candidate.assetIdentity && commonsImageIdentity(candidate.sourceUrl) === file)?.assetIdentity : undefined;
+  return photo.assetIdentity ?? verified ?? file ?? photo.sourceUrl;
 }

@@ -8,6 +8,8 @@ import type { EasyTTrip, TripStop } from "./trip.ts";
 import type { CachedRoutePhoto } from "./route-photo-cache.ts";
 
 export type OverviewPlaceImage = {
+  /** Explicit planned activity associated with this presentation-only image. */
+  activityTitle?: string;
   scope?: "country";
   country?: string;
   src: string;

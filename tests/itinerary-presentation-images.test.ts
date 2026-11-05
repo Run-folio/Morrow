@@ -129,7 +129,7 @@ test('reviewed activity photos win only on their scheduled day and stop; provide
   assert.equal(JSON.stringify(input),before);
 });
 
-test('multi-day reviewed destination pools use distinct assets before deliberate balanced reuse', () => {
+test('multi-day reviewed destination pools use distinct assets and stay empty after exhaustion', () => {
  const input=trip([stop('tokyo','Tokyo','Japan',0),stop('delhi','Delhi','India',1),stop('missing','Unknown Base','Japan',2)],Array.from({length:8},(_,i)=>day(String(i),'tokyo',i+1)));
  input.planItems.push(day('single','delhi',9),day('single2','delhi',10),day('none','missing',11));
  const result=itineraryPresentationImages(input,{reviewedOnly:true});
@@ -138,9 +138,9 @@ test('multi-day reviewed destination pools use distinct assets before deliberate
  assert.ok(new Set(sources).size>=3,'Reviewed Tokyo pool provides real photographic variety');
  assert.equal(new Set(sources.slice(0,3)).size,3,'Different files, not responsive crops of one asset');
  const counts=[...new Set(sources)].map(src=>sources.filter(s=>s===src).length);
- assert.ok(Math.max(...counts)-Math.min(...counts)<=1,'Repeated fallback is balanced after all relevant assets are used');
+ assert.ok(counts.every(count=>count===1),'No destination photo repeats, including non-adjacent days');
  assert.ok(result.dayById.single?.sourceUrl);
- assert.equal(result.dayById.single?.sourceUrl,result.dayById.single2?.sourceUrl);
+ assert.equal(result.dayById.single2,null);
  assert.equal(result.dayById.none,null,'No unrelated destination is invented');
 });
 
