@@ -100,3 +100,17 @@ test('limited handoff CTAs remain explicit in Spanish and preserve unrelated pro
   assert.equal(booking.affiliateHandoffCta(general, 'en'), 'Search on Omio');
   assert.equal(booking.affiliateHandoffCta({ ...general, provider: 'viator', cta: 'View on Viator' }, 'es'), 'View on Viator');
 });
+
+test('targeted handoffs warn that Omio can show a different mode without claiming missing services', () => {
+  const trip=cityReturnTrip(),action=omioBookingActionForLeg(trip,trip.legs[0],now)!;
+  const before=action.href;
+  assert.match(affiliateHandoffDetail(action)!, /Omio may show other transport modes/);
+  assert.match(affiliateHandoffDetail(action)!, /check the mode and traveller count/i);
+  assert.match(affiliateHandoffDetail(action,'es')!, /otros medios de transporte/);
+  assert.match(affiliateHandoffDetail(action,'es')!, /medio de transporte y el número de viajeros/);
+  assert.doesNotMatch(affiliateHandoffDetail(action)!, /no flights|no trains|guaranteed|available tickets/i);
+  assert.equal(action.href,before);
+  const inner=new URL(new URL(action.href).searchParams.get('u')!);
+  assert.equal(inner.searchParams.get('travelMode'),'FLIGHT');
+  assert.equal(inner.searchParams.get('returnDate'),'2026-12-16');
+});
