@@ -49,11 +49,12 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    const inherited=()=>card.getByText(es?/igual que en la ida/:/same as outbound/);
    const edit=()=>card.getByRole('button',{name:es?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
    const form=()=>card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
+   const openEditor=async()=>{const button=edit();await page.waitForFunction((el:HTMLButtonElement)=>el.isConnected&&!el.disabled,await button.elementHandle());assert.equal(await button.isEnabled(),true);await button.press('Enter');await form().waitFor();};
    await open();await inherited().waitFor();assert.doesNotMatch(await card.innerText(),/Heathrow/);
    const link=card.locator('a[data-affiliate-provider="omio"]');let search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
    assert.equal(search.searchParams.get('departurePosTerm'),`${gatwick.endpoint.name}, ${gatwick.endpoint.country}`);
    assert.equal(search.searchParams.get('departureDate'),trip.startDate);assert.equal(search.searchParams.get('returnDate'),trip.endDate);
-   await edit().press('Enter');const arrival=form().getByRole('combobox',{name:es?'Aeropuerto de llegada':'Arrival airport',exact:true});
+   await openEditor();const arrival=form().getByRole('combobox',{name:es?'Aeropuerto de llegada':'Arrival airport',exact:true});
    assert.equal(await arrival.inputValue(),'');assert.equal(await arrival.getAttribute('placeholder'),gatwick.endpoint.name);
    await arrival.fill('STN');await page.getByRole('option').filter({hasText:stansted.name}).first().click();
    await form().getByRole('button',{name:es?'Guardar aeropuertos':'Save airports',exact:true}).click();
@@ -61,7 +62,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
    assert.equal(search.searchParams.get('arrivalPosTerm'),`${stansted.name}, ${stansted.country}`);assert.equal(search.searchParams.get('departureDate'),trip.endDate);assert.equal(search.searchParams.has('returnDate'),false);
    await page.reload();await open();await card.getByText(new RegExp(stansted.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))).first().waitFor();
-   await edit().press('Enter');await form().getByRole('button',{name:es?'Restablecer aeropuertos':'Reset search airports',exact:true}).click();await inherited().waitFor();
+   await openEditor();await form().getByRole('button',{name:es?'Restablecer aeropuertos':'Reset search airports',exact:true}).click();await inherited().waitFor();
    await page.reload();await open();await inherited().waitFor();assert.doesNotMatch(await card.innerText(),/Heathrow/);
    for(const width of [320,390,1280]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
    const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});await page.setViewportSize({width:320,height:1000});await page.screenshot({path:`${artifacts}/return-default-${browserName}-${language}-320.png`,fullPage:true});}
