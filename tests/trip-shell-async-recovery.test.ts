@@ -258,6 +258,7 @@ function resolverHarness(overrides: Record<string, any> = {}) {
     './morrovia-loading-states': { MorroviaSectionStatus: () => null },
     './trip-shell': { default: Shell }, './trip-mobile-sheet': { useMobileTripWorkspace: () => false, TripMobileSheet: () => null },
     './trip-shell.module.css': { default: {} },
+    './easyt-controls.module.css': { default: {} },
   }).default;
   return { render: () => schedule.render(component, props), unmount: () => schedule.unmount(), search, Shell, Banner, cloud,
     setSearch: (query: string) => { search = new URLSearchParams(query); },
@@ -364,6 +365,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
     './morrovia-feedback': { MorroviaConfirmationDialog: Dialog, MorroviaFormDialog: Form, MorroviaSaveStatus: () => null, MorroviaStatusBanner: () => null },
     './trip-mobile-sheet': { useMobileTripWorkspace: () => false, TripMobileSheet: () => null },
     './trip-shell.module.css': { default: {} },
+    './easyt-controls.module.css': { default: {} },
   });
   const client = load('../components/easyt/trip-shell-client.tsx', imports);
   return { render: () => schedule.render(client.TripShellTripProvider, props), renderIdentity: () => schedule.render(client.TripShellIdentityAndActions),

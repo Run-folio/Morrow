@@ -120,9 +120,13 @@ export const InlineNameCancel: Story = {
     const form = canvas.getByRole("form", { name: "Rename trip" });
     const field = within(form).getByRole("textbox", { name: "Trip name" });
     await expect(field).toHaveFocus();
+    await expect(canvas.queryByText(/Leave blank to use/)).not.toBeInTheDocument();
     await userEvent.type(field, "Sample draft");
     await userEvent.keyboard("{Escape}");
     await expect(canvas.queryByRole("form", { name: "Rename trip" })).not.toBeInTheDocument();
+    const title = canvasElement.querySelector("#trip-shell-title") as HTMLElement;
+    await expect(within(title).getByRole("button")).toHaveFocus();
+    await expect(title.querySelector('span[aria-hidden="true"]')).not.toBeVisible();
   },
 };
 /** Device-only sample: no account session, API or recovery fixture is required. */

@@ -71,6 +71,7 @@ function harness(queued = false) {
     './morrovia-feedback': { MorroviaFormDialog: Form, MorroviaSaveStatus: () => null },
     './trip-mobile-sheet': { useMobileTripWorkspace: () => false, TripMobileSheet: () => null },
     './trip-shell.module.css': { default: {} },
+    './easyt-controls.module.css': { default: {} },
   });
   const js = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const module = { exports: {} as any };

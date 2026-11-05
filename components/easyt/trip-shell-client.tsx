@@ -42,6 +42,7 @@ import { useTripMutationPersistence, type TripMutationPersistence } from "./use-
 import { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";
 import { useTripMapReturn } from "./use-trip-map-return";
 import styles from "./trip-shell.module.css";
+import controlStyles from "./easyt-controls.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
 const TripShellMutationContext = createContext<TripMutationPersistence | null>(null);
@@ -81,6 +82,8 @@ export function TripShellIdentityAndActions() {
   const displayTitle = tripOverviewDisplayTitle(mutation.trip);
   const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { dismissed: false, hovered: false, focused: false });
   const { dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
+  const [titlePreviewSuppressed, setTitlePreviewSuppressed] = useState(false);
+  const restoringTitleFocusRef = useRef(false);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const overnightPlaceCount = overnightAccommodationStops(trip).length;
@@ -112,14 +115,37 @@ export function TripShellIdentityAndActions() {
   const scopeIsCurrent = () => renameMountedRef.current && renameScopeRef.current === renderScope
     && mutation.trip.id === trip.id && mutation.trip.ownerId === trip.ownerId;
   const sessionIsCurrent = () => scopeIsCurrent() && renameIntentRef.current.session === renderSession && renameIntentRef.current.open;
-  const updateRenameIntent = (next: typeof renameIntentRef.current) => { renameIntentRef.current = next; setRenameState(next); };
+  const updateRenameIntent = (next: typeof renameIntentRef.current) => {
+    if (renameIntentRef.current.open && !next.open) {
+      setTitlePreviewSuppressed(true);
+      restoringTitleFocusRef.current = true;
+      dispatchTitleDisclosure("dismiss");
+    }
+    renameIntentRef.current = next;
+    setRenameState(next);
+  };
 
   const titleButtonRef = useRef<HTMLButtonElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const [titleClipped, setTitleClipped] = useState(false);
+  useEffect(() => {
+    const text = titleButtonRef.current?.querySelector("span");
+    if (!text) { setTitleClipped(false); return; }
+    const measure = () => setTitleClipped(text.scrollWidth > text.clientWidth + 1 || text.scrollHeight > text.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, [displayTitle, renameOpen]);
   const wasRenamingRef = useRef(false);
   useEffect(() => {
     if (renameOpen) { titleInputRef.current?.focus(); titleInputRef.current?.select(); }
-    else if (wasRenamingRef.current) titleButtonRef.current?.focus();
+    else if (wasRenamingRef.current) {
+      titleButtonRef.current?.focus();
+      // Returning keyboard focus after Save/Cancel must not open the full-title preview.
+      dispatchTitleDisclosure("dismiss");
+    }
     wasRenamingRef.current = renameOpen;
   }, [renameOpen]);
   const cancelRename = () => {
@@ -186,9 +212,9 @@ export function TripShellIdentityAndActions() {
         {/* morrovia-ui-audit-allow-next-line native-control -- The title editor must remain phrasing content inside h1; EasyTField adds a block FieldShell. */}
         {renameOpen ? <input
           ref={titleInputRef}
-          className={styles.tripTitleInput}
+          className={`${controlStyles.fieldControl} ${styles.tripTitleInput}`}
           aria-label="Trip name"
-          aria-describedby={renameError ? "trip-title-hint trip-title-error" : "trip-title-hint"}
+          aria-describedby={renameError ? "trip-title-error" : undefined}
           aria-invalid={Boolean(renameError)}
           value={draft}
           placeholder={displayTitle}
@@ -208,19 +234,26 @@ export function TripShellIdentityAndActions() {
             type="button"
             aria-describedby="trip-title-edit-hint"
             onPointerEnter={() => dispatchTitleDisclosure("pointer-enter")}
-            onPointerLeave={() => dispatchTitleDisclosure("pointer-leave")}
-            onFocus={() => dispatchTitleDisclosure("focus")}
+            onPointerLeave={() => {
+              dispatchTitleDisclosure("pointer-leave");
+              if (titlePreviewSuppressed) dispatchTitleDisclosure("dismiss");
+              setTitlePreviewSuppressed(false);
+            }}
+            onFocus={() => {
+              dispatchTitleDisclosure("focus");
+              if (restoringTitleFocusRef.current) restoringTitleFocusRef.current = false;
+              else setTitlePreviewSuppressed(false);
+            }}
             onBlur={() => dispatchTitleDisclosure("blur")}
             onKeyDown={(event) => { if (event.key === "Escape") dispatchTitleDisclosure("dismiss"); }}
             onClick={openRename}
           ><span>{displayTitle}</span></EasyTButton>
-          <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: (titleHovered || titleFocused) && !titlePreviewDismissed ? "block" : "none" }}>{displayTitle}</span>
+          <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleClipped && !titlePreviewSuppressed && (titleHovered || titleFocused) && !titlePreviewDismissed ? "block" : "none" }}>{displayTitle}</span>
         </span>
         </>}
       </h1>
       <span id="trip-title-edit-hint" className={styles.srOnly}>Edit trip name</span>
       {renameOpen ? <div className={styles.tripTitleEditorActions}>
-        <p id="trip-title-hint">{Array.from(draft.trim()).length}/80 characters · Leave blank to use the destination-based name.</p>
         {renameError ? <p id="trip-title-error" role="alert">{renameError}</p> : null}
         <EasyTButton type="submit" size="small" loading={renameSubmitting}>Save name</EasyTButton>
         <EasyTButton type="button" size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton>
