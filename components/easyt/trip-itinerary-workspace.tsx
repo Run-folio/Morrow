@@ -2394,7 +2394,7 @@ function ItineraryCalendar({ tripId, dayImages, onOpenDay, weeks, selectedDayId,
             {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
-          {dayImages[day.id] ? <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id]} destination={day.stop?.name ?? day.day.title} language={language} /></div> : null}
+          <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id] ?? null} destination={day.stop?.name ?? day.day.title} language={language} /></div>
           {previewItems.length ? <ul className={styles.calendarItems}>
             {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
             {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}

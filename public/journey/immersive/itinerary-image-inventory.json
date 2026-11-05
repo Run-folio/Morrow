@@ -1,0 +1,146 @@
+[
+  {
+    "key": "day-kyoto-kinkakuji",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "David Monniaux",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Japan_Kyoto_Kinkakuji_DSC00117.jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Kinkaku-ji Golden Pavilion reflected in its pond, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-kinkakuji-384.webp",
+        "width": 384,
+        "height": 267,
+        "bytes": 18170
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-kinkakuji-768.webp",
+        "width": 768,
+        "height": 534,
+        "bytes": 69608
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-kinkakuji-1280.webp",
+        "width": 1280,
+        "height": 890,
+        "bytes": 163812
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-imperial-palace",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "yisris",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Spring_season_at_the_Imperial_Palace,_Tokyo;_March_2013_(03).jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Spring cherry blossoms beside the Imperial Palace moat, Tokyo",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-imperial-palace-384.webp",
+        "width": 384,
+        "height": 255,
+        "bytes": 15280
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-imperial-palace-768.webp",
+        "width": 768,
+        "height": 510,
+        "bytes": 58290
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-imperial-palace-1280.webp",
+        "width": 1280,
+        "height": 851,
+        "bytes": 146674
+      }
+    ]
+  },
+  {
+    "key": "day-tokyo-big-sight",
+    "place": "Tokyo",
+    "country": "Japan",
+    "author": "Masato Ohta from Tokyo, Japan.",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tokyo_Big_Sight_at_Night.jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Tokyo Big Sight and its waterfront illuminated at night",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-tokyo-big-sight-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 13160
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-big-sight-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 45610
+      },
+      {
+        "src": "/journey/immersive/day-tokyo-big-sight-1280.webp",
+        "width": 1280,
+        "height": 960,
+        "bytes": 157078
+      }
+    ]
+  },
+  {
+    "key": "day-kyoto-ninenzaka",
+    "place": "Kyoto",
+    "country": "Japan",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pedestrian_road_with_pavements_and_paper_umbrellas,_Higashiyama-ku,_Kyoto,_Japan,_early_morning.jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the source licence.",
+    "alt": "Ninenzaka pedestrian street and paper umbrellas, Kyoto",
+    "provenance": "reviewed-provider",
+    "intendedUses": [
+      "itinerary-day",
+      "itinerary-calendar"
+    ],
+    "variants": [
+      {
+        "src": "/journey/immersive/day-kyoto-ninenzaka-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 21534
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-ninenzaka-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 74556
+      },
+      {
+        "src": "/journey/immersive/day-kyoto-ninenzaka-1280.webp",
+        "width": 1280,
+        "height": 854,
+        "bytes": 192468
+      }
+    ]
+  }
+]

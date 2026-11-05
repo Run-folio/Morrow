@@ -76,14 +76,14 @@ test('reviewed-only day photos reject arbitrary provider URLs without mutating s
   assert.equal(JSON.stringify(input), before);
 });
 
-test('reviewed-only mode repeats a relevant cover and leaves uncovered places empty', () => {
+test('reviewed-only mode varies reviewed destination images and leaves uncovered places honest', () => {
   const input = trip([stop('kyoto', 'Kyoto', 'Japan', 0), stop('unknown', 'Uncovered Place', 'Japan', 1)], [day('a', 'kyoto', 1), day('b', 'kyoto', 2), day('c', 'unknown', 3)]);
   const images = itineraryPresentationImages(input, { reviewedOnly: true });
-  assert.equal(images.dayById.a?.src, images.dayById.b?.src);
+  assert.notEqual(images.dayById.a?.sourceUrl, images.dayById.b?.sourceUrl);
   assert.equal(images.dayById.c, null);
 });
 
-test('calendar shows each reviewed asset once, even when saved days use different responsive variants', async () => {
+test('calendar retains a relevant image on every day, even when responsive variants share a source', async () => {
   const presentation = await import('../lib/easyt/itinerary-presentation-images.ts');
   assert.equal(typeof presentation.itineraryCalendarImages, 'function');
   const photo = routeDestinationPhoto('Tokyo', 'Japan')!;
@@ -92,9 +92,10 @@ test('calendar shows each reviewed asset once, even when saved days use differen
   const before = JSON.stringify(input);
   const calendar = presentation.itineraryCalendarImages(input, selected.dayById);
   assert.equal(calendar.one?.sourceUrl, photo.sourceUrl);
-  assert.equal(calendar.two, null);
+  assert.ok(calendar.two?.sourceUrl);
   assert.equal(JSON.stringify(input), before);
-  assert.equal(selected.dayById.two?.src, photo.variants.at(-1)!.src, 'Selected-day photography remains available');
+  assert.ok(selected.dayById.two?.src, 'Selected-day photography remains available');
+  assert.equal(input.planItems[1].image,photo.variants.at(-1)!.src,'Saved photo assignment is preserved');
 });
 
 test('calendar keeps distinct reviewed destination images and does not fill uncovered days with unrelated photos', async () => {
@@ -104,8 +105,51 @@ test('calendar keeps distinct reviewed destination images and does not fill unco
   const selected = itineraryPresentationImages(input, {reviewedOnly:true});
   const calendar = presentation.itineraryCalendarImages(input,selected.dayById);
   assert.ok(calendar.one?.licenseUrl);
-  assert.equal(calendar.two,null);
+  assert.ok(calendar.two?.sourceUrl);
   assert.ok(calendar.three?.licenseUrl);
   assert.notEqual(calendar.one?.sourceUrl,calendar.three?.sourceUrl);
   assert.equal(calendar.four,null);
+});
+
+
+test('reviewed activity photos win only on their scheduled day and stop; provider URLs do not establish rights', () => {
+  const tokyo = routeDestinationPhoto('Tokyo','Japan')!;
+  const kyoto = routeDestinationPhoto('Kyoto','Japan')!;
+  const input = trip([stop('tokyo','Tokyo','Japan',0)], [day('one','tokyo',1),day('two','tokyo',2),day('three','tokyo',3)]);
+  input.brief.itineraryIdeas = [
+    {id:'valid',stopId:'tokyo',dayId:'two',placeId:'ginza',title:'Ginza walk',category:'activity',image:tokyo.variants[0].src,source:'destination-highlight',reasons:[]},
+    {id:'foreign',stopId:'tokyo',dayId:'one',placeId:'foreign',title:'Wrong city',category:'activity',image:kyoto.variants[0].src,source:'destination-highlight',reasons:[]},
+    {id:'provider',stopId:'tokyo',dayId:'three',placeId:'viator',title:'Tour',category:'activity',image:'https://media.tacdn.com/tour.jpg',sourceUrl:'https://viator.com/tour',source:'live-provider-inventory',provider:'viator',reasons:[]},
+  ];
+  const before=JSON.stringify(input);
+  const result=itineraryPresentationImages(input,{reviewedOnly:true});
+  assert.equal(result.dayById.two?.sourceUrl,tokyo.sourceUrl);
+  assert.notEqual(result.dayById.one?.sourceUrl,kyoto.sourceUrl);
+  assert.notEqual(result.dayById.three?.src,'https://media.tacdn.com/tour.jpg');
+  assert.equal(JSON.stringify(input),before);
+});
+
+test('multi-day reviewed destination pools use distinct assets before deliberate balanced reuse', () => {
+ const input=trip([stop('tokyo','Tokyo','Japan',0),stop('delhi','Delhi','India',1),stop('missing','Unknown Base','Japan',2)],Array.from({length:8},(_,i)=>day(String(i),'tokyo',i+1)));
+ input.planItems.push(day('single','delhi',9),day('single2','delhi',10),day('none','missing',11));
+ const result=itineraryPresentationImages(input,{reviewedOnly:true});
+ const sources=input.planItems.slice(0,8).map(d=>result.dayById[d.id]?.sourceUrl);
+ assert.ok(sources.every(Boolean));
+ assert.ok(new Set(sources).size>=3,'Reviewed Tokyo pool provides real photographic variety');
+ assert.equal(new Set(sources.slice(0,3)).size,3,'Different files, not responsive crops of one asset');
+ const counts=[...new Set(sources)].map(src=>sources.filter(s=>s===src).length);
+ assert.ok(Math.max(...counts)-Math.min(...counts)<=1,'Repeated fallback is balanced after all relevant assets are used');
+ assert.ok(result.dayById.single?.sourceUrl);
+ assert.equal(result.dayById.single?.sourceUrl,result.dayById.single2?.sourceUrl);
+ assert.equal(result.dayById.none,null,'No unrelated destination is invented');
+});
+
+
+test('repeated saved day covers yield to unused reviewed alternatives without changing saved assignments',()=>{
+ const cover=routeDestinationPhoto('Tokyo','Japan')!;
+ const input=trip([stop('tokyo','Tokyo','Japan',0)],Array.from({length:6},(_,i)=>day(String(i),'tokyo',i+1,cover.variants[i%cover.variants.length].src)));
+ const before=JSON.stringify(input);
+ const images=itineraryPresentationImages(input,{reviewedOnly:true});
+ assert.equal(new Set(input.planItems.slice(0,3).map(day=>images.dayById[day.id]?.sourceUrl)).size,3);
+ assert.equal(JSON.stringify(input),before);
 });

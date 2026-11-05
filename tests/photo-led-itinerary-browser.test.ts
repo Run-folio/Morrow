@@ -6,6 +6,7 @@ import {routeDestinationPhoto,routePhotoForSource} from '../lib/easyt/route-imag
 import type { Route } from 'playwright';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
+import {itineraryPresentationImages} from '../lib/easyt/itinerary-presentation-images.ts';
 import {photoLedItineraryTrip as fixture} from './fixtures/photo-led-itinerary.ts';
 
 
@@ -28,7 +29,7 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
     const photos = view.page.locator('#itinerary-calendar [data-itinerary-photo]');
     await photos.first().waitFor({timeout:3000});
-    assert.equal(await photos.count(),2);
+    assert.equal(await photos.count(),7);
     assert.equal(await view.page.locator('#itinerary-calendar article').count(),7);
     assert.equal(await photos.locator('img:not([loading="lazy"])').count(),0);
     assert.ok(await photos.first().locator('img').getAttribute('srcset'));
@@ -134,6 +135,8 @@ test('photo credit remains available when saved days use different variants of t
     assert.equal(await view.page.locator('[data-itinerary-photo="day"] button[aria-haspopup="dialog"]').count(),1);
     await view.page.locator('[data-itinerary-photo="day"] button[aria-haspopup="dialog"]').click();
     await view.page.getByRole('dialog',{name:'Photo information',exact:true}).waitFor();
+    const expected=itineraryPresentationImages(trip,{reviewedOnly:true}).dayById[trip.planItems[1].id]!;
+    assert.equal(await view.page.getByRole('dialog',{name:'Photo information',exact:true}).locator(`a[href="${expected.sourceUrl}"]`).count(),1,'Credit follows the newly selected photograph');
     await view.page.keyboard.press('Escape');
     assert.deepEqual(view.errors,[]);
   } finally {await view.close();}
@@ -182,14 +185,14 @@ test('84-day photo calendar reuses local responsive images without per-day provi
     await view.page.reload();
     await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
     const photos=view.page.locator('#itinerary-calendar [data-itinerary-photo]');
-    assert.equal(await photos.count(),2);
+    assert.equal(await photos.count(),84);
     assert.equal(await view.page.locator('#itinerary-calendar article').count(),84);
     assert.equal(await photos.locator('img:not([loading="lazy"])').count(),0);
     await view.page.locator('#itinerary-calendar article').last().scrollIntoViewIfNeeded();
     await view.page.locator('#itinerary-calendar article').last().getByRole('button',{name:/^Day 84,/}).click();
     await view.page.locator('section[aria-label="Day 84 planner"]').waitFor();
     assert.equal(lookups,0);
-    assert.ok(assets.size<=3,`84 days should share a small number of image variants, saw ${assets.size}`);
+    assert.ok(assets.size<=8,`84 days should share a bounded pool of six reviewed photos and responsive variants, saw ${assets.size}`);
     assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.deepEqual(view.errors,[]);
   } finally {await view.close();}

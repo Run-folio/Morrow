@@ -1,3 +1,4 @@
+import itineraryInventory from "../../public/journey/immersive/itinerary-image-inventory.json" with { type: "json" };
 import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
 import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
 import publishedStopInventory from "../../public/journey/immersive/published-route-stop-image-inventory.generated.json" with { type: "json" };
@@ -29,7 +30,8 @@ export type RoutePhotoRecord = {
 const reviewedEditorialInventory = editorialInventory as RoutePhotoRecord[];
 const reusableEditorialPhotos = reviewedEditorialInventory.filter(photo => photo.provenance !== "reviewed-morrovia-first-party");
 const destinationPhotos: RoutePhotoRecord[] = [...destinationInventory, ...publishedStopInventory, ...reusableEditorialPhotos];
-const editorialPhotos: RoutePhotoRecord[] = [...reviewedEditorialInventory, ...destinationPhotos, ...routeImageInventory];
+const reviewedItineraryPhotos = itineraryInventory as RoutePhotoRecord[];
+const editorialPhotos: RoutePhotoRecord[] = [...reviewedItineraryPhotos, ...reviewedEditorialInventory, ...destinationPhotos, ...routeImageInventory];
 
 const canonicalRouteImages: Record<string, string> = {
   "japan-slow": "/journey/immersive/place-kyoto-1536.webp",
@@ -96,4 +98,11 @@ export function routeImageCredit(image: string) {
     fullCreditUrl: `/journey/immersive/credits.html#${record.key}`,
     sourceLabel: `${record.author} · ${record.license}`,
   } : null;
+}
+
+/** Exact reviewed destination alternatives reserved for itinerary presentation. */
+export function itineraryDestinationPhotos(place: string, country: string): RoutePhotoRecord[] {
+  return [...destinationPhotos, ...routeImageInventory, ...reviewedItineraryPhotos]
+    .filter(photo => photo.place.toLowerCase() === place.trim().toLowerCase() && photo.country.toLowerCase() === country.trim().toLowerCase())
+    .filter((photo, index, photos) => photos.findIndex(candidate => candidate.sourceUrl === photo.sourceUrl) === index);
 }

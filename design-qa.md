@@ -1,3 +1,19 @@
+# Per-day imagery policy correction — 2026-11-05
+
+Supersedes the calendar suppression policy below. Branch `codex/itinerary-daily-image-policy` preserves the compact image heights and all existing trip/title/recovery/navigation behavior. The supplied screenshot shows the suppression rule hid later days; that rule is removed. Calendar and selected-day views now share the same choices and always render a photo slot with an honest unavailable state when no safe photo exists.
+
+Selection order: a licensed reviewed activity image explicitly scheduled to this day and route stop, then an unused saved reviewed day image, then the least-used relevant destination image. Responsive variants share a source identity. Destination alternatives are exhausted before balanced reuse. Persisted duplicate covers no longer prevent variation; persisted assignments are never rewritten. Unknown destinations receive an accessible placeholder, never a borrowed city or fabricated activity match. The activity gate also checks exact destination and country; unsupported excursion/provider images fall back to destination imagery.
+
+Four real Commons photographs were reviewed visually and against current API source/artist/licence metadata: Tokyo Imperial Palace (yisris, CC BY 2.0), Tokyo Big Sight (Masato Ohta, CC BY 2.0), Kyoto Kinkaku-ji (David Monniaux, CC BY-SA 3.0) and Kyoto Ninenzaka (Basile Morin, CC BY-SA 4.0). They have dedicated itinerary inventory entries, full credits, and local 384/768/1280px WebP variants. Calendar files are 13–22kB. They do not enter homepage selection. Source/derivative hashes and review evidence are in output/qa/daily-image-rights-review.json.
+
+Rights limitation: saved Google references intentionally have no retained photo facts; legacy Viator/activity records have no reusable per-photo licence/author contract. Arbitrary provider URLs remain in their existing activity workflow but are not promoted into a reusable day cover. Scheduled activity photos recognized by the reviewed inventory are eligible. No new provider lookup, image fetching API, account write or schema migration is introduced by selection.
+
+Production type checking exposed an incorrect top-level activity fixture/selector binding; both were corrected to the canonical `trip.brief.itineraryIdeas`, with a failing canonical-shape regression before the fix. Independent review confirmed that wiring. Independent review also caught and resolved crossed attribution metadata caused by numeric JSON page-ID ordering, and a saved-cover priority that prevented variation. Dedicated filename/author/licence/variant tests protect the corrected metadata. The saved-cover bug was reproduced by a failing six-day regression before fixing it. Review then reported no remaining actionable findings.
+
+Verification: 164 focused regressions passed, including 12 selector tests plus image-provenance checks. Nine mounted Chromium/WebKit browser checks passed, including all seven selected days, scheduled activity imagery, 320–2048px layouts, exact bottom-nav comparison, credit updates, durable saves, accessibility, modal/draft recovery and 84-day bounded local image reuse. Typecheck, strict UI audit and Storybook build passed. Full-calendar/mobile activity screenshots and final production qualification are recorded in output/qa and output/playwright. No deployment performed.
+
+---
+
 # Itinerary image scanability correction — 2026-11-05
 
 Isolated from deployed staging `06f96fede92e7bfce1a2c426ef5e0233cb46e332` on `codex/itinerary-image-scanability`. A fresh disposable browser reproduced the staging issue without writing user trips or calling image providers: the 2048px day view rendered a 623.25px-tall photo and repeated the Tokyo/Kyoto covers across all seven calendar days.

@@ -1,17 +1,20 @@
 import { mediaImagesForExactDestination } from "./itinerary-media.ts";
-import { routeImageCredit, routePhotoForSource } from "./route-images.ts";
+import { itineraryDestinationPhotos, routeImageCredit, routePhotoForSource } from "./route-images.ts";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "./trip-overview-imagery.ts";
-import type { EasyTTrip, PlanItem, TripStop } from "./trip.ts";
+import { legacyItineraryIdeas, type EasyTTrip, type PlanItem, type TripStop } from "./trip.ts";
 
 type PresentationImages = {
   stopById: Readonly<Record<string, OverviewPlaceImage | null>>;
   dayById: Readonly<Record<string, OverviewPlaceImage | null>>;
 };
 
-function assignedImage(day: PlanItem, reviewedOnly = false): OverviewPlaceImage | null {
+function assignedImage(day: PlanItem, reviewedOnly = false, stop?: TripStop): OverviewPlaceImage | null {
   if (!day.image) return null;
   const reviewed = routeImageCredit(day.image);
-  if (reviewed) return reviewed;
+  if (reviewed) {
+    const photo = routePhotoForSource(day.image);
+    return !stop || (photo?.place.toLowerCase() === stop.name.trim().toLowerCase() && photo.country.toLowerCase() === stop.country.trim().toLowerCase()) ? reviewed : null;
+  }
   if (reviewedOnly) return null;
   if (!day.sourceUrl || !/^https?:\/\//.test(day.sourceUrl)) return null;
   return { src: day.image, alt: day.title, sourceUrl: day.sourceUrl, sourceLabel: "Photo source" };
@@ -25,16 +28,20 @@ function destinationCandidates(trip: EasyTTrip, stop: TripStop, days: PlanItem[]
       return reviewedOnly ? reviewed ? [reviewed] : [] : [{ src: image.src, alt: image.alt, sourceUrl: image.sourceUrl, sourceLabel: image.sourceLabel ?? "Photo source" }];
     });
   const assigned = days.flatMap((day) => {
-    const image = assignedImage(day, reviewedOnly);
+    const image = assignedImage(day, reviewedOnly, stop);
     return image ? [image] : [];
   });
   const overview = reviewedOnly ? overviewPlaceImage(stop) : overviewStopImage(trip, stop);
   const validOverview = overview && (assigned.some((image) => image.src === overview.src)
     || exact.some((image) => image.src === overview.src)
     || Boolean(routeImageCredit(overview.src))) && overview.sourceUrl ? overview : null;
-  return [validOverview, ...assigned, ...exact]
+  const alternatives = itineraryDestinationPhotos(stop.name, stop.country).flatMap(photo => {
+    const credit = routeImageCredit(photo.variants[0]?.src ?? "");
+    return credit ? [credit] : [];
+  });
+  return [validOverview, ...assigned, ...exact, ...alternatives]
     .filter((image): image is OverviewPlaceImage => Boolean(image))
-    .filter((image, index, images) => images.findIndex((candidate) => candidate.src === image.src) === index);
+    .filter((image, index, images) => images.findIndex((candidate) => (routePhotoForSource(candidate.src)?.sourceUrl ?? candidate.sourceUrl ?? candidate.src) === (routePhotoForSource(image.src)?.sourceUrl ?? image.sourceUrl ?? image.src)) === index);
 }
 
 function firstUnused(images: OverviewPlaceImage[], used: Set<string>): OverviewPlaceImage | null {
@@ -54,36 +61,37 @@ export function itineraryPresentationImages(trip: EasyTTrip, { reviewedOnly = fa
     const days = orderedDays.filter((day) => day.stopId === stop.id);
     const candidates = destinationCandidates(trip, stop, days, reviewedOnly);
     candidatesByStop.set(stop.id, candidates);
-    const explicit = days.map(day => assignedImage(day, reviewedOnly)).find((image): image is OverviewPlaceImage => Boolean(image));
+    const explicit = days.map(day => assignedImage(day, reviewedOnly, stop)).find((image): image is OverviewPlaceImage => Boolean(image));
     const choice = explicit ?? firstUnused(candidates, usedStops);
     stopById[stop.id] = choice;
     if (choice) usedStops.add(choice.src);
   }
 
-  const usedDays = new Set<string>();
+  const uses = new Map<string, number>();
+  const identity = (image: OverviewPlaceImage) => routePhotoForSource(image.src)?.sourceUrl ?? image.sourceUrl ?? image.src;
+  const leastUsed = (images: OverviewPlaceImage[]) => [...images].sort((a,b) => (uses.get(identity(a)) ?? 0) - (uses.get(identity(b)) ?? 0))[0] ?? null;
   for (const day of orderedDays) {
-    const explicit = assignedImage(day, reviewedOnly);
+    const stop = trip.stops.find(stop => stop.id === day.stopId);
+    // Saved provider URLs alone do not establish permission to reuse a photo.
+    const activityImages = legacyItineraryIdeas(trip.brief.itineraryIdeas).filter(idea => idea.dayId === day.id && idea.stopId === day.stopId && idea.category === "activity")
+      .flatMap(idea => {
+        if (!idea.image || !stop) return [];
+        const photo = routePhotoForSource(idea.image);
+        const credit = routeImageCredit(idea.image);
+        return credit && photo?.place.toLowerCase() === stop.name.trim().toLowerCase() && photo.country.toLowerCase() === stop.country.trim().toLowerCase() ? [credit] : [];
+      });
+    const explicit = stop ? assignedImage(day, reviewedOnly, stop) : null;
     const candidates = candidatesByStop.get(day.stopId) ?? [];
-    const preferred = stopById[day.stopId];
-    const choice = explicit ?? firstUnused(preferred ? [preferred, ...candidates.filter((image) => image.src !== preferred.src)] : candidates, usedDays);
+    const unusedExplicit = explicit && !uses.has(identity(explicit)) ? explicit : null;
+    const choice = leastUsed(activityImages) ?? unusedExplicit ?? leastUsed(candidates);
     dayById[day.id] = choice;
-    if (choice) usedDays.add(choice.src);
+    if (choice) uses.set(identity(choice), (uses.get(identity(choice)) ?? 0) + 1);
   }
   return { stopById, dayById };
 }
 
 
-/** Calendar photography is a destination cue, not a promise of a new scene per date.
- * Reuse the day selector's reviewed choices, but show each underlying asset once.
- * Selected-day images and saved trip data remain untouched. */
+/** Calendar and selected-day presentation share choices, including deliberate relevant reuse. */
 export function itineraryCalendarImages(trip: Pick<EasyTTrip, "planItems">, dayImages: PresentationImages["dayById"]): Record<string, OverviewPlaceImage | null> {
-  const selected: Record<string, OverviewPlaceImage | null> = {};
-  const used = new Set<string>();
-  for (const day of [...trip.planItems].sort((a, b) => a.dayNumber - b.dayNumber)) {
-    const image = dayImages[day.id] ?? null;
-    const identity = image ? routePhotoForSource(image.src)?.sourceUrl ?? image.sourceUrl ?? image.src : null;
-    selected[day.id] = identity && !used.has(identity) ? image : null;
-    if (identity) used.add(identity);
-  }
-  return selected;
+  return Object.fromEntries(trip.planItems.map(day => [day.id, dayImages[day.id] ?? null]));
 }
