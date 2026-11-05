@@ -26,6 +26,16 @@ The ordinary window is supported by [MTR's July 2026 ticketing guide](https://ww
 
 ## Revisit / acceptance
 
+### 5 November traveller-count follow-up
+
+The actual staging `ccbecc6681b00764dc4783f93a7aac29ceeeb80b` app-click control used a two-traveller London–Paris trip, departing 11 December 2026 and returning 16 December. Omio preserved both dates and showed Flights / Select outbound, but displayed one traveller. A separate airport-specific one-way control (London Gatwick–Paris Orly, 11 December) preserved the endpoints/date but displayed one traveller and selected Trains despite the supplied `travelMode=FLIGHT`. These are separate observations; the one-way result does not invalidate the successful return-date/flight control. Neither establishes a universal default or current inventory. No outbound selection or booking was made.
+
+Reproducible app-click observations are recorded in `../deployed-transport-browser-observations-20261105.json` (relative to this repository root's parent workspace) and `../deployed-transport-acceptance-ccbecc-20261105.txt`. The former records the exact wrapped URLs and landing paths. These are prior browser observations, not new provider visits during this follow-up.
+
+Rechecked [Omio's public redirect configurator](https://www.omio.com/affiliate/search-widget) on 5 November: the documented redirect fields are `departurePosTerm`, `arrivalPosTerm`, `departureDate` and optional `returnDate`. The configurator also exposes mode, locale and currency controls, but no traveller-count control. No supported passenger parameter for this existing redirect contract was found. This is a documentation limit, not proof that no private provider interface could support it; a different API/widget is outside this change.
+
+The local candidate's shared EN/ES notice already explicitly says traveller count is not carried over and asks travellers to check mode and count before booking. That is the supported mitigation; no guessed `adults`, `passengers` or similar parameter was added. The saved trip remains at two travellers. New regression controls cover two-traveller one-way and round-trip actions through both action resolvers, the visible EN/ES warning, exact query-key allowlist, dates/mode, and unchanged saved trip. The focused Omio limitation, return-search and affiliate tests passed: 21 tests, zero failures or skips. Hosted acceptance of the candidate, downstream return selection, provider inventory and affiliate credit remain unverified. No deployment occurred.
+
 The text guards are conservative reviewed exceptions, not a worldwide support matrix. Revisit when a synthetic actual-app click with accepted endpoint bindings demonstrates reliable carryover for the same input, or a documented provider contract supersedes it. Do not remove based on URL/unit tests alone.
 
 MANUAL HOSTED VERIFICATION REQUIRED: actual app-rendered href/CTA and live provider click, route/date/passenger confirmation, mobile/desktop description layout, and conversion attribution. Original issue remains open. No production change, provider contact or new integration is included.

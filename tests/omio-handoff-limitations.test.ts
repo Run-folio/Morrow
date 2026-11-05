@@ -114,3 +114,29 @@ test('targeted handoffs warn that Omio can show a different mode without claimin
   assert.equal(inner.searchParams.get('travelMode'),'FLIGHT');
   assert.equal(inner.searchParams.get('returnDate'),'2026-12-16');
 });
+
+for (const roundTrip of [false, true]) test(`${roundTrip ? 'return' : 'one-way'} two-traveller search exposes count carryover limitation without changing the trip`, () => {
+  const trip = cityReturnTrip();
+  trip.travellers = 2;
+  // A mixed-mode return must use an ordinary one-way flight search.
+  if (!roundTrip) trip.legs.at(-1)!.mode = 'train';
+  const before = structuredClone(trip);
+  for (const actionFor of [omioBookingActionForLeg, transportAffiliateActionForLeg]) {
+    const action = actionFor(trip, trip.legs[0], now)!;
+    assert.ok(action);
+    assert.equal(Boolean(action.returnSearch), roundTrip);
+    const inner = new URL(new URL(action.href).searchParams.get('u')!);
+    assert.equal(inner.searchParams.get('travelMode'), 'FLIGHT');
+    assert.equal(inner.searchParams.get('departureDate'), '2026-12-11');
+    assert.equal(inner.searchParams.get('returnDate'), roundTrip ? '2026-12-16' : null);
+    assert.deepEqual([...inner.searchParams.keys()].sort(), [
+      'arrivalPosTerm', 'currency', 'departureDate', 'departurePosTerm', 'locale',
+      ...(roundTrip ? ['returnDate'] : []), 'travelMode',
+    ].sort(), 'no undocumented passenger parameter should be guessed');
+    assert.match(affiliateHandoffDetail(action)!, /traveller count is not carried over/);
+    assert.match(affiliateHandoffDetail(action)!, /check the mode and traveller count before booking/i);
+    assert.match(affiliateHandoffDetail(action, 'es')!, /pero no el número de viajeros/);
+    assert.match(affiliateHandoffDetail(action, 'es')!, /número de viajeros antes de reservar/);
+  }
+  assert.deepEqual(trip, before, 'provider limitations must not reset the saved party size');
+});
