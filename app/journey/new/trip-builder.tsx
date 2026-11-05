@@ -5389,12 +5389,6 @@ function TripBuilderDocument() {
           is_authenticated: snapshot.browserOwnerId !== null,
         });
       };
-      // A recovered owned save may start without a canonical queue base. Finish
-      // its exact account acknowledgement before Build authors a newer status.
-      if (editor.getSnapshot().trip.ownerId && editor.getSnapshot().recovery) {
-        if (!await editor.flush()) { reportSaveFailure(); return null; }
-        if (!dependency.isCurrent() || !mounted()) return null;
-      }
       // A new, deliberate Build retries stopped route work. Deferral itself
       // never loops or weakens the storage admission/pending-work guards.
       if (editor.getSnapshot().routeWorkBlocked) void editor.resumeNecessaryWork();
@@ -5402,6 +5396,12 @@ function TripBuilderDocument() {
       if (!assessed || !dependency.isCurrent() || !mounted()
         || !sameRecoveryDocument(editor.getSnapshot().trip, assessed.trip)) return null;
       if (!assessed.assessment.canBuildTrip) { surfaceBuildConflict(assessed.assessment); recordGeneratedTrip(assessed.trip, assessed.assessment); return null; }
+      // A recovered owned save may start without a canonical queue base. Finish
+      // its exact account acknowledgement before Build authors a newer status.
+      if (editor.getSnapshot().trip.ownerId && editor.getSnapshot().recovery) {
+        if (!await editor.flush()) { reportSaveFailure(); return null; }
+        if (!dependency.isCurrent() || !mounted()) return null;
+      }
       let completion = dependency;
       if(editor.getSnapshot().trip.status!=="planned") {
         const saving = dispatchAcceptedBuilderEdit({kind:"build-status"});
