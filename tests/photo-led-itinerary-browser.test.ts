@@ -2,22 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-import {upsertStayBooking} from '../lib/easyt/accommodation.ts';
 import {routeDestinationPhoto,routePhotoForSource} from '../lib/easyt/route-images.ts';
 import type { Route } from 'playwright';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
-import { japanTrip } from './fixtures/transport-choice.ts';
-import { insertItineraryActivity } from '../lib/easyt/itinerary-mutations.ts';
+import {photoLedItineraryTrip as fixture} from './fixtures/photo-led-itinerary.ts';
 
-function fixture() {
-  let trip = japanTrip();
-  trip.planItems = Array.from({length: 7}, (_, i) => ({...trip.planItems[0], id: `day-${i+1}`, dayNumber: i+1, date: `2027-04-0${i+1}`, stopId: i < 3 ? 'tokyo' : 'kyoto', type: i === 3 ? 'transport' as const : 'open' as const, title: i === 3 ? 'Tokyo to Kyoto' : i < 3 ? 'Tokyo' : 'Kyoto', notes: []}));
-  for (let n=1;n<=7;n++) for (const [part,title] of [['morning','Neighbourhood walk'],['afternoon','Garden visit'],['evening','Local dinner']] as const) {
-    trip = insertItineraryActivity(trip,n,trip.planItems[n-1].notes.length,title,part).trip;
-  }
-  return upsertStayBooking(trip, 'kyoto', {title:'Kyoto test stay'});
-}
+
 
 test('photo-led calendar and mobile agenda retain navigation, details and resilient reviewed photos', {skip: !builderBrowserTestsEnabled,timeout: 90_000}, async () => {
   const trip = fixture();
@@ -26,6 +17,8 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.route('**/journey/immersive/*.webp', (route: Route) => route.fulfill({contentType:'image/webp',body:readFileSync(`public${new URL(route.request().url()).pathname}`)}));
     await view.page.reload();
     await view.page.setViewportSize({width:1440,height:1100});
+    const initialTitle=await view.page.locator('#trip-shell-title').innerText();
+    const initialDates=await view.page.locator('dl').first().innerText();
     const heroImage = view.page.locator('[data-itinerary-photo="day"] img');
     await heroImage.waitFor();
     await view.page.waitForFunction(() => [...document.images].some(img => img.closest('[data-itinerary-photo="day"]') && img.complete && img.naturalWidth > 0));
@@ -72,6 +65,16 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
         }), true, 'Keyboard and reading order must follow the visual planner → stay order');
         assert.ok((await panel.getByRole('button',{name:'Add plan',exact:true}).boundingBox())!.y > (await stay.boundingBox())!.y);
 
+      }
+      assert.equal(await view.page.locator('#trip-shell-title').innerText(),initialTitle);
+      assert.equal(await view.page.locator('dl').first().innerText(),initialDates);
+      if(width<=540){
+        const mapHref=await panel.getByRole('link',{name:'Explore map',exact:true}).getAttribute('href');
+        const mapUrl=new URL(mapHref!,view.page.url());
+        const returnUrl=new URL(mapUrl.searchParams.get('returnTo')!,view.page.url());
+        assert.equal(returnUrl.pathname,`/journey/${trip.id}/itinerary`);
+        assert.equal(returnUrl.searchParams.get('day'),'4');
+        assert.equal(returnUrl.searchParams.get('itineraryView'),'days');
       }
       assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true,`${width}px overflow`);
       await view.page.screenshot({path:`output/playwright/photo-agenda-${width}.png`,fullPage:true});
@@ -202,5 +205,39 @@ test('photo-led desktop and mobile views meet WCAG A/AA checks and contain enlar
     await view.page.setViewportSize({width:320,height:844});
     await view.page.getByRole('heading',{name:'Tokyo → Kyoto',exact:true}).evaluate((element: HTMLElement)=>{element.textContent='Tokyo → SaintRemyDeProvenceAndSurroundingNeighbourhoodsWithoutBreaks';element.style.fontSize='48px';});
     assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  } finally {await view.close();}
+});
+
+test('mobile photo calendar keeps one modal and retains drafts across detail and Add transitions', {skip: !builderBrowserTestsEnabled,timeout:60_000}, async () => {
+  const trip=fixture();
+  const view=await renderBuilder({path:`/journey/${trip.id}/itinerary?day=4`,initialTrip:trip,styled:true});
+  try {
+    await view.page.setViewportSize({width:390,height:844});
+    await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
+    await view.page.getByRole('button',{name:/^Day 4, Kyoto,/}).click();
+    assert.equal(await view.page.locator('dialog:modal').count(),1);
+    const note=view.page.getByRole('textbox',{name:/add day note/i});
+    await note.fill('Unsubmitted day note remains available');
+    const activity=view.page.locator('dialog:modal [data-itinerary-activity-id]').first().getByRole('button').first();
+    await activity.click();
+    await view.page.getByRole('button',{name:'Back to day',exact:true}).waitFor();
+    assert.equal(await view.page.locator('dialog:modal').count(),1);
+    await view.page.getByRole('button',{name:'Back to day',exact:true}).click();
+    assert.equal(await note.inputValue(),'Unsubmitted day note remains available');
+    await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
+    const chooser=view.page.getByRole('dialog',{name:'Add a plan',exact:true});
+    await chooser.waitFor();
+    assert.equal(await view.page.locator('dialog:modal').count(),1);
+    await chooser.getByRole('button',{name:'New plan',exact:true}).click();
+    const add=view.page.getByRole('dialog',{name:'Add to Morning on Day 4',exact:true});
+    await add.getByRole('textbox',{name:'Add your own',exact:true}).fill('Unsaved photo calendar draft');
+    await view.page.setViewportSize({width:1440,height:1000});
+    await view.page.setViewportSize({width:390,height:844});
+    assert.equal(await add.getByRole('textbox',{name:'Add your own',exact:true}).inputValue(),'Unsaved photo calendar draft');
+    assert.equal(await view.page.locator('dialog:modal').count(),1);
+    await add.getByRole('button',{name:'Close Add panel',exact:true}).click();
+    await view.page.getByRole('button',{name:'Close day details',exact:true}).click();
+    assert.equal(await view.page.locator('dialog:modal').count(),0);
+    assert.deepEqual(view.errors,[]);
   } finally {await view.close();}
 });

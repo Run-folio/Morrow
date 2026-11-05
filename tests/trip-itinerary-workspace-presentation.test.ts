@@ -44,6 +44,7 @@ test("Itinerary map handoffs preserve the selected day as the return destination
     const mapHref = new URL(mapWorkspaceHref(workingTrip.id, null, "see", active.dayNumber, null, null, href), returned.origin);
     assert.equal(mapHref.searchParams.get("returnTo"), href, "Map must retain the exact day/view/hash return target");
   }
+
   assert.match(itinerary, /mapResultHandoffForExploreResult\(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber\),\s*mapReturnHref/);
 });
 
@@ -170,6 +171,10 @@ test("Itinerary uses embedded selection while full Map uses the shared workspace
   sourceNode(mapTree, (node): node is ts.CallExpression => ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
     && node.expression.name.text === "dispose" && node.expression.expression.getText() === "renderer"
     && ts.isVariableDeclaration(node.parent), "reported renderer disposal outcome");
+  const rendererLifecycle = readFileSync(new URL("../lib/easyt/map-renderer-lifecycle.ts", import.meta.url), "utf8");
+  assert.match(map, /ownerActive = false;[\s\S]*basemapLifecycle\.dispose\(\);[\s\S]*renderer\.dispose\(\)/);
+  assert.match(rendererLifecycle, /if \(disposed\) return \{ kind: 'removed' \};[\s\S]*map\.remove\(\)/);
+
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
   assert.match(map, /if \(!domainSelection\) \{\s*pinMarkersRef\.current\.forEach\(\(marker\) => marker\.remove\(\)\)/);
@@ -268,6 +273,7 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
   }
   assert.equal(evaluateSource(hidden, {workspaceView: "calendar", calendarCompact: true, calendarRenderedDetail: false,
     selectedDetail: null, selectedTransportAgenda: null, selectedBooking: null}), false, "pending/unresolved detail must not hide the available Calendar rail");
+
   assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
@@ -328,6 +334,7 @@ test("Calendar preserves trip title, date and timeline while naming selected-day
     assert.equal(evaluateSource(optionDate, {day: active, language, displayDayDate}), expected);
     assert.equal(evaluateSource(sourceAttribute(desktopSelect, "value"), {active}), active.id);
   }
+
   assert.match(itinerary, /<JourneyRouteStopTrack[\s\S]*stops=\{destinations\}/);
   assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
   assert.match(itinerary, /data-calendar-sheet-heading tabIndex=\{-1\}/);

@@ -25,7 +25,9 @@ for (const width of [1440, 390]) test(`future return flight in an in-progress tr
     const href = await link.getAttribute('href');
     const search = new URL(new URL(href!).searchParams.get('u')!);
     assert.equal(search.searchParams.get('departurePosTerm'), 'Madrid, Spain');
-    assert.equal(search.searchParams.get('arrivalPosTerm'), 'London, United Kingdom');
+    assert.equal(search.searchParams.get('arrivalPosTerm'), 'London Heathrow Airport, United Kingdom');
+    await card.locator('[data-flight-airport-assumption]').getByText('Assumed airport: London LHR', {exact:true}).waitFor();
+    assert.equal(await card.getByRole('heading', {name:'Madrid to London',exact:true}).count(),1, 'The canonical city journey is not rewritten to an assumed airport');
     assert.equal(search.searchParams.get('departureDate'), '2026-10-21');
     assert.equal(search.searchParams.get('travelMode'), 'FLIGHT');
     assert.equal(await link.getAttribute('target'), '_blank');

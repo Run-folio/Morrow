@@ -197,7 +197,7 @@ test("falls back to canonical stop arrival dates and never invents a clock time"
   assert.equal("time" in (item ?? {}), false);
 });
 
-test("uses the existing Omio eligibility resolver and suppresses handoff for booked or endpoint legs", () => {
+test("uses the existing Omio eligibility resolver for real origins while suppressing booked and unknown-mode journeys", () => {
   const source = trip();
   const before = JSON.stringify(source);
   const intercity = source.legs[1]!;
@@ -206,7 +206,15 @@ test("uses the existing Omio eligibility resolver and suppresses handoff for boo
 
   source.brief.bookings = [{ id: `transport-${intercity.id}`, type: "transport", title: "Paris to Rome", date: "2026-10-04", confirmation: null, url: null }];
   assert.equal(omioBookingActionForLeg(source, intercity, new Date("2026-09-10T12:00:00Z")), null);
-  assert.equal(omioBookingActionForLeg(source, source.legs[0]!, new Date("2026-09-10T12:00:00Z")), null);
+  const withBooking = JSON.stringify(source);
+  const arrival = omioBookingActionForLeg(source, source.legs[0]!, new Date("2026-09-10T12:00:00Z"));
+  assert.equal(arrival?.provider, "omio");
+  const route = new URL(new URL(arrival!.href).searchParams.get("u")!);
+  assert.equal(route.searchParams.get("departurePosTerm"), "London, United Kingdom");
+  assert.equal(route.searchParams.get("arrivalPosTerm"), "Paris, France");
+  assert.equal(route.searchParams.get("departureDate"), source.startDate);
+  assert.equal(route.searchParams.get("travelMode"), "TRAIN");
+  assert.equal(JSON.stringify(source), withBooking, "Origin handoff cannot alter either the trip or its existing booking");
   assert.equal(omioBookingActionForLeg(source, source.legs[3]!, new Date("2026-09-10T12:00:00Z")), null);
 });
 

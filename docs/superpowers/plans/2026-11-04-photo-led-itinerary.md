@@ -47,3 +47,12 @@
 - Ruling: keep the existing design-system fonts, colors, navigation and action styles rather than copying concept chrome; the user approved the rendered adaptation, and requires existing navigation unchanged.
 - Ruling: reuse a relevant reviewed destination cover when distinct assets are unavailable; no per-day sourcing or provider-photo reuse introduced.
 - No merge, push, deployment, production SQL/OAuth save or hosted acceptance performed. Branch and isolated checkout preserved for parent integration.
+
+
+## Integration qualification follow-up
+
+- All nine stale presentation contracts reconciled with exact current owner boundaries; no implementation behavior relaxed. Independent reviewer confirmed no lost assertions.
+- Added immutable canonical endpoint/date/mode checks and visible airport-assumption disclosure to reconcile two extra baseline expectations exposed by expanded behavior suites.
+- 242 domain/presentation tests and 16 mounted browser checks pass. Added an opt-in loopback-only production smoke for built photo calendar, actual navigation current state, title-line rename and durable reload.
+- The unconfigured local build's offline-marker failure was traced to empty build provenance. The candidate build must use its exact COMMIT_REF; the offline guard remains enforced.
+- No shared staging mutation, merge, push or deployment. Candidate remains a separate local branch for the coordinating release task.

@@ -14,7 +14,8 @@ test("the center timeline exposes direct add, edit, remove, reorder, and local s
   assert.match(workspace, /moveItineraryActivity/);
   assert.match(workspace, /MorroviaConfirmationDialog/);
   assert.match(workspace, /data-selected-item=\{selectedItemId \?\? undefined\}/);
-  assert.match(workspace, /onDragStart=\{onDragStart\}/);
+  assert.match(workspace, /<ItineraryDraggableCard draggable=\{editable && Boolean\(onDragStart\)\} onDragStart=\{onDragStart\}/);
+
 });
 
 test("semantic dayparts are primary while the unnumbered detailed editor stays available", () => {
@@ -63,7 +64,15 @@ test("Itinerary map pins keep canonical item selection without capture workaroun
   assert.match(workspace, /selectedPlannerPinId=\{embeddedMapContext\.selectedPlannerPinId\}/);
   assert.match(workspace, /interactivePlannerPinIds=\{interactiveMapPinIds\}/);
   assert.match(workspace, /if \(activity\) setSelectedItemId\(activity\.id\)/);
-  const mapStart = workspace.indexOf("<JourneyPlannerMap");
-  const embeddedMap = workspace.slice(mapStart, workspace.indexOf("/>", mapStart) + 2);
-  assert.doesNotMatch(embeddedMap, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);
+  const preview = workspace.slice(workspace.indexOf("<MorroviaMapPreview title={copy.dayMap}"), workspace.indexOf("</MorroviaMapPreview>"));
+  assert.ok(preview.includes("<DeferredJourneyPlannerMap"));
+  assert.doesNotMatch(preview, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);
+  assert.doesNotMatch(workspace, /selectPreviewPin|onMouseDownCapture/);
+  const captureStart = workspace.indexOf('onPointerDownCapture=');
+  const captureEnd = workspace.indexOf('      }}>', captureStart);
+  assert.ok(captureStart >= 0 && captureEnd > captureStart);
+  const focusCapture = workspace.slice(captureStart, captureEnd);
+  assert.match(focusCapture, /detailPointerScrollRef\.current =/);
+  assert.doesNotMatch(focusCapture, /preventDefault|stopPropagation|setSelectedItemId/);
+
 });

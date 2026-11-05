@@ -5,6 +5,7 @@ import test from "node:test";
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const transport = readFileSync(new URL("../components/easyt/trip-transport-workspace.tsx", import.meta.url), "utf8");
 const transportStyles = readFileSync(new URL("../components/easyt/trip-transport-workspace.module.css", import.meta.url), "utf8");
+const transportDate = readFileSync(new URL("../lib/easyt/itinerary-transport-date.ts", import.meta.url), "utf8");
 const projection = readFileSync(new URL("../lib/easyt/itinerary-transport-agenda.ts", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/trip-transport-workspace.stories.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
@@ -35,7 +36,8 @@ test("Transport derives its agenda and mutates only the shared canonical leg cho
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "from"\)/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "to"\)/);
   assert.match(projection, /transportBookingForLeg\(trip, leg, fromStop, toStop\)/);
-  assert.match(projection, /to\.kind === "end"/);
+  assert.match(projection, /itineraryDateForLeg\(trip, leg, to\)/);
+  assert.match(transportDate, /to\.kind === "end"[\s\S]*date: trip\.endDate, dayNumber: null/);
   assert.doesNotMatch(projection, /mutate|setTrip|fetch\(/);
   assert.match(transport, /useTripShellMutation/);
   assert.match(transport, /TripTransportChoiceControl/);
@@ -68,10 +70,10 @@ test("Transport presents a calm chronological journey list with one contextual a
 
 test("transport partners use the existing affiliate handoff and cannot mutate canonical state", () => {
   assert.match(transport, /function TransportAffiliateAction/);
-  assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
+  assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
   assert.match(transport, /placement: "itinerary_transfer"/);
-  assert.match(transport, /action=\{\{ \.\.\.action, cta: label \}\}/);
-  assert.match(transport, /cta: label \}\}[\s\S]*variant="primary"/);
+  assert.match(transport, /action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
+  assert.match(transport, /cta: action\.returnSearch \? action\.cta : label \}\}[\s\S]*variant="primary"/);
   assert.doesNotMatch(transport, /MorroviaPartnerPromotion|Contact support|Need help/);
   assert.match(transport, /<small>\{affiliateDisclosure\}<\/small>/);
   const action = transport.slice(transport.indexOf("function TransportAffiliateAction"));
@@ -125,7 +127,7 @@ test("Transport summary and cards use traveller-facing states, mode-aware copy, 
   assert.doesNotMatch(transport, /Planning estimate; check live schedules before booking\./);
   assert.match(transport, /Compare car hire/);
   assert.match(transport, /transportAffiliateActionForLeg\(trip, leg/);
-  assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
+  assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: action\.returnSearch \? action\.cta : label \}\}/);
   assert.match(transport, /affiliateDisclosure/);
   assert.equal((transport.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
 });

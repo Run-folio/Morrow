@@ -104,7 +104,7 @@ function harness(queued = false) {
     open: () => find(render(), Launcher).props.onRenameTrip(),
     openInline: () => find(render(), Launcher).props.onRenameTrip(),
     inlineForm: () => { const tree=render(); return field(tree) ? find(tree,'form') : null; },
-    renameDialog: () => find(render(), Form),
+    renameDialog: () => find(render(), Form) ?? null,
     titleInputCount: () => { let count=0; const walk=(node:any):void=>{if(Array.isArray(node)){node.forEach(walk);return;}if(!node)return;if(node.type==='input')count++;walk(node.props?.children);};walk(render());return count; },
     submitInline: () => find(render(),'form').props.onSubmit({ preventDefault() {} }),
     cancelInline: () => find(render(),'form').props.onKeyDown({ key:'Escape',preventDefault(){},stopPropagation(){} }),

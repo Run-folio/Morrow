@@ -1,3 +1,20 @@
+# Integration qualification — 2026-11-05
+
+The nine previously recorded source-assertion failures have been investigated and reconciled against current production behavior. No application, navigation, endpoint, persistence or recovery behavior was changed for this reconciliation. Exact contracts are retained: the date helper owns end dates; return-search CTAs retain their resolved label; protected/device-ineligible rows cannot drag; pointer capture only records scroll/focus outside the map; return links retain day/view/hash; the renderer owns idempotent cleanup; mobile details hide their underlying context; title/date metadata remains owned by the shared shell.
+
+Independent review found no weakened assertions. Expanded behavioral checks exposed two additional old test expectations: real origin journeys are eligible for guarded affiliate handoffs, and unconfirmed one-way flight searches may derive a disclosed airport preference. Tests now require exact journey/date/mode, visible `Assumed airport: London LHR`, unchanged canonical city endpoints and no persistence mutation. Booked, missing-date, ended and unsupported journeys remain excluded.
+
+- Domain/presentation/renderer/transport/title verification: **242 passed, 0 failed**.
+- Mounted browser verification: **16 passed, 0 failed**, including Chromium/WebKit return searches, exact bottom-navigation comparison, saved edits, map return links, calendar single-modal/draft transitions and accessibility.
+- Strict UI audit and runtime-health tests pass. Final typecheck and exact-commit production artifact results are recorded in `output/qa/photo-candidate-types.log`, `output/qa/photo-candidate-production-build.log` and the qualification handoff.
+- A bare local production build compiled and prerendered but failed its final offline marker guard because no COMMIT_REF was provided. Qualification supplies the exact candidate SHA, as the deployment pipeline does; no guard is bypassed or removed.
+- The older `calendar-single-surface-browser.test.mjs` targets custom `morrovia-mobile-workspace` stories absent from the canonical Storybook index. That attempt was stopped after its fixture-navigation timeout. Equivalent one-modal, draft, detail and viewport transitions are covered directly by the new mounted production-component test, without disabling the old test.
+- Production qualification runs only on loopback with disposable synthetic data. Shared staging, production, the showcase Incognito session and external accounts remain untouched.
+
+The earlier QA evidence and history below are preserved as the investigation record; its nine-failure status is superseded by this qualification.
+
+---
+
 # Photo-led itinerary design QA
 
 final result: passed

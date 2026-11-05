@@ -21,7 +21,10 @@ test('an in-progress trip offers its future Madrid to London return flight witho
     const search = searchFor(action.href);
     assert.equal(action.provider, 'omio');
     assert.equal(search.searchParams.get('departurePosTerm'), 'Madrid, Spain');
-    assert.equal(search.searchParams.get('arrivalPosTerm'), 'London, United Kingdom');
+    assert.equal(search.searchParams.get('arrivalPosTerm'), 'London Heathrow Airport, United Kingdom');
+    assert.ok('detail' in action && typeof action.detail === 'string', 'Derived airport searches must disclose their planning assumption');
+    assert.match(action.detail, /Assumed airport: London LHR/);
+    assert.equal(item.to.name, 'London');
     assert.equal(search.searchParams.get('departureDate'), '2026-10-21');
     assert.equal(search.searchParams.get('travelMode'), 'FLIGHT');
   }
