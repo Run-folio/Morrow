@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, {beforeEach} from 'node:test';
 import {capturedPhilippinesTrip} from './fixtures/philippines-captured.ts';
 import {assessCanonicalTransferJourneys} from '../lib/easyt/multimodal-transfer-resolution.ts';
+// These positive fixtures describe a historical, explicitly bounded pilot.
+// Production still uses real time and rejects new offers after28 October2026.
+beforeEach(t=>{
+ assert.ok('mock' in t, 'historical pilot fixtures require an isolated test clock');
+ t.mock.timers.enable({apis:['Date'],now:Date.parse('2026-10-27T12:00:00Z')});
+});
 test('captured import preserves six occurrences; reviewed Cebu to Manila yields an estimated total, not an invented flight duration',async()=>{
  const trip=capturedPhilippinesTrip(),before=JSON.stringify(trip);let calls=0;
  const result=await assessCanonicalTransferJourneys(trip.legs,{provider:{provider:'openrouteservice',async route(){calls++;throw Error('External routing not permitted in evidence pilot');}}});
@@ -28,6 +34,8 @@ test('four incomplete captured corridors offer sourced guidance without selectab
 });
 test('changed or foreign geography, unsupported reverse and expired review do not acquire a corridor',()=>{
  const trip=capturedPhilippinesTrip(),leg=trip.legs.at(-1)!;
+ assert.equal(reviewedPilotRecords(leg.fromEndpoint!,leg.toEndpoint!,'2026-10-26').length,0);
+ assert.equal(reviewedPilotRecords(leg.fromEndpoint!,leg.toEndpoint!,'2026-10-28').length,1);
  assert.equal(reviewedPilotRecords(leg.fromEndpoint!,leg.toEndpoint!,'2026-10-29').length,0);
  assert.equal(reviewedPilotRecords(leg.toEndpoint!,leg.fromEndpoint!).length,0);
  for(const mutation of [(e:any)=>e.coordinates[0]+=0.00001,(e:any)=>e.country='Turkey',(e:any)=>e.providerId+='x',(e:any)=>e.canonicalPlaceId='cebu-island',(e:any)=>e.geographicBinding.placeType='island',(e:any)=>e.geographicBinding=null]){
@@ -66,7 +74,6 @@ test('European rail and North American ferry evidence use the same strict repres
  }
 });
 test('expired pilot cannot be newly offered or adopted; a previously selected choice survives unchanged',async(t)=>{
- t.mock.timers.enable({apis:['Date'],now:Date.parse('2026-10-27T12:00:00Z')});
  const trip=capturedPhilippinesTrip(),leg=trip.legs.at(-1)!;const raw=await compareCanonicalTransferJourney(leg);const c=validateTransportComparison(trip,leg.id,raw)!;const candidate=c.candidates.find(c=>c.evidence==='reviewed_air_journey')!;
  const saved=adoptTransportComparison(trip,c,candidate.id);assert.equal(effectiveTripLeg(saved,saved.legs.at(-1)!).mode,'flight');const savedBefore=JSON.stringify(saved);
  const unselected=structuredClone(saved);delete unselected.brief.decisionSelections;

@@ -6,6 +6,7 @@ import { buildCanonicalTripLegs } from "../lib/easyt/trip-legs.ts";
 import { resolveCanonicalTransferJourney } from "../lib/easyt/multimodal-transfer-resolution.ts";
 import { reviewTrip } from "../lib/easyt/review.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
+import { selectedTransferPlace } from "./fixtures/accepted-transfer-place.ts";
 
 const fromEndpoint = {
   kind: "stop" as const,
@@ -207,14 +208,20 @@ test("legacy strings are honored only when they identify a current candidate wit
   assert.equal(module.effectiveTripLeg(fabricatedMode, fabricatedMode.legs[0]).mode, "train");
 });
 
-test("clearing an explicit choice immediately restores the untouched Morrovia recommendation", async () => {
+test("a supported alternative survives reload and clearing restores the untouched recommendation", async () => {
   const module = await import("../lib/easyt/transport-mode-choice.ts");
   const source = trip();
   const road = module.supportedTransportChoicesForLeg(source, source.legs[0]).find((item) => item.mode === "road");
   assert.ok(road);
   const selected = module.selectTripLegTransportChoice(source, source.legs[0].id, road.identity);
-  const cleared = module.clearTripLegTransportChoice(selected, source.legs[0].id);
+  const reloaded = JSON.parse(JSON.stringify(selected)) as EasyTTrip;
+  assert.equal(module.effectiveTripLeg(reloaded, reloaded.legs[0]).mode, "road");
+  assert.equal(module.effectiveTripLeg(reloaded, reloaded.legs[0]).durationMinutes, 390);
+  assert.deepEqual(reloaded.legs, source.legs, "explicit selection must not rewrite the recommendation");
+  const cleared = module.clearTripLegTransportChoice(reloaded, source.legs[0].id);
   assert.equal(module.effectiveTripLeg(cleared, cleared.legs[0]).mode, "train");
+  assert.deepEqual(cleared.legs, source.legs);
+  assert.equal(module.effectiveTripLeg(reloaded, reloaded.legs[0]).mode, "road", "clearing must not mutate the saved input");
   assert.equal(cleared.brief.decisionSelections?.transportByLeg[source.legs[0].id], undefined);
 });
 
@@ -242,39 +249,47 @@ test("Route Check evaluates the derived effective choice", async () => {
   assert.equal(reviewTrip(selected).some((item) => item.rule === "driving-load"), true);
 });
 
-test("real Fenghuang to Hong Kong evidence retains a selectable alternative through reload and reset", async () => {
+test("accepted Fenghuang and Hong Kong records expose qualified rail planning without an unverified air gateway", async () => {
   const module = await import("../lib/easyt/transport-mode-choice.ts");
-  const fenghuang = { id: "fenghuang-occurrence", order: 0, name: "Fenghuang", country: "China", canonicalPlaceId: "fenghuang", longitude: 109.6017, latitude: 27.9483, arrivalDate: "2027-05-01", departureDate: "2027-05-04", nights: 3 };
-  const hongKong = { id: "hong-kong-occurrence", order: 1, name: "Hong Kong", country: "China", canonicalPlaceId: "hong-kong", longitude: 114.1694, latitude: 22.3193, arrivalDate: "2027-05-04", departureDate: "2027-05-08", nights: 4 };
+  const from = selectedTransferPlace("Fenghuang", "China", "reference:geonames:7304020", "endpoint");
+  const to = selectedTransferPlace("Hong Kong", "Hong Kong", "reference:geonames:1819729", "stop");
+  const fenghuang = { ...from, id: "fenghuang-occurrence", order: 0, longitude: from.coordinates![0], latitude: from.coordinates![1], arrivalDate: "2027-05-01", departureDate: "2027-05-04", nights: 3 };
+  const hongKong = { ...to, id: "hong-kong-occurrence", order: 1, country: to.country!, longitude: to.coordinates![0], latitude: to.coordinates![1], arrivalDate: "2027-05-04", departureDate: "2027-05-08", nights: 4 };
   const [baseline] = buildCanonicalTripLegs({
-    tripId: "real-runtime-choice",
-    origin: { name: fenghuang.name, country: fenghuang.country, canonicalPlaceId: fenghuang.canonicalPlaceId, coordinates: [fenghuang.longitude, fenghuang.latitude] },
+    tripId: "qualified-runtime-choice",
+    origin: { ...from, coordinates: from.coordinates! },
     stops: [hongKong],
   });
+  const baselineBefore = structuredClone(baseline);
   const resolved = await resolveCanonicalTransferJourney(baseline);
   const source: EasyTTrip = {
-    ...trip(),
-    id: "real-runtime-choice",
-    title: "Fenghuang and Hong Kong",
-    startDate: "2027-05-01",
-    endDate: "2027-05-08",
-    brief: { ...trip().brief, origin: fenghuang.name, originCountry: fenghuang.country, originCanonicalPlaceId: fenghuang.canonicalPlaceId, originCoordinates: [fenghuang.longitude, fenghuang.latitude], decisionSelections: { transportByLeg: {} } },
-    stops: [fenghuang, hongKong],
-    legs: [resolved.leg],
-    planItems: [],
+    ...trip(), id: "qualified-runtime-choice", title: "Fenghuang and Hong Kong",
+    startDate: "2027-05-01", endDate: "2027-05-08",
+    brief: { ...trip().brief, origin: from.name, originCountry: from.country, originCanonicalPlaceId: from.canonicalPlaceId, originProviderId: from.providerId, originCoordinates: from.coordinates, decisionSelections: { transportByLeg: {} } },
+    stops: [{ ...fenghuang, country: from.country! }, hongKong], legs: [resolved.leg], planItems: [],
   };
-
-  const choices = module.supportedTransportChoicesForLeg(source, source.legs[0]);
-  assert.deepEqual(choices.map((choice) => [choice.candidateId, choice.mode, choice.evidence]), [
+  const sourceBefore = structuredClone(source);
+  assert.equal(resolved.outcome, "resolved");
+  assert.equal(resolved.leg.mode, "train");
+  assert.deepEqual(module.supportedTransportChoicesForLeg(source, resolved.leg).map(choice => [choice.candidateId, choice.mode, choice.evidence]), [
     ["rail:network:china-high-speed-intercity", "train", "intercity_rail_network"],
-    ["mixed:air-gateway", "mixed", "air_gateway_composition"],
   ]);
-  const alternative = choices.find((choice) => choice.candidateId === "mixed:air-gateway");
-  assert.ok(alternative);
-  const selected = module.selectTripLegTransportChoice(source, source.legs[0].id, alternative.identity);
-  const reloaded = JSON.parse(JSON.stringify(selected)) as EasyTTrip;
-  assert.equal(module.effectiveTripLeg(reloaded, reloaded.legs[0]).mode, "mixed");
-  assert.equal(reloaded.legs[0].mode, "train", "Morrovia's recommendation remains intact");
-  const cleared = module.clearTripLegTransportChoice(reloaded, reloaded.legs[0].id);
-  assert.equal(module.effectiveTripLeg(cleared, cleared.legs[0]).mode, "train");
+  assert.deepEqual(baseline, baselineBefore);
+  assert.deepEqual(source, sourceBefore);
+
+  // Coordinates and names alone cannot acquire planning choices. Exercise both
+  // endpoint guards independently, using the same accepted physical records.
+  for (const side of ["fromEndpoint", "toEndpoint"] as const) {
+    const unverified = structuredClone(baseline);
+    delete unverified[side]!.geographicBinding;
+    delete unverified[side]!.providerId;
+    delete unverified[side]!.canonicalPlaceId;
+    const before = structuredClone(unverified);
+    const rejected = await resolveCanonicalTransferJourney(unverified);
+    assert.equal(rejected.outcome, "unresolved");
+    assert.equal(rejected.leg.mode, "unknown");
+    assert.deepEqual(rejected.diagnostic.candidates, []);
+    assert.deepEqual(module.supportedTransportChoicesForLeg({ ...source, legs: [rejected.leg] }, rejected.leg), []);
+    assert.deepEqual(unverified, before);
+  }
 });

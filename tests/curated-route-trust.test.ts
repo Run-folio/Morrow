@@ -6,6 +6,7 @@ import { tripFromBuilder } from "../lib/easyt/trip.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
 import { reconcileCuratedRouteKnowledge } from "../lib/easyt/curated-route-knowledge.ts";
+import { geographicallyReady } from "../lib/easyt/geographic-binding.ts";
 
 const betaRoutes = ["japan-slow", "andean-highlands", "portugal-atlantic"] as const;
 
@@ -45,13 +46,12 @@ for (const routeKey of betaRoutes) {
     assert.equal(trip.brief.originCanonicalPlaceId, trip.stops[0]?.canonicalPlaceId);
     const expectedPairs = trip.stops.slice(1).map((stop, index) => [trip.stops[index]!.id, stop.id]);
     assert.deepEqual(trip.legs.map((leg) => [leg.fromStopId, leg.toStopId]), expectedPairs);
-    const curatedTransferLegs = trip.legs;
-    assert.equal(curatedTransferLegs.length, trip.stops.length - 1);
-    assert.equal(curatedTransferLegs.every((leg) => leg.routeMetadata.source === "curated-route"), true);
-    assert.equal(curatedTransferLegs.every((leg) => {
-      const transfer = leg.routeMetadata.curatedRouteTransfer as { sourceIds?: string[] } | undefined;
-      return Boolean(transfer?.sourceIds?.length);
-    }), true);
+    const knowledge = trip.brief.curatedRoute!;
+    assert.equal(knowledge.connections.length, trip.stops.length - 1);
+    assert.deepEqual(knowledge.connections.map(connection => [connection.fromStopId, connection.toStopId]), expectedPairs);
+    assert.equal(knowledge.connections.every(connection => connection.sourceIds.length > 0), true,
+      "the reviewed editorial evidence remains in the snapshot even when geography prevents an operational leg");
+    assert.equal(assertOperationalTransfers(trip), routeKey === "japan-slow" ? 0 : 2);
     const reloaded = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-a", trip)));
     assert.equal(reloaded.brief.curatedRoute.coverage.state, "fully-supported");
     assert.equal(reloaded.brief.originCanonicalPlaceId, trip.brief.originCanonicalPlaceId);
@@ -60,11 +60,34 @@ for (const routeKey of betaRoutes) {
     assert.deepEqual(stopFacts(reloaded.stops), stopFacts(trip.stops));
     const reloadedPairs = reloaded.stops.slice(1).map((stop: { id: string }, index: number) => [reloaded.stops[index].id, stop.id]);
     assert.deepEqual(reloaded.legs.map((leg: { fromStopId: string; toStopId: string }) => [leg.fromStopId, leg.toStopId]), reloadedPairs);
-    assert.equal(reloaded.legs.every((leg: { routeMetadata: { source?: string; curatedRouteTransfer?: { sourceIds?: string[] } } }) => (
-      leg.routeMetadata.source === "curated-route"
-      && Boolean(leg.routeMetadata.curatedRouteTransfer?.sourceIds?.length)
-    )), true);
+    assert.equal(assertOperationalTransfers(reloaded), routeKey === "japan-slow" ? 0 : 2);
+    const transferFacts = (connections: typeof knowledge.connections) => connections.map(({fromStopId: _from, toStopId: _to, ...facts}) => facts);
+    assert.deepEqual(transferFacts(reloaded.brief.curatedRoute.connections), transferFacts(knowledge.connections));
+    assert.deepEqual(reloaded.brief.curatedRoute.connections.map((connection: typeof knowledge.connections[number]) => [connection.fromStopId, connection.toStopId]), reloadedPairs);
   });
+}
+
+function assertOperationalTransfers(trip: ReturnType<typeof buildRouteTrip>) {
+  let unqualified = 0;
+  for (const leg of trip.legs) {
+    const ready = (endpoint: NonNullable<typeof leg.fromEndpoint>) => geographicallyReady(
+      {...endpoint, coordinates: endpoint.coordinates ?? undefined}, endpoint.kind === "stop" ? "stop" : "endpoint");
+    assert.ok(leg.fromEndpoint && leg.toEndpoint);
+    if (ready(leg.fromEndpoint) && ready(leg.toEndpoint)) {
+      assert.equal(leg.routeMetadata.source, "curated-route");
+      assert.ok((leg.routeMetadata.curatedRouteTransfer as {sourceIds?: string[]})?.sourceIds?.length);
+    } else {
+      unqualified += 1;
+      assert.equal(leg.routeMetadata.source, "unverified-geography");
+      assert.equal(leg.mode, "unknown");
+      assert.equal(leg.durationMinutes, null);
+      assert.equal(leg.doorToDoorMinutes, null);
+      assert.equal(leg.routeMetadata.curatedRouteTransfer, undefined);
+      assert.equal(leg.provider, "Confirm the affected location to assess this connection.");
+      assert.ok(leg.warnings?.some(warning => warning.includes("validated coordinates")));
+    }
+  }
+  return unqualified;
 }
 
 test("a flexible-gateway curated-route reorder preserves matching base facts, downgrades coverage, and does not invent transfers", () => {

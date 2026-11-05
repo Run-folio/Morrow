@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from "typescript";
 
 import { normalizeRouteMapFailure } from "../lib/easyt/route-map-runtime.ts";
 
@@ -91,7 +92,21 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.match(detail, /className=\{styles\.journeyConnection\}/);
 
   assert.doesNotMatch(summary, /EasyTSelect|<option|Whole route/);
-  assert.equal((summary.match(/Whole journey/g) ?? []).length, 1);
+  const ast = ts.createSourceFile("route-map-summary.tsx", summary, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const wholeJourneyItems: ts.ObjectLiteralExpression[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isObjectLiteralExpression(node) && node.properties.some(property => ts.isPropertyAssignment(property)
+      && property.name.getText(ast) === "label" && ts.isStringLiteral(property.initializer)
+      && property.initializer.text === "Whole journey")) wholeJourneyItems.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  assert.equal(wholeJourneyItems.length, 1, "one route navigation item, regardless of its separate accessible label");
+  const accessibleLabel = wholeJourneyItems[0].properties.find(property => ts.isPropertyAssignment(property)
+    && property.name.getText(ast) === "accessibleLabel") as ts.PropertyAssignment;
+  assert.ok(accessibleLabel && ts.isTemplateExpression(accessibleLabel.initializer));
+  assert.equal(accessibleLabel.initializer.head.text, "Whole journey, ");
+  assert.equal(accessibleLabel.initializer.templateSpans[0].expression.getText(ast), "stops.length");
   assert.match(summary, /className=\{styles\.journeyNavigator\}/);
   assert.match(summary, /aria-current=\{active \? "location" : undefined\}/);
   assert.match(summary, /key=\{journeySelectionKey\(item\.selection\)\}/);
