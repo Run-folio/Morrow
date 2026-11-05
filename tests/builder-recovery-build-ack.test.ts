@@ -49,7 +49,7 @@ async function recoveredSession(genuineConflict = false) {
   const storage = new MemoryStorage(), delivery = deferred();
   // The recovered document's exact write already committed in the account, but its response was lost.
   let canonical = requireReadableTripDocument({ ...initial, updatedAt: nextTripUpdatedAt(initial.updatedAt) });
-  const recovered = saveTripRecoveryToStorage(storage, initial, { ownerId: initial.ownerId, accountSavePending: true, state: 'pending' });
+  const recovered = saveTripRecoveryToStorage(storage, initial, { ownerId: initial.ownerId, state: 'pending' });
   assert.equal(recovered.stored, true);
   const timers: { callback: () => void; delay: number; active: boolean }[] = [];
   const submitted: CanonicalEasyTTrip[] = [];

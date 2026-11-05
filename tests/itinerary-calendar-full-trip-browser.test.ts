@@ -428,7 +428,7 @@ test("Rendered Day by day and Calendar preserve identity, ordering and one canon
         if (view === 'days') assert.equal(await route.textContent(), timeline);
         else {
           // Calendar owns the same ordered destinations through its weekly overnight bands.
-          const bands = await page.locator('[role="group"][aria-label="Overnight destinations"] > div > span').allTextContents();
+          const bands: string[] = await page.locator('[role="group"][aria-label="Overnight destinations"] > div > span').allTextContents();
           const calendarDestinations = bands.map(label => label.split(' · ')[0]).filter((name, index, names) => index === 0 || name !== names[index - 1]);
           assert.deepEqual(calendarDestinations, destinations, 'Calendar must preserve every canonical route destination in order');
         }
