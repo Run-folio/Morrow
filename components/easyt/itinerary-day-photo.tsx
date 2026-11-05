@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { routePhotoForSource } from "@/lib/easyt/route-images";
 import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import ResilientImage from "./resilient-image";
@@ -8,7 +8,7 @@ import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import styles from "./itinerary-day-photo.module.css";
 
 /** Non-blocking presentation of reviewed destination photography, never a new lookup. */
-export default function ItineraryDayPhoto({ image, destination, language = "en", compact = false, className = "", sizes }: {
+export default function ItineraryDayPhoto({ image, language = "en", compact = false, className = "", sizes }: {
   image: OverviewPlaceImage | null;
   destination: string;
   language?: "en" | "es";
@@ -17,13 +17,14 @@ export default function ItineraryDayPhoto({ image, destination, language = "en",
   sizes?: string;
 }) {
   const [displayedSource, setDisplayedSource] = useState<string | null>(null);
-  const [failedSource, setFailedSource] = useState<string | null>(null);
   const record = image ? routePhotoForSource(image.src) : null;
   const variants = record ? [...record.variants].sort((a, b) => a.width - b.width) : [];
   const source = variants.find(variant => variant.width >= (compact ? 320 : 768)) ?? variants.at(-1);
   const renderedSource = image ? source?.src ?? image.src : null;
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  useEffect(() => setFailedSource(null), [renderedSource]);
   const onDisplayState = useCallback((displayed: boolean) => setDisplayedSource(displayed ? renderedSource : null), [renderedSource]);
-  if (!image || failedSource === renderedSource) return null;
+  if (!renderedSource || failedSource === renderedSource) return null;
   return <div className={`${styles.photo} ${compact ? styles.compact : ""} ${className}`} data-itinerary-photo={compact ? "calendar" : "day"} data-itinerary-image-kind={image?.activityTitle ? "activity" : image ? "destination" : "fallback"}>
     <ResilientImage
       src={renderedSource}

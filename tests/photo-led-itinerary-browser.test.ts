@@ -85,8 +85,17 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.getByRole('dialog',{name:'Add a plan',exact:true}).waitFor();
     await view.page.keyboard.press('Escape');
     await view.page.route('**/journey/immersive/*.webp',(route: Route)=>route.abort());
+    const failedPhoto=view.page.waitForEvent('requestfailed',{predicate:r=>r.url().includes('/journey/immersive/')});
+    await view.page.reload();await failedPhoto;
+    await view.page.locator('[data-itinerary-photo="day"]').waitFor({state:'detached'});
+    assert.equal(await view.page.getByText('No day photo',{exact:true}).count(),0);
+    await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
+    await view.page.getByRole('dialog',{name:'Add a plan',exact:true}).waitFor();
+    await view.page.keyboard.press('Escape');
+    await view.page.unroute('**/journey/immersive/*.webp');
+    await view.page.route('**/journey/immersive/*.webp',(route:Route)=>route.fulfill({contentType:'image/webp',body:readFileSync(`public${new URL(route.request().url()).pathname}`)}));
     await view.page.reload();
-    await view.page.locator('[data-itinerary-photo] [role="img"]').first().waitFor();
+    await view.page.waitForFunction(()=>{const img=document.querySelector('[data-itinerary-photo="day"] img') as HTMLImageElement|null;return img?.complete&&img.naturalWidth>0});
     assert.deepEqual(view.errors,[]);
   } finally {await view.close();}
 });
@@ -169,7 +178,7 @@ test('mobile Add plan retains its chosen day and period after a durable save and
   } finally {await view.close();}
 });
 
-test('84-day photo calendar reuses local responsive images without per-day provider requests', {skip: !builderBrowserTestsEnabled,timeout:60_000}, async () => {
+test('84-day photo calendar exhausts unique local images without per-day provider requests', {skip: !builderBrowserTestsEnabled,timeout:60_000}, async () => {
   const trip=fixture();
   const start=new Date('2027-04-01T12:00:00Z');
   const date=(n: number)=>new Date(start.getTime()+n*86400000).toISOString().slice(0,10);
@@ -185,7 +194,8 @@ test('84-day photo calendar reuses local responsive images without per-day provi
     await view.page.reload();
     await view.page.getByRole('button',{name:'Calendar',exact:true}).click();
     const photos=view.page.locator('#itinerary-calendar [data-itinerary-photo]');
-    assert.equal(await photos.count(),84);
+    assert.equal(await photos.count(),Object.values(itineraryPresentationImages(trip,{reviewedOnly:true}).dayById).filter(Boolean).length);
+    assert.ok(await photos.count()<84,'Exhausted days do not reserve photo slots');
     assert.equal(await view.page.locator('#itinerary-calendar article').count(),84);
     assert.equal(await photos.locator('img:not([loading="lazy"])').count(),0);
     await view.page.locator('#itinerary-calendar article').last().scrollIntoViewIfNeeded();

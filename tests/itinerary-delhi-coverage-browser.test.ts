@@ -36,6 +36,7 @@ for(const browserName of['chromium','webkit']as const)test(`${browserName}: Delh
     assert.equal(await img.count(),0,'Exhaustion never borrows or repeats a picture');
     assert.equal(await photo.count(),0,'Exhausted days omit the photo slot and its placeholder');
     assert.equal(await cards.nth(index).getByText('No day photo',{exact:true}).count(),0);
+    assert.equal(await cards.nth(index).locator('[class*="calendarDayPhoto"]').evaluate((el:HTMLElement)=>getComputedStyle(el).display),'none','No wrapper spacing remains');
     rows.push({day:index+1,kind:'non-photo'});
    }
   }
@@ -55,7 +56,8 @@ for(const browserName of['chromium','webkit']as const)test(`${browserName}: Delh
     assert.equal(await photo.count(),0,'No photo slot or placeholder after unique coverage is exhausted');
     assert.equal(await view.page.getByText('No day photo',{exact:true}).count(),0);
    }
-   if(expected[trip.planItems[index].id]) { assert.ok((await photo.boundingBox())!.height<=141);await photo.screenshot({path:`${directory}/day-${String(index+1).padStart(2,'0')}.png`}); }
+   if(expected[trip.planItems[index].id]) assert.ok((await photo.boundingBox())!.height<=141);
+   await view.page.locator('header[class*="dayHeader"]').screenshot({path:`${directory}/day-${String(index+1).padStart(2,'0')}.png`});
    assert.equal(await view.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   }
   await view.page.addScriptTag({path:resolve('node_modules/axe-core/axe.min.js')});
