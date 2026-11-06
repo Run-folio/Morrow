@@ -2186,6 +2186,7 @@
 
 /* The approved photo-led week and visual agenda share the existing planner. */
 .calendarDay { display: flex; flex-direction: column; }
+.calendarDayBody { display: contents; }
 .calendarDayPhoto { margin: 0 8px 12px; }
 .calendarDayPhoto:empty { display: none; }
 .calendarDaySelect { min-height: 100px; }
@@ -2248,4 +2249,17 @@
 @media (max-width: 760px) {
   .dayHeaderMedia { display: block; }
   .dayHeaderContent > p { display: flex; }
+}
+
+/* Date and day sit above the photo-led card; compact mobile navigation stays intact. */
+@media (min-width: 901px) {
+  .calendarWeekdayLabels { display: none; }
+  .calendarDay,
+  .calendarDay[data-selected="true"] { border: 0; background: transparent; }
+  .calendarDaySelect { min-height: 44px; padding: 8px; margin-bottom: 8px; border-radius: var(--morrovia-control-radius); }
+  .calendarDaySelect .calendarCompactDestination,
+  .calendarDaySelect small,
+  .calendarDaySelect em { display: none; }
+  .calendarDayBody { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 170px; padding-top: 8px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+  .calendarDay[data-selected="true"] .calendarDayBody { border-color: var(--morrovia-signal); background: var(--morrovia-tint); }
 }

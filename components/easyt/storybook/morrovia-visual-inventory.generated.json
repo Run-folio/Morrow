@@ -5300,7 +5300,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 625,
+        "count": 628,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -8027,6 +8027,13 @@
         "count": 1,
         "examples": [
           "app/journey/journey.module.css"
+        ]
+      },
+      {
+        "value": "min-width: 901px",
+        "count": 1,
+        "examples": [
+          "components/easyt/trip-itinerary-workspace.module.css"
         ]
       },
       {

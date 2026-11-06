@@ -106,7 +106,8 @@ test("Calendar keeps day cards selectable while removing redundant empty-card an
   const calendar = itinerary.slice(itinerary.indexOf("function ItineraryCalendar("), itinerary.indexOf("function CalendarItemButton("));
   assert.doesNotMatch(calendar, /calendarEmptyDay|copy\.noCalendarPlans/);
   assert.match(calendar, /calendarWeekdayLabels/);
-  assert.match(calendar, /day\.day\.type === "open" && day\.items\.length === 0/);
+  assert.match(calendar, /day\.day\.type === "arrival" \|\| day\.day\.type === "open"/);
+  assert.doesNotMatch(calendar, /No stay added|Sin alojamiento añadido/);
   assert.match(calendar, /hasCalendarArrivalEvent\(day\)/);
   assert.match(calendar, /<time dateTime=\{day\.day\.date\}>/);
   assert.match(calendar, /aria-pressed=\{selectedDayId === day\.id\}/);

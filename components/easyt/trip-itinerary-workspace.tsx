@@ -2391,19 +2391,20 @@ function ItineraryCalendar({ tripId, dayImages, onOpenDay, weeks, selectedDayId,
             <span className={styles.calendarCompactDate}>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</span>
             <span className={styles.calendarCompactCount}>{day.items.length} {language === "es" ? (day.items.length === 1 ? "plan" : "planes") : (day.items.length === 1 ? "plan" : "plans")}</span>
             {day.items.some(item => item.kind === "transfer") ? <span className={styles.calendarCompactTravel} data-calendar-travel><Route aria-hidden="true" />{language === "es" ? "Traslado" : "Travel"}</span> : null}
-            {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
+            {day.day.type === "arrival" || day.day.type === "open" ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
-          <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id] ?? null} destination={day.stop?.name ?? day.day.title} language={language} /></div>
-          {previewItems.length ? <ul className={styles.calendarItems}>
-            {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
-            {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}
-          </ul> : null}
-          {day.items.filter(item => item.kind === "accommodation").map(item => <div className={styles.calendarStay} key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={false} dragging={false} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></div>)}
-          {day.tonight.state === "not-organised" && day.tonight.stopId ? <div className={styles.calendarMissingStay}>
-            <span>{language === "es" ? "Sin alojamiento añadido" : "No stay added"}</span>
-            <EasyTLinkButton href={stayWorkspaceHref(tripId, day.tonight.stopId)} size="small" variant="quiet" aria-label={`${language === "es" ? "Buscar alojamiento" : "Find a stay"} · ${day.tonight.destination}`}>{language === "es" ? "Buscar alojamiento" : "Find a stay"}</EasyTLinkButton>
-          </div> : null}
+          <div className={styles.calendarDayBody}>
+            <div className={styles.calendarDayPhoto}><ItineraryDayPhoto compact image={dayImages[day.id] ?? null} destination={day.stop?.name ?? day.day.title} language={language} /></div>
+            {previewItems.length ? <ul className={styles.calendarItems}>
+              {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
+              {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}
+            </ul> : null}
+            {day.items.filter(item => item.kind === "accommodation").map(item => <div className={styles.calendarStay} key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={false} dragging={false} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></div>)}
+            {day.tonight.state === "not-organised" && day.tonight.stopId ? <div className={styles.calendarMissingStay}>
+              <EasyTLinkButton href={stayWorkspaceHref(tripId, day.tonight.stopId)} size="small" variant="quiet" aria-label={`${language === "es" ? "Buscar alojamiento" : "Find a stay"} · ${day.tonight.destination}`}>{language === "es" ? "Buscar alojamiento" : "Find a stay"}</EasyTLinkButton>
+            </div> : null}
+          </div>
         </article> : <span className={styles.calendarBlank} aria-hidden="true" key={`${week.id}-${dayIndex}`} />; })}
       </div>
     </section>)}
