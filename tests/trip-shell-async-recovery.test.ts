@@ -627,3 +627,10 @@ test('an already-ready editor becomes unavailable immediately while the same ses
  assert.equal(await ready.mutateTrip((trip:any)=>tripDisplay.renameTripIdentity(trip,'Obsolete ready callback'),'trip-title'),false);assert.equal(h.written.length,0);
  h.setSessionPending(false);assert.equal(h.render().mutationReady,false);await tick();assert.equal(h.render().mutationReady,true);
 });
+
+test('known separate recovery disables mutation without pretending classification is still preparing', async () => {
+ const h=mutationHarness({classifyTripRecovery:()=> 'genuine-divergence'});const initial=h.render().trip;
+ h.setRecovery({ownerId:initial.ownerId,tripId:initial.id,writeId:'separate-reviewed-copy',trip:{...initial,title:'Protected device title'}});await tick();const state=h.render();
+ assert.equal(state.historicalRecovery,true);assert.equal(state.mutationReady,false);assert.equal(state.preparing,false);
+ assert.equal(await state.mutateTrip((trip:any)=>({...trip,title:'Unsafe replacement'}),'trip-title'),false);assert.equal(h.written.length,0);assert.equal(h.cloud.length,0);
+});

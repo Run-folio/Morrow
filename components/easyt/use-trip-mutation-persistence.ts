@@ -415,7 +415,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     recoveryReady: recoveryReady && recoveryReadyRef.current,
     scopeCurrent: classifiedScopeRef.current === renderScope && scopeIsCurrent(renderScope),
     ownerId: trip.ownerId, sessionOwnerId: session?.user?.id ?? null, protectedRecovery: conflictRef.current});
-  const preparing = enabled && !mutationReady && !error;
+  const preparing = enabled && !mutationReady && !error && !conflictRef.current;
 
   return {
     acceptCanonicalTrip, adoptCanonicalTrip, adoptDeviceTrip, canMutate, conflictTrip,
