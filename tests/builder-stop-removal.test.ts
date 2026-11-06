@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import {builderBookingStopIds} from "../lib/easyt/builder-booking-stop-association.ts";
 import { allocateTripNights, rebalanceTripNights } from "../lib/easyt/night-allocation.ts";
 import { tripFromBuilder, type EasyTTrip, type TripBooking } from "../lib/easyt/trip.ts";
 import { handoffStopOccurrenceId } from "../lib/easyt/home-trip-handoff.ts";
@@ -19,7 +20,7 @@ function removalFixture(options: { only?: boolean; bookings?: TripBooking[]; upd
   });
   document.brief.bookings = options.bookings;
   const state: Record<string, any> = {
-    stops, allocation, dayAllocations: { ...allocation }, manualNightStopIds: [],
+    builderBookingStopIds, canonicalBuilder:null, stops, allocation, dayAllocations: { ...allocation }, manualNightStopIds: [],
     scheduleLocks: { stopIds: [], arrivalDates: { "cusco-return": "2026-10-05" } },
     handoffStopOccurrenceId, handoffOccurrenceMentionIdsRef: { current: {} }, placeSelections: [], capturedStructuredBrief: { placeMentions: [] }, activeTripDocument: document,
     tripUpdatedAt: options.updatedAt, decisionSelections: { transportByLeg: {} }, pendingStopRemoval: null, stopRemovalBlocked: null, showStopEditor: false,

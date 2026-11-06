@@ -1,5 +1,7 @@
 "use client";
 
+import {builderBookingStopIds} from '@/lib/easyt/builder-booking-stop-association';
+
 import { releaseAvailability } from "@/lib/easyt/release-availability";
 import {createTripCreationToken,loadTripCreationContinuation,loadReservedTripCreation,type TripCreationToken} from "@/lib/easyt/trip-creation-provenance";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
@@ -2172,14 +2174,7 @@ function TripBuilderDocument() {
   const protectedBuilderStopIds = useMemo(() => [...new Set([
     ...scheduleLocks.stopIds, ...Object.keys(scheduleLocks.arrivalDates),
     ...projectedFixedCommitments.flatMap(item => (item.date || item.commitmentType === 'booking') && item.stopId ? [item.stopId] : []),
-    ...(canonicalBuilder?.brief.bookings ?? []).flatMap(booking => {
-      const candidates = canonicalBuilder?.stops ?? [];
-      const exact = candidates.find(stop => booking.id === `stay-${stop.id}`);
-      if (exact) return [exact.id];
-      const named = candidates.filter(stop => booking.title.toLocaleLowerCase().includes(stop.name.toLocaleLowerCase()));
-      const dated = named.filter(stop => booking.date && stop.arrivalDate && stop.departureDate && booking.date >= stop.arrivalDate && booking.date < stop.departureDate);
-      return (dated.length ? dated : named).map(stop => stop.id);
-    }),
+    ...(canonicalBuilder?.brief.bookings ?? []).flatMap(booking => builderBookingStopIds(canonicalBuilder!,booking)),
   ])], [scheduleLocks, projectedFixedCommitments, canonicalBuilder]);
   const fixedBuilderChronology = projectedFixedCommitments.some(item => (item.date || item.commitmentType === 'booking') && !item.stopId);
   const effectiveStructuredBrief = useMemo(() => canonicalBuilder?.brief.structuredBrief ?? mergeStructuredTripBrief(capturedStructuredBrief, {
@@ -3032,7 +3027,6 @@ function TripBuilderDocument() {
   };
 
   const stopRemovalSafety = (stopId: string) => {
-    const stop = activeTripDocument.stops.find((item) => item.id === stopId);
     const bookings = activeTripDocument.brief.bookings ?? [];
     const blocked = bookings.some((booking) => {
       if (booking.type !== "stay") return false;
@@ -3044,12 +3038,7 @@ function TripBuilderDocument() {
         || booking.title.toLocaleLowerCase().includes(item.name.toLocaleLowerCase()));
       return legacyOwner?.id === stopId && (exactStop ? exactStop.id !== stopId : namedStops.length > 1);
     });
-    const associated = bookings.filter((booking) => {
-      const exactStop = activeTripDocument.stops.find((item) => booking.id === `stay-${item.id}`);
-      if (exactStop) return exactStop.id === stopId;
-      return Boolean(stop && (booking.title.toLocaleLowerCase().includes(stop.name.toLocaleLowerCase())
-        || (booking.date && stop.arrivalDate && stop.departureDate && booking.date >= stop.arrivalDate && booking.date < stop.departureDate)));
-    });
+    const associated = bookings.filter(booking => builderBookingStopIds(activeTripDocument,booking,{includeLegacyDateOnly:true}).includes(stopId));
     return { blocked, hasStay: associated.some((booking) => booking.type === "stay"), hasBookings: associated.length > 0 };
   };
 
