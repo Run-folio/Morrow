@@ -29,7 +29,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const returning of [
   await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(await rows.count(),3);assert.equal(await last.count(),0);assert.equal(await endpoint.count(),returning?1:0);
   const retained=await page.evaluate((id:string)=>Object.values(localStorage).flatMap(raw=>{try{const record=JSON.parse(raw),t=record?.trip??record;return t?.id===id&&Array.isArray(t.stops)&&t.stops.length===3?[t]:[]}catch{return []}}),trip.id);
   assert.ok(retained.length);for(const saved of retained)assert.equal(JSON.stringify(saved.brief.bookings),bookings);assert.deepEqual(view.errors,[]);
- }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/failure-${browserName}-${returning}.txt`,await page.locator('body').innerText());await page.screenshot({path:`${dir}/failure-${browserName}-${returning}.png`,fullPage:true});}throw error;}finally{await view.close();}
+ }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/failure-${browserName}-${returning}.txt`,await page.locator('body').innerText());writeFileSync(`${dir}/failure-${browserName}-${returning}.json`,JSON.stringify({error:String(error),pageErrors:view.errors,url:page.url()},null,2));await page.screenshot({path:`${dir}/failure-${browserName}-${returning}.png`,fullPage:true});}throw error;}finally{await view.close();}
 });
 for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: account fixture saves the repeated visit's nights and removal without changing the booked occurrence`,{skip:!builderBrowserTestsEnabled,timeout:60000},async()=>{
  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',repeatedTokyoTrip())),puts=0;const before=JSON.stringify(cloud.brief.bookings),id=cloud.stops.at(-1)!.id;
@@ -60,7 +60,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const broken of ['de
  if(broken==='contradictory-endpoint')booking.transportLegBinding!.toEndpointId=trip.stops[1]!.id;
  if(broken==='stale-leg-snapshot'){const leg=trip.legs.find(item=>item.id===booking.transportLegBinding!.legId)!;leg.toStopId='old-deleted-stop';leg.toEndpoint={...leg.toEndpoint!,id:'old-deleted-stop'};booking.transportLegBinding!.toEndpointId='old-deleted-stop';}
  if(broken==='stale-imported-leg'){const leg=trip.legs[0]!;delete booking.transportLegBinding;booking.id='imported-outbound';leg.routeMetadata.importedBookingId=booking.id;leg.toStopId='old-deleted-stop';leg.toEndpoint={...leg.toEndpoint!,id:'old-deleted-stop'};}
- const source=JSON.stringify(trip),view=await renderBuilder({initialTrip:trip,query:`?trip=${trip.id}`,browserName,styled:true,offlineOnly:true});
+ const source=JSON.stringify(trip),view=await renderBuilder({initialTrip:trip,query:`?trip=${trip.id}&recover=1`,browserName,styled:true,offlineOnly:true});
  try{
   const page=view.page;page.setDefaultTimeout(10000);await page.locator('[data-builder-edit-session="active"]').waitFor();
   const first=page.locator(`[data-builder-stop-id="${trip.stops[0]!.id}"]`),last=page.locator('[data-builder-stop-id="tokyo-return-stay"]');
