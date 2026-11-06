@@ -53,11 +53,12 @@ for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: re
  }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/failure-account-or-recovery-${browserName}.txt`,await view.page.locator('body').innerText());}throw error;}finally{await view.close();}
 });
 
-for(const browserName of ['chromium','webkit'] as const)for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint'] as const)test(`${browserName}: ${broken} booking identity keeps booked and ambiguous visits protected`,{skip:!builderBrowserTestsEnabled,timeout:60000},async()=>{
+for(const browserName of ['chromium','webkit'] as const)for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint','stale-leg-snapshot'] as const)test(`${browserName}: ${broken} booking identity keeps booked and ambiguous visits protected`,{skip:!builderBrowserTestsEnabled,timeout:60000},async()=>{
  const trip=repeatedTokyoTrip(),booking=trip.brief.bookings![0]!;
  if(broken==='deleted-endpoint')booking.transportLegBinding!.toEndpointId='old-deleted-stop';
  if(broken==='deleted-leg'){booking.transportLegBinding!.legId='old-deleted-leg';booking.transportLegBinding!.toEndpointId='tokyo-return-stay';}
  if(broken==='contradictory-endpoint')booking.transportLegBinding!.toEndpointId=trip.stops[1]!.id;
+ if(broken==='stale-leg-snapshot'){const leg=trip.legs.find(item=>item.id===booking.transportLegBinding!.legId)!;leg.toStopId='old-deleted-stop';leg.toEndpoint={...leg.toEndpoint!,id:'old-deleted-stop'};booking.transportLegBinding!.toEndpointId='old-deleted-stop';}
  const source=JSON.stringify(trip),view=await renderBuilder({initialTrip:trip,query:`?trip=${trip.id}`,browserName,styled:true,offlineOnly:true});
  try{
   const page=view.page;page.setDefaultTimeout(10000);await page.locator('[data-builder-edit-session="active"]').waitFor();

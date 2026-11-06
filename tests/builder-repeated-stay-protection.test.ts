@@ -49,11 +49,12 @@ test('legacy date-only removal confirmation survives without assigning an exact 
  assert.deepEqual(builderBookingStopIds(trip,{...trip.brief.bookings![0]!,date:trip.stops[1]!.arrivalDate},{includeLegacyDateOnly:true}),[trip.stops[0]!.id]);
 });
 
-for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint'] as const)test(`${broken} booking references retain conservative protection and original booking bytes`,()=>{
+for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint','stale-leg-snapshot'] as const)test(`${broken} booking references retain conservative protection and original booking bytes`,()=>{
  const trip=repeatedTokyoTrip(),booking=trip.brief.bookings![0]!;
  if(broken==='deleted-endpoint')booking.transportLegBinding!.toEndpointId='old-deleted-stop';
  if(broken==='deleted-leg'){booking.transportLegBinding!.legId='old-deleted-leg';booking.transportLegBinding!.toEndpointId='tokyo-return-stay';}
  if(broken==='contradictory-endpoint')booking.transportLegBinding!.toEndpointId=trip.stops[1]!.id;
+ if(broken==='stale-leg-snapshot'){const leg=trip.legs.find(item=>item.id===booking.transportLegBinding!.legId)!;leg.toStopId='old-deleted-stop';leg.toEndpoint={...leg.toEndpoint!,id:'old-deleted-stop'};booking.transportLegBinding!.toEndpointId='old-deleted-stop';}
  const original=JSON.stringify(trip),associated=builderBookingStopIds(trip,booking),removal=builderBookingStopIds(trip,booking,{includeLegacyDateOnly:true});
  assert.ok(associated.includes(trip.stops[0]!.id),'the current booked arrival occurrence remains protected');
  assert.ok(associated.includes('tokyo-return-stay'),'ambiguous Tokyo title is not silently narrowed by stale identity');

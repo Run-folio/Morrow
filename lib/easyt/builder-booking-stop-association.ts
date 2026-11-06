@@ -1,5 +1,5 @@
 import type {EasyTTrip,TripBooking} from './trip.ts';
-import {routeEndpointForLeg} from './trip-legs.ts';
+import {endEndpointForTrip,tripOriginEndpointId} from './trip-legs.ts';
 
 type AssociationOptions = {includeLegacyDateOnly?:boolean};
 
@@ -19,10 +19,13 @@ export function builderBookingStopIds(trip:EasyTTrip,booking:TripBooking,options
   if(binding&&booking.travellerMarkedBooked===false)return [];
   if(binding){
    const leg=trip.legs.find(candidate=>candidate.id===binding.legId);
-   const from=leg?routeEndpointForLeg(trip,leg,'from'):null;
-   const to=leg?routeEndpointForLeg(trip,leg,'to'):null;
+   const end=endEndpointForTrip(trip);
+   const knownIds=new Set([...ids,tripOriginEndpointId(trip.id),...(end?[end.id]:[])]);
    const referenced=[binding.fromEndpointId,binding.toEndpointId];
-   if(from?.id===binding.fromEndpointId&&to?.id===binding.toEndpointId)return [...new Set(referenced)].filter(id=>ids.has(id));
+   // Saved endpoint snapshots can outlive stops; they cannot establish that a
+   // booking still identifies a current occurrence, even when IDs agree.
+   if(leg&&knownIds.has(binding.fromEndpointId)&&knownIds.has(binding.toEndpointId)
+    &&leg.fromStopId===binding.fromEndpointId&&leg.toStopId===binding.toEndpointId)return [...new Set(referenced)].filter(id=>ids.has(id));
    return [...new Set([...referenced,...(leg?[leg.fromStopId,leg.toStopId]:[]),...legacyBookingStopIds(trip,booking,options)])].filter(id=>ids.has(id));
   }
   const legs=trip.legs.filter(leg=>booking.id===leg.id||booking.id===`transport-${leg.id}`||leg.routeMetadata.importedBookingId===booking.id);
