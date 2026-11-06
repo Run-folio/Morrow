@@ -11,13 +11,15 @@ for(const browserName of ['chromium','webkit'] as const)for(const returning of [
  const trip=repeatedTokyoTrip(returning),bookings=JSON.stringify(trip.brief.bookings);
  const view=await renderBuilder({initialTrip:trip,query:`?trip=${trip.id}&recover=1`,browserName,styled:true,offlineOnly:true});
  const page=view.page;page.setDefaultTimeout(10000);
+ // This checks settled cold-reopen persistence; reload-interrupted autocomplete
+ // is retained separately as a diagnostic, not filtered from page errors.
  try{
   await page.locator('[data-builder-edit-session="active"]').waitFor();
   const rows=page.locator('[data-builder-stop-id]'),last=page.locator('[data-builder-stop-id="tokyo-return-stay"]');await last.waitFor();
   assert.equal(await rows.count(),4);assert.equal(await rows.first().getByRole('button',{name:/Add one night/}).isDisabled(),true,'booked first occurrence stays protected');
   const plus=last.getByRole('button',{name:/Add one night/});assert.equal(await plus.isEnabled(),true);await plus.press('Enter');
   await page.waitForFunction(()=>document.querySelector('[data-builder-stop-id="tokyo-return-stay"] [data-builder-nights] strong')?.textContent==='1');
-  await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();await last.locator('[data-builder-nights] strong').filter({hasText:'1'}).waitFor();
+  await page.waitForLoadState('networkidle');await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();await last.locator('[data-builder-nights] strong').filter({hasText:'1'}).waitFor();
   const endpoint=page.locator('[data-builder-endpoint-leg-id]');assert.equal(await endpoint.count(),returning?1:0);
   if(returning){assert.match(await endpoint.innerText(),/Return[\s\S]*London/);assert.equal(await endpoint.getByRole('button',{name:/Add one night|Remove stop/}).count(),0);}
   await page.setViewportSize({width:320,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -26,7 +28,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const returning of [
   await last.getByLabel('Actions for Tokyo',{exact:true}).click();await last.getByRole('button',{name:'Remove stop',exact:true}).click();
   const confirm=page.getByRole('button',{name:'Remove Tokyo',exact:true});if(await confirm.isVisible())await confirm.click();
   await last.waitFor({state:'detached'});assert.equal(await rows.count(),3);
-  await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(await rows.count(),3);assert.equal(await last.count(),0);assert.equal(await endpoint.count(),returning?1:0);
+  await page.waitForLoadState('networkidle');await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(await rows.count(),3);assert.equal(await last.count(),0);assert.equal(await endpoint.count(),returning?1:0);
   const retained=await page.evaluate((id:string)=>Object.values(localStorage).flatMap(raw=>{try{const record=JSON.parse(raw),t=record?.trip??record;return t?.id===id&&Array.isArray(t.stops)&&t.stops.length===3?[t]:[]}catch{return []}}),trip.id);
   assert.ok(retained.length);for(const saved of retained)assert.equal(JSON.stringify(saved.brief.bookings),bookings);assert.deepEqual(view.errors,[]);
  }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/failure-${browserName}-${returning}.txt`,await page.locator('body').innerText());writeFileSync(`${dir}/failure-${browserName}-${returning}.json`,JSON.stringify({error:String(error),pageErrors:view.errors,url:page.url()},null,2));await page.screenshot({path:`${dir}/failure-${browserName}-${returning}.png`,fullPage:true});}throw error;}finally{await view.close();}
