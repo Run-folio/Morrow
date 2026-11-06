@@ -131,12 +131,35 @@ export function TripShellIdentityAndActions() {
   useEffect(() => {
     const text = titleButtonRef.current?.querySelector("span");
     if (!text) { setTitleClipped(false); return; }
-    const measure = () => setTitleClipped(text.scrollWidth > text.clientWidth + 1 || text.scrollHeight > text.clientHeight + 1);
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const style = getComputedStyle(text);
+      const lineLimit = Number.parseInt(style.webkitLineClamp, 10);
+      let wrappedPastLimit = false;
+      if (lineLimit > 0) {
+        // Font ink can extend beyond a fitting line box. Count text lines instead
+        // of treating scrollHeight's glyph overhang as clipped title content.
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        const lineCenters: number[] = [];
+        const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize);
+        for (const rect of range.getClientRects()) {
+          if (!rect.width || !rect.height) continue;
+          const center = rect.top + rect.height / 2;
+          if (!lineCenters.some(line => Math.abs(line - center) < lineHeight / 2)) lineCenters.push(center);
+        }
+        wrappedPastLimit = lineCenters.length > lineLimit;
+      }
+      setTitleClipped(text.scrollWidth > text.clientWidth + 1 || wrappedPastLimit);
+    };
     measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(text);
-    return () => observer.disconnect();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(text);
+    const fonts = document.fonts;
+    fonts?.addEventListener("loadingdone", measure);
+    void fonts?.ready.then(measure);
+    return () => { disposed = true; observer?.disconnect(); fonts?.removeEventListener("loadingdone", measure); };
   }, [displayTitle, renameOpen]);
   const wasRenamingRef = useRef(false);
   useEffect(() => {
