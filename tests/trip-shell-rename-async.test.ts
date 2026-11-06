@@ -40,7 +40,7 @@ function harness(queued = false) {
   let accepted = deferred<unknown>(); const firstAcceptance = accepted, updateGate = deferred<void>();
   const requests: Array<{ key: string; outgoing: EasyTTrip | null }> = [];
   const mutation = {
-    get trip() { return trip; }, error: '', saveState: 'idle', isPending: () => false,
+    get trip() { return trip; }, mutationReady: true, preparing: false, error: '', saveState: 'idle', isPending: () => false,
     async mutateTrip(update: (current: EasyTTrip) => EasyTTrip, key: string) {
       const gate = accepted, before = structuredClone(trip), request = { key, outgoing: null as EasyTTrip | null }; requests.push(request);
       if (queued) await updateGate.promise;
@@ -96,12 +96,13 @@ function harness(queued = false) {
     walk(native);
     return { props: { open: Boolean(field(tree)), onSubmit: () => native.props.onSubmit({preventDefault() {}}),
       onCancel: () => nodes.find(node => node.props?.children === 'Cancel').props.onClick(),
-      submitting: Boolean(nodes.find(node => node.props?.children === 'Save name')?.props.loading),
+      submitting: Boolean(nodes.find(node => node.props?.type === 'submit')?.props.loading),
       error: nodes.find(node => node.props?.role === 'alert')?.props.children,
+      submit: nodes.find(node => node.props?.type === 'submit')?.props,
     } };
   };
 
-  return { render, form, field, requests, accepted: firstAcceptance, updateGate,
+  return { render, form, field, requests, setReady: (ready: boolean, preparing = !ready) => { mutation.mutationReady = ready; mutation.preparing = preparing; }, accepted: firstAcceptance, updateGate,
     open: () => find(render(), Launcher).props.onRenameTrip(),
     openInline: () => find(render(), Launcher).props.onRenameTrip(),
     inlineForm: () => { const tree=render(); return field(tree) ? find(tree,'form') : null; },
@@ -160,7 +161,7 @@ test('the actual shared mutation rejects an unchanged canonical rename before pe
   const scope = {
     useCallback: (callback: unknown) => callback, enabled: true,
     liveScopeRef: { current: 'exact-owner-document' }, renderScope: 'exact-owner-document', scopeIsCurrent: () => true,
-    recoveryReadyRef: { current: true }, conflictRef: { current: false },
+    sessionPending: false, recoveryReadyRef: { current: true }, conflictRef: { current: false },
     retainedEquivalentRef: { current: null },
 
     localWriteTailRef: { current: Promise.resolve() }, tripRef: { current: trip },
@@ -289,4 +290,15 @@ for(const ownerId of [null,'owner-a'])test(`shared header hides personal route w
  for(const view of ['', '/itinerary','/map']){h.switchView(`/journey/${h.trip().id}${view}`);const hrefs:string[]=[];const walk=(node:any):void=>{if(Array.isArray(node)){node.forEach(walk);return;}if(!node||typeof node!=='object')return;if(node.props?.href)hrefs.push(node.props.href);walk(node.props?.children);};walk(h.render());
  assert.ok(hrefs.includes('/fixture/map'));assert.ok(hrefs.includes('/fixture/builder'));assert.ok(!hrefs.includes('/fixture/route'));}
  assert.equal(h.requests.length,0);assert.equal(JSON.stringify(h.trip()),before);h.unmount();
+});
+
+
+test('preparing title save is visibly busy and disabled, preserves typed draft and allows cancellation', async () => {
+  const h = harness();h.setReady(false);h.open();h.type('Draft while preparing');
+  assert.equal(h.form().props.submit.disabled, true);
+  assert.equal(h.form().props.submit.loading, true);
+  assert.equal(h.form().props.submit.children, 'Preparing save…');
+  h.submit();await tick();assert.equal(h.requests.length,0);assert.equal(h.field().props.value,'Draft while preparing');
+  h.cancel();assert.equal(h.inlineForm(),null);
+  h.open();h.type('Ready draft');h.setReady(true);assert.equal(h.form().props.submit.disabled,false);h.submit();await tick();assert.equal(h.requests.length,1);h.accepted.resolve(true);await tick();assert.equal(h.inlineForm(),null);assert.equal(display.tripCustomTitle(h.trip()),'Ready draft');
 });

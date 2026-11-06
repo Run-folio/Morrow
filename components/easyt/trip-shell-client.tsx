@@ -163,7 +163,7 @@ export function TripShellIdentityAndActions() {
     updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });
   };
   const saveRename = async () => {
-    if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;
+    if (!sessionIsCurrent() || !mutation.mutationReady || renamePendingRef.current?.scope === renderScope) return false;
     const request = ++renameRequestRef.current;
     const mountGeneration = renameMountGenerationRef.current;
     const normalizedTitle = renameIntentRef.current.draft.trim().replace(/\s+/g, " ");
@@ -255,7 +255,7 @@ export function TripShellIdentityAndActions() {
       <span id="trip-title-edit-hint" className={styles.srOnly}>Edit trip name</span>
       {renameOpen ? <div className={styles.tripTitleEditorActions}>
         {renameError ? <p id="trip-title-error" role="alert">{renameError}</p> : null}
-        <EasyTButton type="submit" size="small" loading={renameSubmitting}>Save name</EasyTButton>
+        <EasyTButton type="submit" size="small" disabled={!mutation.mutationReady} loading={mutation.preparing || renameSubmitting}>{mutation.preparing ? "Preparing save…" : "Save name"}</EasyTButton>
         <EasyTButton type="button" size="small" variant="quiet" onClick={cancelRename}>Cancel</EasyTButton>
       </div> : null}
       </form>

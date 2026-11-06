@@ -409,10 +409,18 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setError("The account copy is open. Your separate device edits remain preserved until you review or discard them."); setSaveState("error"); return true;
   }, [conflictTrip]);
 
+  // Initial auth/recovery must finish before title submission. A classified
+  // guest scope remains writable during refetch so accepted device edits finish.
+  const mutationReady = tripMutationCanStart({enabled, sessionPending: sessionPending === true && trip.ownerId !== null,
+    recoveryReady: recoveryReady && recoveryReadyRef.current,
+    scopeCurrent: classifiedScopeRef.current === renderScope && scopeIsCurrent(renderScope),
+    ownerId: trip.ownerId, sessionOwnerId: session?.user?.id ?? null, protectedRecovery: conflictRef.current});
+  const preparing = enabled && !mutationReady && !error;
+
   return {
     acceptCanonicalTrip, adoptCanonicalTrip, adoptDeviceTrip, canMutate, conflictTrip,
     currentRecoveryWrite: recoveryHandleRef.current, error, failure, hasPendingSaves, historicalRecovery,
-    recoveryClassifiedFor, recoveryReady, isAccountCopySettled, isPending: (key: string) => Boolean(pendingKeys[key]),
+    recoveryClassifiedFor, recoveryReady, mutationReady, preparing, isAccountCopySettled, isPending: (key: string) => Boolean(pendingKeys[key]),
     lastAcknowledgedMutation, mutateTrip, openConflictCloudCopy, saveState, trip, waitForPending,
   };
 }

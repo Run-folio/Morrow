@@ -51,7 +51,7 @@ class BrowserRecoveryReadError extends Error {
 }
 function mutationHarness(overrides: Record<string, any> = {}) {
   const schedule = scheduler();
-  let owner: string | null = 'owner-a';
+  let owner: string | null = 'owner-a', sessionPending = false;
   let initial = { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: owner };
   let recovery: any = null;
   const cloud: any[] = [], written: any[] = [];
@@ -73,15 +73,30 @@ function mutationHarness(overrides: Record<string, any> = {}) {
   };
   const hook = load('../components/easyt/use-trip-mutation-persistence.ts', {
     react: schedule.hooks,
-    '@/lib/auth-client': { authClient: { useSession: () => ({ data: owner ? { user: { id: owner } } : null, isPending: false }) } },
+    '@/lib/auth-client': { authClient: { useSession: () => ({ data: sessionPending ? undefined : owner ? { user: { id: owner } } : null, isPending: sessionPending }) } },
     '@/lib/easyt/storage': storage,
     '@/lib/easyt/itinerary-mutations': { cloneItineraryMutationDocument: structuredClone },
     '@/lib/easyt/trip-mutation-persistence': { createTripMutationPersistenceQueue, newestTripMutationCanonical, tripMutationCanStart },
     '@/lib/easyt/trip-continuity': { canonicalTripRevisionCanReplace },
     '@/lib/easyt/feedback-survey': { isMeaningfulFeedbackAcknowledgement: () => true },
   }).useTripMutationPersistence;
-  return { render: () => schedule.render(hook, initial, true), cloud, written, storage, unmount: () => schedule.unmount(), setOwner: (next: string | null) => { owner = next; }, setInitial: (trip: any) => { initial = trip; }, setRecovery: (value: any) => { recovery = value; } };
+  return { render: () => schedule.render(hook, initial, true), cloud, written, storage, unmount: () => schedule.unmount(), setOwner: (next: string | null) => { owner = next; }, setSessionPending: (pending: boolean) => { sessionPending = pending; }, setInitial: (trip: any) => { initial = trip; }, setRecovery: (value: any) => { recovery = value; } };
 }
+
+
+test('mutation readiness stays false during recovery classification and becomes usable only after it settles', async () => {
+  const cached = deferred<any>();
+  const h = mutationHarness({ loadCachedTrip: () => cached.promise });
+  let state = h.render();
+  assert.equal(state.mutationReady, false);
+  assert.equal(state.preparing, true);
+  const accepted = await state.mutateTrip((trip: any) => tripDisplay.renameTripIdentity(trip, 'Too early'), 'trip-title');
+  assert.equal(accepted, false);
+  assert.equal(h.written.length, 0);
+  cached.resolve(null); await tick(); state = h.render();
+  assert.equal(state.mutationReady, true);
+  assert.equal(state.preparing, false);
+});
 
 test('mutation does not apply, acknowledge, or queue a cloud save before durable device completion', async () => {
   const stored = deferred<any>();
@@ -136,6 +151,8 @@ test('unavailable hydration stays protected and does not accept a fresh mutation
   assert.equal(await h.render().mutateTrip((trip: any) => ({ ...trip, title: 'Unsafe edit' }), 'rename'), false);
   assert.equal(h.written.length, 0);
   assert.equal(h.render().failure, 'recovery');
+  assert.equal(h.render().mutationReady, false);
+  assert.equal(h.render().preparing, false, 'A failed check is an actionable error, never an endless loading state');
 });
 
 test('a signed-in session does not implicitly claim or promote a guest mutation', async () => {
@@ -333,7 +350,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
   let props = { trip: { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: sessionOwner }, children: null };
   let remaining: any = { ownerId: props.trip.ownerId, tripId: props.trip.id, writeId: 'reviewed', trip: { ...props.trip, title: 'Device edits' } };
   const Dialog = () => null, Form = () => null, Field = () => null, Launcher = () => null, Button = () => null;
-  const mutation: any = { trip: props.trip, recoveryReady: true, currentRecoveryWrite: null, historicalRecovery: true,
+  const mutation: any = { trip: props.trip, recoveryReady: true, mutationReady: true, preparing: false, currentRecoveryWrite: null, historicalRecovery: true,
     conflictTrip: null, saveState: 'idle', hasPendingSaves: () => false, isPending: () => false, adoptCanonicalTrip: async () => true,
     adoptDeviceTrip: async () => true, mutateTrip: async () => true, ...mutationOverrides };
   const storage = { BrowserRecoveryReadError, loadRememberedOwner: () => null, loadTripRecovery: async () => remaining,
@@ -593,4 +610,20 @@ for (const identity of [
   }
   assert.deepEqual(h.mutation.trip, before, 'presentation cannot rewrite stored identity or content');
   assert.equal(writes, 0);
+});
+
+
+test('session resolution is preparing, never an auth failure or a writable guest scope', async () => {
+  let reads=0;const h=mutationHarness({loadCachedTrip:async()=>{reads++;return null}});h.setSessionPending(true);
+  let state=h.render();await tick();state=h.render();assert.equal(state.preparing,true);assert.equal(state.mutationReady,false);assert.equal(state.failure,null);assert.equal(reads,0);
+  assert.equal(await state.mutateTrip((trip:any)=>tripDisplay.renameTripIdentity(trip,'Early'),'trip-title'),false);assert.equal(h.written.length,0);
+  h.setSessionPending(false);state=h.render();assert.equal(state.mutationReady,false);await tick();state=h.render();assert.equal(state.mutationReady,true);assert.equal(state.preparing,false);assert.equal(reads,1);
+});
+
+
+test('an already-ready editor becomes unavailable immediately while the same session resolves again', async () => {
+ const h=mutationHarness();h.render();await tick();const ready=h.render();assert.equal(ready.mutationReady,true);
+ h.setSessionPending(true);const pending=h.render();assert.equal(pending.mutationReady,false);assert.equal(pending.preparing,true);
+ assert.equal(await ready.mutateTrip((trip:any)=>tripDisplay.renameTripIdentity(trip,'Obsolete ready callback'),'trip-title'),false);assert.equal(h.written.length,0);
+ h.setSessionPending(false);assert.equal(h.render().mutationReady,false);await tick();assert.equal(h.render().mutationReady,true);
 });
