@@ -14,13 +14,13 @@ function legacyBookingStopIds(trip:EasyTTrip,booking:TripBooking,options:Associa
  * surviving associations and conservative legacy protection until reviewed. */
 export function builderBookingStopIds(trip:EasyTTrip,booking:TripBooking,options:AssociationOptions={}):string[]{
  const ids=new Set(trip.stops.map(stop=>stop.id));
+ const end=endEndpointForTrip(trip);
+ const knownIds=new Set([...ids,tripOriginEndpointId(trip.id),...(end?[end.id]:[])]);
  if(booking.type==='transport'){
   const binding=booking.transportLegBinding;
   if(binding&&booking.travellerMarkedBooked===false)return [];
   if(binding){
    const leg=trip.legs.find(candidate=>candidate.id===binding.legId);
-   const end=endEndpointForTrip(trip);
-   const knownIds=new Set([...ids,tripOriginEndpointId(trip.id),...(end?[end.id]:[])]);
    const referenced=[binding.fromEndpointId,binding.toEndpointId];
    // Saved endpoint snapshots can outlive stops; they cannot establish that a
    // booking still identifies a current occurrence, even when IDs agree.
@@ -29,7 +29,11 @@ export function builderBookingStopIds(trip:EasyTTrip,booking:TripBooking,options
    return [...new Set([...referenced,...(leg?[leg.fromStopId,leg.toStopId]:[]),...legacyBookingStopIds(trip,booking,options)])].filter(id=>ids.has(id));
   }
   const legs=trip.legs.filter(leg=>booking.id===leg.id||booking.id===`transport-${leg.id}`||leg.routeMetadata.importedBookingId===booking.id);
-  if(legs.length)return [...new Set(legs.flatMap(leg=>[leg.fromStopId,leg.toStopId]))].filter(id=>ids.has(id));
+  if(legs.length){
+   const referenced=legs.flatMap(leg=>[leg.fromStopId,leg.toStopId]);
+   const legacy=referenced.every(id=>knownIds.has(id))?[]:legacyBookingStopIds(trip,booking,options);
+   return [...new Set([...referenced,...legacy])].filter(id=>ids.has(id));
+  }
  }
  const exact=trip.stops.find(stop=>booking.id===`stay-${stop.id}`);
  if(exact)return [exact.id];

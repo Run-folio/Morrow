@@ -63,3 +63,16 @@ for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint','
  assert.ok(actualProtected(trip).includes('tokyo-return-stay'));
  assert.equal(JSON.stringify(trip),original);
 });
+
+for(const reference of ['leg-id','prefixed-leg-id','imported-booking-id'] as const)test(`${reference} with a deleted stop retains legacy booking protection`,()=>{
+ const trip=repeatedTokyoTrip(),booking=trip.brief.bookings![0]!,leg=trip.legs[0]!;
+ delete booking.transportLegBinding;
+ booking.id=reference==='leg-id'?leg.id:reference==='prefixed-leg-id'?`transport-${leg.id}`:'imported-outbound';
+ if(reference==='imported-booking-id')leg.routeMetadata.importedBookingId=booking.id;
+ leg.toStopId='old-deleted-stop';leg.toEndpoint={...leg.toEndpoint!,id:'old-deleted-stop'};
+ const before=JSON.stringify(trip),associated=builderBookingStopIds(trip,booking);
+ assert.ok(associated.includes(trip.stops[0]!.id),'an obsolete leg reference cannot erase the booked Tokyo association');
+ assert.ok(associated.includes('tokyo-return-stay'),'legacy ambiguity remains protected');
+ assert.ok(builderBookingStopIds(trip,booking,{includeLegacyDateOnly:true}).includes(trip.stops[0]!.id));
+ assert.equal(JSON.stringify(trip),before);
+});
