@@ -30,3 +30,11 @@ Initial legacy-geography fixture runs completed the guest behavior but WebKit re
 ## Remaining gates
 
 MANUAL HOSTED VERIFICATION REQUIRED: original-trip booking/lock state, real signed-in acceptance and staging release integration. No real trip or active user tab was accessed. No staging/production deployment, real booking, provider contact or shared-database mutation occurred. Live provider availability, return-flight support and affiliate attribution are not established by these tests. Ambiguous legacy records can still require review; the fix deliberately preserves that protection.
+
+## Combined-candidate independent review
+
+The original e1b4a748 helper had a protection regression for stale or dangling explicit transport references: it filtered absent IDs and returned an empty association even when the booked current leg still arrived at Tokyo. Independent mounted comparison confirmed the first booked visit's night control became enabled. Three new model regressions failed on the original helper before correction.
+
+The integration now trusts binding specificity only when its saved leg exists and both endpoint IDs agree with the current route endpoints. Labels and transport-mode changes do not change occurrence identity. Contradictory or missing references conservatively retain the union of surviving binding stops, current bound-leg stops and existing legacy name/date associations. Explicit undone manual marks still release their booking lock; unbound legacy data, fixed commitments and explicit schedule locks retain their previous treatment. No record is deleted or rewritten by this association calculation.
+
+Six additional Chromium/WebKit browser cases cover deleted endpoints, deleted legs and contradictory surviving endpoints. These ensure the booked first visit and ambiguous later visit stay disabled through reload. The safe repeated-visit case remains covered by nights/removal/save/reload checks. Exact combined qualification and any remaining hosted limits are recorded in task-6/transport-readiness-candidate/output/qa/repeated-stay-combined. No deployment is authorized by this review.

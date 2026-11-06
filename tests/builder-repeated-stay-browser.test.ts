@@ -52,3 +52,20 @@ for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: re
   await row.getByRole('button',{name:/Add one night/}).click();await page.getByText(/This edit could not be accepted\. Your current trip remains unchanged/).waitFor();assert.equal(await row.locator('[data-builder-nights] strong').innerText(),'0');assert.deepEqual(await page.evaluate(()=>Object.entries(localStorage).sort()),before);assert.deepEqual(view.errors,[]);
  }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/failure-account-or-recovery-${browserName}.txt`,await view.page.locator('body').innerText());}throw error;}finally{await view.close();}
 });
+
+for(const browserName of ['chromium','webkit'] as const)for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint'] as const)test(`${browserName}: ${broken} booking identity keeps booked and ambiguous visits protected`,{skip:!builderBrowserTestsEnabled,timeout:60000},async()=>{
+ const trip=repeatedTokyoTrip(),booking=trip.brief.bookings![0]!;
+ if(broken==='deleted-endpoint')booking.transportLegBinding!.toEndpointId='old-deleted-stop';
+ if(broken==='deleted-leg'){booking.transportLegBinding!.legId='old-deleted-leg';booking.transportLegBinding!.toEndpointId='tokyo-return-stay';}
+ if(broken==='contradictory-endpoint')booking.transportLegBinding!.toEndpointId=trip.stops[1]!.id;
+ const source=JSON.stringify(trip),view=await renderBuilder({initialTrip:trip,query:`?trip=${trip.id}`,browserName,styled:true,offlineOnly:true});
+ try{
+  const page=view.page;page.setDefaultTimeout(10000);await page.locator('[data-builder-edit-session="active"]').waitFor();
+  const first=page.locator(`[data-builder-stop-id="${trip.stops[0]!.id}"]`),last=page.locator('[data-builder-stop-id="tokyo-return-stay"]');
+  assert.equal(await first.getByRole('button',{name:/Add one night/}).isDisabled(),true,'stale identity must never unlock the booked arrival');
+  assert.equal(await last.getByRole('button',{name:/Add one night/}).isDisabled(),true,'ambiguous repeated title remains protected pending review');
+  await last.getByLabel('Actions for Tokyo',{exact:true}).click();assert.equal(await last.getByRole('button',{name:'Remove stop',exact:true}).isDisabled(),true);await page.keyboard.press('Escape');
+  await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(await first.getByRole('button',{name:/Add one night/}).isDisabled(),true);assert.equal(await last.getByRole('button',{name:/Add one night/}).isDisabled(),true);
+  assert.equal(JSON.stringify(trip),source);assert.deepEqual(view.errors,[]);
+ }finally{await view.close();}
+});

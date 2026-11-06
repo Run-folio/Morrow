@@ -48,3 +48,17 @@ test('legacy date-only removal confirmation survives without assigning an exact 
  assert.deepEqual(builderBookingStopIds(trip,booking),[]);assert.deepEqual(builderBookingStopIds(trip,booking,{includeLegacyDateOnly:true}),[trip.stops[0]!.id]);
  assert.deepEqual(builderBookingStopIds(trip,{...trip.brief.bookings![0]!,date:trip.stops[1]!.arrivalDate},{includeLegacyDateOnly:true}),[trip.stops[0]!.id]);
 });
+
+for(const broken of ['deleted-endpoint','deleted-leg','contradictory-endpoint'] as const)test(`${broken} booking references retain conservative protection and original booking bytes`,()=>{
+ const trip=repeatedTokyoTrip(),booking=trip.brief.bookings![0]!;
+ if(broken==='deleted-endpoint')booking.transportLegBinding!.toEndpointId='old-deleted-stop';
+ if(broken==='deleted-leg'){booking.transportLegBinding!.legId='old-deleted-leg';booking.transportLegBinding!.toEndpointId='tokyo-return-stay';}
+ if(broken==='contradictory-endpoint')booking.transportLegBinding!.toEndpointId=trip.stops[1]!.id;
+ const original=JSON.stringify(trip),associated=builderBookingStopIds(trip,booking),removal=builderBookingStopIds(trip,booking,{includeLegacyDateOnly:true});
+ assert.ok(associated.includes(trip.stops[0]!.id),'the current booked arrival occurrence remains protected');
+ assert.ok(associated.includes('tokyo-return-stay'),'ambiguous Tokyo title is not silently narrowed by stale identity');
+ assert.ok(removal.includes(trip.stops[0]!.id),'removal retains a booking association requiring review');
+ if(broken==='contradictory-endpoint')assert.ok(associated.includes(trip.stops[1]!.id),'surviving contradictory explicit reference remains protected');
+ assert.ok(actualProtected(trip).includes('tokyo-return-stay'));
+ assert.equal(JSON.stringify(trip),original);
+});
