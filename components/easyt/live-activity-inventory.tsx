@@ -26,6 +26,7 @@ type LiveActivityInventoryProps = {
   scheduleLabel?: string;
   workspace: "itinerary" | "map";
   fallback?: ReactNode;
+  emptyLabel?: string;
   onSave: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onSchedule: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onRemove?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
@@ -44,7 +45,7 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, scheduleLabel, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, scheduleLabel, workspace, fallback = null, emptyLabel, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const actionScope = JSON.stringify([trip.ownerId, trip.id, stop.id, day.id]);
   const mountedRef = useRef(true);
   const pendingActionKeysRef = useRef(new Set<string>());
@@ -145,7 +146,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, sche
     detail={assessment ? publicActivityLaneMessage(assessment, "en") : "Bookable experiences are unavailable right now."}
     onRetry={status === "error" && assessment?.retryable !== false || status === "incomplete" && assessment?.retryable === true ? () => setRetryVersion(current => current + 1) : undefined} />
 </> : null;
-  if (!ranked.length) return <>{feedback}{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
+  if (!ranked.length) return <>{feedback}{status === "ready" && emptyLabel ? <MorroviaSectionStatus title={emptyLabel} /> : null}{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
   return <section className={styles.group} aria-label="Live experiences">
     {feedback}
