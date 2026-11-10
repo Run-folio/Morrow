@@ -5380,7 +5380,7 @@
       },
       {
         "value": "4px",
-        "count": 283,
+        "count": 284,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7749,7 +7749,7 @@
       },
       {
         "value": "max-width: 540px",
-        "count": 9,
+        "count": 10,
         "examples": [
           "app/journey/home/immersive/product-demo.module.css",
           "components/easyt/morrovia-feedback.module.css",
