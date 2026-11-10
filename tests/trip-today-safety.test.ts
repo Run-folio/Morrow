@@ -15,3 +15,5 @@ test('Today Map cannot select an ambiguous or invalid preview day',()=>{
  const t=fixtureTrip();t.planItems.push({...t.planItems[1],id:'ambiguous',stopId:'springfield',date:'2026-11-10',dayNumber:3});t.stops.push({...t.stops[0],id:'springfield',name:'Springfield',country:'United States',order:1});
  const href='/journey/'+t.id+'/today';for(const path of [href,href+'?day=999']){const map=new URL(tripWorkspaceMapActionHref(t,path,new Date('2026-11-10T08:00:00Z')),'https://example.test');assert.equal(map.searchParams.has('day'),false);assert.equal(map.searchParams.has('stop'),false);}
 });
+
+test('full-day presentation retains an explicitly saved start time',()=>{const view=readFileSync('components/easyt/trip-today-workspace.tsx','utf8');assert.match(view,/\[copy\.allDay,time\]\.filter\(Boolean\)\.join/);});

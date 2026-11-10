@@ -1,3 +1,4 @@
+import {legacyItineraryIdeas} from '@/lib/easyt/trip';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import TripTodayWorkspace from './trip-today-workspace';
 import { fixtureTrip } from './storybook/trip-today.fixture';
@@ -23,3 +24,6 @@ export const SpanishMobile:Story={args:{language:'es'},globals:{viewport:{value:
 export const LiveClock:Story={args:{now:undefined}};
 
 export const NoItinerary:Story={args:{trip:{...fixtureTrip(),planItems:[]}}};
+
+const fullDay=fixtureTrip();fullDay.brief.itineraryIdeas=[{...legacyItineraryIdeas(fullDay.brief.itineraryIdeas)[0],startsAt:'09:00',providerMetadata:{duration:{fixedMinutes:540},provenance:{kind:'live_provider_search',provider:'viator',checkedAt:'2026-11-10T00:00:00Z'}}}];
+export const FullDayWithStartTime:Story={args:{trip:fullDay}};
