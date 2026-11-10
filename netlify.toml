@@ -1,0 +1,4 @@
+# Scope the TypeScript build heap to the staging branch. Build variables do not
+# change the production site's runtime environment or skip any validation.
+[context.staging.environment]
+  NODE_OPTIONS = "--max-old-space-size=4096"
