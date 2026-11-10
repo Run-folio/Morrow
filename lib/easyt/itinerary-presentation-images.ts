@@ -4,6 +4,16 @@ import { mediaImagesForExactDestination } from "./itinerary-media.ts";
 import { itineraryActivityPhotos, itineraryDestinationPhotos, routeImageCredit, routePhotoForSource } from "./route-images.ts";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "./trip-overview-imagery.ts";
 import { legacyItineraryIdeas, type EasyTTrip, type PlanItem, type TripStop } from "./trip.ts";
+import type { ItineraryCalendarItem } from "./itinerary-calendar.ts";
+
+/** Item-bound editorial imagery only; destination atmosphere cannot stand in for an activity or hotel. */
+export function itineraryCalendarItemImage(item: ItineraryCalendarItem, stop: TripStop | null): OverviewPlaceImage | null {
+  if (item.kind !== "activity" || !stop) return null;
+  const title = item.activity.title;
+  const photo = itineraryActivityPhotos(title, stop.name, stop.country)[0];
+  const credit = photo ? routeImageCredit(photo.variants[0]?.src ?? "") : null;
+  return credit ? { ...credit, activityTitle: title, activityImageKind: "editorial-place" } : null;
+}
 
 type PresentationImages = {
   stopById: Readonly<Record<string, OverviewPlaceImage | null>>;

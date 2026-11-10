@@ -1549,3 +1549,7 @@ export const CalendarLandmarks: Story = {
     });
   },
 };
+
+/** Approved location-led calendar, preserving real item imagery and missing-image states. */
+export const CalendarLocationHeaders: Story = { ...CalendarAttributedPhoto };
+export const CalendarLocationHeadersMobile390: Story = { ...CalendarLocationHeaders, globals: { viewport: { value: "morrovia390", isRotated: false } } };

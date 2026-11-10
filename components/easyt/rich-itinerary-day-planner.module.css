@@ -738,3 +738,17 @@
 .activityExpansion button {
   scroll-margin-block: var(--morrovia-sticky-content-offset);
 }
+
+/* Mobile time slots retain their controls with a roomier, shared row rhythm. */
+@media (max-width: 680px) {
+  .planner[data-compact-mobile] .periodGrid { gap: 0; }
+  .planner[data-compact-mobile] .period { border: 0; border-bottom: 1px solid var(--morrovia-line); border-radius: 0; padding-block: 14px; }
+  .planner[data-compact-mobile] .period[data-empty="true"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 76px; box-sizing: border-box; }
+  .planner[data-compact-mobile] .periodHeading { padding: 8px 0; border: 0; }
+  .planner[data-compact-mobile] .periodHeading h3 { font: 650 16px/1.4 var(--morrovia-ui); }
+  .planner[data-compact-mobile] .period[data-empty="true"] .freePeriod { grid-column: 1 / -1; height: 0; min-height: 0; padding: 0; }
+  .planner[data-compact-mobile] .period[data-empty="true"] .periodHeading { grid-column: 1; grid-row: 1; }
+  .planner[data-compact-mobile] .period[data-empty="true"] .addHere { grid-column: 2; grid-row: 1; padding: 0; }
+  .planner[data-compact-mobile] .period[data-empty="true"] .addHere:has(form) { grid-column: 1 / -1; grid-row: 2; }
+  .planner[data-compact-mobile] .addHere { padding: 8px 0 0; }
+}

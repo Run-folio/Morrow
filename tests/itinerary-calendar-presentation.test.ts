@@ -169,7 +169,7 @@ test("Spanish acceptance renders the production workspace with Spanish copy", ()
   assert.match(stories, /export const AcceptanceSpanish: Story = \{[\s\S]*?language: "es"/);
   assert.match(itinerary, /routePhotoSources: "Fuentes de fotos de la ruta"/);
   assert.match(itinerary, /<summary><span>\{copy\.routePhotoSources\}<\/span><\/summary>/);
-  assert.match(itinerary, /\{copy\.day\} \{pad\(active\.dayNumber\)\}/);
+  assert.match(itinerary, /\{copy\.day\} \{active\.dayNumber\}/);
   assert.match(itinerary, /label=\{copy\.jumpToDateDestination\}/);
 });
 
@@ -205,4 +205,21 @@ test("no-photography acceptance does not show unrelated suggestion fixtures", ()
   const noPhoto = stories.slice(stories.indexOf("export const SelectedDayWithoutPhotography"), stories.indexOf("const mexicoAcceptanceTrip"));
   assert.match(noPhoto, /initialSuggestions: \{ 1: \[\], 2: \[\], 3: \[\], 4: \[\], 5: \[\], 6: \[\] \}/);
   assert.match(noPhoto, /initialActivityInventory: \{ 1: \[\], 2: \[\], 3: \[\], 4: \[\], 5: \[\], 6: \[\] \}/);
+});
+
+
+test("calendar imagery is location- and item-bound with an independent photo credit target", () => {
+ assert.match(itinerary, /stopImages=\{presentationImages\.stopById\}/);
+ assert.match(itinerary, /data-stop-id=\{band.stop.id\}/);
+ assert.doesNotMatch(itinerary, /styles\.calendarDayPhoto/);
+ assert.match(itinerary, /itineraryCalendarItemImage\(item, day.stop\)/);
+ const entry=itinerary.slice(itinerary.indexOf('const image = itineraryCalendarItemImage'),itinerary.indexOf('function OmioTransportAction'));
+ assert.ok(entry.indexOf('<ItineraryDayPhoto') < entry.indexOf('<EasyTButton'));
+ assert.match(itinerary, /const dayHero = presentationImages\.stopById\[active.stopId\]/);
+});
+test("dates remain prominent beside a separate top-right Day label at both sizes",()=>{
+ assert.match(itinerary,/styles\.calendarDateIdentity/);
+ assert.match(itinerary,/styles\.dayDateHeading/);
+ assert.match(styles,/\.calendarDaySelect \.calendarDateIdentity[^}]*justify-content: space-between/);
+ assert.match(styles,/\.dayDateHeading[^}]*justify-content: space-between/);
 });
