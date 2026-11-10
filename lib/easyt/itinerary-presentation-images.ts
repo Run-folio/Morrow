@@ -8,8 +8,12 @@ import type { ItineraryCalendarItem } from "./itinerary-calendar.ts";
 
 /** Item-bound editorial imagery only; destination atmosphere cannot stand in for an activity or hotel. */
 export function itineraryCalendarItemImage(item: ItineraryCalendarItem, stop: TripStop | null): OverviewPlaceImage | null {
-  if (item.kind !== "activity" || !stop) return null;
-  const title = item.activity.title;
+  return item.kind === "activity" ? itineraryActivityImage(item.activity, stop) : null;
+}
+
+export function itineraryActivityImage(activity: { title: string }, stop: TripStop | null): OverviewPlaceImage | null {
+  if (!stop) return null;
+  const title = activity.title;
   const photo = itineraryActivityPhotos(title, stop.name, stop.country)[0];
   const credit = photo ? routeImageCredit(photo.variants[0]?.src ?? "") : null;
   return credit ? { ...credit, activityTitle: title, activityImageKind: "editorial-place" } : null;

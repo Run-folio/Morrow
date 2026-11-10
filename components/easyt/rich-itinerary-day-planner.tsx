@@ -26,9 +26,11 @@ import {
   type ItineraryDayComposition,
 } from "@/lib/easyt/itinerary-day-composition";
 import { itineraryPlanningParts, type ItineraryPlanningPart } from "@/lib/easyt/itinerary-day-part-intent";
-import type { ItineraryDayPart } from "@/lib/easyt/trip";
+import type { ItineraryDayPart, TripStop } from "@/lib/easyt/trip";
 import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, fullDayActivityTiming, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
 import { EasyTButton, EasyTField, EasyTSelect } from "./easyt-controls";
+import { itineraryActivityImage } from "@/lib/easyt/itinerary-presentation-images";
+import ItineraryDayPhoto from "./itinerary-day-photo";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import ItineraryDraggableCard from "./itinerary-draggable-card";
 import styles from "./rich-itinerary-day-planner.module.css";
@@ -162,6 +164,7 @@ function formatDayDate(date: string, language: "en" | "es") {
 
 function ActivityRow({
   activity,
+  stop,
   language,
   pending,
   controlId,
@@ -182,6 +185,7 @@ function ActivityRow({
   onEditActivity,
 }: {
   activity: ComposedItineraryActivity;
+  stop: TripStop | null;
   language: "en" | "es";
   pending: boolean;
   controlId: string;
@@ -202,6 +206,7 @@ function ActivityRow({
   onEditActivity?: RichItineraryDayPlannerProps["onEditActivity"];
 }) {
   const copy = copyFor(language);
+  const reviewedImage = !activity.image ? itineraryActivityImage(activity, stop) : null;
   const duration = activityDurationLabel(activity.providerMetadata?.duration);
   const durationFit = activityDayPartFit(activity.providerMetadata?.duration);
   const fullDay = isFullDayActivity(activity.providerMetadata?.duration);
@@ -221,6 +226,7 @@ function ActivityRow({
   ].filter(Boolean).join(" · ");
   return (
     <ItineraryDraggableCard className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id} data-activity-note-index={activity.noteIndex ?? undefined} draggable={draggable && !pending && !activity.booking && (allowsDayPart || fullDay)} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <ItineraryDayPhoto compact image={reviewedImage} destination={stop?.name ?? ""} language={language} className={styles.activityPhoto} />
       <EasyTButton className={styles.activitySelect} data-itinerary-drag-surface variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
         <ItineraryActivityIdentity
           title={activity.title}
@@ -420,6 +426,7 @@ export default function RichItineraryDayPlanner({
                 onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (!draggedFullDayActivity) onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
               >{dragActive && !draggedFullDayActivity ? "Drop here" : null}</div>
               <ActivityRow
+              stop={composition.stop}
                 activity={activity}
                 language={language}
                 pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}
@@ -517,6 +524,7 @@ export default function RichItineraryDayPlanner({
           const coveredParts = timing?.kind === "timed" ? timing.dayParts : [];
           return <div className={styles.fullDayBand} data-full-day-band key={activity.id}>
             <ActivityRow
+              stop={composition.stop}
               activity={activity}
               language={language}
               pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}
@@ -582,6 +590,7 @@ export default function RichItineraryDayPlanner({
           <div className={styles.unslottedList}>
             {untimedActivities.map((activity) => (
               <ActivityRow
+              stop={composition.stop}
                 activity={activity}
                 language={language}
                 pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}

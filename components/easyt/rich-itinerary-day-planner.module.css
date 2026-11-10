@@ -752,3 +752,5 @@
   .planner[data-compact-mobile] .period[data-empty="true"] .addHere:has(form) { grid-column: 1 / -1; grid-row: 2; }
   .planner[data-compact-mobile] .addHere { padding: 8px 0 0; }
 }
+.activityPhoto { grid-column: 1 / -1; height: 104px; max-height: 104px; width: 100%; }
+.activityPhoto > span { display: none; }

@@ -1,3 +1,4 @@
+import { itineraryActivityImage } from "../lib/easyt/itinerary-presentation-images.ts";
 import { itineraryPlanningParts } from "../lib/easyt/itinerary-day-part-intent.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -28,7 +29,7 @@ function render(item = activity(), props: Record<string, any> = {}) {
     .replace("export default function RichItineraryDayPlanner", "function RichItineraryDayPlanner");
   const scope = { ...schedule, React: { createElement: element },
     dayPartLabels: { en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" }, es: {} },
-    itineraryPlanningParts,
+    itineraryPlanningParts, itineraryActivityImage, ItineraryDayPhoto: "photo",
     useId: () => "activity-menu", useRef: (value: unknown) => ({ current: value }),
     useState: (value: unknown) => [value, () => {}], useEffect() {},
     styles: new Proxy({}, { get: (_, key) => String(key) }),

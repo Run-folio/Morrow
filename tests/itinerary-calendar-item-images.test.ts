@@ -23,3 +23,9 @@ test('booking and shortlist distinctions do not acquire invented hotel imagery',
  assert.equal(images.itineraryCalendarItemImage({kind:'accommodation',booking:{title:'A hotel'}} as ItineraryCalendarItem,tokyo),null);
  assert.equal(images.itineraryCalendarItemImage({kind:'booking'} as ItineraryCalendarItem,tokyo),null);
 });
+
+test('calendar and day rows share the same reviewed activity image policy',()=>{
+ const item=activity('Asakusa & Senso-ji');
+ if(item.kind!=='activity') throw new Error('activity fixture');
+ assert.deepEqual(images.itineraryActivityImage(item.activity,tokyo),images.itineraryCalendarItemImage(item,tokyo));
+});
