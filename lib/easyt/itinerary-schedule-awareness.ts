@@ -74,7 +74,8 @@ export type FullDayActivityTiming =
 
 const planningPartWindows: Array<{ part: ItineraryPlanningPart; start: number; end: number }> = [
   { part: "morning", start: 6 * 60, end: 12 * 60 },
-  { part: "afternoon", start: 12 * 60, end: 17 * 60 },
+  { part: "midday", start: 12 * 60, end: 14 * 60 },
+  { part: "afternoon", start: 14 * 60, end: 17 * 60 },
   { part: "evening", start: 17 * 60, end: 24 * 60 },
 ];
 

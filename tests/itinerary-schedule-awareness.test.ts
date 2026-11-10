@@ -70,7 +70,7 @@ test("full-day timing projects only verified current-day period overlap", () => 
     kind: "timed",
     startsAt: "08:00",
     endsAt: "16:00",
-    dayParts: ["morning", "afternoon"],
+    dayParts: ["morning", "midday", "afternoon"],
     continuesOvernight: false,
   });
   assert.deepEqual(fullDayActivityTiming({ fixedMinutes: 600 }, "22:00"), {

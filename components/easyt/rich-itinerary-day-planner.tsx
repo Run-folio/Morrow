@@ -365,7 +365,7 @@ export default function RichItineraryDayPlanner({
     <div className={styles.addComposerActions}><EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!addDraft.trim()}>{copy.save}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onAddCancel}>{copy.cancel}</EasyTButton></div>
   </form>;
   useEffect(() => {
-    if (addComposerOpen && addComposerDayPart && addComposerDayPart !== "midday") {
+    if (addComposerOpen && addComposerDayPart) {
       focusAfterAddRef.current = { dayId: composition.day.id, part: addComposerDayPart };
       return;
     }

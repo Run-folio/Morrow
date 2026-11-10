@@ -1,3 +1,4 @@
+import { itineraryPlanningParts } from "../lib/easyt/itinerary-day-part-intent.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -27,13 +28,13 @@ function render(item = activity(), props: Record<string, any> = {}) {
     .replace("export default function RichItineraryDayPlanner", "function RichItineraryDayPlanner");
   const scope = { ...schedule, React: { createElement: element },
     dayPartLabels: { en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" }, es: {} },
-    itineraryPlanningParts: ["morning", "afternoon", "evening"],
+    itineraryPlanningParts,
     useId: () => "activity-menu", useRef: (value: unknown) => ({ current: value }),
     useState: (value: unknown) => [value, () => {}], useEffect() {},
     styles: new Proxy({}, { get: (_, key) => String(key) }),
     EasyTButton: "button", EasyTSelect: "select", EasyTField: "input",
     ItineraryActivityIdentity: "identity", ItineraryDraggableCard: "article",
-    ...Object.fromEntries(["ArrowDown", "ArrowUp", "AlertTriangle", "BedDouble", "CalendarDays", "CalendarRange", "CirclePlus", "Clock3", "GripVertical", "MoreHorizontal", "Route", "Trash2"].map(name => [name, name])),
+    ...Object.fromEntries(["ArrowDown", "ArrowUp", "ChevronDown", "AlertTriangle", "BedDouble", "CalendarDays", "CalendarRange", "CirclePlus", "Clock3", "GripVertical", "MoreHorizontal", "Route", "Trash2"].map(name => [name, name])),
   };
   const component = new Function("scope", `with(scope){${transpile(body + "\nreturn RichItineraryDayPlanner;")}}`)(scope);
   const planned = { morning: [], midday: [], afternoon: [], evening: [], ...(item.dayPart ? { [item.dayPart]: [item] } : {}) };

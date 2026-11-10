@@ -51,16 +51,15 @@ export function composeItineraryDayWithExplicitPeriods(
   };
 }
 
-/** The Day View uses three broad planning slots while legacy Midday remains a
- * valid persisted value for Map, Explore and older trips. */
-export const itineraryPlanningParts = ["morning", "afternoon", "evening"] as const;
+/** Day View shares all canonical broad periods with Map and Explore. */
+export const itineraryPlanningParts = itineraryDayParts;
 export type ItineraryPlanningPart = typeof itineraryPlanningParts[number];
 
 function partForLocalStart(startsAt: string | undefined): ItineraryPlanningPart | null {
   const match = startsAt?.match(/^([01]\d|2[0-3]):[0-5]\d$/);
   if (!match) return null;
   const hour = Number(match[1]);
-  return hour < 6 || hour >= 17 ? "evening" : hour < 12 ? "morning" : "afternoon";
+  return hour < 6 || hour >= 17 ? "evening" : hour < 12 ? "morning" : hour < 14 ? "midday" : "afternoon";
 }
 
 /** Presentation-only projection: never invents a clock time or rewrites trip data. */
@@ -73,7 +72,7 @@ export function composeItineraryDayForPlanning(trip: EasyTTrip, dayId: string): 
         return { ...activity, dayPart: null };
       }
       const timedPart = partForLocalStart(activity.startsAt);
-      const dayPart = timedPart ?? (activity.dayPart === "midday" ? "afternoon" : activity.dayPart);
+      const dayPart = timedPart ?? activity.dayPart;
       return { ...activity, dayPart, dayPartEditable: activity.dayPartEditable && timedPart === null };
     });
   const planned = Object.fromEntries(itineraryDayParts.map((part) => [

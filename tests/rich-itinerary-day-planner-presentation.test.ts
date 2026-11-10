@@ -10,14 +10,14 @@ const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-works
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 const composition = readFileSync(new URL("../lib/easyt/itinerary-day-composition.ts", import.meta.url), "utf8");
 
-test("empty day exposes the same three direct planning slots as a populated day", () => {
+test("empty day exposes the same four direct planning slots as a populated day", () => {
   assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
   assert.doesNotMatch(component, /className=\{styles\.emptyInvitation\}/);
   assert.match(component, /onAddOpen\?\.\(part\)/);
   assert.match(component, /addComposerOpen && addComposerDayPart === part/);
 });
 
-test("populated day shows all three periods and saved unslotted rows", () => {
+test("populated day shows all four periods and saved unslotted rows", () => {
   assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
   assert.match(component, /untimedActivities\.length \? \(/);
   assert.ok(component.indexOf("className={styles.periodGrid}") < component.indexOf("untimedActivities.length ? ("));
@@ -114,7 +114,7 @@ test("mobile hides pointer drag without removing the explicit scheduling and reo
   assert.match(component, /onMoveActivity\(activity, "later"\)/);
 });
 
-test("mobile keeps the same three slot actions and narrow one-column rhythm", () => {
+test("mobile keeps the same four slot actions and narrow one-column rhythm", () => {
   assert.match(component, /data-empty=\{activities\.length === 0\}/);
   assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
   assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.periodGrid:has\(\.period\[data-empty="true"\]\)[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
@@ -275,4 +275,8 @@ test("mobile keeps every daypart and its contextual Add action available, includ
   assert.doesNotMatch(component, /!compactMobile \? <div className=\{styles\.addHere\}/);
   assert.match(workspace, /useState<ItineraryDayPart>\("morning"\)/);
   assert.match(workspace, /value:"midday",label:itineraryDayPartLabels\[language\]\.midday/);
+});
+
+test("the full-day overlap strip keeps all four periods on one track", () => {
+  assert.match(styles, /\.fullDaySpanTrack \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
 });

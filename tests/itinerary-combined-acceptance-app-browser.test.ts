@@ -56,9 +56,9 @@ test("combined dayparts preserve legacy data, direct edits and repeated-stop ide
       const planner = page.locator('section[aria-label="Day 2 planner"]');
       await planner.waitFor({ state: "visible", timeout: 20_000 });
       await page.getByText("Saved on this device").waitFor();
-      assert.deepEqual(await planner.locator("section[data-day-part]").evaluateAll((nodes: HTMLElement[]) => nodes.map((node) => node.dataset.dayPart)), ["morning", "afternoon", "evening"]);
-      assert.equal(await planner.getByRole("button", { name: /Add plan to .* midday/i }).count(), 0);
-      await planner.locator('section[data-day-part="afternoon"]').getByText("Legacy lunch", { exact: true }).waitFor();
+      assert.deepEqual(await planner.locator("section[data-day-part]").evaluateAll((nodes: HTMLElement[]) => nodes.map((node) => node.dataset.dayPart)), ["morning", "midday", "afternoon", "evening"]);
+      assert.equal(await planner.getByRole("button", { name: /Add plan to .* midday/i }).count(), 1);
+      await planner.locator('section[data-day-part="midday"]').getByText("Legacy lunch", { exact: true }).waitFor();
       await page.screenshot({ path: `/tmp/morrovia-386387-busy-before-${width}.png`, fullPage: true });
       const before = trip.planItems.find((day) => day.dayNumber === 2)!;
       assert.equal(before.noteDayParts?.[before.notes.indexOf("Legacy lunch")], "midday");
@@ -79,7 +79,7 @@ test("combined dayparts preserve legacy data, direct edits and repeated-stop ide
       }
       await page.screenshot({ path: `/tmp/morrovia-386387-combined-${width}.png`, fullPage: true });
       await page.reload({ waitUntil: "domcontentloaded" });
-      await page.locator('section[data-day-part="afternoon"]').getByText("Legacy lunch", { exact: true }).waitFor();
+      await page.locator('section[data-day-part="midday"]').getByText("Legacy lunch", { exact: true }).waitFor();
       await page.locator(`section[data-day-part="${width === 390 ? "afternoon" : "morning"}"]`).getByText(`Breakfast ${width}`, { exact: true }).waitFor();
       const entries = await page.evaluate(() => Object.entries(localStorage)) as [string, string][];
       const persisted = loadTripRecoveryFromStorage({

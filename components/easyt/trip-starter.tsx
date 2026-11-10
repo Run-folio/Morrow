@@ -73,7 +73,7 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
        <h3 className={workspaceHeading.sectionTitle}>Add things to do</h3>
        {idea ? <section className={styles.schedule} aria-label={`Choose a day for ${isGooglePlaceReferenceIdea(idea) ? "activity" : idea.title}`}>
          <strong>{isGooglePlaceReferenceIdea(idea) ? "Activity" : idea.title}</strong>
-         <EasyTSelect label="Day" value={dayId} onChange={event=>setDayId(event.target.value)}><option value="">Choose a day</option>{days.map(day=><option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}</EasyTSelect>
+         <EasyTSelect label="Day" value={dayId} onChange={event=>{scheduleScope.current+=1;setDayId(event.target.value);}}><option value="">Choose a day</option>{days.map(day=><option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}</EasyTSelect>
          <div><EasyTButton size="small" disabled={!dayId || saving || !mutation.mutationReady} onClick={()=>{void schedule();}}>Add to day</EasyTButton><EasyTButton size="small" variant="quiet" onClick={()=>{scheduleScope.current+=1;setIdea(null);}}>Cancel</EasyTButton></div>
        </section> : null}
        {days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onSchedule={value=>{scheduleScope.current+=1;setIdea(value);setDayId("");return false;}} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}
