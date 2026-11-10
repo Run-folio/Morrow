@@ -223,3 +223,8 @@ test("dates remain prominent beside a separate top-right Day label at both sizes
  assert.match(styles,/\.calendarDaySelect \.calendarDateIdentity[^}]*justify-content: space-between/);
  assert.match(styles,/\.dayDateHeading[^}]*justify-content: space-between/);
 });
+
+test('move focus returns to the activity selection surface independently of photo credits',()=>{
+ assert.match(itinerary,/data-itinerary-activity-id[^\n]+data-itinerary-drag-surface/);
+ assert.doesNotMatch(itinerary,/data-itinerary-activity-id[^\n]+\] button/);
+});

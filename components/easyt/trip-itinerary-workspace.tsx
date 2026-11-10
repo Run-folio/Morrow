@@ -1450,7 +1450,7 @@ export default function TripItineraryWorkspace({
     moveOriginRef.current = null;
     window.requestAnimationFrame(() => {
       if (origin?.isConnected) origin.focus({ preventScroll: true });
-      else document.querySelector<HTMLElement>(`[data-itinerary-activity-id="${CSS.escape(moveFlow?.activity.id ?? "")}"] button`)?.focus();
+      else document.querySelector<HTMLElement>(`[data-itinerary-activity-id="${CSS.escape(moveFlow?.activity.id ?? "")}"] [data-itinerary-drag-surface]`)?.focus();
     });
   };
 
