@@ -36,3 +36,4 @@ test('Today projection cannot change the trip document',()=>{
 test('a missing itinerary day is not presented as a finished or absent trip',()=>{assert.equal(tripToday(fixtureTrip(),new Date('2026-11-12T06:00:00Z')).state,'day-missing');});
 
 test('only an explicitly saved activity time appears as a timed plan',()=>{const t=fixtureTrip();assert.equal(tripToday(t,new Date('2026-11-10T06:00:00Z')).activities[0].startsAt,'10:00');t.brief.itineraryIdeas=[];assert.equal(tripToday(t,new Date('2026-11-10T06:00:00Z')).activities[0].startsAt,undefined);});
+test('an unbuilt trip with valid dates does not claim its dates are missing',()=>{const t=fixtureTrip();t.planItems=[];assert.equal(tripToday(t,new Date('2026-11-10T06:00:00Z')).state,'itinerary-needed');});

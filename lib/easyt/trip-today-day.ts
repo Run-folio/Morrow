@@ -1,7 +1,7 @@
 import type { EasyTTrip, PlanItem, TripStop } from './trip.ts';
 import { parseIsoDate } from './trip-lifecycle.ts';
 import { localDateAt, todayTimeZone } from './trip-local-date.ts';
-export type TodayState='no-trip'|'dates-needed'|'date-uncertain'|'day-missing'|'outside-trip'|'choose-day'|'invalid-preview'|'today'|'preview';
+export type TodayState='no-trip'|'itinerary-needed'|'dates-needed'|'date-uncertain'|'day-missing'|'outside-trip'|'choose-day'|'invalid-preview'|'today'|'preview';
 export type TodayDaySelection={state:TodayState;day:PlanItem|null;stop:TripStop|null;timezone:string|null;choices:PlanItem[]};
 type TodayTrip=Pick<EasyTTrip,'status'|'startDate'|'endDate'|'stops'|'planItems'>;
 const validDate=(date:string|null|undefined):date is string=>Boolean(parseIsoDate(date));
@@ -9,6 +9,7 @@ export function selectTodayDay(trip:TodayTrip|null,now:Date,previewDayId?:string
  const empty:TodayDaySelection={state:'no-trip',day:null,stop:null,timezone:null,choices:[]};
  if(!trip||trip.status==='archived')return empty;
  if(!validDate(trip.startDate)||!validDate(trip.endDate)||trip.endDate<trip.startDate)return {...empty,state:'dates-needed'};
+ if(!trip.planItems.length)return {...empty,state:'itinerary-needed'};
  const choices=[...trip.planItems].filter(d=>validDate(d.date)&&d.date>=trip.startDate&&d.date<=trip.endDate&&trip.stops.some(s=>s.id===d.stopId)).sort((a,b)=>a.dayNumber-b.dayNumber);
  if(!choices.length||new Set(choices.map(d=>d.id)).size!==choices.length)return {...empty,state:'dates-needed'};
  const base={...empty,choices};

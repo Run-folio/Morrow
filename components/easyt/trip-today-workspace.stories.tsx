@@ -21,3 +21,5 @@ const overnight=fixtureTrip();overnight.brief.bookings=[];overnight.stops.push({
 export const OvernightTransport:Story={args:{trip:overnight}};
 export const SpanishMobile:Story={args:{language:'es'},globals:{viewport:{value:'morrovia390',isRotated:false}}};
 export const LiveClock:Story={args:{now:undefined}};
+
+export const NoItinerary:Story={args:{trip:{...fixtureTrip(),planItems:[]}}};
