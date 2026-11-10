@@ -13,7 +13,7 @@ test("mobile day orientation stays compact and scrolls its own rail", () => {
   assert.match(itinerary, /ref=\{dayListRef\}/);
   assert.match(itinerary, /dayListRef\.current\?\.scrollTo|rail\.scrollTo/);
   assert.doesNotMatch(itinerary, /tab-\$\{selectedIndex\}`\)\?\.scrollIntoView/);
-  const mobile = styles.slice(styles.lastIndexOf("@media (max-width: 540px)"));
+  const mobile = styles.slice(styles.indexOf("@media (max-width: 540px)"));
   assert.match(mobile, /\.workspaceToolbar\s*\{[^}]*display:\s*grid/);
   assert.match(mobile, /grid-template-areas: "switch" "date"/);
   assert.doesNotMatch(itinerary, /className=\{styles\.railHeader\}/);
