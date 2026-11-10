@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Route, Sparkles, Sun } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -598,6 +598,7 @@ const views = [
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
   { id: "stay", label: "Stay", icon: BedDouble, suffix: "/stay" },
+  { id: "today", label: "Today", icon: Sun, suffix: "/today" },
 ] as const;
 
 type TripWorkspaceView = typeof views[number]["id"];
@@ -729,12 +730,12 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
         {renderLink(views[0])}{renderLink(views[2])}
         <EasyTButton id="trip-mobile-map" variant="quiet" onClick={openMap}><Map aria-hidden="true" /><span>Map</span></EasyTButton>
         {renderLink(views[1])}
-        <EasyTButton variant="quiet" className={activeView === "explore" || activeView === "stay" ? styles.subnavActive : undefined} aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={activeView === "explore" || activeView === "stay" ? `More, current section: ${activeView === "stay" ? "Stays" : "Explore"}` : "More"} onClick={() => setMoreOpen(true)}><MoreHorizontal aria-hidden="true" /><span>More</span>{activeView === "explore" || activeView === "stay" ? <span className={styles.srOnly}>Current section: {activeView === "stay" ? "Stays" : "Explore"}</span> : null}</EasyTButton>
+        <EasyTButton variant="quiet" className={activeView === "explore" || activeView === "stay" || activeView === "today" ? styles.subnavActive : undefined} aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={activeView === "explore" || activeView === "stay" || activeView === "today" ? `More, current section: ${activeView === "stay" ? "Stays" : activeView === "today" ? "Today" : "Explore"}` : "More"} onClick={() => setMoreOpen(true)}><MoreHorizontal aria-hidden="true" /><span>More</span>{activeView === "explore" || activeView === "stay" || activeView === "today" ? <span className={styles.srOnly}>Current section: {activeView === "stay" ? "Stays" : activeView === "today" ? "Today" : "Explore"}</span> : null}</EasyTButton>
       </> : views.map(renderLink)}
       {navigation?.pendingView ? <span className={styles.srOnly} role="status">Opening {views.find((view) => view.id === (navigation.queuedView ?? navigation.pendingView))?.label}…</span> : null}
     </nav>
     <TripMobileSheet open={moreOpen} title="More trip sections" onClose={() => setMoreOpen(false)}>
-      <div className={styles.moreSections}>{renderLink(views[3])}{renderLink(views[4])}</div>
+      <div className={styles.moreSections}>{renderLink(views[5])}{renderLink(views[3])}{renderLink(views[4])}</div>
     </TripMobileSheet>
   </>;
 }

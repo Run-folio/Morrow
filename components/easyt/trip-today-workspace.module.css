@@ -1,0 +1,59 @@
+.workspace { padding: 28px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-control-surface); color: var(--morrovia-ink); }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 22px; margin-bottom: 24px; border-bottom: 1px solid var(--morrovia-line); }
+.header h2 { margin: 0; font: 600 clamp(44px, 6vw, 72px)/1 var(--morrovia-display); letter-spacing: -.035em; }
+.header p { margin: 12px 0 0; color: var(--morrovia-muted); font: 600 20px/1.4 var(--morrovia-ui); }
+.dayLabel { padding-top: 10px; flex: none; font: 600 18px/1.4 var(--morrovia-ui); }
+.location { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 2.3fr); align-items: center; gap: 20px; overflow: hidden; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
+.location h3 { margin: 0; padding: 24px; font: 600 clamp(32px, 4vw, 50px)/1.1 var(--morrovia-display); overflow-wrap: anywhere; }
+.locationPhoto { height: 150px; max-height: 150px; border-radius: 0; }
+.dateBasis { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 12px 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.primaryLink { justify-content: flex-start; margin-block: 16px 24px; }
+.columns { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; }
+.plans, .context { min-width: 0; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 24px; }
+.plans > h3, .context h3 { margin: 0; padding-bottom: 18px; border-bottom: 1px solid var(--morrovia-line); }
+.agenda { list-style: none; padding: 0; margin: 0; }
+.agenda li { display: grid; grid-template-columns: minmax(100px, 38%) minmax(0, 1fr); gap: 20px; padding-block: 24px; border-bottom: 1px solid var(--morrovia-line); }
+.agenda li:last-child { border-bottom: 0; }
+.activityText { min-width: 0; grid-column: 2; grid-row: 1; }
+.activityLink { display: block; text-align: left; white-space: normal; padding: 0; width: 100%; }
+.primaryLink > svg:last-child { margin-left: auto; }
+.schedule { color: var(--morrovia-muted); font: 600 16px/1.4 var(--morrovia-ui); }
+.workspace h4 { margin: 8px 0; font: 650 21px/1.35 var(--morrovia-ui); overflow-wrap: anywhere; }
+.workspace p { line-height: 1.5; overflow-wrap: anywhere; }
+.activityText p, .context p { margin: 8px 0 14px; color: var(--morrovia-muted); }
+.activityPhoto { grid-column: 1; grid-row: 1; height: 112px; max-height: 112px; align-self: center; }
+.activityPhoto > span { display: none; }
+.context h3 { display: flex; align-items: center; gap: 12px; }
+.context h3 > svg { width: 24px; height: 24px; flex: none; }
+.context > section + section { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--morrovia-line); }
+.context h4 { margin-top: 20px; }
+.empty { color: var(--morrovia-muted); margin-block: 24px; }
+.notes { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--morrovia-line); }
+.notes p { white-space: pre-wrap; }
+.fallback { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; gap: 24px; padding-block: 16px; }
+.fallback h3 { margin: 0; }
+@media (max-width: 760px) {
+ .workspace { padding: 20px 16px; }
+ .header { margin-bottom: 20px; padding-bottom: 20px; }
+ .header h2 { font-size: 54px; }
+ .header p { font-size: 18px; }
+ .location { grid-template-columns: minmax(0, 1fr); gap: 0; }
+ .location h3 { padding: 16px 20px; font-size: 36px; }
+ .locationPhoto { height: 120px; max-height: 120px; }
+ .columns { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+ .plans, .context { padding: 0; border: 0; border-radius: 0; }
+ .plans > h3, .context h3 { font-size: 30px; }
+ .agenda li { gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(90px, 34%); padding-block: 24px; }
+ .workspace h4 { font-size: 19px; }
+ .context { border-top: 1px solid var(--morrovia-line); padding-top: 24px; }
+ .activityText { grid-column: 1; }
+ .activityPhoto { grid-column: 2; height: 96px; max-height: 96px; }
+ .dayLabel { font-size: 16px; }
+}
+.location:not(:has([data-itinerary-photo])) { grid-template-columns: minmax(0, 1fr); }
+.agenda li:not(:has([data-itinerary-photo])) { grid-template-columns: minmax(0, 1fr); }
+
+.agenda li:not(:has([data-itinerary-photo])) .activityText { grid-column: 1; }
+
+.fallback > label { min-width: 0; max-width: 100%; }
+.fallback > a { justify-self: start; }

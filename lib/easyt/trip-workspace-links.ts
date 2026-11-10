@@ -1,3 +1,4 @@
+import { selectTodayDay } from "./trip-today-day.ts";
 import type { EasyTTrip, TripRecommendation } from "./trip.ts";
 import type { MapResultHandoffTarget } from "./map-result-selection.ts";
 
@@ -71,7 +72,7 @@ export function isFirstTripWorkspaceArrival(search: string) {
 }
 
 export function isCanonicalTripWorkspaceHref(href: string) {
-  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|stay|transport|prep))?(?:[?#].*)?$/.test(href);
+  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|stay|transport|today|prep))?(?:[?#].*)?$/.test(href);
 }
 
 export function mapWorkspaceHref(
@@ -111,11 +112,16 @@ export function mapWorkspaceHref(
 }
 
 /** Mobile Map is an action into the existing expanded planner, scoped to the current section. */
-export function tripWorkspaceMapActionHref(trip: WorkspaceTrip, currentHref: string) {
+export function tripWorkspaceMapActionHref(trip: WorkspaceTrip, currentHref: string, now = new Date()) {
   const returnTo = mapWorkspaceReturnHref(trip.id, currentHref);
   const url = new URL(returnTo, "https://morrovia.invalid");
   const view = workspaceViewFromPathname(url.pathname, trip.id);
-  const dayNumber = view === "itinerary" ? parseItineraryWorkspaceTarget(trip, url.searchParams).dayNumber : null;
+  const datedTrip = trip as WorkspaceTrip & Partial<Pick<EasyTTrip, "startDate" | "endDate" | "status">>;
+  const requestedTodayDay = url.searchParams.get("day");
+  const preview = requestedTodayDay ? trip.planItems.find(day => String(day.dayNumber) === requestedTodayDay)?.id ?? "__unavailable-day__" : null;
+  const today = view === "today" && datedTrip.startDate && datedTrip.endDate && datedTrip.status
+    ? selectTodayDay({ startDate: datedTrip.startDate, endDate: datedTrip.endDate, status: datedTrip.status, stops: trip.stops, planItems: trip.planItems }, now, preview) : null;
+  const dayNumber = view === "itinerary" ? parseItineraryWorkspaceTarget(trip, url.searchParams).dayNumber : today?.day?.dayNumber ?? null;
   const day = dayNumber === null ? null : orderedDays(trip).find(item => item.dayNumber === dayNumber);
   const stop = day?.stopId ?? (view === "stay" ? parseStayWorkspaceTarget(trip, url.searchParams).stopId
     : view === "explore" ? (trip.stops.find(item => item.id === url.searchParams.get("stop")) ?? orderedStops(trip)[0])?.id : null);
@@ -129,7 +135,7 @@ export function mapWorkspaceReturnHref(tripId: string, requested: string | null)
     const url = new URL(requested, "https://morrovia.invalid");
     const pathname = url.pathname;
     const base = fallback;
-    const sameTripWorkspace = pathname === base || ["/itinerary", "/explore", "/stay", "/transport"].some((suffix) => pathname === `${base}${suffix}`);
+    const sameTripWorkspace = pathname === base || ["/itinerary", "/explore", "/stay", "/transport", "/today"].some((suffix) => pathname === `${base}${suffix}`);
     const dashboard = pathname === "/journey/dashboard";
     const tripMode = pathname === "/journey/trip" && url.searchParams.get("trip") === tripId;
     if (url.origin !== "https://morrovia.invalid" || !(sameTripWorkspace || dashboard || tripMode)) return fallback;
@@ -338,7 +344,7 @@ export function itineraryDayForRecommendation(
     .find((dayNumber) => canonicalDays.has(dayNumber)) ?? null;
 }
 
-export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "transport";
+export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "transport" | "today";
 
 export function workspaceVisitKey(href: string) {
   return href.split(/[?#]/, 1)[0];
@@ -347,6 +353,7 @@ export function workspaceVisitKey(href: string) {
 export function workspaceViewFromPathname(pathname: string, tripId: string): TripWorkspaceView {
   const decodedPathname = decodeURIComponent(workspaceVisitKey(pathname));
   const remainder = decodedPathname.slice(`/journey/${tripId}`.length);
+  if (remainder.startsWith("/today")) return "today";
   if (remainder.startsWith("/explore")) return "explore";
   if (remainder.startsWith("/stay")) return "stay";
   if (remainder.startsWith("/transport")) return "transport";
