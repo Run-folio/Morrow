@@ -226,7 +226,7 @@ function ActivityRow({
   ].filter(Boolean).join(" · ");
   return (
     <ItineraryDraggableCard className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id} data-activity-note-index={activity.noteIndex ?? undefined} draggable={draggable && !pending && !activity.booking && (allowsDayPart || fullDay)} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <ItineraryDayPhoto compact image={reviewedImage} destination={stop?.name ?? ""} language={language} className={styles.activityPhoto} />
+      <ItineraryDayPhoto compact image={reviewedImage} destination={stop?.name ?? ""} language={language} className={styles.activityPhoto} sizes="(max-width: 760px) calc(100vw - 80px), (max-width: 1099px) 70vw, 50vw" />
       <EasyTButton className={styles.activitySelect} data-itinerary-drag-surface variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
         <ItineraryActivityIdentity
           title={activity.title}
