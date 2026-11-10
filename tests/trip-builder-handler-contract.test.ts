@@ -186,7 +186,8 @@ test('planning_selection_is_bound_to_known_source_and_real_occurrence', async ()
 });
 test('build_status_uses_the_same_guarded_document_and_does_not_restore_archived_trips', async () => {
   const trip = fixture(); const planned = (await api()).prepareBuilderHandlerEdit(trip, { kind: 'build-status' }, builderDocumentFingerprint(trip));
-  assert.ok(planned.ok); assert.equal(planned.trip.status, 'planned'); assert.deepEqual(planned.trip.stops, trip.stops);
+  assert.ok(planned.ok); assert.equal(planned.trip.status, 'planned');
+  assert.deepEqual(planned.trip.brief.tripStarter, {version:1,tripId:trip.id,state:'pending'}); assert.deepEqual(planned.trip.stops, trip.stops);
   trip.status = 'archived'; assert.equal((await api()).prepareBuilderHandlerEdit(trip, { kind: 'build-status' }, builderDocumentFingerprint(trip)).ok, false);
 });
 

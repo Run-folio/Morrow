@@ -387,7 +387,6 @@ export default function RichItineraryDayPlanner({
   const renderPeriod = (part: ItineraryPlanningPart) => {
     const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
     const headingId = `${titleId}-${part}`;
-    if (compactMobile && !activities.length && !dragActive) return null;
     return (
       <section
         className={`${styles.period} ${dragActive && !draggedFullDayActivity ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
@@ -461,7 +460,7 @@ export default function RichItineraryDayPlanner({
           >
           </div>
         )}
-        {!compactMobile ? <div className={styles.addHere}>
+        <div className={styles.addHere}>
           {addComposerOpen && addComposerDayPart === part ? addComposer(part) : onAddOpen ? <EasyTButton
             id={`${titleId}-add-${part}`}
             icon={CirclePlus}
@@ -470,7 +469,7 @@ export default function RichItineraryDayPlanner({
             aria-label={`${copy.addPlanTo} ${formatDayDate(composition.context.date, language)} ${dayPartLabels[language][part].toLowerCase()}`}
             onClick={() => onAddOpen?.(part)}
           >{copy.addPlan}</EasyTButton> : null}
-        </div> : null}
+        </div>
       </section>
     );
   };

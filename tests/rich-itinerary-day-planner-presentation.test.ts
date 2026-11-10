@@ -269,3 +269,10 @@ test("planned full-day drag shows its valid route and periods are not marked as 
   assert.match(component, /dragActive && !draggedFullDayActivity \? styles\.periodDropReady/);
   assert.match(component, /if \(onActivityDrop && !draggedFullDayActivity\) event\.preventDefault\(\)/);
 });
+
+test("mobile keeps every daypart and its contextual Add action available, including Midday", () => {
+  assert.doesNotMatch(component, /if \(compactMobile && !activities\.length && !dragActive\) return null/);
+  assert.doesNotMatch(component, /!compactMobile \? <div className=\{styles\.addHere\}/);
+  assert.match(workspace, /useState<ItineraryDayPart>\("morning"\)/);
+  assert.match(workspace, /value:"midday",label:itineraryDayPartLabels\[language\]\.midday/);
+});

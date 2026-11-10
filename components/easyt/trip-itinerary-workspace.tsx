@@ -569,7 +569,7 @@ export default function TripItineraryWorkspace({
   const mobile = mobileViewport && presentation === "shell";
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
-  const [mobileAddPart, setMobileAddPart] = useState<"morning" | "afternoon" | "evening">("morning");
+  const [mobileAddPart, setMobileAddPart] = useState<ItineraryDayPart>("morning");
   const [mobileSavedOpen, setMobileSavedOpen] = useState(false);
   const [mobileAddError, setMobileAddError] = useState("");
   const [mapReturnHash, setMapReturnHash] = useState("");
@@ -1646,7 +1646,7 @@ export default function TripItineraryWorkspace({
         else mobileAddTrigger.current?.focus({ preventScroll: true });
       }}>
         <p>{displayDayDate(active.date, language)} · {stop?.name ?? active.title} · {copy.day} {active.dayNumber}</p>
-        <EasyTSegmentedControl ariaLabel={language === "es" ? "Momento del día" : "Part of day"} value={mobileAddPart} onChange={(value) => setMobileAddPart(value as typeof mobileAddPart)} options={[{value:"morning",label:itineraryDayPartLabels[language].morning},{value:"afternoon",label:itineraryDayPartLabels[language].afternoon},{value:"evening",label:itineraryDayPartLabels[language].evening}]} />
+        <EasyTSegmentedControl ariaLabel={language === "es" ? "Momento del día" : "Part of day"} value={mobileAddPart} onChange={(value) => setMobileAddPart(value as typeof mobileAddPart)} options={[{value:"morning",label:itineraryDayPartLabels[language].morning},{value:"midday",label:itineraryDayPartLabels[language].midday},{value:"afternoon",label:itineraryDayPartLabels[language].afternoon},{value:"evening",label:itineraryDayPartLabels[language].evening}]} />
         <EasyTButton variant="secondary" icon={CirclePlus} onClick={() => { mobileAddIntent.current = active.id; setAddChooserOpen(false); }}>{language === "es" ? "Nuevo plan" : "New plan"}</EasyTButton>
         <EasyTButton variant="secondary" icon={BookOpenText} aria-expanded={mobileSavedOpen} onClick={() => setMobileSavedOpen(value => !value)}>{copy.savedIdeas}</EasyTButton>
         {mobileSavedOpen ? <div className={styles.mobileSavedIdeas}>

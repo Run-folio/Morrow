@@ -433,6 +433,11 @@ export type TripBrief = {
   customActivities?: Record<number, string[]>;
   /** Canonical stop-bound discovery choices, whether saved or assigned to a day. */
   itineraryIdeas?: Array<ItineraryIdea | GooglePlaceReferenceIdea>;
+  /** First-build invitation, bound to this trip so a clone cannot inherit eligibility. */
+  tripStarter?: { version: 1; tripId: string; state: "pending" | "dismissed" };
+  /** Unbooked stay options; never used as selected stays or booking confirmations. */
+  stayShortlist?: Array<{ stopId: string; destinationKey: string; placeId: string; provider: "openstreetmap" | "booking-demand"; name: string }>;
+
   /** Pins are intentionally lightweight: they are part of the editable map, not a separate places database. */
   mapPins?: PlannerMapPin[];
   /** Lightweight traveller-entered confirmations, separate from planning suggestions. */

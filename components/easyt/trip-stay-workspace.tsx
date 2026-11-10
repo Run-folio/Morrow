@@ -27,6 +27,7 @@ import workspaceHeading from "./trip-workspace-heading.module.css";
 import { useTripShellMutation } from "./trip-shell-client";
 import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
+import TripStayShortlist from "./trip-stay-shortlist";
 
 export type TripStayWorkspaceProps = {
   trip: EasyTTrip;
@@ -46,6 +47,7 @@ function formattedPrice(place: JourneyLocalPlace) {
 
 function StayFinderSurface({
   finder,
+  requestedPlaceId,
   workingTrip,
   context,
   navigationStops,
@@ -55,6 +57,7 @@ function StayFinderSurface({
   onSelectStop,
 }: {
   finder: JourneyLocalFinderRenderState;
+  requestedPlaceId: string | null;
   workingTrip: EasyTTrip;
   context: StayWorkspaceContext;
   navigationStops: JourneyPlannerStripStop[];
@@ -220,6 +223,7 @@ function StayFinderSurface({
 
       <section className={styles.options} aria-labelledby="stay-options-title">
         <h3 className="sr-only" id="stay-options-title">Stay options for {context.stop.name}</h3>
+        {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
         {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
@@ -307,10 +311,11 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
   const navigationStops = useMemo(() => selectedStopId ? routeTimelineStopsForTrip(workingTrip, { scopeId: selectedStopId }).filter((item) => item.kind === "stop" && overnightStops.some((stop) => stop.id === item.id)) : [], [overnightStops, selectedStopId, workingTrip]);
 
   if (!context || !context.searchCoordinates) {
-    return <section className={styles.workspace} aria-label="Stay planning"><MorroviaStatusBanner title={overnightStops.length ? "This stop needs a mapped location" : "No overnight stays to plan"} detail={overnightStops.length ? "Add a trustworthy destination location before searching for accommodation." : "Add an overnight destination to the route before choosing accommodation."} actions={overnightStops.length ? <EasyTLinkButton size="small" variant="secondary" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : undefined} /></section>;
+    return <section className={styles.workspace} aria-label="Stay planning"><TripStayShortlist trip={workingTrip} /><MorroviaStatusBanner title={overnightStops.length ? "This stop needs a mapped location" : "No overnight stays to plan"} detail={overnightStops.length ? "Add a trustworthy destination location before searching for accommodation." : "Add an overnight destination to the route before choosing accommodation."} actions={overnightStops.length ? <EasyTLinkButton size="small" variant="secondary" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : undefined} /></section>;
   }
 
   return <section className={styles.workspace} aria-label={`Stay planning for ${context.stop.name}`}>
+    <TripStayShortlist trip={workingTrip} />
     <JourneyLocalFinder
       mapPresentation="maplibre"
       key={context.key}
@@ -330,7 +335,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
       candidateLimit={6}
       autoSelectFirst={false}
       analyticsSurface="stay"
-      render={(finder) => <StayFinderSurface finder={finder} workingTrip={workingTrip} context={context} navigationStops={navigationStops} notice={notice} setNotice={setNotice} setSelectedPlaceId={setSelectedPlaceId} onSelectStop={(stopId) => {
+      render={(finder) => <StayFinderSurface finder={finder} requestedPlaceId={selectedPlaceId} workingTrip={workingTrip} context={context} navigationStops={navigationStops} notice={notice} setNotice={setNotice} setSelectedPlaceId={setSelectedPlaceId} onSelectStop={(stopId) => {
         setSelectedStopId(stopId);
         setSelectedPlaceId(null);
         router.replace(stayWorkspaceHref(workingTrip.id, stopId), { scroll: false });

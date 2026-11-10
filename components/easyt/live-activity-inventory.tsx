@@ -23,6 +23,7 @@ type LiveActivityInventoryProps = {
   stop: TripStop;
   day: PlanItem;
   placement: string;
+  scheduleLabel?: string;
   workspace: "itinerary" | "map";
   fallback?: ReactNode;
   onSave: (idea: ItineraryIdea) => boolean | Promise<boolean>;
@@ -43,7 +44,7 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, scheduleLabel, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const actionScope = JSON.stringify([trip.ownerId, trip.id, stop.id, day.id]);
   const mountedRef = useRef(true);
   const pendingActionKeysRef = useRef(new Set<string>());
@@ -167,7 +168,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
           {state.state === "planned" ? <>
             <span className={styles.state}><CheckCircle2 aria-hidden="true" />Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}</span>
             {onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(state.idea, onRemove); }}>Remove</EasyTButton> : null}
-          </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => { void performAction(idea, onSchedule); }}>Add to Day {day.dayNumber}</EasyTButton>}
+          </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => { void performAction(idea, onSchedule); }}>{scheduleLabel ?? `Add to Day ${day.dayNumber}`}</EasyTButton>}
           {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(idea, onSave); }}>Save for later</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved for later</span> : null}
           {action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : null}
         </div>

@@ -57,7 +57,7 @@ const baseTrip: EasyTTrip = {
   updatedAt: "2026-08-30T00:00:00.000Z",
 };
 
-function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
+function StoryFrame({ trip, dayId, compactMobile = false }: { trip: EasyTTrip; dayId: string; compactMobile?: boolean }) {
   const [workingTrip, setWorkingTrip] = useState(trip);
   const [addPart, setAddPart] = useState<ItineraryDayPart | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -106,6 +106,7 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
     <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "24px" }}>
       <div style={{ width: "min(1040px, 100%)", margin: "0 auto" }}>
         <RichItineraryDayPlanner
+          compactMobile={compactMobile}
           composition={composition}
           addComposerDayPart={addPart}
           addComposerOpen={addOpen}
@@ -435,3 +436,5 @@ export const FullMorningAfternoonEvening: Story = FullFourSectionDay;
 export const PartiallyFreeDay: Story = SparseDay;
 export const UnslottedPlannedItem: Story = AutomaticLegacyPlacement;
 export const ArrivalDayBookedAccommodation: Story = ArrivalDay;
+
+export const MobileEmptyDayparts: Story = { render: () => <StoryFrame trip={{...baseTrip,brief:{...baseTrip.brief,itineraryIdeas:[],customActivities:{},selectedPlaces:{}},planItems:baseTrip.planItems.map(day=>({...day,notes:[],noteDayParts:[]}))}} dayId="kyoto-2" compactMobile />, globals: { viewport: { value: "morrovia390", isRotated: false } } };

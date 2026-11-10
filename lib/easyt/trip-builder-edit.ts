@@ -1,3 +1,4 @@
+import { markTripStarterBuild } from "./trip-starter.ts";
 import { generatedFlexibleStopIds, allocateGeneratedBuilderNights } from "./trip-builder-generated-nights.ts";
 import { geographicDependency, geographicInputKey, geographicallyReady } from './geographic-binding.ts';
 import { restoreRetainedAuthoredContent, restoreBuilderCalendarSnapshot, captureBuilderCalendarSnapshot, type BuilderCalendarSnapshot, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
@@ -451,6 +452,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       }
       case "build-status": {
         if (trip.status === "archived") return reject("binding-conflict");
+        trip.brief.tripStarter = markTripStarterBuild(trip).brief.tripStarter;
         trip.status = "planned";
         break;
       }

@@ -13,5 +13,5 @@ export default function TripStayWorkspacePage() {
   const selectedPlaceId = resultPrefix && target.resultSelectionId?.startsWith(resultPrefix)
     ? target.resultSelectionId.slice(resultPrefix.length)
     : null;
-  return <TripWorkspaceCommit view="stay"><TripStayWorkspace trip={trip} initialStopId={target.stopId} initialSelectedPlaceId={selectedPlaceId} /></TripWorkspaceCommit>;
+  return <TripWorkspaceCommit view="stay"><TripStayWorkspace key={JSON.stringify([trip.id,trip.ownerId,target.stopId,selectedPlaceId])} trip={trip} initialStopId={target.stopId} initialSelectedPlaceId={selectedPlaceId} /></TripWorkspaceCommit>;
 }

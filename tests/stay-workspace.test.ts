@@ -280,3 +280,13 @@ test("Stay stories cover the required evidence, provider and compact viewport ma
   for (const viewport of ["morrovia320", "morrovia390", "morrovia430", "morrovia768", "morrovia1024", "morrovia1440"]) assert.match(stories, new RegExp(viewport));
   assert.doesNotMatch(stories, /https:\/\/images\.unsplash|generic Tokyo image/i);
 });
+
+test("shortlist review refreshes explicit route selection without activating parked inventory", () => {
+ const page=readFileSync(new URL("../app/journey/[tripId]/stay/page.tsx",import.meta.url),"utf8");
+ const workspace=readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx",import.meta.url),"utf8");
+ assert.match(page,/key=\{JSON\.stringify\(\[trip\.id,trip\.ownerId,target\.stopId,selectedPlaceId\]\)\}/);
+ assert.doesNotMatch(workspace,/staySearch=\{/);
+ const starter=readFileSync(new URL("../components/easyt/trip-starter-stays.tsx",import.meta.url),"utf8");
+ assert.doesNotMatch(starter,/staySearch=\{/);
+ assert.match(workspace,/This stay is not in the current results/);
+});

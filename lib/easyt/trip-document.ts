@@ -150,6 +150,13 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
   }
   if (value.legs.some(leg => !object(leg) || typeof leg.id !== "string" || typeof leg.fromStopId !== "string" || typeof leg.toStopId !== "string" || !object(leg.routeMetadata))) return invalid("legs");
   if (value.planItems.some(item => !object(item) || typeof item.id !== "string" || typeof item.stopId !== "string" || !Number.isInteger(item.dayNumber) || typeof item.date !== "string" || typeof item.title !== "string" || !strings(item.notes))) return invalid("planItems");
+  const starter = value.brief.tripStarter;
+  if (starter !== undefined && (!object(starter) || starter.version !== 1 || typeof starter.tripId !== "string"
+    || !["pending", "dismissed"].includes(String(starter.state)))) return invalid("brief.tripStarter");
+  const shortlist = value.brief.stayShortlist;
+  if (shortlist !== undefined && (!Array.isArray(shortlist) || shortlist.some(item => !object(item)
+    || typeof item.stopId !== "string" || typeof item.destinationKey !== "string" || typeof item.placeId !== "string" || typeof item.name !== "string"
+    || !["openstreetmap", "booking-demand"].includes(String(item.provider))))) return invalid("brief.stayShortlist");
   if (!validRetainedAuthoredContent(value.brief.retainedAuthoredContent)) return invalid("brief.retainedAuthoredContent");
   const work = object(value.brief.cascadeStatus) ? value.brief.cascadeStatus.routeReconciliation : undefined;
   if (work !== undefined) {
