@@ -7,7 +7,7 @@ import { calendarExportCanSend, calendarExportErrorCopy, calendarExportCanManage
 import type { CalendarExportItem } from '@/lib/easyt/calendar-export';
 import type { CalendarExportReview, CalendarExportRunResult, ExportOperation } from '@/lib/easyt/calendar-export-sync';
 type Status = {
-    configured: boolean;
+    configured: true;
     savedRevision: string;
     eligibleCount: number;
     events: CalendarExportItem[];
@@ -34,6 +34,7 @@ type Status = {
     }[];
     hasPreviousSend: boolean;
 };
+type StatusResponse = Status | { configured: false };
 type Destination = {
     id: string;
     label: string;
@@ -133,7 +134,11 @@ export function CalendarExportDialog({ tripId, ownerId, savedRevision, settled, 
         setStatus(null);
         setBusy(true);
         setError('');
-        void api(endpoint, undefined, scope).then((data: Status) => {
+        void api(endpoint, undefined, scope).then((data: StatusResponse) => {
+            if (!data.configured) {
+                setError(calendarExportErrorCopy('NOT_CONFIGURED'));
+                return;
+            }
             setStatus(data);
             onPrevious(Boolean(data.hasPreviousSend));
             if (data.configured) {
@@ -147,8 +152,6 @@ export function CalendarExportDialog({ tripId, ownerId, savedRevision, settled, 
                     window.history.replaceState(window.history.state, '', url);
                 }
             }
-            else
-                setError(calendarExportErrorCopy('NOT_CONFIGURED'));
         }).catch(e => {
             if (scope === epoch.current)
                 setError(calendarExportErrorCopy(e.message));
