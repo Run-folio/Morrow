@@ -1,25 +1,53 @@
-dialog.dialog { width: min(1040px, calc(100vw - 32px)); padding: 0; overflow: hidden; }
-.content { display: flex; flex-direction: column; gap: 18px; min-width: 0; box-sizing: border-box; padding: 30px; max-height: min(718px, calc(100svh - 34px)); }
+dialog.dialog { width: min(1040px, calc(100vw - 32px)); max-height: calc(100svh - 24px); padding: 0; overflow: hidden; }
+.content { display: flex; flex-direction: column; gap: 20px; min-width: 0; box-sizing: border-box; padding: 28px 30px 20px; max-height: min(780px, calc(100svh - 34px)); }
 .content > :not(.columns) { flex-shrink: 0; }
-.header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
-.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; overflow: auto; min-height: 0; }
+.header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.header h2 { min-width: 0; }
+.header > button { flex: none; }
+.location { position: relative; width: min(480px, 100%); }
+.location > svg { position: absolute; z-index: 1; width: 18px; height: 18px; left: 13px; bottom: 13px; color: var(--morrovia-action); pointer-events: none; }
+.location .locationLabel { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.location .locationSelect { min-height: 44px; padding-left: 40px; font: var(--morrovia-type-supporting-body); }
+.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; overflow: auto; min-height: 0; }
 .lane { min-width: 0; display: grid; align-content: start; gap: 12px; }
-.lane h3 { margin: 0; }
-.lane > a { justify-self: start; }
-.stayImage { position: relative; overflow: hidden; }
-.stayImage > img { width: 100%; height: 100%; object-fit: cover; }
+.laneHeading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.laneHeading h3 { margin: 0; color: var(--morrovia-ink); font: 600 25px/1.12 var(--morrovia-display); letter-spacing: -.035em; }
+.laneHeading .desktopMore { padding-inline: 0; font-size: 11px; gap: 5px; color: var(--morrovia-action); }
+.laneHeading .desktopMore svg { width: 14px; height: 14px; }
+.lane .mobileMore { display: none; }
 .mobileChoices { display: none; }
 .schedule { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
-.footer { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--morrovia-line); }
-.footer > div { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
-.footer span { font: var(--morrovia-type-metadata); color: var(--morrovia-ink-soft); }
-@media (max-width: 700px) {
-  .mobileChoices { display: block; }
-  .columns { grid-template-columns: minmax(0, 1fr); }
-  .lane[data-mobile-hidden="true"] { display: none; }
-  .lane > h3 { display: none; }
-  .footer > div:last-child { flex-direction: column-reverse; align-items: stretch; }
-}
+.schedule > strong { font: var(--morrovia-type-supporting-body); font-weight: 600; }
+.schedule > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-top: 14px; border-top: 1px solid var(--morrovia-line); }
+.footerSummary, .footerActions { display: flex; align-items: center; gap: 8px; }
+.footerSummary { flex-wrap: wrap; }
+.footerSummary > span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); font-weight: 600; }
+.footerSummary a { padding-inline: 8px; color: var(--morrovia-action); }
+.footerActions { margin-left: auto; }
+.footerActions > button { padding-inline: 14px; }
+
+/* Starter owns the compact editorial composition. The activity inventory keeps
+   its existing fetching, action state, provider links and disclosure owner. */
+.stayGroup, .recommendations > section { display: grid; gap: 10px; margin-top: 0; }
+.stayList, .recommendations > section > div { display: grid; gap: 0; }
+.stayList article, .recommendations article[data-provider-product-id] { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 6px 14px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--morrovia-line); border-radius: 0; background: transparent; }
+.stayList article:first-child, .recommendations article[data-provider-product-id]:first-child { padding-top: 0; }
+.stayList article:last-child, .recommendations article[data-provider-product-id]:last-child { border-bottom: 0; }
+.stayImage, .recommendations article[data-provider-product-id] > :first-child { grid-row: 1 / 3; width: 88px; height: 88px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); object-fit: cover; }
+.stayImage { position: relative; overflow: hidden; }
+.stayImage > img { width: 100%; height: 100%; object-fit: cover; }
+.stayImageFallback { display: grid; width: 100%; height: 100%; place-items: center; color: var(--morrovia-signal); }
+.stayImageFallback svg { width: 24px; height: 24px; }
+.stayCopy, .recommendations article[data-provider-product-id] > div:nth-child(2) { min-width: 0; }
+.stayCopy > strong, .recommendations article[data-provider-product-id] > div:nth-child(2) > strong { display: block; color: var(--morrovia-ink); font: 600 17px/1.2 var(--morrovia-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.stayMeta, .recommendations article[data-provider-product-id] > div:nth-child(2) > div { margin-top: 4px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); overflow-wrap: anywhere; }
+.stayActions, .recommendations article[data-provider-product-id] > div:last-child { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.stayActions button, .recommendations article[data-provider-product-id] > div:last-child > button, .recommendations article[data-provider-product-id] > div:last-child > a { --control-padding: 10px; font-size: 11px; }
+.stayList article[data-shortlisted="true"] .stayActions button { background: var(--morrovia-action); border-color: var(--morrovia-action); color: var(--morrovia-control-surface); }
+.recommendations article[data-provider-product-id] > div:last-child > a { padding-inline: 0; }
+.recommendations article[data-provider-product-id] > div:last-child > span { font: var(--morrovia-type-fine-print); }
+.recommendations > section > small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 
 .shortlist { margin: 18px; }
 .shortlist h2, .shortlist h3 { margin: 0; }
@@ -27,4 +55,45 @@ dialog.dialog { width: min(1040px, calc(100vw - 32px)); padding: 0; overflow: hi
 .shortlistRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid var(--morrovia-line); padding-bottom: 12px; }
 .shortlistRow strong { flex: 1 1 160px; font: var(--morrovia-type-supporting-body); }
 
-@media (max-width: 520px) { .content { padding: 22px 20px; gap: 12px; } }
+@media (min-width: 701px) and (max-width: 900px) {
+  .laneHeading { flex-wrap: wrap; gap: 0; }
+  .laneHeading h3 { flex-basis: 100%; font-size: 23px; }
+  .stayList article, .recommendations article[data-provider-product-id] { grid-template-columns: 72px minmax(0, 1fr); gap: 6px 10px; }
+  .stayImage, .recommendations article[data-provider-product-id] > :first-child { width: 72px; height: 80px; }
+}
+
+@media (max-width: 700px) {
+  dialog.dialog { width: calc(100vw - 24px); }
+  .content { gap: 18px; max-height: calc(100svh - 24px); padding: 22px 20px 16px; }
+  .content .header h2 { font-size: clamp(26px, 6.8vw, 32px); }
+  .location { width: 100%; }
+  .location .locationSelect { font-size: 13px; }
+  .mobileChoices { position: relative; display: block; }
+  .mobileChoices > div { display: grid; width: 100%; padding: 0; gap: 0; border: 0; border-bottom: 1px solid var(--morrovia-line); border-radius: 0; background: transparent; }
+  .mobileChoices button { position: relative; min-height: 52px; padding: 0 4px 0 28px; border-radius: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); font-weight: 600; }
+  .mobileChoices button[aria-pressed="true"] { background: transparent; color: var(--morrovia-ink); }
+  .mobileChoices button[aria-pressed="true"]::after { position: absolute; bottom: -1px; left: 0; right: 0; height: 3px; background: var(--morrovia-signal); content: ""; }
+  .choiceIcons { position: absolute; z-index: 1; inset: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); pointer-events: none; }
+  .choiceIcons > span { display: flex; align-items: center; padding-left: 5px; color: var(--morrovia-ink-soft); }
+  .mobileChoices[data-lane="stays"] .choiceIcons > span:first-child, .mobileChoices[data-lane="activities"] .choiceIcons > span:last-child { color: var(--morrovia-signal); }
+  .choiceIcons svg { width: 20px; height: 20px; }
+  .columns { grid-template-columns: minmax(0, 1fr); }
+  .lane[data-mobile-hidden="true"] { display: none; }
+  .laneHeading { display: none; }
+  .lane .mobileMore { display: inline-flex; justify-self: start; padding-inline: 0; color: var(--morrovia-action); }
+  .stayCopy > strong, .recommendations article[data-provider-product-id] > div:nth-child(2) > strong { font-size: 18px; }
+  .stayActions button, .recommendations article[data-provider-product-id] > div:last-child > button, .recommendations article[data-provider-product-id] > div:last-child > a { font-size: 12px; }
+  .footer { display: grid; gap: 12px; }
+  .footerSummary { justify-content: space-between; gap: 0 6px; }
+  .footerSummary > span { flex: 1 1 160px; }
+  .footerSummary a { padding-inline: 0; }
+  .footerActions { margin-left: 0; flex-direction: column-reverse; align-items: stretch; gap: 4px; }
+}
+
+@media (max-width: 360px) {
+  .content { padding-inline: 16px; }
+  .content .header h2 { font-size: 26px; }
+  .stayList article, .recommendations article[data-provider-product-id] { grid-template-columns: 68px minmax(0, 1fr); gap: 6px 10px; }
+  .stayImage, .recommendations article[data-provider-product-id] > :first-child { width: 68px; height: 80px; }
+  .mobileChoices button { font-size: 12px; }
+}

@@ -754,3 +754,24 @@
 }
 .activityPhoto { grid-column: 1 / -1; height: 104px; max-height: 104px; width: 100%; }
 .activityPhoto > span { display: none; }
+
+.periodIcon { display: none; }
+@media (max-width: 760px) {
+  .planner[data-compact-mobile] .period { grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 66px; }
+  .planner[data-compact-mobile] .periodHeading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; padding: 12px 8px 12px 0; text-transform: none; letter-spacing: normal; }
+  .planner[data-compact-mobile] .periodHeading h3 { font: 700 16px/1.3 var(--morrovia-ui); color: var(--morrovia-ink); }
+  .planner[data-compact-mobile] .periodIcon { display: block; width: 24px; height: 24px; flex: none; color: var(--morrovia-ink); }
+  .planner[data-compact-mobile] .period > .activityList { grid-column: 1 / -1; grid-row: 2; }
+  .planner[data-compact-mobile] .period > .freePeriod { display: none; }
+  .planner[data-compact-mobile] .period > .addHere { grid-column: 2; grid-row: 1; padding: 0; }
+  .planner[data-compact-mobile] .period > .addHere:has(.addComposer) { grid-column: 1 / -1; grid-row: 3; padding-bottom: 12px; }
+  .planner[data-compact-mobile] .addHere > button { padding-inline: 8px; font-size: 14px; color: var(--morrovia-ink); }
+  .planner[data-compact-mobile] .addHere > button > svg { width: 20px; height: 20px; }
+}
+@media (max-width: 760px) {
+  .planner[data-compact-mobile] .period > .addHere { border-top: 0; }
+}
+@media (max-width: 760px) {
+  .planner[data-compact-mobile] .period { padding-block: 8px; }
+  .planner[data-compact-mobile] .period[data-empty="true"] { min-height: 64px; gap: 0; padding-block: 8px; }
+}

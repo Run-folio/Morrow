@@ -1558,3 +1558,9 @@ export const CalendarLandmarks: Story = {
 /** Approved location-led calendar, preserving real item imagery and missing-image states. */
 export const CalendarLocationHeaders: Story = { ...CalendarAttributedPhoto };
 export const CalendarLocationHeadersMobile390: Story = { ...CalendarLocationHeaders, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+// Approved mobile-day hierarchy, using the actual workspace and existing fixtures.
+export const ApprovedDayMobile390: Story = { ...HierarchyTokyoPopulated, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const ApprovedEmptyDayMobile320: Story = { ...HierarchySeoulEmpty, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const ApprovedDayMobile430: Story = { ...HierarchyTokyoPopulated, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const ApprovedDayTablet768: Story = { ...HierarchyTokyoPopulated, globals: { viewport: { value: "morrovia768", isRotated: false } } };

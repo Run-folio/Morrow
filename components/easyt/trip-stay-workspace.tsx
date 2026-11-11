@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Check, Map, MapPin, Star } from "lucide-react";
+import { BedDouble, CalendarDays, Check, Map, MapPin, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -14,14 +14,15 @@ import { hasBookingLiveInformation } from "@/lib/easyt/local-place";
 import { mapResultForLocalPlace, mapResultHandoffForLocalPlace, mapResultSelectionId } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForStayResult } from "@/lib/easyt/recommendation-detail";
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
+import { shortlistedStays } from "@/lib/easyt/trip-starter";
 import { stayCandidateFit, stayHandoffDetails, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "@/lib/easyt/stay-workspace";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { mapWorkspaceHref, stayWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import TripStayHandoff from "./trip-stay-handoff";
 import { EasyTButton, EasyTLinkButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
-import { JourneyLocalPlacePhotoAttribution, JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
-import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
+import { JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
+import { MorroviaBriefNotice, MorroviaContentDialog, MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import workspaceHeading from "./trip-workspace-heading.module.css";
 import { useTripShellMutation } from "./trip-shell-client";
@@ -92,6 +93,7 @@ function StayFinderSurface({
   const selectedBase = finder.selectedPlace;
   const selectedPhoto = selectedBase ? photos[selectedBase.id] : undefined;
   const selected = selectedBase && selectedPhoto ? { ...selectedBase, image: selectedPhoto.src } : selectedBase;
+  const hasShortlist = shortlistedStays(workingTrip).some(item => item.stopId === context.stop.id);
   const detail = selected ? recommendationDetailForStayResult({ trip: workingTrip, place: selected, stayContext: context, surface: "stay" }) : null;
   const selectedSaved = selected ? stayIsSelected(workingTrip, context, selected) : false;
   const handoffDetails = selected ? stayHandoffDetails(workingTrip, context.stop.id, selected) : null;
@@ -105,6 +107,7 @@ function StayFinderSurface({
   const selectionOriginMapId = useRef<string | null>(null);
   const [compact, setCompact] = useState(false);
   const focusedHandoff = useRef<string | null>(null);
+  const [reviewHandoffIntent, setReviewHandoffIntent] = useState<{ scope: string; resultId: string; href: string } | null>(null);
 
   useEffect(() => {
     const viewport = window.matchMedia("(max-width: 900px)");
@@ -115,26 +118,39 @@ function StayFinderSurface({
   }, []);
 
   useEffect(() => {
+    const reviewScope = JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key]);
+    if (reviewHandoffIntent && (reviewHandoffIntent.scope !== reviewScope || reviewHandoffIntent.href !== window.location.href)) {
+      setReviewHandoffIntent(null);
+      return;
+    }
     if (!selected) return;
+    // Wait until the canonical dialog has adapted before consuming deep-link focus.
+    if (window.matchMedia("(max-width: 900px)").matches && !compact) return;
     const url = new URL(window.location.href);
     const resultId = mapResultSelectionId("stay", selected.id, context.stop.id);
     const scope = JSON.stringify([workingTrip.id, workingTrip.ownerId, context.stop.id, resultId]);
-    if (url.hash !== "#stay-handoff" || url.searchParams.get("stop") !== context.stop.id || url.searchParams.get("result") !== resultId || focusedHandoff.current === scope) return;
-    // Finder results may arrive after Next has already attempted hash scrolling.
+    const requestedReview = reviewHandoffIntent?.resultId === resultId;
+    const requestedHash = url.hash === "#stay-handoff" && url.searchParams.get("stop") === context.stop.id && url.searchParams.get("result") === resultId && focusedHandoff.current !== scope;
+    if (!requestedReview && !requestedHash) return;
+    // Finder results may arrive after the review click or Next's hash scrolling.
     const frame = window.requestAnimationFrame(() => {
       if (window.location.href !== url.href) return;
       const handoff = document.getElementById("stay-handoff");
       if (!handoff) return;
-      focusedHandoff.current = scope;
+      if (requestedReview) setReviewHandoffIntent(null);
       handoff.scrollIntoView({ block: "nearest" });
       handoff.focus({ preventScroll: true });
-      url.hash = "";
-      window.history.replaceState(window.history.state, "", url);
+      if (requestedHash) {
+        focusedHandoff.current = scope;
+        url.hash = "";
+        window.history.replaceState(window.history.state, "", url);
+      }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [selected?.id, context.key, workingTrip.id, workingTrip.ownerId, compact]);
+  }, [selected?.id, context.key, workingTrip.id, workingTrip.ownerId, compact, reviewHandoffIntent]);
 
   const selectPlace = (place: JourneyLocalPlace, source: "card" | "map" = "card") => {
+    setReviewHandoffIntent(null);
     selectionOrigin.current = source === "card" && document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
     selectionOriginLabel.current = selectionOrigin.current?.getAttribute("aria-label") ?? null;
     selectionOriginMapId.current = source === "map" ? mapResultSelectionId("stay", place.id, context.stop.id) : null;
@@ -142,15 +158,26 @@ function StayFinderSurface({
     finder.selectPlace(place);
   };
 
+  const reviewPlace = (place: JourneyLocalPlace) => {
+    selectPlace(place);
+    setReviewHandoffIntent({
+      scope: JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key]),
+      resultId: mapResultSelectionId("stay", place.id, context.stop.id),
+      href: window.location.href,
+    });
+  };
+
   const closeDetail = () => {
+    setReviewHandoffIntent(null);
     finder.clearSelection();
     setSelectedPlaceId(null);
     window.requestAnimationFrame(() => {
       const original = selectionOrigin.current;
+      const returnLabel = selectionOriginLabel.current ?? (selected ? `Open details for ${selected.name}` : null);
       const replacement = selectionOriginMapId.current
         ? [...document.querySelectorAll<HTMLElement>("button[data-map-result-id]")].find((button) => button.dataset.mapResultId === selectionOriginMapId.current)
-        : selectionOriginLabel.current
-        ? [...document.querySelectorAll<HTMLElement>("button[aria-label]")].find((button) => button.getAttribute("aria-label") === selectionOriginLabel.current)
+        : returnLabel
+        ? [...document.querySelectorAll<HTMLElement>("button[aria-label]")].find((button) => button.getAttribute("aria-label") === returnLabel)
         : null;
       (original?.isConnected ? original : replacement)?.focus();
     });
@@ -195,6 +222,22 @@ function StayFinderSurface({
     );
   };
 
+  const dateSummary = context.checkIn && context.checkOut
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(new Date(`${context.checkIn}T12:00:00Z`), new Date(`${context.checkOut}T12:00:00Z`))
+    : "Dates to confirm";
+  const handoffSummary = selected && detail ? <div className={styles.handoffSummary}>
+    <p className={styles.handoffLocation}><MapPin aria-hidden="true" />{context.stop.name}</p>
+    <div className={styles.handoffProperty}>
+      <div className={styles.handoffPhoto}><JourneyLocalPlacePhotoMedia place={selected} photo={selectedPhoto} fallback={<div className={styles.cardMediaFallback}><BedDouble aria-hidden="true" /><span>Photos unavailable</span></div>} /></div>
+      <div className={styles.handoffPropertyCopy}>
+        <h3>{selected.name}</h3>
+        <p>{selected.category} · {context.stop.name}</p>
+        <span className={styles.handoffStatus}>{detail.bookingStatus}</span>
+      </div>
+    </div>
+    <div className={styles.handoffDates}><CalendarDays aria-hidden="true" /><p><strong>{dateSummary}</strong><span>{context.nights} {context.nights === 1 ? "night" : "nights"}</span></p></div>
+  </div> : null;
+
   const showRail = compact ? Boolean(detail) : finder.candidates.length > 0 || Boolean(detail);
   const inventoryLoading = finder.accommodationInventoryStatus === "loading" && finder.candidates.length > 0;
   const mapPreview = finder.candidates.length ? <MorroviaMapPreview title="Stay map" href={fullMapHref(selected)}>
@@ -214,13 +257,13 @@ function StayFinderSurface({
       <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
     </div>
 
-    <div className={styles.main}>
-      <header className={styles.intro}>
-        <h2 className={workspaceHeading.sectionTitle}>{mobile ? "Stays in" : "Where to stay in"} {context.stop.name}</h2>
-        <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
-      </header>
+    <header className={styles.intro}>
+      <h2 className={workspaceHeading.sectionTitle}>{context.stop.name}</h2>
+      <p><CalendarDays aria-hidden="true" />{dateSummary} · {context.nights} {context.nights === 1 ? "night" : "nights"}</p>
+    </header>
 
-      <TripStayShortlist trip={workingTrip} />
+    <div className={styles.main}>
+      <TripStayShortlist trip={workingTrip} stopId={context.stop.id} places={finder.candidates} onReview={reviewPlace} />
 
       {mobile ? <>
         <div className={styles.mobileStayToolbar}>
@@ -244,8 +287,9 @@ function StayFinderSurface({
         <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, null, null, stayWorkspaceHref(workingTrip.id, context.stop.id))}>View on map</EasyTLinkButton>
       </section> : null}
 
-      <section className={styles.options} aria-labelledby="stay-options-title">
-        <h3 className="sr-only" id="stay-options-title">Stay options for {context.stop.name}</h3>
+      <details className={styles.browseStays} open={!hasShortlist || finder.status !== "ready" || Boolean(requestedPlaceId && !finder.candidates.some(place => place.id === requestedPlaceId))}>
+        <summary>{hasShortlist ? "Find more stays" : "Stay options"}</summary>
+        <section className={styles.options} aria-label={`Stay options for ${context.stop.name}`}>
         {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
@@ -288,26 +332,38 @@ function StayFinderSurface({
         })}</div> : null}
         {mobile && stayQuery.trim() && !filteredCandidates.length ? <p>No stays match this search.</p> : null}
         {mobile && !stayQuery.trim() && filteredCandidates.length > 1 ? <EasyTButton variant="quiet" onClick={() => setShowAllStays(value => !value)} aria-expanded={showAllStays}>{showAllStays ? "Show fewer stays" : `Compare more stays (${filteredCandidates.length - 1})`}</EasyTButton> : null}
-      </section>
+        </section>
+      </details>
     </div>
 
     {showRail ? <aside className={styles.rail} aria-label="Stay map and decision support">
-      {detail && selected ? <div className={styles.detail}>
-        {!compact ? <EasyTButton className={styles.detailClose} size="small" variant="quiet" aria-label={`Close details for ${selected.name}`} onClick={closeDetail}>Close</EasyTButton> : null}
-        <ItineraryItemDetail
-          detail={detail}
-          embedded={!compact}
-          pending={mutation.saveState === "saving"}
-          onClose={closeDetail}
-          mapHref={fullMapHref(selected)}
-          decisionActions={partnerAction && handoffDetails ? <TripStayHandoff key={JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key, selected.id, handoffDetails])} details={handoffDetails} action={partnerAction} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} /> : null}
-          primaryActions={<>
-            {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span>}
-          </>}
-          onRemove={selectedSaved ? removeStay : undefined}
-        />
-        <JourneyLocalPlacePhotoAttribution photo={selectedPhoto} className={styles.detailPhotoCredit} />
-      </div> : null}
+      {detail && selected ? <MorroviaContentDialog
+        open
+        inline={!compact}
+        ariaLabel={`Find your stay: ${selected.name}`}
+        autoFocusSelector="[data-stay-close]"
+        onClose={closeDetail}
+        className={styles.handoffDialog}
+      >
+        <div className={styles.detail}>
+          <div className={styles.handoffTop}><span aria-hidden="true" /><EasyTButton data-stay-close icon={X} iconOnly size="small" variant="secondary" aria-label={`Close details for ${selected.name}`} onClick={closeDetail}>Close</EasyTButton></div>
+          {partnerAction && handoffDetails ? <TripStayHandoff
+            key={JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key, selected.id, handoffDetails])}
+            details={handoffDetails}
+            action={partnerAction}
+            summary={handoffSummary}
+            context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }}
+          /> : <><h2 className={workspaceHeading.sectionTitle}>Find your stay</h2>{handoffSummary}</>}
+          <div className={styles.decisionSecondary}>
+            {!selectedSaved ? <EasyTButton variant="secondary" loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <><span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span><EasyTButton variant="quiet" disabled={mutation.saveState === "saving"} onClick={removeStay}>Remove chosen stay</EasyTButton></>}
+            <EasyTLinkButton href={fullMapHref(selected)} icon={Map} variant="secondary">View on map</EasyTLinkButton>
+          </div>
+          <details className={styles.propertyDetails} key={selected.id}>
+            <summary tabIndex={0}>Property details</summary>
+            <ItineraryItemDetail detail={detail} embedded omitMapAction pending={mutation.saveState === "saving"} onClose={closeDetail} />
+          </details>
+        </div>
+      </MorroviaContentDialog> : !compact ? <div className={styles.emptyHandoff}><h2 className={workspaceHeading.sectionTitle}>Find your stay</h2><p>Review a stay to copy its details and continue to Trip.com.</p></div> : null}
       {!compact ? mapPreview : null}
     </aside> : null}
   </div>;

@@ -185,3 +185,21 @@ export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", i
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { args: { initialFinderState: ready, initialSelectedPlaceId: "sakura-house" }, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+
+
+// Explicitly shortlisted properties remain distinct from a chosen or recorded stay.
+const approvedShortlistPlaces = mappedPlaces.filter(place => place.provider === "openstreetmap");
+const approvedShortlistTrip = approvedShortlistPlaces.reduce((value, place) => shortlistStay(value, "tokyo-first", place), trip);
+export const ApprovedShortlistDesktop: Story = {
+  args: { trip: approvedShortlistTrip, initialSelectedPlaceId: approvedShortlistPlaces[0]!.id, initialFinderState: ready },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+export const ApprovedHandoffMobile320: Story = { ...ApprovedShortlistDesktop, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const ApprovedHandoffMobile390: Story = { ...ApprovedShortlistDesktop, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const ApprovedHandoffMobile430: Story = { ...ApprovedShortlistDesktop, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const ShortlistedResultUnavailable: Story = {
+  args: { trip: approvedShortlistTrip, initialSelectedPlaceId: approvedShortlistPlaces[0]!.id, initialFinderState: sparse },
+};
+export const RecordedStayHandoff: Story = {
+  args: { trip: { ...chosenTrip, brief: { ...chosenTrip.brief, bookings: chosenTrip.brief.bookings?.map(booking => booking.type === "stay" ? { ...booking, confirmation: "STORY-ONLY" } : booking) } }, initialSelectedPlaceId: "sakura-house" },
+};

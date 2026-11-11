@@ -27,7 +27,7 @@ const stories = source("components/easyt/trip-stay-workspace.stories.tsx");
 const routeStories = source("components/journey-planner-strip.stories.tsx");
 
 test("normal Stay results use one direct heading and remove the former explanatory hierarchy", () => {
-  assert.match(stay, /Where to stay in \{context\.stop\.name\}/);
+  assert.match(stay, /<h2 className=\{workspaceHeading\.sectionTitle\}>\{context\.stop\.name\}<\/h2>/);
   for (const removed of [
     /Where should you stay/,
     /Compare a small set of mapped options/,
@@ -206,8 +206,20 @@ test("responsive stories and styles cover the required route-track and Stay matr
     assert.match(routeStories, new RegExp(`export const ${story}`));
   }
   assert.match(stayStyles, /@media \(max-width: 900px\)[\s\S]*\.layout \{ display: block;/);
-  assert.match(stayStyles, /\.grid \{[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(stayStyles, /@media \(max-width: 1280px\)[\s\S]*\.grid, \.loading > div:last-child \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(stayStyles, /@media \(max-width: 620px\)[\s\S]*\.grid, \.loading > div:last-child \{ grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(stayStyles, /\.grid \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(stayStyles, /@media \(max-width: 1280px\)[\s\S]*\.loading > div:last-child \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(stayStyles, /@media \(max-width: 620px\)[\s\S]*\.loading > div:last-child \{ grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(routeTrackStyles, /overflow-x:auto/);
+});
+
+
+test("Stay gives provider handoff priority while retaining property facts and canonical dialog behavior", () => {
+  assert.match(stay, /<MorroviaContentDialog[\s\S]*inline=\{!compact\}/);
+  assert.match(stay, /summary=\{handoffSummary\}/);
+  assert.match(stay, /className=\{styles\.handoffStatus\}>\{detail\.bookingStatus\}/);
+  assert.match(stay, /className=\{styles\.handoffDates\}/);
+  assert.ok(stay.indexOf("<TripStayHandoff") < stay.indexOf("className={styles.propertyDetails}"));
+  assert.match(stay, /<summary tabIndex=\{0\}>Property details<\/summary>/, "the canonical dialog focus loop includes the disclosure");
+  assert.match(stay, /<ItineraryItemDetail detail=\{detail\} embedded omitMapAction/);
+  assert.doesNotMatch(stay, /Today:|new Date\(\)/, "handoff does not add an unrelated current-date line");
 });

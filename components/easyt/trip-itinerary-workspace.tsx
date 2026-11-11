@@ -1562,8 +1562,12 @@ export default function TripItineraryWorkspace({
   };
 
   const activityIdeas = (
-        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
+        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open={!mobile}>
           <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
+          {mobile && dayComposition ? <div className={styles.mobileAddPlan}>
+
+            <EasyTButton ref={mobileAddTrigger} icon={CirclePlus} variant="secondary" onClick={() => { setMobileSavedOpen(false); setMobileAddError(""); setAddChooserOpen(true); }}>{language === "es" ? "Añadir plan" : "Add plan"}</EasyTButton>
+          </div> : null}
           {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
           <ItineraryDaySuggestions
             key={`${workingTrip.id}-${active.id}`}
@@ -1703,7 +1707,7 @@ export default function TripItineraryWorkspace({
                 window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-tab-${nextIndex}`)?.focus());
               }}
             >
-              <span className={styles.dayMeta}><time dateTime={day.date}>{displayDate(day.date, language, true)}</time>{day.type !== "open" ? <DayIcon aria-hidden="true" /> : null}</span>
+              <span className={styles.dayMeta}><time dateTime={day.date}>{mobile ? [formatIsoDate(day.date, language, { weekday: "short" }), formatIsoDate(day.date, language, { day: "numeric" })].filter(Boolean).join(" ") || displayDate(day.date, language, true) : displayDate(day.date, language, true)}</time>{day.type !== "open" ? <DayIcon aria-hidden="true" /> : null}</span>
               <strong>{dayStop?.name ?? day.title}</strong>
               {dayStop && subtitle ? <small>{subtitle}</small> : null}
             </button>;
@@ -1768,14 +1772,15 @@ export default function TripItineraryWorkspace({
       >
         <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
           <div className={styles.dayHeaderContent}>
-            <h2 data-calendar-sheet-heading tabIndex={-1}>{mobile && incomingLeg ? `${workingTrip.stops.find(candidate => candidate.id === incomingLeg.fromStopId)?.name ?? incomingLeg.fromEndpoint?.name ?? ""} → ${stop?.name ?? active.title}` : stop?.name ?? active.title}</h2>
+            <h2 data-calendar-sheet-heading tabIndex={-1}>{stop?.name ?? active.title}</h2>
+            {mobile && stop?.nights != null ? <span className={styles.dayLocationNights}>{stop.nights} {language === "es" ? (stop.nights === 1 ? "noche" : "noches") : (stop.nights === 1 ? "night" : "nights")}</span> : null}
             {itineraryDaySubtitle(active.title, stop?.name) && stop
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
           {mobile ? <EasyTLinkButton className={styles.mobileDayMap} href={mapPlanHref} icon={MapIcon} size="small" variant="secondary">{language === "es" ? "Ver mapa" : "Explore map"}</EasyTLinkButton> : null}
           <ItineraryDayPhoto image={dayHero} destination={stop?.name ?? active.title} language={language} className={styles.dayHeaderMedia} sizes={workspaceView === "calendar" ? "(max-width: 1099px) calc(100vw - 48px), 380px" : "(max-width: 900px) calc(100vw - 48px), (max-width: 1200px) 70vw, calc(100vw - 640px)"} />
         </header>
-        <div className={styles.dayDateHeading}><time dateTime={active.date}>{displayDayDate(active.date, language)}</time><span>{copy.day} {active.dayNumber}</span></div>
+        <div className={styles.dayDateHeading}><time dateTime={active.date}>{formatIsoDate(active.date, language, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) ?? copy.timeNotSet}</time><span>{copy.day} {active.dayNumber}</span></div>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
@@ -1870,10 +1875,7 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
 
-          {mobile && dayComposition ? <div className={styles.mobileAddPlan}>
-            {!itineraryDayParts.some(part => dayComposition.planned[part].some(item => item.source !== "day-note")) && !dayComposition.unslotted.some(item => item.source !== "day-note") ? <p>{language === "es" ? "Aún no hay planes." : "No plans added yet."}</p> : null}
-            <EasyTButton ref={mobileAddTrigger} icon={CirclePlus} onClick={() => { setMobileSavedOpen(false); setMobileAddError(""); setAddChooserOpen(true); }}>{language === "es" ? "Añadir plan" : "Add plan"}</EasyTButton>
-          </div> : null}
+
 
         {workspaceView === "days" && reorderableEditorNotes > 0 ? <details key={active.id} ref={sequenceEditorRef} className={styles.sequenceEditor}>
           <summary>{copy.editActivityOrder}</summary>
@@ -2062,6 +2064,14 @@ export default function TripItineraryWorkspace({
             /> : null}
         </MorroviaMapPreview> : null}
         <div className={`${styles.contextSection} ${styles.secondaryAddActivity}`}><EasyTButton icon={CirclePlus} variant="secondary" size="small" fullWidth onClick={() => openAddFlow(0, "activity", "morning")}>{language === "es" ? "Añadir actividad" : "Add activity"}</EasyTButton></div>
+        <details className={`${styles.contextSection} ${styles.dayNotesSection}`} open={!mobile}>
+          <summary><span><BookOpenText aria-hidden="true" />{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
+          <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
+          <form className={styles.railNoteComposer} onSubmit={(event) => { event.preventDefault(); submitRailNote(); }}>
+            <EasyTField ref={noteInputRef} label={copy.addDayNote} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
+            <EasyTButton type="submit" icon={CirclePlus} size="small" variant="secondary" loading={dayPending}>{copy.addNote}</EasyTButton>
+          </form>
+        </details>
         {activityIdeas}
 
         {logisticsLegs.length || otherDayBookings.length ? <details className={styles.contextSection} open>
@@ -2138,14 +2148,7 @@ export default function TripItineraryWorkspace({
             </div>)}
           </div>
         </div> : null}
-        <details className={styles.contextSection} open>
-          <summary><span>{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
-          <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
-          <form className={styles.railNoteComposer} onSubmit={(event) => { event.preventDefault(); submitRailNote(); }}>
-            <EasyTField ref={noteInputRef} label={copy.addDayNote} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
-            <EasyTButton type="submit" icon={CirclePlus} size="small" variant="secondary" loading={dayPending}>{copy.addNote}</EasyTButton>
-          </form>
-        </details>
+
         {workingTrip.stops.some((stop) => presentationImages.stopById[stop.id]?.sourceUrl) ? <details className={`${styles.contextSection} ${styles.routePhotoSources}`}>
           <summary><span>{copy.routePhotoSources}</span></summary>
           <ul>{[...workingTrip.stops].sort((a, b) => a.order - b.order).map((stop) => {
@@ -2386,7 +2389,7 @@ function ItineraryCalendar({ tripId, stopImages, onOpenDay, weeks, selectedDayId
             aria-label={`${copy.day} ${day.day.dayNumber}, ${day.stop?.name ?? day.day.title}, ${displayDayDate(day.day.date, language)}`}
             onClick={(event) => onSelect(day, undefined, event.currentTarget)}
           >
-            <span className={styles.calendarDateIdentity}><time dateTime={day.day.date}><span>{formatIsoDate(day.day.date, language, { weekday: "short", month: "short" }) ?? copy.timeNotSet}</span><b>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</b></time><i>{copy.day} {day.day.dayNumber}</i></span>
+            <span className={styles.calendarDateIdentity}><time dateTime={day.day.date}><span><span>{formatIsoDate(day.day.date, language, { weekday: "short" }) ?? copy.timeNotSet}</span><span>{formatIsoDate(day.day.date, language, { month: "short" })}</span></span><b>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</b></time><i>{copy.day} {day.day.dayNumber}</i></span>
             <strong className={styles.calendarCompactDestination}>{day.stop?.name ?? day.day.title}</strong>
             <span className={styles.calendarCompactDate}>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</span>
             <span className={styles.calendarCompactCount}>{day.items.length} {language === "es" ? (day.items.length === 1 ? "plan" : "planes") : (day.items.length === 1 ? "plan" : "plans")}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ArrowRight, BedDouble, MapPin, Tickets, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { finishTripStarter, shortlistedStays, tripStarterEligible, stayShortlistDestinationKey } from "@/lib/easyt/trip-starter";
 import { saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
@@ -12,7 +12,6 @@ import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { itineraryWorkspaceHref, stayWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "./easyt-controls";
 import { MorroviaContentDialog } from "./morrovia-feedback";
-import workspaceHeading from "./trip-workspace-heading.module.css";
 import feedback from "./morrovia-feedback.module.css";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import LiveActivityInventory from "./live-activity-inventory";
@@ -47,7 +46,10 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
  const saving=mutation.hasPendingSaves();
  const destinationKey=stop ? stayShortlistDestinationKey(stop) : "";
  const stopIsCurrent=(current:EasyTTrip)=>current.stops.some(item=>item.id===stop?.id && stayShortlistDestinationKey(item)===destinationKey);
- const savedCount=shortlistedStays(trip).length;
+ const savedStays=shortlistedStays(trip);
+ const savedCount=savedStays.length;
+ const shortlistStop=stops.find(item=>item.id===stop?.id && savedStays.some(entry=>entry.stopId===item.id))
+   ?? stops.find(item=>savedStays.some(entry=>entry.stopId===item.id));
  const activityCount=(trip.brief.itineraryIdeas??[]).filter(item=>item.category!=="stay").length;
  const saveIdea=async (value:ItineraryIdea) => {
    if(isGooglePlaceReferenceIdea(value)) return false;
@@ -61,29 +63,29 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
  };
  return <div className={styles.content}>
    <header className={styles.header}><h2>Your trip is ready.</h2><EasyTButton iconOnly icon={X} variant="quiet" onClick={onClose}>Close trip starter</EasyTButton></header>
-   {stop && stops.length > 1 ? <EasyTSelect label="Location" value={stop.id} onChange={event=>{scheduleScope.current+=1;setStopId(event.target.value);setIdea(null);setDayId("");}}>{stops.map(item=><option key={item.id} value={item.id}>{locationLabel(trip,item)}</option>)}</EasyTSelect> : stop ? <strong>{locationLabel(trip,stop)}</strong> : null}
-   <div className={styles.mobileChoices}><EasyTSegmentedControl ariaLabel="Trip starter options" value={lane} onChange={setLane} options={[{value:"stays",label:"Shortlist stays"},{value:"activities",label:"Things to do"}]} /></div>
+   {stop ? <div className={styles.location}><MapPin aria-hidden="true" /><EasyTSelect label="Location" labelClassName={styles.locationLabel} className={styles.locationSelect} value={stop.id} onChange={event=>{scheduleScope.current+=1;setStopId(event.target.value);setIdea(null);setDayId("");}}>{stops.map(item=><option key={item.id} value={item.id}>{locationLabel(trip,item)}</option>)}</EasyTSelect></div> : null}
+   <div className={styles.mobileChoices} data-lane={lane}><span className={styles.choiceIcons} aria-hidden="true"><span><BedDouble /></span><span><Tickets /></span></span><EasyTSegmentedControl ariaLabel="Trip starter options" value={lane} onChange={setLane} options={[{value:"stays",label:"Shortlist stays"},{value:"activities",label:"Things to do"}]} /></div>
    {stop ? <div className={styles.columns}>
      <section className={styles.lane} data-mobile-hidden={lane!=="stays"} aria-label="Shortlist stays">
-       <h3 className={workspaceHeading.sectionTitle}>Shortlist stays</h3>
+       <div className={styles.laneHeading}><h3>Shortlist stays</h3><EasyTLinkButton className={styles.desktopMore} variant="quiet" size="small" onClick={onClose} href={stayWorkspaceHref(trip.id,stop.id)}>View more stays <ArrowRight aria-hidden="true" /></EasyTLinkButton></div>
        <TripStarterStays key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} initialState={initialStayState}/>
-       <EasyTLinkButton variant="quiet" size="small" onClick={onClose} href={stayWorkspaceHref(trip.id,stop.id)}>View more stays</EasyTLinkButton>
+       <EasyTLinkButton className={styles.mobileMore} variant="quiet" size="small" onClick={onClose} href={stayWorkspaceHref(trip.id,stop.id)}>View more stays <ArrowRight aria-hidden="true" /></EasyTLinkButton>
      </section>
      <section className={styles.lane} data-mobile-hidden={lane!=="activities"} aria-label="Things to do">
-       <h3 className={workspaceHeading.sectionTitle}>Add things to do</h3>
+       <div className={styles.laneHeading}><h3>Add things to do</h3><EasyTLinkButton className={styles.desktopMore} variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>View more activities <ArrowRight aria-hidden="true" /></EasyTLinkButton></div>
        {idea ? <section className={styles.schedule} aria-label={`Choose a day for ${isGooglePlaceReferenceIdea(idea) ? "activity" : idea.title}`}>
          <strong>{isGooglePlaceReferenceIdea(idea) ? "Activity" : idea.title}</strong>
          <EasyTSelect label="Day" value={dayId} onChange={event=>{scheduleScope.current+=1;setDayId(event.target.value);}}><option value="">Choose a day</option>{days.map(day=><option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}</EasyTSelect>
          <div><EasyTButton size="small" disabled={!dayId || saving || !mutation.mutationReady} onClick={()=>{void schedule();}}>Add to day</EasyTButton><EasyTButton size="small" variant="quiet" onClick={()=>{scheduleScope.current+=1;setIdea(null);}}>Cancel</EasyTButton></div>
        </section> : null}
-       {days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onSchedule={value=>{scheduleScope.current+=1;setIdea(value);setDayId("");return false;}} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}
-       <EasyTLinkButton variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>Saved ideas in Itinerary</EasyTLinkButton>
+       <div className={styles.recommendations}>{days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onSchedule={value=>{scheduleScope.current+=1;setIdea(value);setDayId("");return false;}} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}</div>
+       <EasyTLinkButton className={styles.mobileMore} variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>Saved ideas in Itinerary <ArrowRight aria-hidden="true" /></EasyTLinkButton>
      </section>
    </div> : <MorroviaSectionStatus title="No stops to explore" />}
    {mutation.error ? <p role="alert">{mutation.error}</p> : null}
    <footer className={styles.footer}>
-     <div><span aria-live="polite">{savedCount} {savedCount===1 ? "stay" : "stays"} shortlisted · {activityCount} {activityCount===1 ? "idea" : "ideas"} saved</span><EasyTLinkButton variant="quiet" size="small" onClick={onClose} href={`${stayWorkspaceHref(trip.id)}#stay-shortlist`}>View shortlist</EasyTLinkButton></div>
-     <div><EasyTButton variant="quiet" onClick={onClose}>Skip for now</EasyTButton><EasyTButton onClick={onClose}>Continue to Overview</EasyTButton></div>
+     <div className={styles.footerSummary}><span aria-live="polite">{savedCount} {savedCount===1 ? "stay" : "stays"} shortlisted · {activityCount} {activityCount===1 ? "idea" : "ideas"} saved</span><EasyTLinkButton variant="quiet" size="small" onClick={onClose} href={`${stayWorkspaceHref(trip.id,shortlistStop?.id)}#stay-shortlist`}>View shortlist <ArrowRight aria-hidden="true" /></EasyTLinkButton></div>
+     <div className={styles.footerActions}><EasyTButton variant="quiet" onClick={onClose}>Skip for now</EasyTButton><EasyTButton onClick={onClose}>Continue to Overview <ArrowRight aria-hidden="true" /></EasyTButton></div>
    </footer>
  </div>;
 }

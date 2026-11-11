@@ -27,3 +27,10 @@ export const NoItinerary:Story={args:{trip:{...fixtureTrip(),planItems:[]}}};
 
 const fullDay=fixtureTrip();fullDay.brief.itineraryIdeas=[{...legacyItineraryIdeas(fullDay.brief.itineraryIdeas)[0],startsAt:'09:00',providerMetadata:{duration:{fixedMinutes:540},provenance:{kind:'live_provider_search',provider:'viator',checkedAt:'2026-11-10T00:00:00Z'}}}];
 export const FullDayWithStartTime:Story={args:{trip:fullDay}};
+
+export const Tablet768:Story={globals:{viewport:{value:'morrovia768',isRotated:false}}};
+export const PreviewMobile:Story={...Preview,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+const noPhoto=fixtureTrip();noPhoto.stops[0]={...noPhoto.stops[0],name:'Springfield',country:'United States'};
+export const MissingDestinationPhoto:Story={args:{trip:noPhoto,previewDayId:'d1'},globals:{viewport:{value:'morrovia390',isRotated:false}}};
+const longContent=fixtureTrip();longContent.brief.bookings![0].title='Keio Plaza Hotel Tokyo · Shinjuku Premier Grand';longContent.stops.push({...longContent.stops[0],id:'next-stop',name:'Takayama and the Japanese Alps',order:1,arrivalDate:'2026-11-12',departureDate:'2026-11-13'});longContent.legs.push({id:'long-transfer',fromStopId:'tokyo',toStopId:'next-stop',mode:'train',distanceKm:450,durationMinutes:270,provider:null,routeMetadata:{},scheduleNeedsChecking:true});
+export const LongContentMobile:Story={args:{trip:longContent},globals:{viewport:{value:'morrovia390',isRotated:false}}};

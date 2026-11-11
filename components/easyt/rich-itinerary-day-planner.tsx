@@ -12,6 +12,10 @@ import {
   Clock3,
   GripVertical,
   MoreHorizontal,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon,
   Pencil,
   Route,
   Trash2,
@@ -393,6 +397,7 @@ export default function RichItineraryDayPlanner({
   const renderPeriod = (part: ItineraryPlanningPart) => {
     const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
     const headingId = `${titleId}-${part}`;
+    const DayPartIcon = { morning: Sunrise, midday: Sun, afternoon: Sunset, evening: Moon }[part];
     return (
       <section
         className={`${styles.period} ${dragActive && !draggedFullDayActivity ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
@@ -411,6 +416,7 @@ export default function RichItineraryDayPlanner({
         }}
       >
         <div className={styles.periodHeading}>
+          <DayPartIcon className={styles.periodIcon} aria-hidden="true" />
           <h3 id={headingId}>{dayPartLabels[language][part]}</h3>
           {activities.length ? <span>{activities.length}</span> : null}
         </div>

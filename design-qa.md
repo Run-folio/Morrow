@@ -2551,3 +2551,40 @@ Shaun clarified that scheduled activity photography takes priority, then unused 
 Independent review reproduced a generic Tokyo photo being labelled as an unrelated sushi class. Direct saved activity images now require verified exact subject matching; same-city evidence alone stays destination photography. The regression and exact-subject reservation fixtures cover this distinction. Provider day covers remain withheld because account-specific reuse permission is unverified. No private trip data or deployment is involved in these checks.
 
 Reconciled worker follow-up 3d3a16c: adopted its failure reset when the selected source changes, removed unused fallback CSS, and adopted failure/recovery browser coverage. The combined correction also retains the independently verified activity-subject guard. Delhi browser coverage checks hidden wrapper spacing and records each day header, including days without imagery.
+
+
+## 2026-11-11 — Approved day, Stay, Today, Starter and calendar parity
+
+Scope: approved staging visual-gap closure; production deployment excluded. Source visuals are the eight Library-backed images materialized with identity metadata under `/Users/shaun/Documents/Codex/2026-11-10/task/visual-parity/references/`. Latest feedback supersedes mock Trip saved eyebrow (removed), unlabeled selector (Location), and below-date Day label (top right).
+
+Comparison evidence:
+- Earlier implementation: `../trip-captain-e2e/staging-comparison-4efdb58-*.png` at exact baseline4efdb58.
+- Updated production-component renders: `../visual-parity/local-final/{day,stay,today,starter,calendar}-{390,1440}.png`, plus full-page versions and capture manifest `report.json`.
+- Side by side: `../visual-parity/comparison.html`; original dimensions: `../visual-parity/reference-dimensions.txt`.
+- Mobile reference canvas is normalized to390 CSS px; large/2× source pixels are not CSS font measurements. Desktop captures1440×1000; mobile390×844. 320/430/768 widths were also checked. Starter comparison crops to the selected Proposed panel; originals retained. Concept labels and fake browser/device chrome are not product UI. Global TripShell/navigation remain intentionally present in production.
+- Matched states: mobile populated day with direct Add + closed Notes/Suggestions; Stay shortlist + reviewed unbooked property; Today active trip-local day with timed/flexible plans; Starter stays tab; calendar selected day and occurrence-bound location bands. Fixture names/dates differ from illustrative reference content; this is not live inventory proof.
+- Focused region evidence: mobile hero/date/slot rows, Stay property/date/CTA, Starter tabs/row/footer, Today timeline/context, calendar date and activity boundary are readable in the corresponding viewport captures. Full-page captures retain all secondary controls.
+
+Iteration history and fixes:
+- P1 baseline mobile day split header/small slots -> overlaid attributed location image, actual nights, strong date/top-right Day, icon/label/Add rows, compact Notes/Suggestions.
+- P1 baseline Stay finder/detail hierarchy -> shortlist-first desktop + dedicated Find your stay panel and focused mobile dialog. Property details, choose/remove and map controls retained below primary handoff.
+- P1 baseline Today stacked city image/oversized context -> overlay hero mobile, timeline, compact Tonight/Next transport; desktop retains split hero/cards and relevant item imagery only.
+- P2 baseline Starter boxed rows/pill tabs/tall footer -> editorial divider rows, restrained lane headings, clear Location, underline/icon mobile tabs and consolidated footer.
+- P2 calendar date hierarchy -> separate weekday/month/date, prominent date, top-right Day and unified date+activity border preserved.
+- Review regression: inline Review stay lost focus -> scope-checked one-shot focus intent, cancellation and return focus, eight tests.
+- Review regression: generic View shortlist could land on empty first stop -> actual shortlisted occurrence destination, five tests including repeated stops.
+
+Five fidelity surfaces:
+- Typography: current Georgia display and Geist UI/meta roles retained, no new fonts. Smaller routine headings and UI-sized slot/context labels now match reference hierarchy.
+- Spacing/layout: 25 screen/width checks without overflow. Real44px mobile targets preserved; populated content can increase reference-like rows naturally.
+- Tokens/colour: existing Morrovia ink/action/signal/lilac/line/radius/focus owners; neutral scrims protect real-photo text contrast. UI audit passes.
+- Imagery: existing attributed destination/item components; missing hotel or transport imagery is not substituted. No new generated assets. Production content remains authoritative.
+- Copy: no Trip saved eyebrow; clear Location, literal actions, lean context. Uncertainty, booked/selected/shortlisted distinctions, privacy and provider/attribution wording retained.
+
+Interaction/a11y: two browser regressions passed for direct Midday Add, Notes, global Add chooser, Escape/return focus, Stay desktop focus and mobile dismissal, generic Trip.com href, responsive overflow and mobile targets.119 focused component/domain tests passed. Four changed mobile surfaces have no axe WCAG2A/AA/2.1AA violations. Independent Astra recheck found no new serious functional issue after both fixes. Typecheck and strict UI audit pass; updated Storybook build passes. Hosted staging verification follows exact-commit deployment and is recorded separately.
+
+Intentional functional differences (accepted constraints, no capability removed): complete TripShell/navigation; explicit Choose day + Add confirmation; real addresses and provider qualification; unavailable-photo fallbacks; visible existing plans/travel; Notes/Suggestions collapsed on mobile; broader Add chooser inside Suggestions; other stops' shortlists via stop switch; Property details and finder results disclosed when shortlist exists. Image inventory/content and full navigation make exact screenshot identity inappropriate. Existing calendar, transport, booking, save and recovery safeguards are unchanged.
+
+Follow-up polish: minor real-content wrapping/row height variation. No actionable P0/P1/P2 issue remains in this scoped production-component comparison.
+
+final result: passed
