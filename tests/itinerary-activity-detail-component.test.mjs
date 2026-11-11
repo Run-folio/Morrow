@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url);
 const {build}=require('esbuild');
 const script=(await build({entryPoints:['components/easyt/itinerary-item-detail.tsx'],bundle:true,write:false,format:'cjs',platform:'node',packages:'external',jsx:'automatic',plugins:[{name:'detail-test-runtime',setup(builder){
  builder.onResolve({filter:/^react$/},()=>({path:'react',namespace:'hooks'}));
- builder.onLoad({filter:/.*/,namespace:'hooks'},()=>({contents:"export const forwardRef=f=>globalThis.__react.forwardRef(f);export const useState=v=>[typeof v==='function'?v():v,()=>{}];export const useEffect=()=>{};export const useCallback=f=>f;export const useRef=v=>({current:v});export const useId=()=> 'detail-title';"}));
+ builder.onLoad({filter:/.*/,namespace:'hooks'},()=>({contents:"export const forwardRef=f=>globalThis.__react.forwardRef(f);export const useState=v=>[typeof v==='function'?v():v,()=>{}];export const useEffect=()=>{};export const useLayoutEffect=()=>{};export const useCallback=f=>f;export const useRef=v=>({current:v});export const useId=()=> 'detail-title';"}));
  builder.onResolve({filter:/\.module\.css$/},args=>({path:args.path,namespace:'css'}));
  builder.onLoad({filter:/.*/,namespace:'css'},()=>({contents:'export default new Proxy({}, {get:(_,key)=>String(key)});'}));
  builder.onResolve({filter:/^@\/lib\/analytics$/},()=>({path:'analytics',namespace:'analytics'}));

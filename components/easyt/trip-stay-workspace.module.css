@@ -233,6 +233,7 @@
 .partnerHandoff { grid-column: 1 / -1; padding-top: 12px; display: grid; gap: 8px; border-top: 1px solid var(--morrovia-line); }
 .partnerHandoff strong { color: var(--morrovia-ink); font: var(--morrovia-type-control); }
 .partnerHandoff p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.copyDetails { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; color: var(--morrovia-ink); font: var(--morrovia-type-fine-print); }
 
 @media (max-width: 1280px) {
   .grid, .loading > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }

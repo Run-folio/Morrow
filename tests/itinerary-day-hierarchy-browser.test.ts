@@ -159,7 +159,7 @@ test("contextual Add offers live provider inventory as a plan, with source attri
     await dialog.waitFor();
     const tour = dialog.locator("article").filter({ hasText: "Cusco culture walk" });
     await tour.waitFor();
-    assert.match(await tour.innerText(), /Viator · Plan only/);
+    assert.match(await tour.innerText(), /Viator · Not booked/);
     await tour.getByRole("button", { name: "Add Cusco culture walk to Afternoon on Day 1" }).click();
     await page.locator('section[data-day-part="afternoon"]').getByText("Cusco culture walk", { exact: true }).waitFor();
     await page.close();

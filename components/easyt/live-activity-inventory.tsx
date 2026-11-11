@@ -6,7 +6,7 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
-import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, viatorProductAction, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { trackEvent } from "@/lib/analytics";
@@ -157,7 +157,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, sche
       const pending = isPending(idea) || pendingActions.has(JSON.stringify([actionScope, idea.id]));
       const duration = durationLabel(item.duration);
       const price = priceLabel(item.price);
-      const action = item.productUrl ? { provider: "viator", category: "activities", href: item.productUrl, cta: "View on Viator", affiliate: true } as const : null;
+      const action = viatorProductAction(item.provider, item.productUrl);
       return <article key={identity} data-provider-product-id={item.providerProductId}>
         <ResilientImage className={styles.image} src={item.image} alt="" fallback={<span className={styles.imageFallback}><MapPin aria-hidden="true" /></span>} />
         <div className={styles.copy}><strong>{item.title}</strong><div className={styles.meta}>

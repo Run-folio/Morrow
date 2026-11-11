@@ -1,6 +1,16 @@
 import type { ItineraryIdea } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
 import { itineraryInterestAffinity } from "./itinerary-day-context.ts";
+import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
+import type { ResolvedAffiliateAction } from "./booking-readiness.ts";
+
+/** Preserve provider attribution, and never brand an unrelated URL as Viator. */
+export function viatorProductAction(provider: string | null | undefined, href: string | null | undefined): ResolvedAffiliateAction | null {
+  if (provider !== "viator" || !href || !validateOptionalAffiliateUrl(href)) return null;
+  const url = new URL(href);
+  if (url.protocol !== "https:" || !(url.hostname === "viator.com" || url.hostname.endsWith(".viator.com") || url.hostname === "vi.me")) return null;
+  return { provider: "viator", category: "activities", href, cta: "View on Viator", affiliate: true };
+}
 
 export type ActivityInventoryItem = {
   provider: "viator";

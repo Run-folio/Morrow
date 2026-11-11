@@ -6,6 +6,7 @@ import { activityDayPartFit, activityDurationLabel, isFullDayActivity, itinerary
 import { hasBookingLiveInformation, type JourneyLocalPlace } from "./local-place.ts";
 import type { MapResultPlace } from "./map-result-selection.ts";
 import { stayBookingForStop } from "./accommodation.ts";
+import { shortlistedStays } from "./trip-starter.ts";
 import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "./stay-workspace.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea } from "./trip.ts";
 
@@ -210,6 +211,7 @@ export function recommendationDetailForStayResult(input: {
 }): RecommendationDetailModel {
   const selected = stayIsSelected(input.trip, input.stayContext, input.place);
   const booking = stayBookingForStop(input.trip, input.stayContext.stop);
+  const recordedByName = booking?.title.trim().toLocaleLowerCase() === input.place.name.trim().toLocaleLowerCase();
   const rating = ratingFact(input.place.rating, input.place.reviewCount);
   const source = providerLabel(input.place.provider);
   const hasBookingFacts = hasBookingLiveInformation(input.place);
@@ -241,7 +243,11 @@ export function recommendationDetailForStayResult(input: {
     category: input.place.category.replaceAll("_", " "),
     price: null,
     dateSummary: `${input.stayContext.nights} ${input.stayContext.nights === 1 ? "night" : "nights"} · ${input.stayContext.dateLabel}`,
-    bookingStatus: selected ? `Saved for ${input.stayContext.stop.name}` : null,
+    bookingStatus: selected
+      ? booking?.confirmation?.trim() ? "Booked" : "Selected · Not booked"
+      : recordedByName ? booking?.confirmation?.trim() ? "Booking recorded · verify property" : "Stay recorded · Not booked"
+      : shortlistedStays(input.trip).some((stay) => stay.stopId === input.stayContext.stop.id && stay.placeId === input.place.id)
+        ? "Shortlisted · Not booked" : "Not booked",
     provider: input.place.provider,
     providerProductId: input.place.providerProductId,
     whyFit: stayCandidateFit(input.place, input.stayContext),

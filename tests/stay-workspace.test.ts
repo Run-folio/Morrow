@@ -228,7 +228,7 @@ test("fit copy keeps distance truthful and concise without inventing neighbourho
   assert.doesNotMatch(fit, /minutes|near your hotel|easy transport|perfect|nightlife|quiet|safe/i);
 });
 
-test("Stay production surface reuses shared owners and keeps commercial action secondary", () => {
+test("Stay production surface reuses shared owners and a view-only partner handoff", () => {
   const workspace = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../components/easyt/trip-stay-workspace.module.css", import.meta.url), "utf8");
   const finder = readFileSync(new URL("../components/journey-local-finder.tsx", import.meta.url), "utf8");
@@ -242,8 +242,8 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
   assert.match(workspace, /selectedMapResult=\{selectedMapResult\}/);
   assert.match(workspace, /onMapResultSelect=\{\(result\) => \{[\s\S]*result\.sourceId[\s\S]*selectPlace\(place\)/);
-  assert.match(workspace, /Check on \{partnerLabel\}/);
-  assert.match(workspace, /Opening it does not choose or book this stay/);
+  assert.match(workspace, /<TripStayHandoff/);
+  assert.match(workspace, /stayHandoffDetails\(workingTrip, context\.stop\.id, selected\)/);
   assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.workspace\s*\{[^}]*overflow:\s*hidden;/, "the narrow stop track must not escape the Stay workspace");
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.rail \{ position: static; max-height: none; overflow: visible;/);
@@ -262,7 +262,7 @@ test("Stay uses mapped candidates while Booking.com is parked and the partner li
   const stories = readFileSync(new URL("../components/easyt/trip-stay-workspace.stories.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(workspace, /staySearch=\{/);
   assert.match(workspace, /hasBookingLiveInformation\(place\)/, "legacy provider facts stay explicitly attributed if injected for a fixture");
-  assert.match(workspace, /affiliateProviderLabel\(partnerAction\.provider\)/);
+  assert.match(workspace, /action=\{partnerAction\}/);
   assert.doesNotMatch(stories, /\/journey\/ginza-night\.jpg|\/journey\/kanazawa\.jpg/);
 });
 

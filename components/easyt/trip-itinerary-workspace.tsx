@@ -55,6 +55,7 @@ import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { trackEvent } from "@/lib/analytics";
 import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { viatorProductAction } from "@/lib/easyt/activity-inventory";
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
@@ -2526,11 +2527,11 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const addLabels = language === "es" ? {
     title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir", save: "Guardar para después", saved: "Guardado para después",
     categories: { "for-you": "Para ti", "must-see": "Imprescindibles", culture: "Cultura", tours: "Excursiones", outdoors: "Naturaleza", food: "Comida y bebida" },
-    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "Solo planificación",
+    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "No reservado",
   } : {
     title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add", save: "Save for later", saved: "Saved for later",
     categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Nature / outdoors", food: "Food & drink" },
-    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Plan only",
+    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Not booked",
   };
 
   useEffect(() => {
@@ -2790,6 +2791,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         {addResults.slice(0, addQuery ? 12 : addCategory === "for-you" ? 3 : 6).map((result) => {
           const state = stop ? ideaStateForPlace(trip, stop.id, result.idea.placeId) : null;
           const pending = isPending(result.idea.placeId);
+          const productAction = viatorProductAction(result.provider, result.providerUrl);
           const meta = [result.category, result.duration, result.price, result.rating === undefined ? null : `${result.rating.toFixed(1)} ${addLabels.rating}`, result.idea.source === "live-provider-inventory" ? `Viator · ${addLabels.planOnly}` : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null].filter(Boolean).join(" · ");
           return <article key={result.identity} className={`${styles.contextualAddResult} ${result.image ? "" : styles.contextualAddResultNoMedia}`} data-add-result-id={result.sourceId}>
             {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
@@ -2822,6 +2824,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                   if (isCurrent() && !accepted) setAddResultError(addLabels.saveError);
                 }}
               >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
+              {productAction ? <><MorroviaAffiliateLink action={productAction} context={{ placement: "itinerary_day_experiences", tripId: trip.id, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure provider="viator" /></> : null}
             </div>
           </article>;
         })}
@@ -2926,7 +2929,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
   const preferredDay = options.find((option) => option.day.id === preferredDayId)?.day ?? options[0]?.day ?? null;
   const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
   const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
-  const action = commercial && result.providerUrl ? { provider: "viator", category: "activities", href: result.providerUrl, cta: "View on Viator", affiliate: true } as const : null;
+  const action = commercial ? viatorProductAction(result.provider, result.providerUrl) : null;
   const draggable = state.state !== "planned" && (allowsDayPart || isFullDayActivity(result.idea.providerMetadata?.duration)) && !pending && Boolean(onDragStart);
   return <ItineraryDraggableCard className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
     <div className={styles.discoveryMedia}>

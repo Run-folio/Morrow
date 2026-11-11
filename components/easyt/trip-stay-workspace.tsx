@@ -8,16 +8,16 @@ import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLo
 import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack, type JourneyPlannerStripStop } from "@/components/journey-planner-strip";
-import { affiliateProviderLabel, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
+import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { removeMappedStayForStop, savedGoogleStayReferencesForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { hasBookingLiveInformation } from "@/lib/easyt/local-place";
 import { mapResultForLocalPlace, mapResultHandoffForLocalPlace, mapResultSelectionId } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForStayResult } from "@/lib/easyt/recommendation-detail";
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
-import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "@/lib/easyt/stay-workspace";
+import { stayCandidateFit, stayHandoffDetails, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "@/lib/easyt/stay-workspace";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { mapWorkspaceHref, stayWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
-import { MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
+import TripStayHandoff from "./trip-stay-handoff";
 import { EasyTButton, EasyTLinkButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
 import { JourneyLocalPlacePhotoAttribution, JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
@@ -88,13 +88,13 @@ function StayFinderSurface({
   const booking = stayBookingForStop(workingTrip, context.stop);
   const savedGoogleStays = savedGoogleStayReferencesForStop(workingTrip, context.stop.id);
   const partnerAction = getCurrentPartnerAction("accommodation");
-  const partnerLabel = partnerAction ? affiliateProviderLabel(partnerAction.provider) : null;
   const mapDayNumber = workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber ?? null;
   const selectedBase = finder.selectedPlace;
   const selectedPhoto = selectedBase ? photos[selectedBase.id] : undefined;
   const selected = selectedBase && selectedPhoto ? { ...selectedBase, image: selectedPhoto.src } : selectedBase;
   const detail = selected ? recommendationDetailForStayResult({ trip: workingTrip, place: selected, stayContext: context, surface: "stay" }) : null;
   const selectedSaved = selected ? stayIsSelected(workingTrip, context, selected) : false;
+  const handoffDetails = selected ? stayHandoffDetails(workingTrip, context.stop.id, selected) : null;
   const mapResults = useMemo(() => finder.candidates.map((place) => mapResultForLocalPlace(place, "stay", {
     stopId: context.stop.id,
     dayNumber: mapDayNumber,
@@ -281,7 +281,7 @@ function StayFinderSurface({
           mapHref={fullMapHref(selected)}
           primaryActions={<>
             {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span>}
-            {partnerAction && partnerLabel ? <div className={styles.partnerHandoff}><strong>Check on {partnerLabel}</strong><p>{partnerLabel} confirms its own current prices, availability and terms. Opening it does not choose or book this stay.</p><MorroviaAffiliateLink action={{ ...partnerAction, cta: `Check accommodation on ${partnerLabel}` }} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} variant="secondary" /><MorroviaAffiliateDisclosure provider={partnerAction.provider} /></div> : null}
+            {partnerAction && handoffDetails ? <TripStayHandoff key={JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key, selected.id, handoffDetails])} details={handoffDetails} action={partnerAction} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} /> : null}
           </>}
           onRemove={selectedSaved ? removeStay : undefined}
         />

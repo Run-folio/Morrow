@@ -718,6 +718,11 @@ export const ContextualAddPanel: Story = {
     await expect(within(dialog).getByRole("heading", { name: "Add a plan" })).toBeVisible();
     await expect(within(dialog).getByRole("textbox", { name: "Search ideas" })).toBeVisible();
     await expect(within(dialog).getByRole("textbox", { name: "Add your own" })).toBeVisible();
+    const providerLink = within(dialog).getByRole("link", { name: /View on Viator/ });
+    await expect(providerLink).toHaveAttribute("href", storyCommercialInventory[0].productUrl!);
+    await expect(providerLink).toHaveAttribute("rel", "sponsored noopener noreferrer");
+    await expect(within(dialog).getByText(/Viator · Not booked/)).toBeVisible();
+    await expect(within(dialog).getByText(/Morrovia may earn a commission/)).toBeVisible();
   },
 };
 

@@ -107,6 +107,21 @@ export function stayWorkspaceContext(trip: EasyTTrip, stopId: string): StayWorks
   };
 }
 
+/** Plain search details only; never enrich or rewrite a partner URL. */
+export function stayHandoffDetails(trip: EasyTTrip, stopId: string, place: Pick<JourneyLocalPlace, "name" | "address">): string | null {
+  const context = stayWorkspaceContext(trip, stopId);
+  if (!context || !place.name.trim()) return null;
+  return [
+    `Hotel: ${place.name.trim()}`,
+    `Location: ${[context.stop.name, context.stop.country].filter(Boolean).join(", ")}`,
+    ...(place.address?.trim() ? [`Address: ${place.address.trim()}`] : []),
+    ...(context.checkIn && context.checkOut
+      ? [`Check-in: ${context.checkIn}`, `Check-out: ${context.checkOut}`]
+      : ["Dates to confirm"]),
+    ...(Number.isSafeInteger(trip.travellers) && trip.travellers > 0 ? [`Travellers: ${trip.travellers}`] : []),
+  ].join("\n");
+}
+
 export function stayAreaGuidance(context: StayWorkspaceContext): StayAreaGuidance | null {
   const count = context.plannedCoordinates.length;
   if (count < 2 || context.clusterRadiusKm === null) return null;
