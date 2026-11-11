@@ -202,7 +202,9 @@ async function resolveRoadFallback(
       providerFailure: error instanceof RoadRoutingError ? error.category : 'unavailable', providerAttempted: true,
       cacheOutcome: error instanceof RoadRoutingError ? error.cacheOutcome : undefined };
   }
-  if (!routeIsPlausible(result, straightLineDistanceKm)) return { leg, outcome: "unchanged", reason: "implausible_route", providerFailure: 'malformed', providerAttempted: true, cacheOutcome };
+  // A normalized response can still be outside our planning policy. Retrieval
+  // succeeded; keep the leg unresolved without presenting a retryable outage.
+  if (!routeIsPlausible(result, straightLineDistanceKm)) return { leg, outcome: "unchanged", reason: "implausible_route", providerAttempted: true, cacheOutcome };
 
   const durationFact = knownKnowledgeFact(result.durationMinutes, "estimated", ROAD_ROUTING_SOURCE);
   const transferImpact = estimateTransferImpact({

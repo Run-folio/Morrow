@@ -318,6 +318,12 @@ test("implausible and cross-border results are rejected conservatively", async (
   const rejected = await resolveCanonicalRoadFallback(unresolved, { provider });
   assert.equal(rejected.reason, "implausible_route");
   assert.equal(rejected.leg.mode, "unknown");
+  assert.equal(rejected.assessment?.retrieval, "completed", "a normalized route rejected by policy is completed evidence retrieval");
+  assert.equal(rejected.assessment?.reason, "missing_evidence");
+  assert.equal(rejected.assessment?.retryable, false, "retrying cannot make the same out-of-scope route admissible");
+  assert.equal(rejected.assessment?.diagnostics?.stage, "evidence");
+  assert.equal(rejected.assessment?.evidence, "insufficient");
+  assert.equal(rejected.leg.durationMinutes, null, "classification must not admit rejected timing");
 
   assertRequestedEndpoints(provider, unresolved);
   const tacna = selectedStop("tacna", 0, "Tacna", "Peru", "reference:geonames:3928128");
@@ -336,6 +342,21 @@ test("implausible and cross-border results are rejected conservatively", async (
   const blocked = await resolveCanonicalRoadFallback(crossBorder, { provider });
   assert.equal(blocked.reason, "cross_border");
   assert.equal(provider.calls.length, 1);
+});
+
+test("malformed provider responses remain retryable normalization failures", async () => {
+  const [from, to] = peruCorridor();
+  const leg = unresolvedInternalLeg(from, to, "malformed-road");
+  const provider: RoadRoutingProvider = {
+    provider: "openrouteservice",
+    route: async () => { throw new RoadRoutingError("malformed"); },
+  };
+  const result = await resolveCanonicalRoadFallback(leg, { provider });
+  assert.equal(result.assessment?.retrieval, "unavailable");
+  assert.equal(result.assessment?.reason, "malformed_response");
+  assert.equal(result.assessment?.retryable, true);
+  assert.equal(result.assessment?.diagnostics?.stage, "normalization");
+  assert.deepEqual(result.leg, leg);
 });
 
 test("road routing is skipped when either endpoint country is unknown", async () => {
