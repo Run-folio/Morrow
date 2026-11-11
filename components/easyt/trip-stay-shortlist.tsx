@@ -24,7 +24,7 @@ export default function TripStayShortlist({ trip }: { trip: EasyTTrip }) {
         <h3>{stop.name} · {stop.arrivalDate}</h3>
         {items.map(item => <div key={item.placeId} className={layout.shortlistRow}>
           <strong>{item.name}</strong>
-          <EasyTLinkButton size="small" variant="quiet" href={stayWorkspaceHref(trip.id,stop.id,mapResultSelectionId("stay",item.placeId,stop.id))}>Review stay</EasyTLinkButton>
+          <EasyTLinkButton size="small" variant="secondary" href={`${stayWorkspaceHref(trip.id,stop.id,mapResultSelectionId("stay",item.placeId,stop.id))}#stay-handoff`}>Review stay</EasyTLinkButton>
           <EasyTButton size="small" variant="quiet" aria-label={`Remove ${item.name} from shortlist for ${stop.name}`} disabled={!mutation.mutationReady || mutation.hasPendingSaves()} onClick={() => { void mutation.mutateTrip(current => removeShortlistedStay(current,stop.id,item.placeId),`shortlist-remove-${stop.id}-${item.placeId}`); }}>Remove</EasyTButton>
         </div>)}
       </section>;

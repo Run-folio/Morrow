@@ -230,7 +230,7 @@
 .selectedStatus svg { width: 16px; height: 16px; }
 .disclosure { grid-column: 1 / -1; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); line-height: 1.45; }
 
-.partnerHandoff { grid-column: 1 / -1; padding-top: 12px; display: grid; gap: 8px; border-top: 1px solid var(--morrovia-line); }
+.partnerHandoff { grid-column: 1 / -1; padding-top: 12px; display: grid; gap: 8px; border-top: 1px solid var(--morrovia-line); scroll-margin-top: var(--morrovia-sticky-content-offset); }
 .partnerHandoff strong { color: var(--morrovia-ink); font: var(--morrovia-type-control); }
 .partnerHandoff p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
 .copyDetails { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; color: var(--morrovia-ink); font: var(--morrovia-type-fine-print); }

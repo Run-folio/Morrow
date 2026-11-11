@@ -28,6 +28,14 @@ test('saved booking on another provider is labelled from its actual host',()=>{c
 test('usable map remains available and recommendation/default consumers retain their copy and booking layout',()=>{const result=render({mapHref:'/journey/map?pin=known'});assert.ok(result.nodes.some(n=>n.props.href==='/journey/map?pin=known'));const original=render({activityPresentation:false,activityBooking:undefined});assert.match(text(original.tree),/Why it fits|No trustworthy coordinates/);assert.ok(original.nodes.some(n=>n.props.label==='Part of day'));assert.equal(text(bookingNode(original)),'Open booking');assert.equal(bookingNode(original).props.variant,'secondary');});
 
 test('generic explicit booking uses the Book label',()=>{assert.equal(text(bookingNode(render({activityBooking:{href:'https://operator.example/book/123',provider:null,context}}))),'Book');});
+test('stay decision actions precede secondary detail while selection controls remain available',()=>{
+ const result=render({activityPresentation:false,activityBooking:undefined,detail:{...base,kind:'accommodation',bookingHref:null},decisionActions:require('react').createElement('span',null,'Find your stay'),primaryActions:require('react').createElement('span',null,'Choose stay')});
+ const content=text(result.tree);
+ assert.ok(content.includes('Find your stay'));
+ assert.ok(content.indexOf('Find your stay')<content.indexOf('Why it fits'));
+ assert.ok(content.indexOf('Find your stay')<content.indexOf('Practical info'));
+ assert.ok(content.includes('Choose stay'));
+});
 test('workspace saved booking uses its own link instead of the original idea provider',()=>{
  const workspace=readFileSync('components/easyt/trip-itinerary-workspace.tsx','utf8');
  const expression=workspace.match(/activityBooking=\{([\s\S]*?)\}\s+primaryActions=/)?.[1];

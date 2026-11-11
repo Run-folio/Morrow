@@ -40,6 +40,8 @@ type Props = {
   onManage?: () => void;
   manageLabel?: string;
   primaryActions?: ReactNode;
+  /** Page-specific decisions that must precede secondary property information. */
+  decisionActions?: ReactNode;
   embedded?: boolean;
   omitEmptyMedia?: boolean;
   compactMapHeader?: boolean;
@@ -69,6 +71,7 @@ export default function RecommendationDetail({
   onManage,
   manageLabel = "Manage",
   primaryActions,
+  decisionActions,
   embedded = false,
   omitEmptyMedia = false,
   compactMapHeader = false,
@@ -158,6 +161,8 @@ export default function RecommendationDetail({
           {detail.price ? <div><span aria-hidden="true">£</span><dt>Price</dt><dd>{detail.price}</dd></div> : null}
           {detail.bookingStatus ? <div><CheckCircle2 aria-hidden="true" /><dt>Status</dt><dd>{detail.bookingStatus}</dd></div> : null}
         </dl>
+
+        {decisionActions}
 
         {detail.commercialFacts ? <section className={styles.commercialFacts} aria-label={detail.commercialFacts.providerLabel}>
           <span>{detail.commercialFacts.providerLabel}</span>

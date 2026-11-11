@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { JourneyLocalFinderInitialState, JourneyLocalPlace } from "@/lib/easyt/local-place";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import { selectMappedStayForStop } from "@/lib/easyt/accommodation";
+import { shortlistStay } from "@/lib/easyt/trip-starter";
 import TripShell from "./trip-shell";
 import TripStayWorkspace from "./trip-stay-workspace";
 
@@ -148,6 +149,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const TokyoThreeNightStay: Story = {};
+const shortlistedPlace = mappedPlaces.find(place => place.provider === "openstreetmap")!;
+export const ShortlistedStayHandoff: Story = { args: { trip: shortlistStay(trip, "tokyo-first", shortlistedPlace), initialSelectedPlaceId: shortlistedPlace.id, initialFinderState: { corePlaces: [shortlistedPlace], accommodationInventoryStatus: "unconfigured" } } };
+export const ShortlistedStayHandoffMobile390: Story = { ...ShortlistedStayHandoff, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const RepeatedTokyoStay: Story = { args: { initialStopId: "tokyo-return", initialFinderState: sparse } };
 export const StrongAreaEvidence: Story = {};
 export const NoNeighbourhoodFallback: Story = { args: { initialStopId: "tokyo-return", initialFinderState: sparse } };

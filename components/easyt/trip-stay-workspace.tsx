@@ -104,6 +104,7 @@ function StayFinderSurface({
   const selectionOriginLabel = useRef<string | null>(null);
   const selectionOriginMapId = useRef<string | null>(null);
   const [compact, setCompact] = useState(false);
+  const focusedHandoff = useRef<string | null>(null);
 
   useEffect(() => {
     const viewport = window.matchMedia("(max-width: 900px)");
@@ -112,6 +113,26 @@ function StayFinderSurface({
     viewport.addEventListener("change", update);
     return () => viewport.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    const url = new URL(window.location.href);
+    const resultId = mapResultSelectionId("stay", selected.id, context.stop.id);
+    const scope = JSON.stringify([workingTrip.id, workingTrip.ownerId, context.stop.id, resultId]);
+    if (url.hash !== "#stay-handoff" || url.searchParams.get("stop") !== context.stop.id || url.searchParams.get("result") !== resultId || focusedHandoff.current === scope) return;
+    // Finder results may arrive after Next has already attempted hash scrolling.
+    const frame = window.requestAnimationFrame(() => {
+      if (window.location.href !== url.href) return;
+      const handoff = document.getElementById("stay-handoff");
+      if (!handoff) return;
+      focusedHandoff.current = scope;
+      handoff.scrollIntoView({ block: "nearest" });
+      handoff.focus({ preventScroll: true });
+      url.hash = "";
+      window.history.replaceState(window.history.state, "", url);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected?.id, context.key, workingTrip.id, workingTrip.ownerId, compact]);
 
   const selectPlace = (place: JourneyLocalPlace, source: "card" | "map" = "card") => {
     selectionOrigin.current = source === "card" && document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
@@ -199,6 +220,8 @@ function StayFinderSurface({
         <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
       </header>
 
+      <TripStayShortlist trip={workingTrip} />
+
       {mobile ? <>
         <div className={styles.mobileStayToolbar}>
           <EasyTSelect label="Overnight stop" labelClassName="sr-only" value={context.stop.id} onChange={event => onSelectStop(event.target.value)}>
@@ -269,8 +292,6 @@ function StayFinderSurface({
     </div>
 
     {showRail ? <aside className={styles.rail} aria-label="Stay map and decision support">
-      {!compact ? mapPreview : null}
-
       {detail && selected ? <div className={styles.detail}>
         {!compact ? <EasyTButton className={styles.detailClose} size="small" variant="quiet" aria-label={`Close details for ${selected.name}`} onClick={closeDetail}>Close</EasyTButton> : null}
         <ItineraryItemDetail
@@ -279,14 +300,15 @@ function StayFinderSurface({
           pending={mutation.saveState === "saving"}
           onClose={closeDetail}
           mapHref={fullMapHref(selected)}
+          decisionActions={partnerAction && handoffDetails ? <TripStayHandoff key={JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key, selected.id, handoffDetails])} details={handoffDetails} action={partnerAction} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} /> : null}
           primaryActions={<>
             {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span>}
-            {partnerAction && handoffDetails ? <TripStayHandoff key={JSON.stringify([workingTrip.id, workingTrip.ownerId, context.key, selected.id, handoffDetails])} details={handoffDetails} action={partnerAction} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} /> : null}
           </>}
           onRemove={selectedSaved ? removeStay : undefined}
         />
         <JourneyLocalPlacePhotoAttribution photo={selectedPhoto} className={styles.detailPhotoCredit} />
       </div> : null}
+      {!compact ? mapPreview : null}
     </aside> : null}
   </div>;
 }
@@ -315,7 +337,6 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
   }
 
   return <section className={styles.workspace} aria-label={`Stay planning for ${context.stop.name}`}>
-    <TripStayShortlist trip={workingTrip} />
     <JourneyLocalFinder
       mapPresentation="maplibre"
       key={context.key}

@@ -26,7 +26,7 @@ export default function TripStayHandoff({ details, action, context }: {
       if (mounted.current) setState("failed");
     }
   };
-  return <section className={styles.partnerHandoff} aria-label="Find your stay">
+  return <section id="stay-handoff" tabIndex={-1} className={styles.partnerHandoff} aria-label="Find your stay">
     <strong>Find your stay</strong>
     <EasyTButton fullWidth variant="secondary" icon={state === "copied" ? Check : Copy} loading={state === "copying"} onClick={copy}>{state === "copied" ? "Stay details copied" : "Copy stay details"}</EasyTButton>
     <span className="sr-only" role="status">{state === "copied" ? "Stay details copied" : ""}</span>
