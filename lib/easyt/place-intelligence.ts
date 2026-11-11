@@ -1,3 +1,4 @@
+import { tripStayQuantityAt } from "./trip-stay-quantity.ts";
 import { destinationPlanningDecision } from './destination-planning-policy.ts';
 import {
   PLACE_CATALOG,
@@ -614,6 +615,7 @@ const NON_PLACE_PHRASES = new Set([
   "spring", "summer", "autumn", "fall", "winter", "wet season", "dry season", "high season", "low season", "shoulder season",
   "culture", "cities", "beach", "beaches", "hiking", "mountains", "history", "architecture", "wildlife", "wine", "nightlife",
   "slow", "balanced", "packed", "flexible", "important", "must", "please", "ideally", "maybe",
+  "spend", "spending", "in that order",
   "overland", "public", "transport", "practical", "possible", "sensible", "road trip",
 ]);
 
@@ -1597,7 +1599,7 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     if (intersectsKnownRange(start, end)) continue;
     const normalized = normalizePlacePhrase(sourceText);
     const words = normalized.split(" ");
-    if (!normalized || words.some((word) => NON_PLACE_PHRASES.has(word))) continue;
+    if (!normalized || NON_PLACE_PHRASES.has(normalized) || words.some((word) => NON_PLACE_PHRASES.has(word))) continue;
     if (/\b(?:day|days|week|weeks|wks?|night|nights|traveller|travellers|cheap|budget|affordable|museum|museums|somewhere|warm|cold|train|trains)\b/.test(normalized)) continue;
     candidates.push({ sourceText, start, end, reviewOnly: true, forcedRole: "preferred" });
   }
@@ -2254,10 +2256,10 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
     .sort((left, right) => left._start - right._start || right._end - left._end);
   const nightContext = /\b\d+\s*(?:nights?\b|n\b)/i.test(prompt);
   for (const mention of sorted) {
-    const suffix = prompt.slice(mention._end);
-    const quantity = /^\s*[:—-]?\s*\d{1,3}\s*(?:nights?\b|n\b)/i.test(suffix)
-      || nightContext && /^\s*[:—-]?\s*\d{1,3}(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.test(suffix);
-    if (quantity && mention.role !== 'excluded') mention.provenance.push({ id: `stay-occurrence:${mention._start}`, label: 'Traveller stay occurrence', kind: 'context', supports: 'A separate source occurrence has its own explicit stay quantity.' });
+    const quantity = tripStayQuantityAt(prompt, mention._start, mention._end, {
+      allowPrefix: mention.routability === "direct_destination", allowBareNumber: nightContext,
+    });
+    if (quantity && !quantity.negated && mention.role !== 'excluded') mention.provenance.push({ id: `stay-occurrence:${mention._start}`, label: 'Traveller stay occurrence', kind: 'context', supports: 'A separate source occurrence has its own explicit stay quantity.' });
   }
   const boundStay = (mention: ResolvedPlaceMention) => mention.provenance.some(source => source.id.startsWith('stay-occurrence:'));
   // In an explicit arrow itinerary, a repeated first/last identity is route

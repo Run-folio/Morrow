@@ -181,6 +181,7 @@ function geographySourceSpan(
   if (!boundaryCleaned || !lexicalWords(boundaryCleaned).length) return null;
 
   if (isLeadingPlanningImperativeSourceSpan(boundaryCleaned, rawBrief)) return null;
+  if (/^(?:spend(?:ing)?|in that order)$/iu.test(boundaryCleaned)) return null;
 
   // A model may return an entire comma-separated destination and duration
   // clause as one candidate. The individually resolved places are the

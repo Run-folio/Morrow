@@ -598,8 +598,36 @@ const gyeongbuTransfer = (fromCanonicalId:string,toCanonicalId:string): Destinat
   note:knownKnowledgeFact("Gyeongbu KTX: about 3h station to station, service-dependent. Local access and waiting are separate Morrovia planning allowances; verify the live timetable before booking.","static",gyeongbuSources),
 });
 
+const florenceVeniceRailSource: KnowledgeSource = {
+  id: "italo:florence-venice-route",
+  label: "Italo — Florence to Venice",
+  kind: "official",
+  url: "https://www.italotreno.com/en/destinations-timetable/florence-venice-tickets",
+  reviewedAt: "2026-11-11",
+  supports: "Published directional Florence–Venice high-speed train route; not date-specific availability, a booked fare or a door-to-door duration.",
+};
+const florenceVeniceTimingSource: KnowledgeSource = {
+  id: "italo:florence-venice-indicative-time",
+  label: "Italo — Italy train routes",
+  kind: "official",
+  url: "https://www.italotreno.com/en/destinations-timetable",
+  reviewedAt: "2026-11-11",
+  supports: "Indicative Florence–Venice train journey time of 2h15 in Italo's route index. The route page advertises about 2h; neither is a date-specific timetable or a local-access allowance.",
+};
+
 /** Reviewed pair facts and existing planner allowances behind the knowledge boundary. */
 export const CURATED_DESTINATION_TRANSFERS: readonly DestinationTransferKnowledge[] = [
+  {
+    fromCanonicalId: "florence", toCanonicalId: "venice",
+    mode: knownKnowledgeFact("train", "static", florenceVeniceRailSource),
+    // Retain the operator index's more conservative indicative train time;
+    // access and waiting come from the existing transfer-impact model.
+    planningMinutes: knownKnowledgeFact(135, "estimated", florenceVeniceTimingSource),
+    durationBasis: knownKnowledgeFact("headline", "static", florenceVeniceTimingSource),
+    realisticRangeMinutes: unknownKnowledgeFact("Advertised journey times vary between operator pages; no service-specific minimum/maximum range or dated timetable is reviewed."),
+    borderFriction: unknownKnowledgeFact("No source-specific processing time is reviewed for this domestic corridor."),
+    note: knownKnowledgeFact("Italo Florence–Venice: indicative 2h15 train journey, not a date-specific schedule. Morrovia adds local access and waiting allowances; verify the live timetable before booking.", "static", [florenceVeniceRailSource, florenceVeniceTimingSource]),
+  },
   {
     fromCanonicalId: "paris", toCanonicalId: "madrid",
     mode: knownKnowledgeFact("flight", "static", parisMadridAirSource),
@@ -760,6 +788,9 @@ export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowl
 ];
 
 export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKnowledge[] = [
+  // Identity/alias projection for the reviewed pair only, not Italian network evidence.
+  { canonicalId: "florence", name: "Florence", country: "Italy", networkIds: [] },
+  { canonicalId: "venice", name: "Venice", country: "Italy", networkIds: [] },
   {canonicalId:"seoul",name:"Seoul",country:"South Korea",networkIds:[]},
   {canonicalId:"busan",name:"Busan",country:"South Korea",networkIds:[]},
   { canonicalId: "tashkent", name: "Tashkent", country: "Uzbekistan", networkIds: ["uzbekistan-afrosiyob"] },
@@ -1004,6 +1035,8 @@ export function createDestinationKnowledgeStore(options: {
     findTransfer: (from, to) => {
       const fact = transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
         ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to)));
+      if (fact?.mode.sources.some(source => source.id === florenceVeniceRailSource.id)
+        && [from, to].some(endpoint => normalise(endpoint.country ?? "") !== "italy")) return undefined;
       if (fact?.mode.sources.some(source => source.id === parisMadridAirSource.id)
         && (normalise(from.country ?? "") !== "france" || normalise(to.country ?? "") !== "spain")) return undefined;
       if (fact?.mode.sources.some(source => source.id === "visitkorea:gyeongbu-ktx")

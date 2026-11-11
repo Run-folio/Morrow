@@ -508,6 +508,27 @@ test('accepted edit waits for the current projection readback without rebasing n
   assert.equal(h.session.getSnapshot().inputRevision, revision + 1);
   assert.equal(h.writes.length, 0); h.session.dispose();
 });
+test('actual night decrement waits for projection readback without raising review or losing the click', async () => {
+  const { h, gate } = await heldGuestProjection(), view = nightAdjustment(h);
+  const stop = h.session.getSnapshot().trip.stops[0]!;
+  const pending = view.adjust(stop.id, -1); await tick(); gate.resolve(); await pending;
+  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights! - 1);
+  assert.ok(view.errors.every(message => !message));
+  assert.equal(h.session.getSnapshot().error, null);
+  assert.deepEqual(h.recovery()?.trip, h.session.getSnapshot().trip);
+  h.session.dispose();
+});
+test('actual night decrement waits for account acknowledgement and retains exact device recovery', async () => {
+  const h = await harness(); await accept(h); await h.run(450);
+  const gate = h.holdAck(); await h.ack(0);
+  const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!;
+  const pending = view.adjust(stop.id, -1); await tick(); gate.resolve(); await pending;
+  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights! - 1);
+  assert.ok(view.errors.every(message => !message));
+  assert.equal(h.session.getSnapshot().error, null);
+  assert.deepEqual(h.recovery()?.trip, h.session.getSnapshot().trip);
+  h.session.dispose();
+});
 test('actual Build waits for an in-flight projection commit before accepting planned status', async () => {
   const { h, gate } = await heldGuestProjection(), view = buildPersistence(h);
   const revision = h.session.getSnapshot().inputRevision;

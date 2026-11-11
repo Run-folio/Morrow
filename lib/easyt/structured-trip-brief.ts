@@ -1,3 +1,5 @@
+import { tripPromptDates } from "./trip-prompt-dates.ts";
+import { tripStayQuantityAt } from "./trip-stay-quantity.ts";
 import { parseTripBrief } from "./trip-brief.ts";
 import {
   resolvePlaceMentions,
@@ -78,7 +80,7 @@ export type TripBriefSoftPreference = {
   provenance: TripBriefProvenance;
 };
 export type TripBriefValidationIssue = {
-  code: "END_BEFORE_START" | "DURATION_DATE_MISMATCH" | "INVALID_TRAVELLERS" | "REQUIRED_DESTINATION_EXCLUDED" | "MAX_STOPS_BELOW_REQUIRED" | "UNSUPPORTED_TOTAL_BUDGET_CONSTRAINT";
+  code: "INVALID_PROMPT_DATES" | "END_BEFORE_START" | "DURATION_DATE_MISMATCH" | "INVALID_TRAVELLERS" | "REQUIRED_DESTINATION_EXCLUDED" | "MAX_STOPS_BELOW_REQUIRED" | "UNSUPPORTED_TOTAL_BUDGET_CONSTRAINT";
   severity: "error" | "warning";
   message: string;
   fields: string[];
@@ -210,7 +212,7 @@ function explicitGateway(prompt: string, kind: "start" | "end") {
     : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
   for (const match of prompt.matchAll(new RegExp(pattern.source, "gi"))) {
     const placeStart = match.index! + match[0].length - match[1].length;
-    if (!isNegatedEndpointAt(prompt, placeStart) && (kind !== "end" || !isTentativeEndpointAt(prompt, placeStart))) return match[1].trim();
+    if (!isNegatedEndpointAt(prompt, placeStart) && (kind !== "end" || !isTentativeEndpointAt(prompt, placeStart))) return match[1].trim().replace(/\s+on\s+(?:\d{1,4}[-\s]|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d)[\s\S]*$/i, "");
   }
   return undefined;
 }
@@ -225,10 +227,10 @@ function durationFromPrompt(prompt: string, fallbackDays?: number, mentions: rea
     for (const match of prompt.matchAll(pattern)) {
       const end = match.index! + match[0].length;
       if (match.index! > 0 && /[\p{L}\p{N}]/u.test(prompt[match.index! - 1])) continue;
-      const suffix = prompt.slice(end);
-      const request = /^\s*[:—-]?\s*(\d{1,3})\s*(?:nights?\b|n\b)/i.exec(suffix)
-        ?? (bareNightContext ? /^\s*[:—-]?\s*(\d{1,3})(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.exec(suffix) : null);
-      if (request) stays.set(end + request[0].indexOf(request[1]), { nights: Number(request[1]), sourceText: match[0] + request[0], excluded: mention.role === 'excluded' });
+      const request = tripStayQuantityAt(prompt, match.index!, end, {
+        allowPrefix: mention.routability === "direct_destination", allowBareNumber: bareNightContext,
+      });
+      if (request) stays.set(request.quantityStart, { nights: request.nights, sourceText: request.sourceText, excluded: mention.role === 'excluded' || request.negated });
     }
   }
   const total = [...prompt.matchAll(/\b(\d{1,3})\s*(?:nights?\b|n\b)/gi)].find(match => !stays.has(match.index!));
@@ -265,10 +267,8 @@ function explicitStayNightCommitments(prompt: string, mentions: readonly Resolve
       const before = index > 0 ? [...prompt.slice(0, index)].at(-1) : undefined;
       const after = prompt[index + match[0].length];
       if ((before && /[\p{L}\p{N}]/u.test(before)) || (after && /[\p{L}\p{N}]/u.test(after))) continue;
-      const suffix = prompt.slice(index + match[0].length);
-      const stay = /^\s*[:—-]?\s*(\d{1,3})\s*(?:nights?\b|n\b)/i.exec(suffix)
-        ?? (bareNightContext ? /^\s*[:—-]?\s*(\d{1,3})(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.exec(suffix) : null);
-      occurrences.push(stay ? { nights: Number(stay[1]), sourceText: `${match[0]} ${stay[1]}${/\s+nights?\b/i.test(stay[0]) ? " nights" : ""}` } : {});
+      const stay = tripStayQuantityAt(prompt, index, index + match[0].length, { allowPrefix: true, allowBareNumber: bareNightContext });
+      occurrences.push(stay && !stay.negated ? { nights: stay.nights, sourceText: stay.sourceText } : {});
     }
     const orderedMentions = group.mentions.sort((left, right) => left.order - right.order);
     const quantified = occurrences.filter(occurrence => occurrence.nights !== undefined);
@@ -429,6 +429,7 @@ export function extractStructuredTripBrief(
   const hasExplicitStartMention = placeMentions.some((mention) => mention.role === "origin" || mention.role === "fixed_start");
   const hasExplicitEndMention = placeMentions.some((mention) => mention.role === "fixed_end");
   const duration = durationFromPrompt(rawPrompt, parsed.durationDays, placeMentions);
+  const promptDates = tripPromptDates(rawPrompt);
   const countries = unique([
     ...placeMentions
       .filter((mention) => mention.placeType === "country" && mention.status !== "ambiguous" && mention.status !== "unresolved")
@@ -542,7 +543,11 @@ export function extractStructuredTripBrief(
     countries,
     preferredRegions,
     travellers,
-    dates: {},
+    dates: {
+      ...(promptDates.start ? { start: { value: promptDates.start.value, provenance: promptExplicit(promptDates.start.sourceText) } } : {}),
+      ...(promptDates.end ? { end: { value: promptDates.end.value, provenance: promptExplicit(promptDates.end.sourceText) } } : {}),
+      ...(promptDates.start && promptDates.end ? { fixed: { value: true, provenance: promptExplicit(rawPrompt) } } : {}),
+    },
     pace,
     interests,
     transportPreferences: unique(transportPreferences, (item) => item.value),
@@ -559,7 +564,10 @@ export function extractStructuredTripBrief(
     completedPlanningAreaMentionIds: [],
     removedPlaceMentionIds: [],
   };
-  return { ...brief, issues: validateStructuredTripBrief(brief) };
+  return { ...brief, issues: [
+    ...validateStructuredTripBrief(brief),
+    ...(promptDates.invalid ? [{ code: "INVALID_PROMPT_DATES" as const, severity: "error" as const, message: "Confirm the trip dates: the prompt contains an invalid or conflicting calendar date.", fields: ["dates"] }] : []),
+  ] };
 }
 
 function fact<T>(value: T): SourcedTripValue<T> {

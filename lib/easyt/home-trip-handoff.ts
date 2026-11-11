@@ -1404,6 +1404,11 @@ export function createHomeTripDraft(input: {
   journeyEnd?: JourneyEndSelection;
 }): HomeTripDraft {
   const origin = input.origin ? canonicalJourneyEndpointPlace(input.origin) : undefined;
+  const capturedStart = input.capture.structuredBrief.dates.start?.value;
+  const capturedEnd = input.capture.structuredBrief.dates.end?.value;
+  const capturedRange = capturedStart && capturedEnd && validHomepageDate(capturedStart) && validHomepageDate(capturedEnd) && capturedEnd >= capturedStart
+    ? { startDate: capturedStart, endDate: capturedEnd } : undefined;
+  const dateRange = input.datesExplicit ? { startDate: input.startDate, endDate: input.endDate } : capturedRange;
   const draft = withCanonicalHandoffRouteIntent({
     handoffId: input.handoffId,
     locationMentions: input.capture.mentions,
@@ -1422,8 +1427,8 @@ export function createHomeTripDraft(input: {
     } : {}),
     journeyEnd: normalizeJourneyEnd(input.journeyEnd ?? input.capture.journeyEnd),
     durationDays: input.capture.durationDays,
-    ...(input.datesExplicit ? { startDate: input.startDate, endDate: input.endDate } : {}),
-    datesExplicit: input.datesExplicit,
+    ...(dateRange ?? {}),
+    datesExplicit: Boolean(dateRange),
     travellers: input.travellers,
     travellersExplicit: input.travellersExplicit,
     interests: normalizeTripInterests(input.interests),
@@ -1629,7 +1634,9 @@ function withHomepageChoices(
     : snapshot.travellers.state === "cleared" ? undefined : capturedTravellers ?? draft.travellers;
   const travellersExplicit = snapshot.travellers.state !== "untouched";
 
-  const selectedDates = snapshot.dates.state === "selected" ? snapshot.dates.value : undefined;
+  const selectedDates = snapshot.dates.state === "selected" ? snapshot.dates.value
+    : snapshot.dates.state === "untouched" && draft.datesExplicit && draft.startDate && draft.endDate
+      ? { start: draft.startDate, end: draft.endDate } : undefined;
   const datesExplicit = Boolean(selectedDates?.start && selectedDates?.end);
   const origin = snapshot.origin.state === "selected" ? canonicalJourneyEndpointPlace(snapshot.origin.value)
     : snapshot.origin.state === "cleared" ? undefined
@@ -1686,7 +1693,7 @@ function withHomepageChoices(
     }
     structured = {
       ...structured,
-      ...(snapshot.dates.state === "cleared" ? { dates: {} } : selectedDates ? { dates: {
+      ...(snapshot.dates.state === "cleared" ? { dates: {} } : snapshot.dates.state === "selected" && selectedDates ? { dates: {
         start: { value: selectedDates.start, provenance: homepageExplicit() },
         ...(selectedDates.end ? { end: { value: selectedDates.end, provenance: homepageExplicit() } } : {}),
         ...(selectedDates.end ? { fixed: { value: true, provenance: homepageExplicit() } } : {}),
@@ -1763,6 +1770,12 @@ export function projectHomepageInput(input: {
   const capture = snapshot.mode === "describe" ? homepageCaptureWithSharedOrigin(snapshot, input.capture ?? captureJourneyBrief(snapshot.prompt)) : undefined;
   const evidence = capture ? homepageCapturedRouteEvidence(snapshot.prompt, capture) : undefined;
   const issues = homepagePreflightIssues(snapshot, evidence);
+  const capturedDates = capture?.structuredBrief.dates;
+  const partialPromptDates = Boolean(capturedDates?.start) !== Boolean(capturedDates?.end);
+  if (snapshot.dates.state === "untouched" && (partialPromptDates
+    || capture?.structuredBrief.issues.some(issue => issue.severity === "error" && issue.fields.some(field => field === "dates" || field.startsWith("dates."))))) {
+    issues.push({ field: "dates", code: "invalid" });
+  }
   if (issues.length) return { ok: false, issues };
 
   const draft = snapshot.mode === "describe"
