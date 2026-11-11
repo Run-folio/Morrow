@@ -64,6 +64,7 @@ import { defaultTripIntent, fixedTripCommitmentsFromStructuredBrief, isEasyTTrip
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
+import { createBuilderSaveAcknowledgementTracker } from "@/lib/easyt/trip-save-analytics";
 import { authClient } from "@/lib/auth-client";
 import type { JourneyImage } from "@/lib/journey";
 import { mediaImagesFor, PLACE_IMAGE_HINTS } from "@/lib/easyt/itinerary-media";
@@ -644,6 +645,10 @@ function TripBuilderDocument() {
     interruptedSeenSessionsRef.current.add(retiringEditor);
   }
   activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
+  const recordBuilderSaveAcknowledgement = useMemo(() => createBuilderSaveAcknowledgementTracker({
+    hasConsent: hasAnalyticsConsent,
+    emit: properties => trackEvent("trip_save_acknowledged", properties),
+  }), []);
   if (builderEntrySessionRef.current && builderEntrySessionRef.current.ownerId !== activeBrowserOwnerId) builderEntrySessionRef.current.retire();
   const retireBuilderEntryForInput = () => {
     const entry = builderEntrySessionRef.current;
@@ -675,6 +680,7 @@ function TripBuilderDocument() {
     },
     acknowledgeRecovery: async (reviewed, canonical, handle, guard) => {
       const result=await acknowledgeTripBuildSave(reviewed,canonical,handle,{isCurrent:guard?.isCurrent??(()=>builderMountedRef.current&&activeBrowserOwnerIdRef.current===handle.ownerId)});
+      recordBuilderSaveAcknowledgement(result, canonical, { ownerId: activeBrowserOwnerIdRef.current, isCurrent: builderMountedRef.current && guard?.isCurrent() !== false });
       if(guard?.isCurrent() !== false && result.outcome==="acknowledged" && !await loadTripRecovery(handle.tripId,handle.ownerId)){
         if (guard?.isCurrent() === false || !builderMountedRef.current || activeBrowserOwnerIdRef.current !== handle.ownerId) return result;
         const url=new URL(window.location.href);if(url.searchParams.get("trip")===handle.tripId){url.searchParams.delete("recover");window.history.replaceState(window.history.state,"",url);}

@@ -53,6 +53,7 @@ export type LaunchAnalyticsEventMap = {
   trip_generated: { trip_source: TripSource; trip_id?: string; stop_count: number; duration_days?: number; traveller_count: number; has_dates: boolean; save_state: "local"; result: "usable" };
   trip_generation_failed: { trip_source: TripSource; error_type: "capture" | "network" | "invalid_result" | "unknown"; is_authenticated: boolean };
   trip_saved: { trip_source: TripSource; trip_id?: string; save_state: SaveState; stop_count?: number; is_authenticated: boolean };
+  trip_save_acknowledged: { trip_id: string; trip_source: "builder" };
   trip_save_failed: { trip_source: TripSource; trip_id?: string; save_state: SaveState; error_type: "auth" | "network" | "conflict" | "repository" | "unknown"; is_authenticated: boolean };
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
