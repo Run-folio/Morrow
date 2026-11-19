@@ -74,7 +74,9 @@
 .detailWrap { grid-column: 3 / -1; min-width: 0; padding-bottom: var(--row-block); }
 .detailWrap[hidden] { display: none; }
 .connectionActions { min-width: 0; display: flex; align-items: start; flex-wrap: wrap; gap: 10px; }
-.omioAction { min-width: 0; display: grid; justify-items: start; }
+/* Keep booking controls adjacent; long provider handoff text has its own row. */
+.omioAction { display: contents; }
+.omioAction > small { order: 1; flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; }
 .partnerNote { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .manualBooking { min-width: 0; display: grid; gap: 10px; }
 .bookingSummary { min-width: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); overflow-wrap: anywhere; }
@@ -131,4 +133,5 @@
 .journeyGaps { list-style: disc; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
 
 .airportSearch, .airportSearch form { min-width: 0; display: grid; gap: 12px; }
+.airportSearch > button { justify-self: start; max-width: 100%; }
 .airportSearch p { margin: 0; overflow-wrap: anywhere; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
