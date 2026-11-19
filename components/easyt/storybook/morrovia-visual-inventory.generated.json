@@ -6137,7 +6137,7 @@
       },
       {
         "value": "50%",
-        "count": 89,
+        "count": 90,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/easyt-navigation.module.css",
@@ -6537,13 +6537,6 @@
         "count": 1,
         "examples": [
           "app/journey/journey.module.css"
-        ]
-      },
-      {
-        "value": "50% !important",
-        "count": 1,
-        "examples": [
-          "components/easyt/morrovia-date-picker.module.css"
         ]
       },
       {
@@ -8050,7 +8043,7 @@
   },
   "audit": {
     "totals": {
-      "native-control": 125,
+      "native-control": 45,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
@@ -8072,27 +8065,11 @@
     "leaders": {
       "native-control": [
         {
-          "path": "components/journey-map-planner-workspace.tsx",
-          "count": 45
-        },
-        {
-          "path": "components/journey-local-finder.tsx",
-          "count": 8
-        },
-        {
-          "path": "components/journey-plan-workspace.tsx",
-          "count": 8
-        },
-        {
           "path": "app/journey/admin/users/user-support.tsx",
           "count": 6
         },
         {
           "path": "app/journey/home/restaurant-finder.tsx",
-          "count": 6
-        },
-        {
-          "path": "components/journey-restaurant-finder.tsx",
           "count": 6
         },
         {
@@ -8112,12 +8089,28 @@
           "count": 3
         },
         {
-          "path": "app/journey/plan-next/map-plan-next.tsx",
+          "path": "app/journey/stamped/stamped-client.tsx",
           "count": 3
         },
         {
-          "path": "app/journey/stamped/stamped-client.tsx",
+          "path": "app/journey/trip/trip-mode-client.tsx",
           "count": 3
+        },
+        {
+          "path": "app/journey/new/trip-builder.tsx",
+          "count": 2
+        },
+        {
+          "path": "app/journey/profile/profile-form.tsx",
+          "count": 2
+        },
+        {
+          "path": "components/journey-map-planner-workspace.tsx",
+          "count": 2
+        },
+        {
+          "path": "app/journey/home/product-showcase.tsx",
+          "count": 1
         }
       ],
       "deprecated-ui-owner": [],
