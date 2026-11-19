@@ -366,7 +366,7 @@ test('selected nonseed origin survives Describe submit, Build and reload', {skip
  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId==='reference:geonames:3175687');
  const selected=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null').snapshot.origin.value);
  assert.equal(selected.canonicalPlaceId,'reference:geonames:3175687');assert.equal(geographicallyReady(selected,'endpoint'),true);
- await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
+ await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=await durableBuilderTripId(page);
@@ -383,7 +383,7 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('button',{name:'One way',exact:true}).click();
- await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('tab',{name:'Describe',exact:true}).click();
  await page.getByRole('textbox',{name:'Start your plan'}).fill('Tenerife 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
@@ -430,7 +430,7 @@ test('Canary archipelago search accepts a physically verified member base withou
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('button',{name:'One way',exact:true}).click();
- await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('tab',{name:'Describe',exact:true}).click();
  await page.getByRole('textbox',{name:'Start your plan'}).fill('Canary Islands 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
@@ -454,7 +454,7 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
- await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('tab',{name:'Describe',exact:true}).click();
  await page.getByRole('textbox',{name:'Start your plan'}).fill('12 nights: Lima 2, Arequipa 3, Cusco 5, Ollantaytambo 2.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
@@ -497,7 +497,7 @@ test('recorded source town choices remain reachable with empty autocomplete and 
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates})});
  });
  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
- await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));const id=await durableBuilderTripId(page);await page.locator('[data-builder-route-workspace]').waitFor();
  const before=(await recoveryTrip(page,id))!;const sourceIds=before.brief.intent!.route!.destinations.filter(i=>towns.some(t=>i.sourceText===t.name)).map(i=>[i.id,i.requestedNights]);
  for(const town of towns){let dialog=page.getByRole('dialog').last();const choice=dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')});if(!await choice.isVisible().catch(()=>false)){const later=dialog.getByRole('button',{name:'Finish later',exact:true});if(await later.isVisible().catch(()=>false))await later.click();await page.getByRole('button',{name:'Choose place '+town.name,exact:true}).first().click();dialog=page.getByRole('dialog').last();}await dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')}).first().click();}
@@ -662,7 +662,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
 
 test("Tier 1 Discovery resolves a landmark as a visit with a canonical overnight base", { skip: !enabled, timeout: 90_000 }, async () => withEvidence("guest-discovery", async (page) => {
   await page.goto(`${base}/journey/new`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("tab", { name: "Describe my trip" }).click();
+  await page.getByRole("tab", { name: "Describe" }).click();
   await page.getByPlaceholder("Where would you like to go, for how long?").fill("Taj Mahal");
   await page.getByRole("button", { name: /Plan my trip/ }).click();
   await page.getByRole("button", { name: "Continue shaping your route" }).waitFor({ timeout: 20_000 });
@@ -856,8 +856,8 @@ for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South K
 },width));
 test('fresh Return default and disabled selected trip types retain readable production styling',{skip:!enabled,timeout:30000},async()=>withEvidence('disabled-trip-type',async(page)=>{
  await page.goto(base,{waitUntil:'domcontentloaded'});
- const selected=page.getByRole('button',{name:'Return to start',exact:true});await selected.waitFor();assert.equal(await selected.getAttribute('aria-pressed'),'true');
- for(const name of ['Return to start','One way']){
+ const selected=page.getByRole('button',{name:'Return',exact:true});await selected.waitFor();assert.equal(await selected.getAttribute('aria-pressed'),'true');
+ for(const name of ['Return','One way']){
   const button=page.getByRole('button',{name,exact:true});if(name==='One way')await button.click();
   const style=await button.evaluate(element=>{(element as HTMLButtonElement).disabled=true;const s=getComputedStyle(element);return {color:s.color,background:s.backgroundColor,opacity:s.opacity}});
   const luminance=(color:string)=>color.match(/\d+(?:\.\d+)?/g)!.slice(0,3).map(Number).map(v=>{const channel=v/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4}).reduce((sum,v,index)=>sum+v*[.2126,.7152,.0722][index],0);

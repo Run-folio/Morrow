@@ -12,13 +12,13 @@ const settle=(p:any)=>p.evaluate(()=>new Promise<void>(r=>requestAnimationFrame(
 test('Home direct travellers preserve budget and dates without a summary or budget dropdown',opts,async()=>{
  const snapshot={...emptyHomepageInput('owner-a'),budget:{state:'selected' as const,value:'high' as const},dates:{state:'selected' as const,value:{start:'2030-06-01',end:'2030-06-12'}},travellers:{state:'selected' as const,value:2}};
  const h=await renderBuilder({path:'/',ownerId:'owner-a',styled:true,offlineOnly:true,storedInput:{snapshot}});
- try{const p=h.page;await p.setViewportSize({width:390,height:844});await p.getByRole('tab',{name:'Plan with stops',exact:true}).waitFor();
+ try{const p=h.page;await p.setViewportSize({width:390,height:844});await p.getByRole('tab',{name:'Plan',exact:true}).waitFor();
   assert.equal(await p.getByRole('group',{name:'Travellers',exact:true}).count(),1,'direct traveller group is present');
   assert.equal(await p.getByRole('region',{name:'Destinations',exact:true}).count(),1);
   assert.equal(await p.getByRole('button',{name:'Budget and travellers',exact:true}).count(),0);
   assert.equal(await p.locator('[class*="plannerSummary"]').count(),0);
   await p.getByRole('button',{name:'Increase travellers; 2 travellers currently',exact:true}).click();
-  await p.getByRole('tab',{name:'Describe my trip',exact:true}).click();await p.getByRole('tab',{name:'Plan with stops',exact:true}).click();
+  await p.getByRole('tab',{name:'Describe',exact:true}).click();await p.getByRole('tab',{name:'Plan',exact:true}).click();
   await settle(p);const stored=await p.evaluate((key:string)=>JSON.parse(localStorage.getItem(key)!),homepageInputStorageKey('owner-a'));
   assert.deepEqual(stored.snapshot.budget,snapshot.budget);assert.deepEqual(stored.snapshot.dates,snapshot.dates);assert.equal(stored.snapshot.travellers.value,3);
   await p.getByRole('button',{name:'Increase travellers; 3 travellers currently',exact:true}).press('End');

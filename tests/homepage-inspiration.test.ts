@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { homepageInspirationTitle } from "../app/journey/home/immersive/homepage-inspiration-title.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -8,10 +9,8 @@ test("homepage inspiration cards retain canonical Route Detail links for pre-hyd
   const source = read("app/journey/home/immersive/homepage-route-inspiration.tsx");
 
   assert.match(source, /href=\{route\.href\}/);
-  assert.match(source, /route\.title/);
-  assert.match(source, /route\.dayRange\.min/);
-  assert.match(source, /route\.dayRange\.max/);
-  assert.match(source, /route\.stops\.length/);
+  assert.match(source, /homepageInspirationTitle/);
+  assert.doesNotMatch(source, /route\.dayRange|route\.stops|inspirationMeta/);
   assert.match(source, /href="\/journey\/discover"/);
   assert.doesNotMatch(source, /RoutePlanLink|routePlannerPayload|localStorage|setIndex|onChange/);
 });
@@ -50,10 +49,10 @@ test("homepage how it works uses the approved three steps and opens its inline d
   assert.doesNotMatch(source, /<video|PlayCircle|CirclePlay/);
 });
 
-test("homepage inspiration grid keeps seven readable cards on desktop and wraps responsively", () => {
+test("homepage inspiration grid keeps seven readable cards on desktop and scrolls horizontally on mobile", () => {
   const styles = read("app/journey/home/immersive/immersive.module.css");
   assert.match(styles, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
-  assert.match(styles, /@media\(max-width:700px\)[\s\S]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /@media\(max-width:700px\)[\s\S]*grid-auto-columns:47%[\s\S]*scroll-snap-type:x proximity/);
   assert.match(styles, /\.inspirationGrid/);
   assert.match(styles, /\.howSteps/);
 });
@@ -68,11 +67,20 @@ test("homepage inspiration stories cover full, fewer, empty, mobile and interact
 test("the rendered interaction play verifies canonical card content and ordinary click behavior", () => {
   const stories = read("app/journey/home/immersive/homepage-inspiration.stories.tsx");
 
-  assert.match(stories, /card\.textContent\?\.includes\(route\.title\)/);
+  assert.match(stories, /homepageInspirationTitle\(route, false\)/);
   assert.match(stories, /route\.dayRange\.min === route\.dayRange\.max/);
   assert.match(stories, /route\.stops\.length/);
   assert.match(stories, /await userEvent\.click\(cards\[0\]\)/);
   assert.match(stories, /observed\.event\?\.defaultPrevented/);
   assert.match(stories, /Hydrated card click must intercept native navigation/);
   assert.match(stories, /Card click changed the selected Route Story/);
+});
+
+test("homepage titles shorten the route name without mutating its countries", () => {
+  const route = { key: "namibia-self-drive", title: "Namibia Self-Drive", countries: ["Namibia"] };
+  assert.equal(homepageInspirationTitle(route, false), "Namibia");
+  assert.equal(homepageInspirationTitle({ ...route, countries: ["Japan", "South Korea"] }, true), "Japón + Corea del Sur");
+  const countries = ["Croatia", "Montenegro", "Albania", "North Macedonia"];
+  assert.equal(homepageInspirationTitle({ ...route, key: "balkans-overland", countries }, false), "The Balkans");
+  assert.deepEqual(countries, ["Croatia", "Montenegro", "Albania", "North Macedonia"]);
 });

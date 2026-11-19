@@ -27,10 +27,27 @@ test('homepage route fields share one rounded boundary and type toggles without 
   const inner=await origin.evaluate(el=>parseFloat(getComputedStyle(el).borderTopWidth));assert.equal(inner,0,'origin uses the shared boundary');
   assert.equal(await page.locator('[data-home-destination-field]').evaluate(el=>parseFloat(getComputedStyle(el).borderTopWidth)),0,'destination uses the shared boundary');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`no horizontal overflow at ${width}px`);
+  const destination=group.getByRole('combobox',{name:'Destination',exact:true});
+  const search=group.getByRole('button',{name:'Search',exact:true});
+  const add=group.getByRole('button',{name:'Add destination',exact:true});
+  assert.equal(await group.getByRole('button',{name:'Remove Destination',exact:true}).count(),0);
+  assert.equal(await search.isVisible(),width>720,'blank lookup is only visible on desktop');
+  await destination.fill('   ');assert.equal(await search.isVisible(),width>720,'whitespace is not lookup text');
+  await destination.fill('Tokyo');
+  const [inputBox,searchBox,addBox]=await Promise.all([destination.boundingBox(),search.boundingBox(),add.boundingBox()]);
+  assert.ok(inputBox&&searchBox&&addBox);
+  const centerY=({y,height}:{y:number;height:number})=>y+height/2;
+  assert.ok(Math.abs(centerY(inputBox)-centerY(searchBox))<=1&&Math.abs(centerY(searchBox)-centerY(addBox))<=1,'destination lookup and Add share a line');
+  assert.ok(searchBox.height>=44&&addBox.height>=44,'action buttons have 44px tap targets');
+  await add.click();assert.equal(await destination.inputValue(),'');
+  const removeAdded=group.getByRole('button',{name:'Remove Destination',exact:true});
+  await removeAdded.click();
+  await group.getByRole('button',{name:'Edit Tokyo',exact:true}).click();
+  await destination.fill('');
   const route=await group.boundingBox();const type=await page.getByRole('group',{name:'Trip type',exact:true}).boundingBox();assert.ok(route&&type);assert.ok(type.y+type.height<=route.y+1&&route.y-type.y-type.height<=16,'type is attached above its fields');
  }
- await page.getByRole('button',{name:'Return to start',exact:true}).click();await page.getByRole('button',{name:'One way',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');
- await page.reload();await origin.waitFor();assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');await page.getByRole('button',{name:'Return to start',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);
+ await page.getByRole('button',{name:'Return',exact:true}).click();await page.getByRole('button',{name:'One way',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.reload();await origin.waitFor();assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');await page.getByRole('button',{name:'Return',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);
  const artifact=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifact){mkdirSync(artifact,{recursive:true});for(const width of [1440,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:`${artifact}/homepage-${width}.png`});}}
  assert.deepEqual(errors,[]);
  }finally{await context.close();await browser.close()}
@@ -50,7 +67,7 @@ for(const width of [1440,390])test(`populated homepage hard reload keeps selecte
   for(let load=0;load<2;load++){
    await page.reload({waitUntil:'domcontentloaded'});
    await page.waitForFunction(()=>{const input=document.querySelector('[data-homepage-origin] input');return input instanceof HTMLInputElement&&input.value==='Hong Kong'});
-   await page.waitForFunction(()=>{const button=Array.from(document.querySelectorAll('button')).find(button=>button.textContent?.trim()==='Add destination');return button&&!button.disabled});
+   await page.waitForFunction(()=>{const button=Array.from(document.querySelectorAll('button')).find(button=>button.getAttribute('aria-label')==='Add destination');return button&&!button.disabled});
    assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key),{snapshot});
    const artifact=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifact&&load){mkdirSync(artifact,{recursive:true});await page.screenshot({path:`${artifact}/homepage-restored-no-interaction-${width}.png`});}
    assert.equal(await page.getByRole('combobox',{name:'Destination',exact:true}).count(),0,'restored selected entries must be chips without Escape, blur or Edit');

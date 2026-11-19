@@ -62,6 +62,7 @@ export function CanonicalPlaceAutocomplete({
   onSubmitFreeText,
   onFreeTextSearch,
   showSearchAction = false,
+  homepageInlineSearch = false,
   onPublicPlaceSearch,
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
@@ -97,6 +98,8 @@ export function CanonicalPlaceAutocomplete({
   onFreeTextSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
   /** Explicit completed search using the same action as Enter. */
   showSearchAction?: boolean;
+  /** Homepage route row keeps the input and completed lookup on one line. */
+  homepageInlineSearch?: boolean;
   /** Separate public-name research action offered only after a completed miss. */
   onPublicPlaceSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
   submitFreeTextOnBlur?: boolean;
@@ -371,7 +374,9 @@ export function CanonicalPlaceAutocomplete({
   const mapChoice = activeIndex >= 0 ? suggestions[activeIndex] : suggestions.find(suggestion => placeSuggestionMapUrl(suggestion,suggestions));
   const mapHref = mapChoice ? placeSuggestionMapUrl(mapChoice,suggestions) : null;
 
-  return <div ref={rootRef} className={`${styles.root} ${onClear && value ? styles.hasClear : ""}`}
+  const canClear = Boolean(onClear && (homepageInlineSearch ? value.trim() : value));
+
+  return <div ref={rootRef} className={`${styles.root} ${canClear ? styles.hasClear : ""} ${homepageInlineSearch ? styles.homepageInlineSearch : ""}`}
     onBlur={(event) => {
       if (event.currentTarget.contains(event.relatedTarget)) return;
       completionVisibleRef.current = false;
@@ -418,7 +423,7 @@ export function CanonicalPlaceAutocomplete({
         if (result.close) { if (menuVisible) event.stopPropagation(); setOpen(false); }
       }}
     />
-    {onClear && value ? <EasyTButton
+    {onClear && canClear ? <EasyTButton
       className={styles.clear}
       icon={X}
       iconOnly
@@ -429,7 +434,7 @@ export function CanonicalPlaceAutocomplete({
       onClick={() => { completedSearchRef.current.sequence += 1; completedSearchRef.current.controller?.abort(); completionVisibleRef.current = false; onClear(); setOpen(false); setActiveIndex(-1); inputRef.current?.focus(); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
     {showSearchAction && onFreeTextSearch ? <EasyTButton
-      className={styles.searchAction}
+      className={`${styles.searchAction} ${homepageInlineSearch && !value.trim() ? styles.mobileEmptySearch : ""}`}
       variant="secondary"
       size="small"
       disabled={disabled || !value.trim()}

@@ -32,7 +32,7 @@ for(const sequence of ['origin then prompt','prompt then origin'])test(`real hom
    else {status=404;body={error:'Local fixture boundary unavailable'};}
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
-  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   await page.getByRole('button',{name:'One way',exact:true}).click();
   const origin=page.getByRole('combobox',{name:'Start from',exact:true}),description=page.getByRole('textbox',{name:'Start your plan',exact:true});

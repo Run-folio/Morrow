@@ -1,0 +1,9 @@
+.add {
+  flex: none;
+  min-height: 44px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .add { padding-inline: 8px; gap: 4px; }
+  .desktopSuffix { display: none; }
+}

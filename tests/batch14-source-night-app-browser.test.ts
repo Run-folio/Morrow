@@ -24,7 +24,7 @@ for(const fixture of fixtures)test(`${fixture.case} actual source clarification 
    else {status=404;body={error:'Unavailable external boundary'};}
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
-  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   const origin=page.getByRole('combobox',{name:'Start from',exact:true});await origin.fill('City of London');await page.getByRole('option').filter({hasText:'City of London'}).first().click();
   await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan',exact:true}).fill(prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();

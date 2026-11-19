@@ -87,14 +87,14 @@ for(const width of [320,360,390,430])test(`homepage fresh Return and persisted O
   const states:Array<{pressed:string|null;disabled:boolean}>=[];
   (window as unknown as {__freshTypeHydration:typeof states}).__freshTypeHydration=states;
   new MutationObserver(()=>{
-   const button=[...document.querySelectorAll<HTMLButtonElement>('[data-homepage-trip-type] button')].find(b=>b.textContent==='Return to start');
+   const button=[...document.querySelectorAll<HTMLButtonElement>('[data-homepage-trip-type] button')].find(b=>b.textContent==='Return');
    if(!button)return;const state={pressed:button.getAttribute('aria-pressed'),disabled:button.disabled};
    if(JSON.stringify(states.at(-1))!==JSON.stringify(state))states.push(state);
   }).observe(document,{subtree:true,childList:true,attributes:true});
  });
  await page.goto(base,{waitUntil:'domcontentloaded'});const observations=[];
- for(const tab of ['Plan with stops','Describe my trip']){
-  await page.getByRole('tab',{name:tab,exact:true}).click();const button=page.getByRole('button',{name:'Return to start',exact:true});
+ for(const tab of ['Plan','Describe']){
+  await page.getByRole('tab',{name:tab,exact:true}).click();const button=page.getByRole('button',{name:'Return',exact:true});
   assert.equal(await button.getAttribute('aria-pressed'),'true','fresh storage has Return selected');
   const style=await button.evaluate(element=>{const s=getComputedStyle(element);return {color:s.color,background:s.backgroundColor,opacity:s.opacity}});observations.push({tab,style});
   const luminance=(color:string)=>color.match(/\d+(?:\.\d+)?/g)!.slice(0,3).map(Number).map(v=>{const c=v/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i]!,0);
@@ -102,12 +102,12 @@ for(const width of [320,360,390,430])test(`homepage fresh Return and persisted O
   await screenshot(page,`home-fresh-${width}-${tab.replaceAll(' ','-')}`);
  }
  const hydration=await page.evaluate(()=>(window as unknown as {__freshTypeHydration:Array<{pressed:string|null;disabled:boolean}>}).__freshTypeHydration);assert.ok(hydration.length>0);assert.ok(hydration.every(state=>state.pressed==='true'),'fresh Return stays selected through session hydration');
- await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Return to start',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Return to start',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Return',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Return',exact:true}).getAttribute('aria-pressed'),'true');
  await page.getByRole('button',{name:'One way',exact:true}).click();
  await page.waitForFunction(key=>JSON.parse(localStorage.getItem(key)??'null')?.snapshot?.tripType?.value==='one_way',homepageKey);
  const before=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).snapshot,homepageKey);
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='One way'&&b.getAttribute('aria-pressed')==='true'));
- for(const tab of ['Plan with stops','Describe my trip']){await page.getByRole('tab',{name:tab,exact:true}).click();assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');await screenshot(page,`home-restored-${width}-${tab.replaceAll(' ','-')}`);}
+ for(const tab of ['Plan','Describe']){await page.getByRole('tab',{name:tab,exact:true}).click();assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');await screenshot(page,`home-restored-${width}-${tab.replaceAll(' ','-')}`);}
  const after=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).snapshot,homepageKey);assert.deepEqual(after.tripType,before.tripType);assert.deepEqual(after.journeyEnd,before.journeyEnd);
  writeFileSync(`${artifacts}/home-type-${width}.json`,JSON.stringify({observations,hydration,preservedType:after.tripType},null,2));
 }));

@@ -23,3 +23,14 @@
 .failure { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; }
 .failure p { margin: 0; color: var(--morrovia-muted); font-size: 12px; line-height: 1.4; }
 .failure button { min-height: 44px; padding-inline: 10px; }
+
+/* The homepage only: the popup still belongs to its combobox. */
+.homepageInlineSearch { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.homepageInlineSearch > input { grid-area: 1 / 1; min-width: 0; padding-inline: 8px; }
+.homepageInlineSearch > .searchAction { grid-area: 1 / 2; margin: 0; min-height: 44px; }
+.homepageInlineSearch.hasClear > input { padding-inline-end: 44px; }
+.homepageInlineSearch > .clear { grid-area: 1 / 1; top: 0; right: 0; min-width: 44px; min-height: 44px; }
+@media (max-width: 720px) {
+  .homepageInlineSearch > .mobileEmptySearch { display: none; }
+  .homepageInlineSearch > .searchAction { padding-inline: 8px; }
+}

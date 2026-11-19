@@ -36,7 +36,7 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
    else {status=404;body={error:'External fixture boundary unavailable'};}
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
-  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   const start=f.case==='A15'?'San José':'City of London';await page.getByRole('combobox',{name:'Start from',exact:true}).fill(start);await page.getByRole('option').filter({hasText:start}).first().click();
   await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan',exact:true}).fill(f.prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();

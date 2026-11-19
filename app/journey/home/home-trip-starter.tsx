@@ -510,7 +510,7 @@ export default function HomeTripStarter() {
       travellersOnly: true,
       planner: {
         tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || inputBlocked || loading}
-          value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
+          value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Ida y vuelta" : "Return" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
           onChange={type => { if (type !== "unknown_legacy") requestTripType(type); }} /></div>,
         originEntry: <div data-homepage-origin><span data-morrovia-field-label>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
           language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}

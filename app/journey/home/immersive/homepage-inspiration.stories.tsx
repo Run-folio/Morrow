@@ -5,6 +5,7 @@ import EasyTProductTour from "@/components/easyt/easyt-product-tour";
 import { immersiveHomepageRoutes } from "@/lib/easyt/immersive-homepage-routes";
 import { discoveryCatalogue } from "@/lib/easyt/discovery-catalogue";
 import HomepageHowItWorks from "./homepage-how-it-works";
+import { homepageInspirationTitle } from "./homepage-inspiration-title";
 import HomepageRouteInspiration from "./homepage-route-inspiration";
 import styles from "./immersive.module.css";
 
@@ -46,13 +47,12 @@ export const InteractionBoundary: Story = {
     if (cards.length !== routes.length) throw new Error("Every eligible route must render one card link");
     cards.forEach((card, index) => {
       const route = routes[index];
-      if (!route || card.getAttribute("aria-label")?.includes(route.title) !== true) throw new Error("Card must expose a preview trigger for its canonical route");
+      if (!route) throw new Error("Card must correspond to a canonical route");
       if (card.getAttribute("href") !== route.href) throw new Error("Card must retain its canonical Route Detail destination before hydration");
       if (card.querySelector("a, button")) throw new Error("Route card cannot contain nested interactive controls");
       const days = route.dayRange.min === route.dayRange.max ? String(route.dayRange.min) : `${route.dayRange.min}–${route.dayRange.max}`;
-      if (!card.textContent?.includes(route.title)) throw new Error("Card must render the canonical route title");
-      if (!card.textContent?.includes(`${days} days`)) throw new Error("Card must render the canonical day range");
-      if (!card.textContent?.includes(`${route.stops.length} stops`)) throw new Error("Card must render the complete canonical stop count");
+      if (card.textContent?.trim() !== homepageInspirationTitle(route, false)) throw new Error("Card must expose only the shorter homepage title");
+      if (card.textContent?.includes(`${days} days`) || card.textContent?.includes(`${route.stops.length} stops`)) throw new Error("Day range and stop count belong in the route preview");
       card.focus();
       card.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
       if (root?.dataset.selectedStoryKey !== before) throw new Error("Card focus or hover changed the selected Route Story");

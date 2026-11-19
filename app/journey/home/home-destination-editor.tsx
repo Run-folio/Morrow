@@ -10,6 +10,7 @@ import { type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
 import { destinationSelectionCategory, destinationSelectionLabel } from "@/lib/easyt/destination-intent-presentation";
 import { searchCompletedPlaceCandidates } from "@/lib/easyt/completed-place-search";
 import { MorroviaDestinationField, MorroviaDestinationTag, destinationAddClassName } from "@/components/easyt/morrovia-destination-field";
+import styles from "./home-destination-editor.module.css";
 
 export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
   entries: HomepageDestinationEntry[]; language: EasyTLanguage; disabled?: boolean;
@@ -63,22 +64,26 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const anchors = entries.filter(entry => entry.selection && category(entry) === 'visit').length;
   const peers = entries.flatMap(entry => entry.selection ? [entry.selection] : []);
   const label = (entry: HomepageDestinationEntry) => entry.selection ? destinationSelectionLabel(entry.selection, peers, language) : entry.text || (es ? 'Destino' : 'Destination');
+  const hasEditor = entries.some(entry => entry.id === editingId);
+  const addAction = createEntry ? <EasyTButton className={`${destinationAddClassName} ${styles.add}`} ref={addRef} icon={Plus} variant="secondary" disabled={disabled}
+      aria-label={es ? "Añadir destino" : "Add destination"} onClick={() => {
+        const next = homepageDestinationAddTarget(latest.current.entries, createEntry);
+        focusTarget.current = next.focusEntryId;
+        setEditingId(next.focusEntryId);
+        onChange(next.entries);
+      }}><span>{es ? "Añadir" : "Add"}<span className={styles.desktopSuffix}> {es ? "destino" : "destination"}</span></span></EasyTButton> : null;
   return <MorroviaDestinationField homepage label={es ? "Destinos" : "Destinations"}
     status={unconfirmed || areas || anchors ? [
       unconfirmed ? `${unconfirmed} ${es ? "sin confirmar" : "unconfirmed"}` : "",
       areas ? `${areas} ${es ? (areas === 1 ? "zona de planificación" : "zonas de planificación") : (areas === 1 ? "planning area" : "planning areas")}` : "",
       anchors ? `${anchors} ${es ? (anchors === 1 ? "lugar de interés" : "lugares de interés") : (anchors === 1 ? "point of interest" : "points of interest")}` : "",
     ].filter(Boolean).join(" · ") : undefined}
-    addAction={createEntry ? <EasyTButton className={destinationAddClassName} ref={addRef} icon={Plus} variant="secondary" disabled={disabled}
-      aria-label={es ? "Añadir destino" : "Add destination"} onClick={() => {
-        const next = homepageDestinationAddTarget(latest.current.entries, createEntry);
-        focusTarget.current = next.focusEntryId;
-        setEditingId(next.focusEntryId);
-        onChange(next.entries);
-      }}>{es ? "Añadir destino" : "Add destination"}</EasyTButton> : null}>
+    addAction={hasEditor ? undefined : addAction}>
     {entries.map((entry,index)=><MorroviaDestinationTag key={entry.id} id={entry.id} homepage
       ref={node=>{if(node)nodes.current.set(entry.id,node);else nodes.current.delete(entry.id)}}
       label={label(entry)} disabled={disabled}
+      hideRemove={entries.length === 1 && entry.id === "destination-1" && !entry.selection && !entry.text.trim()}
+      trailingAction={editingId === entry.id ? addAction : undefined}
       editLabel={`${es ? "Editar" : "Edit"} ${label(entry)}`}
       removeLabel={`${es ? "Eliminar" : "Remove"} ${label(entry)}`}
       onEdit={()=>{focusTarget.current=entry.id;setEditingId(entry.id)}}
@@ -94,7 +99,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
         placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled} includeNonRoutable
         onChange={value=>replace(entry.id,current=>({...current,text:value,selection:null}))}
         onClear={()=>replace(entry.id,current=>({...current,text:"",selection:null}))}
-        onFreeTextSearch={searchCompletedPlaceCandidates} showSearchAction
+        onFreeTextSearch={searchCompletedPlaceCandidates} showSearchAction homepageInlineSearch
         onSelect={suggestion=>select(entry.id,suggestion)} /></div> : undefined} />)}
   </MorroviaDestinationField>;
 }

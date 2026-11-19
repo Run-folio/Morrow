@@ -9,6 +9,7 @@ import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import ResilientImage from "@/components/easyt/resilient-image";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import type { DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
+import { homepageInspirationTitle } from "./homepage-inspiration-title";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 import { homepageRouteCardCloudinaryVariants } from "@/lib/easyt/homepage-cloudinary-image";
@@ -58,21 +59,15 @@ function HomepageRouteCard({ route, es, onSelect }: { route: ImmersiveRoute; es:
   const imageVariants = photo?.cloudinaryOwned && originalImageSrc
     ? homepageRouteCardCloudinaryVariants(originalImageSrc)
     : photo?.variants ?? [];
-  const days = route.dayRange.min === route.dayRange.max ? route.dayRange.min : `${route.dayRange.min}–${route.dayRange.max}`;
-  const routeLabel = `${es ? "Vista previa de la ruta" : "Preview route"}: ${route.title} · ${days} ${es ? "días" : "days"} · ${route.stops.length} ${es ? "paradas" : "stops"}`;
+  const title = homepageInspirationTitle(route, es);
   return <article className={styles.inspirationCard}>
-    <div className={styles.inspirationPhotoFrame}>
-      <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationPhotoLink} aria-label={routeLabel} onClick={onSelect}>
-        <span className={styles.inspirationPhoto}>
-          {photo ? <ResilientImage key={photo.variants[0]?.src} src={imageVariants.at(-1)?.src ?? originalImageSrc} srcSet={imageVariants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width: 520px) calc((100vw - 46px) / 2), (max-width: 700px) calc((100vw - 44px) / 2), (max-width: 1100px) calc((100vw - 84px) / 4), (max-width: 1448px) calc((100vw - 120px) / 7), 189px" width={768} height={512} alt="" loading="lazy" decoding="async" style={{ objectPosition: photo.focalPosition ?? "center" }} onDisplayState={setImageDisplayed} onError={() => setPhotoIndex((index) => index + 1)} fallback={<span className={styles.photoFallback}>{route.title}</span>} /> : <span className={styles.photoFallback}>{route.title}</span>}
-        </span>
-      </EasyTLinkButton>
-      {photo && photo.ownership !== "morrovia" && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.ownership} className={styles.inspirationCredit} placement="bottom-right" photoLabel={photo.photoLabel} credit={photo.credit} authorHref={photo.authorHref} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
-    </div>
-    <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationCardTrigger} aria-label={routeLabel} onClick={onSelect}>
-      <span className={styles.inspirationTitle}>{route.title}</span>
-      <span className={styles.inspirationMeta}>{days} {es ? "días" : "days"}{" · "}{route.stops.length} {es ? "paradas" : "stops"}</span>
+    <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationPhotoLink} aria-label={`${es ? "Vista previa de la ruta" : "Preview route"}: ${title}`} onClick={onSelect}>
+      <span className={styles.inspirationPhoto}>
+        {photo ? <ResilientImage key={photo.variants[0]?.src} src={imageVariants.at(-1)?.src ?? originalImageSrc} srcSet={imageVariants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width: 700px) calc(47vw - 15px), (max-width: 1100px) calc((100vw - 84px) / 4), (max-width: 1448px) calc((100vw - 120px) / 7), 189px" width={768} height={512} alt="" loading="lazy" decoding="async" style={{ objectPosition: photo.focalPosition ?? "center" }} onDisplayState={setImageDisplayed} onError={() => setPhotoIndex((index) => index + 1)} fallback={<span className={styles.photoFallback} aria-hidden="true" />} /> : <span className={styles.photoFallback} aria-hidden="true" />}
+      </span>
+      <span className={styles.inspirationTitle}>{title}</span>
     </EasyTLinkButton>
+    {photo && photo.ownership !== "morrovia" && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.ownership} className={styles.inspirationCredit} placement="bottom-right" photoLabel={photo.photoLabel} credit={photo.credit} authorHref={photo.authorHref} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
   </article>;
 }
 
@@ -84,9 +79,9 @@ export default function HomepageRouteInspiration({ routes, previewRoutes }: { ro
   return <section id="routes" className={styles.inspiration} aria-labelledby="homepage-inspiration-heading">
     <header className={styles.inspirationHeading}>
       <div>
-        <h2 id="homepage-inspiration-heading">{es ? "¿No sabes adónde ir?" : "Not sure where to go?"}</h2>
+        <h2 id="homepage-inspiration-heading">{es ? "Nuestras recomendaciones" : "Our Picks"}</h2>
       </div>
-      <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver todas las rutas" : "View all routes"}<ArrowRight aria-hidden="true" /></Link>
+      <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver rutas" : "View routes"}<ArrowRight aria-hidden="true" /></Link>
     </header>
     {routes.length > 0 ? <div className={styles.inspirationGrid}>
       {routes.map((route) => <HomepageRouteCard key={route.key} route={route} es={es} onSelect={(event) => {

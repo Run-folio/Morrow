@@ -19,3 +19,8 @@
   .entry.editing { flex-basis: 100%; }
   .chip { flex: 1; }
 }
+
+/* The live homepage expands its editing row, leaving one aligned line for actions. */
+.destinationField[data-home-destination-field] { align-items: center; }
+.destinationField[data-home-destination-field] .entries { flex: 1 1 auto; }
+.destinationField[data-home-destination-field] .editing { flex: 1 1 100%; }

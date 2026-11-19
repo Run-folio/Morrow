@@ -12,7 +12,7 @@ const browserTestsEnabled = process.env.MORROVIA_ROUTE_PREVIEW_BROWSER_TESTS ===
 const baseUrl = process.env.MORROVIA_BASE_URL ?? "http://127.0.0.1:3000";
 
 async function waitForHomepageHydration(page: any) {
-  const describe = page.getByRole("tab", { name: "Describe my trip" });
+  const describe = page.getByRole("tab", { name: "Describe" });
   await describe.waitFor();
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await describe.click();

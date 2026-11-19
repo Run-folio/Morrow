@@ -97,7 +97,7 @@ test('homepage route-card delivery uses stable bounded Cloudinary variants witho
 test('homepage route-card markup requests accurate responsive sizes and keeps lazy loading and photo credits', () => {
  const source = readFileSync(new URL('../app/journey/home/immersive/homepage-route-inspiration.tsx', import.meta.url), 'utf8');
  assert.match(source, /homepageRouteCardCloudinaryVariants/);
- assert.match(source, /sizes="\(max-width: 520px\) calc\(\(100vw - 46px\) \/ 2\), \(max-width: 700px\) calc\(\(100vw - 44px\) \/ 2\), \(max-width: 1100px\) calc\(\(100vw - 84px\) \/ 4\), \(max-width: 1448px\) calc\(\(100vw - 120px\) \/ 7\), 189px"/);
+ assert.match(source, /sizes="\(max-width: 700px\) calc\(47vw - 15px\), \(max-width: 1100px\) calc\(\(100vw - 84px\) \/ 4\), \(max-width: 1448px\) calc\(\(100vw - 120px\) \/ 7\), 189px"/);
  assert.match(source, /loading="lazy" decoding="async"/);
  assert.doesNotMatch(source, /priority=/);
  assert.match(source, /<MorroviaPhotoCredit[\s\S]+photoLabel=\{photo\.photoLabel\}/);

@@ -104,7 +104,7 @@ test("a fresh guest can start another Describe trip after a durable unrelated tr
     await stubLocalApis(page);
     const submitPrompt = async (prompt: string) => {
       await page.goto(baseUrl);
-      await page.getByRole("tab", { name: "Describe my trip" }).click();
+      await page.getByRole("tab", { name: "Describe" }).click();
       await page.getByRole("textbox", { name: "Start your plan" }).fill(prompt);
       await page.getByRole("button", { name: "Plan my trip" }).first().click();
       await page.waitForURL(/\/journey\/new\?/);
@@ -230,13 +230,13 @@ test("Return replacement preserves a known finish until explicit confirmation", 
       journeyEnd: { state: "selected", value: { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } } },
     } })));
     await page.goto(baseUrl);
-    await page.getByRole("button", { name: "Return to start", exact: true }).click();
+    await page.getByRole("button", { name: "Return", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.waitFor();
     const beforeCancel = await page.evaluate(() => localStorage.getItem("easyt-private:guest:homepage-input"));
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     assert.equal(await page.evaluate(() => localStorage.getItem("easyt-private:guest:homepage-input")), beforeCancel);
-    await page.getByRole("button", { name: "Return to start", exact: true }).click();
+    await page.getByRole("button", { name: "Return", exact: true }).click();
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
     await page.waitForFunction(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null")?.snapshot.tripType.value === "return_to_start");
     const accepted = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
@@ -254,7 +254,7 @@ test("homepage preflight blocks partial origin and unclear type without capture 
     let captures = 0;
     await page.route("**/api/journey-capture", async (route: BrowserRoute) => { captures++; await route.fulfill({ status: 503, body: "{}" }); });
     await page.goto(baseUrl);
-    await page.getByRole("tab", { name: "Describe my trip", exact: true }).click();
+    await page.getByRole("tab", { name: "Describe", exact: true }).click();
     const prompt = page.getByRole("textbox", { name: "Start your plan", exact: true });
     await prompt.fill("Tokyo and Kyoto 5 nights");
     await page.getByRole("combobox", { name: "Start from", exact: true }).fill("Lond");
@@ -285,10 +285,10 @@ test("homepage domain review reloads, returns preserved input and accepts Return
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...capture, journeyEnd: { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } } }) });
     });
     await page.goto(baseUrl);
-    await page.getByRole("tab", { name: "Describe my trip", exact: true }).click();
+    await page.getByRole("tab", { name: "Describe", exact: true }).click();
     const source = "Tokyo 3 nights, Kyoto 2 nights, Rome 3 nights";
     await page.getByRole("textbox", { name: "Start your plan", exact: true }).fill(source);
-    await page.getByRole("button", { name: "Return to start", exact: true }).click();
+    await page.getByRole("button", { name: "Return", exact: true }).click();
     await page.locator("#start-building").getByRole("button", { name: "Plan my trip", exact: true }).click();
     await page.waitForURL(/\/journey\/new\?/);
     await page.getByText("Review how your trip ends. Edit your trip idea to continue.", { exact: true }).waitFor();
@@ -303,7 +303,7 @@ test("homepage domain review reloads, returns preserved input and accepts Return
     await page.waitForURL(baseUrl + "/");
     assert.equal(await page.getByRole("textbox", { name: "Start your plan", exact: true }).inputValue(), source);
     assert.equal(await page.evaluate(() => localStorage.getItem("easyt-home-trip-draft")), null);
-    await page.getByRole("button", { name: "Return to start", exact: true }).click();
+    await page.getByRole("button", { name: "Return", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.waitFor();
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();

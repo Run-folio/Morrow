@@ -55,10 +55,10 @@ test("homepage route-card camera is outside navigation and rendered in the image
   const source = read("app/journey/home/immersive/homepage-route-inspiration.tsx");
   const css = read("app/journey/home/immersive/immersive.module.css");
   assert.doesNotMatch(source, /photoAnchorRef|anchorRef/);
-  assert.match(source, /inspirationPhotoFrame[\s\S]*?MorroviaPhotoCredit/);
+  assert.match(source, /className=\{styles.inspirationPhoto\}[\s\S]*?<\/EasyTLinkButton>[\s\S]*?MorroviaPhotoCredit/);
   assert.match(source, /size="compact"/);
   assert.match(source, /imageDisplayed[\s\S]*MorroviaPhotoCredit/);
-  assert.match(css, /\.inspirationPhoto[^{]*\{[^}]*aspect-ratio:3\/2/);
+  assert.match(css, /\.inspirationPhoto[^{]*\{[^}]*aspect-ratio:1\.07/);
 });
 
 test("small route catalogue thumbnails use the compact camera target", () => {
