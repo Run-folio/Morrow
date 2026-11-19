@@ -33,7 +33,7 @@ for(const {mode,currentInputs} of [{mode:'fresh',currentInputs:true},{mode:'relo
   await dialog.getByRole('combobox').first().fill(name);await view.page.getByRole('option').filter({hasText:name}).filter({hasText:'Italy'}).first().click();
   for(let attempt=0;attempt<50;attempt++){const trip=await read();if(trip?.brief.intent.route.destinations.some(i=>i.sourceText===source&&i.resolution==='resolved'&&i.stopIds.length))break;await view.page.waitForTimeout(100);}
   assert((await read())?.brief.intent.route.destinations.some(i=>i.sourceText===source&&i.resolution==='resolved'&&i.stopIds.length),'Normal source choice must bind '+source);
-  if(mode==='promoted')await view.page.getByText('Saved to your account',{exact:true}).waitFor();
+  if(mode==='promoted')await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
   if(await matches()){
    const done=dialog.getByRole('button',{name:/^Finish shaping route|^Done with |^Add to trip|^Add places|^Add \d+ place/}).last();
    if(await done.isVisible().catch(()=>false)&&await done.isEnabled())await done.click();

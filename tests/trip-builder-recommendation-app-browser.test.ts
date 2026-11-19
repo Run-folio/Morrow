@@ -30,7 +30,7 @@ test('review budget reproduction completes with an available empty shortlist and
   await until(h.view,()=>h.cloud().brief.budgetBand==='high'&&remaining(h.cloud()).length===0);
   assert.deepEqual(authored(h.cloud()),authored(before));assert.deepEqual(h.cloud().stops,before.stops);assert.deepEqual(h.cloud().legs,before.legs);
   assert.notDeepEqual(h.cloud().planItems[1]!.contextNotes,before.planItems[1]!.contextNotes);
-  await h.view.page.getByText('Saved to your account',{exact:true}).first().waitFor();
+  await h.view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
   await h.view.page.reload();await h.view.page.locator('[data-builder-edit-session="active"]').waitFor();
   assert.equal(remaining(h.cloud()).length,0);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
@@ -55,7 +55,7 @@ test('real unavailable result survives save and reload then targeted retry succe
  try{
   unavailable=true;await h.view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
   await until(h.view,()=>h.cloud().brief.budgetBand==='high'&&failed(h.cloud()).length===3);
-  await h.view.page.getByText('Saved to your account',{exact:true}).first().waitFor();
+  await h.view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
   const untouched=structuredClone(h.cloud());await h.view.page.reload();await h.view.page.locator('[data-builder-edit-session="active"]').waitFor();
   assert.equal(failed(h.cloud()).length,3);unavailable=false;
   const target=failed(h.cloud())[0]!.targetId;

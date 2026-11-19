@@ -24,7 +24,7 @@ test('actual guest build and explicit simulated sign-in save survives every work
  try{
   await h.page.getByRole('button',{name:'Plan my trip',exact:true}).click();
   await h.page.locator('[data-builder-edit-session="active"]').waitFor();
-  await h.page.getByText('Saved on this device',{exact:true}).first().waitFor();
+  await h.page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
   await h.page.getByRole('button',{name:/^Build trip/}).click();
   await h.page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
   const id=new URL(h.page.url()).pathname.split('/')[2],base=`/journey/${id}`;

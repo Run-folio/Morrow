@@ -89,7 +89,7 @@ test('compiled Homepage submission opens and reloads its own Builder while the f
     await page.locator('#start-building').getByRole('button',{name:'Plan my trip',exact:true}).click();
     await page.waitForURL(/\/journey\/new\?/);
     await page.locator('[data-builder-edit-session="active"]').waitFor();
-    await page.getByText('Saved on this device',{exact:true}).first().waitFor();await retained(page);
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();await retained(page);
     await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();await retained(page);
     mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/guest-builder-reopen.png`});
   }finally{await close();}

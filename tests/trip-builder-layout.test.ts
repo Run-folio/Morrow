@@ -101,7 +101,7 @@ browserTest("useful homepage and template handoffs show route timing immediately
       assert.match(text, /Marrakech/);
       assert.doesNotMatch(text, /Make the time|Budget \(optional\)/,
         "the unified workspace should not retain duplicate legacy timing controls");
-      assert.equal(await view.page.getByRole("heading", { name: "Shape the route." }).count(), 1);
+      assert.equal(await view.page.getByRole("heading", { name: "Plan your route." }).count(), 1);
       assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Describe your trip|Set dates & nights/);
     } finally { await view.close(); }
   }
@@ -163,7 +163,7 @@ browserTest("homepage handoff adopts its durable recovery URL once and restores 
     assert.equal(durableUrl.searchParams.get("recover"), "1");
     assert.equal(durableUrl.searchParams.has("homeDraft"), false);
     assert.equal(durableUrl.searchParams.get("campaign"), "beta");
-    await view.page.getByText("Saved on this device", { exact: true }).waitFor();
+    await view.page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
 
     await view.page.reload();
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();

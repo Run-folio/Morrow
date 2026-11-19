@@ -26,7 +26,7 @@ async function contextFor(browser:any){
 }
 async function baseline(page:any){
  await page.goto(`${base}/journey/new?inspire=balkans-overland`);
- await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+ await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
  await page.locator('[data-builder-edit-session="active"]').waitFor();
  const close=page.getByRole('button',{name:'Close route shaping',exact:true});if(await close.isVisible())await close.click();
  await page.evaluate(()=>{const g=window as any;g.gapBaseline=Object.fromEntries(Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:guest:')).map(key=>[key,localStorage.getItem(key)]));sessionStorage.setItem('morrovia-gap-baseline',JSON.stringify(g.gapBaseline));});
@@ -76,7 +76,7 @@ test('real Next receipt ACK readback failure preserves bytes and exact retry ide
   if(audit){const failure=firstFailure(result.events);assert.equal(failure?.failureBoundary,'receipt-readback');assert.equal(failure?.writeAttempted,true);assert.equal(failure?.readbackConfirmed,false);}
   // Release the injected refusal and activate the native retry in one task:
   // the existing background ACK retry may otherwise detach a located button.
-  assert.equal(await page.evaluate(()=>{const button=[...document.querySelectorAll('button')].find(button=>button.textContent?.trim()==='Try device save again');if(!button)return false;(window as any).gapFailReceipt=false;button.click();return true;}),true);await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+  assert.equal(await page.evaluate(()=>{const button=[...document.querySelectorAll('button')].find(button=>button.textContent?.trim()==='Try device save again');if(!button)return false;(window as any).gapFailReceipt=false;button.click();return true;}),true);await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
   const retried=await page.evaluate(()=>{const g=window as any;const keys=Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:guest:'));return{sameIdentities:keys.length===g.gapIncompleteKeys.length&&keys.every(key=>g.gapIncompleteKeys.includes(key)),sameBytes:g.gapIncompleteKeys.every((key:string,index:number)=>g.gapRead.call(localStorage,key)===g.gapIncompleteBytes[index]),completed:JSON.parse(g.gapRead.call(localStorage,'easyt-private:guest:homepage-input')??'null')?.receipt?.version===1};});
   assert.equal(retried.sameIdentities,true);assert.equal(retried.sameBytes,true);assert.equal(retried.completed,true);assert.equal(v.writes(),0);
  }finally{await v.context.close();await browser.close();}

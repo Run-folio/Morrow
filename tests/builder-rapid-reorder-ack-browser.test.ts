@@ -105,7 +105,7 @@ test('two mounted reorder handlers preserve both representations across a late p
  });
  const page=h.page;page.setDefaultTimeout(8000);
  const until=async(check:()=>boolean,label:string)=>{for(let i=0;i<160&&!check();i++)await page.waitForTimeout(50);assert.ok(check(),label);};
- const saved=async()=>{await page.getByText('Saved to your account',{exact:true}).first().waitFor();assert.equal(conflicts,0);};
+ const saved=async()=>{await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(conflicts,0);};
  const evidence=()=>page.evaluate(()=>{const p=(window as any).__rapidReorder;return {trace:p.trace,snapshots:p.snapshots,current:p.current,mounts:p.mounts,retires:p.retires};});
  const checkpoint=async(label:string,expected:string[])=>{
   // Read DOM after the canonical render has caught up, but never require an ACK

@@ -38,7 +38,7 @@ test("unchanged homepage resume keeps the exact guest recovery through reload an
     await page.getByRole("option", { name: /Lisbon.*Portugal/ }).first().click();
     await page.locator("#start-building").getByRole("button", { name: "Plan my trip", exact: true }).click();
     await page.waitForURL(/\btrip=.*recover=1/);
-    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     const tripId = new URL(page.url()).searchParams.get("trip");
     const read = () => page.evaluate((id: string) => Object.keys(localStorage)
       .filter(key => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
@@ -46,15 +46,15 @@ test("unchanged homepage resume keeps the exact guest recovery through reload an
     const before = await read();
     assert.equal(before.length, 1);
     await page.reload();
-    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     await page.goto(baseUrl);
     await page.locator("#start-building").getByRole("button", { name: "Plan my trip", exact: true }).click();
     await page.waitForURL(/\/journey\/new\?/);
     assert.equal(new URL(page.url()).searchParams.get("recover"), "1", "owned receipt resume must retain recovery entry");
     assert.equal(new URL(page.url()).searchParams.get("trip"), tripId);
-    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     await page.reload();
-    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     const after = await read();
     assert.equal(after.length, 1, "resuming must not clone a second document");
     assert.equal(after[0].tripId, before[0].tripId);

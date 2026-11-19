@@ -74,7 +74,7 @@ test('mounted acknowledged IndexedDB trip survives GET object order, one Flores 
     await removal.waitFor({ state: 'hidden', timeout: 7000 });
     await view.page.getByRole('region', { name: 'Places you want to visit', exact: true })
       .getByRole('button', { name: 'Remove Flores', exact: true }).waitFor({ state: 'hidden', timeout: 7000 });
-    await view.page.getByText('Saved to your account', { exact: true }).first().waitFor({ timeout: 7000 });
+    await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor({ timeout: 7000 });
     await view.page.addScriptTag({ content: fixture });
     await view.page.waitForFunction(async (id: string) => !(await (window as any).SaveReopenFixture.read(id)).recovery, cloud.id);
     assert.ok(writes.length > 0); assert.ok(writes.every(names => names.length === 5 && !names.includes('Flores')));

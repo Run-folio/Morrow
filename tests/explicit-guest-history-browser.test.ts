@@ -98,7 +98,7 @@ test('already-signed-in edits preserve unrelated completed account history with 
   }});
  const page=h.page;page.setDefaultTimeout(7000);const milestones:string[]=[];
  const until=async(check:()=>boolean,label:string)=>{for(let i=0;i<120&&!check();i++)await page.waitForTimeout(50);assert.ok(check(),label);};
- const saved=async()=>{await page.getByText('Saved to your account',{exact:true}).first().waitFor();assert.equal(await page.getByText('Another device recovery is protected. Reopen it before editing.',{exact:true}).count(),0);};
+ const saved=async()=>{await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(await page.getByText('Another device recovery is protected. Reopen it before editing.',{exact:true}).count(),0);};
  try{
   await page.locator('[data-builder-edit-session="active"]').waitFor();
   await page.evaluate((entries:Array<[string,string]>)=>{for(const [key,raw] of entries)localStorage.setItem(key,raw);},[...values]);

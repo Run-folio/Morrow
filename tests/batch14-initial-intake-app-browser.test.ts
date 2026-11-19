@@ -41,7 +41,7 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
   const start=f.case==='A15'?'San José':'City of London';await page.getByRole('combobox',{name:'Start from',exact:true}).fill(start);await page.getByRole('option').filter({hasText:start}).first().click();
   await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan',exact:true}).fill(f.prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
   await page.waitForURL(/\/journey\/new\?.*\btrip=/,{waitUntil:'domcontentloaded'});id=new URL(page.url()).searchParams.get('trip')!;assert(id);
-  await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+  await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
   states.initial=await until(t=>t.brief.intent.route.destinations.length>0);assert.equal(originalCaptureRequests,1,'Exactly one original literal capture is submitted');
   states.acknowledgement=await page.evaluate(()=>({input:JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null'),handoff:JSON.parse(localStorage.getItem('easyt-home-trip-draft')??'null')}));
   const receipt=states.acknowledgement.input?.receipt;assert.equal(receipt?.version,1,'The original intake receipt must be durably completed');assert.equal(receipt.ownerId,null);assert.equal(receipt.tripId,id);assert.deepEqual(states.acknowledgement.handoff?.homepage?.receipt,receipt,'Both durable receipt owners must acknowledge the same handoff');assert.equal(states.acknowledgement.handoff.handoffId,receipt.handoffId);

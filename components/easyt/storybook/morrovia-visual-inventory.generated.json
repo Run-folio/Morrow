@@ -5310,7 +5310,7 @@
       },
       {
         "value": "12px",
-        "count": 581,
+        "count": 582,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5390,7 +5390,7 @@
       },
       {
         "value": "6px",
-        "count": 273,
+        "count": 274,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -7609,7 +7609,7 @@
     "breakpoints": [
       {
         "value": "max-width: 700px",
-        "count": 50,
+        "count": 51,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",

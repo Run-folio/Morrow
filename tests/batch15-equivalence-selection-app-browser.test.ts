@@ -43,7 +43,7 @@ for(const selected of [...rows,manila,authoredManila])test(`published origin ${s
   assert.equal(cloud.brief.intent.route.origin?.providerId,selected.canonicalPlaceId==='manila'?undefined:selected.providerId);
   assert.deepEqual(cloud.stops,before.stops);assert.deepEqual(cloud.brief.intent.route.destinations,before.brief.intent.route.destinations);
   assert.equal(cloud.stops.filter(stop=>stop.canonicalPlaceId===repeat.canonicalPlaceId).length,2);
-  await view.page.getByText('Saved to your account',{exact:true}).waitFor();await view.page.reload();await view.page.locator('[data-builder-top-controls]').waitFor();
+  await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();await view.page.reload();await view.page.locator('[data-builder-top-controls]').waitFor();
   assert.equal(await view.page.getByRole('combobox',{name:'Start from',exact:true}).inputValue(),selected.canonicalName);
   assert.equal(cloud.brief.intent.route.origin?.canonicalPlaceId,selected.canonicalPlaceId);assert.deepEqual(cloud.stops,before.stops);assert.deepEqual(view.errors,[]);
  }finally{await view.close();}

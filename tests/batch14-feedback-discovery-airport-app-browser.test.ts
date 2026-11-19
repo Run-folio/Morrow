@@ -71,7 +71,7 @@ for (const width of [390, 1440]) test(`actual Belize Discovery at ${width}px ren
     // mounted button handler, as the existing Discovery browser suite does.
     await add.evaluate((button: HTMLButtonElement) => button.click());
     await until(h.view, () => h.cloud().stops.some(stop => stop.canonicalPlaceId === 'belize-city'));
-    await page.getByText('Saved to your account', { exact: true }).waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
     const saved = structuredClone(h.cloud());
     assert.equal(saved.stops.length, 2); assert.equal(saved.stops[0]!.id, 'caye-occurrence');
     assert.equal(saved.stops[0]!.nights, 2); assert.equal(saved.stops[0]!.canonicalPlaceId, 'caye-caulker');
@@ -118,7 +118,7 @@ test('actual API response from live-captured GUA provider bodies reaches the mou
     assert.match(await first.innerText(), /La Aurora International Airport[\s\S]*Guatemala/);
     await first.click();
     await until(h.view, () => h.cloud().brief.intent.route.origin?.name === 'La Aurora International Airport');
-    await page.getByText('Saved to your account', { exact: true }).waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
     const saved = structuredClone(h.cloud());
     assert.equal(saved.brief.intent.route.origin?.canonicalPlaceId, payload.candidates[0].canonicalPlaceId);
     assert.deepEqual(saved.brief.intent.route.origin?.coordinates, payload.candidates[0].coordinates);

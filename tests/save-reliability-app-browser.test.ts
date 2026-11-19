@@ -32,14 +32,14 @@ for (const template of ["balkans-overland","japan-south-korea","iceland-ring-roa
       await page.goto(`${base}/journey/routes/${template}`);
       await page.getByRole("link",{name:/Use this route/}).first().click();
       await page.waitForURL(/trip=.*recover=1/);
-      await page.getByText("Saved on this device",{exact:true}).first().waitFor();
+      await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
       const before = await recoveries(page);
       assert.equal(before.length,1); assert.equal(before[0].ownerId,null);
       assert.equal(before[0].trip.brief.sourceRouteKey,template);
       assert.notEqual(before[0].trip.id,template);
       assert.equal(new Set(before[0].trip.stops.map((stop:any)=>stop.id)).size,before[0].trip.stops.length);
       await page.reload();
-      await page.getByText("Saved on this device",{exact:true}).first().waitFor();
+      await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
       const after = await recoveries(page);
       assert.equal(after.length,1); assert.equal(after[0].tripId,before[0].tripId);
       assert.deepEqual(after[0].trip.stops,before[0].trip.stops);
@@ -76,12 +76,12 @@ test("confirmed native premade write rejection blocks saving and exact retry pre
     await page.evaluate(() => (window as any).restoreTestWrite());
     await page.getByRole("button",{name:"Try device save again",exact:true}).click();
     await page.waitForURL(/trip=.*recover=1/);
-    await page.getByText("Saved on this device",{exact:true}).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     const after = await recoveries(page);
     assert.equal(after.length,1);
     assert.equal(after[0].trip.brief.sourceRouteKey,"balkans-overland");
     await page.reload();
-    await page.getByText("Saved on this device",{exact:true}).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     assert.equal((await recoveries(page))[0].tripId,after[0].tripId);
     assert.deepEqual((await recoveries(page))[0].trip.stops,after[0].trip.stops);
   } finally { await context.close(); await browser.close(); }
@@ -112,7 +112,7 @@ test("a durable premade copy with an unacknowledged pointer reports incomplete e
     await page.evaluate(() => (window as any).restorePointer());
     await page.getByRole("button",{name:"Try device save again",exact:true}).click();
     await page.waitForURL(/trip=.*recover=1/);
-    await page.getByText("Saved on this device",{exact:true}).first().waitFor();
+    await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     const after = await recoveries(page);
     assert.equal(after.length,1);assert.equal(after[0].tripId,before[0].tripId);
     assert.deepEqual(after[0].trip.stops,before[0].trip.stops);

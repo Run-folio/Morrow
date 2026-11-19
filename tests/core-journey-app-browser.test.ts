@@ -262,7 +262,7 @@ async function recoveryTrip(page: Page, tripId: string) {
 async function durableBuilderTripId(page: Page) {
   await page.waitForURL(url => url.pathname === '/journey/new' && Boolean(url.searchParams.get('trip')) && url.searchParams.get('recover') === '1');
   await page.locator('[data-builder-edit-session="active"]').waitFor();
-  await page.getByText('Saved on this device', { exact: true }).first().waitFor();
+  await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
   const id = new URL(page.url()).searchParams.get('trip')!;
   assert.equal((await recoveryTrip(page, id))?.id, id, 'durable navigation must resolve a canonical native recovery');
   return id;
@@ -780,7 +780,7 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  const switchedType=type==='one_way'?'return_to_start':'one_way';
  await page.waitForFunction(label=>[...document.querySelectorAll('[data-builder-top-controls] button')]
   .find(button=>button.textContent?.trim()===label)?.getAttribute('aria-pressed')==='true',switchedType==='one_way'?'One way':'Return to start');
- await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+ await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
  assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,switchedType,'the exact accepted type must be durable before reload');
  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
  assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,type==='one_way'?'return_to_start':'one_way');

@@ -119,7 +119,7 @@ for(const scenario of ['another-guest-intake','edited-before-sign-in','interrupt
     if(scenario==='edited-before-sign-in'){
       await page.getByLabel('Actions for Kanazawa',{exact:true}).click();
       await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();
-      await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+      await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
     }
     if(scenario!=='confirmed-import'&&scenario!=='signed-in-import')await page.getByRole('button',{name:/^Build trip/}).click();await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
     const id=decodeURIComponent(new URL(page.url()).pathname.split('/')[2]!);

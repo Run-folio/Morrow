@@ -155,7 +155,7 @@ test('projection ACK overlaps actual table reorder at queue merge: '+sourceRevis
  });page=h.page;page.setDefaultTimeout(8000);
  const until=async(check:()=>boolean,label:string)=>{for(let i=0;i<200&&!check();i++)await page.waitForTimeout(50);assert.ok(check(),label);};
  const evidence=()=>page.evaluate(()=>{const p=(window as any).__rapidReorder;return {trace:p.trace,current:p.current,mounts:p.mounts,retires:p.retires};});
- const saved=async()=>{await page.getByText('Saved to your account',{exact:true}).first().waitFor();assert.equal(conflicts,0);};
+ const saved=async()=>{await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(conflicts,0);};
  const drag=async(from:number,to:number)=>{
   const count=await page.evaluate(()=>(window as any).__rapidReorder.orderSequences.length);
   await page.evaluate(({from,to}:{from:number;to:number})=>{const source=document.querySelector(`[data-builder-stop-index="${from}"] button[draggable="true"]`),target=document.querySelector(`[data-builder-stop-index="${to}"]`);if(!source||!target)throw Error('Missing route-table drag surface');const dataTransfer=new DataTransfer();source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer}));for(const type of ['dragenter','dragover','drop'])target.dispatchEvent(new DragEvent(type,{bubbles:true,cancelable:true,dataTransfer}));source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer}));},{from,to});

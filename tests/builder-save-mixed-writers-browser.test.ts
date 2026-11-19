@@ -45,7 +45,7 @@ test('a real second-document stale canonical cache preserves rapid Builder inver
   // The existing Builder keeps one latest pending job while a save is held.
   // The user's third edit explicitly supersedes the still-unsent inverse.
   release();for(let i=0;i<160&&writes<2;i++)await page.waitForTimeout(30);
-  await page.getByText('Saved to your account',{exact:true}).first().waitFor();assert.equal(writes,2);assert.equal(conflicts,0);assert.equal(account.stops.find(s=>s.name==='Flores')!.nights,nights+1);
+  await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(writes,2);assert.equal(conflicts,0);assert.equal(account.stops.find(s=>s.name==='Flores')!.nights,nights+1);
   assert.deepEqual(account.stops.map(s=>s.id),initial.stops.map(s=>s.id));await second.close();
   t.diagnostic(JSON.stringify({realReactAndIndexedDb:true,realDocuments:2,rapidInverseEdits:3,orderedAccountWrites:writes,supersededUnsentInverseCoalesced:true,conflicts,realOAuthOrSql:false}));
  }finally{release?.();await h.close();}
@@ -77,11 +77,11 @@ test('guest Overview sign-in then real dashboard, Builder and workspace writers 
   const page=h.page;page.setDefaultTimeout(7000);
   const until=async(check:()=>boolean,label:string)=>{for(let i=0;i<120&&!check();i++)await page.waitForTimeout(50);assert.ok(check(),label);};
   const noRefusal=async(label:string)=>{assert.equal(await page.getByText('Another device recovery is protected. Reopen it before editing.',{exact:true}).count(),0,label);assert.equal(casConflicts,0,label);};
-  const saved=async()=>{await page.getByText('Saved to your account',{exact:true}).first().waitFor();await noRefusal('account ACK remains current');};
+  const saved=async()=>{await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();await noRefusal('account ACK remains current');};
   try{
    await page.getByRole('button',{name:'Plan my trip',exact:true}).click();await page.locator('[data-builder-edit-session="active"]').waitFor();
    await page.getByRole('button',{name:/^Build trip/}).click();await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();milestones.push('guest-build-overview');
-   await page.getByRole('link',{name:'Sign up to keep this route across devices',exact:true}).click();await page.getByRole('button',{name:'Complete simulated sign in',exact:true}).click();await saved();milestones.push('explicit-sign-in-account-ack');
+   await page.getByRole('link',{name:'Sign up to keep this route across devices',exact:true}).click();await page.getByRole('button',{name:'Complete simulated sign in',exact:true}).click();await page.getByText('Saved to your account',{exact:true}).first().waitFor();await noRefusal('account ACK remains current');milestones.push('explicit-sign-in-account-ack');
    assert.ok(account);const tripId=current().id,origin=new URL(page.url()).origin,base=origin+'/journey/'+encodeURIComponent(tripId);
    await page.goto(origin+'/journey/dashboard');await page.getByRole('link',{name:'Continue trip',exact:true}).click();await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();milestones.push('actual-dashboard-reopen');
    await page.getByRole('link',{name:'Edit trip brief',exact:true}).click();await page.locator('[data-builder-edit-session="active"]').waitFor();
@@ -130,9 +130,9 @@ test('lost account response across workspace navigation and explicit recovery re
    await page.goto(origin+'/journey/dashboard');await page.getByRole('link',{name:'Continue trip',exact:true}).click();await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
    phase='recovery-reopen';await page.goto(origin+'/journey/new?trip='+encodeURIComponent(account.id)+'&recover=1');await page.locator('[data-builder-edit-session="active"]').waitFor();milestones.push('explicit-recovery-reopen');
    assert.equal(await page.getByText('Another device recovery is protected. Reopen it before editing.',{exact:true}).count(),0);
-   phase='night-edit';const n=writes;await page.getByRole('button',{name:/^Add one night to Flores/}).click();await until(()=>writes>n,'next mutation must receive current account ACK');await page.getByText('Saved to your account',{exact:true}).first().waitFor();
+   phase='night-edit';const n=writes;await page.getByRole('button',{name:/^Add one night to Flores/}).click();await until(()=>writes>n,'next mutation must receive current account ACK');await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
    phase='reorder';const m=writes;await page.getByLabel('Actions for David',{exact:true}).click();await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();await until(()=>writes>m,'reorder after recovered ACK must save');
-   await page.getByText('Saved to your account',{exact:true}).first().waitFor();await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(conflicts,1,'lost ACK retries one stale CAS which the exact canonical response acknowledges');assert.deepEqual(requestTrace.filter(r=>!r.matches),[{phase:'workspace-navigation',method:'PUT',matches:false}]);assert.equal(account.stops.find(s=>s.name==='Flores')!.nights,before+2);milestones.push('nights-reorder-ack-reload');assert.deepEqual(h.errors,[]);
+   await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();assert.equal(conflicts,1,'lost ACK retries one stale CAS which the exact canonical response acknowledges');assert.deepEqual(requestTrace.filter(r=>!r.matches),[{phase:'workspace-navigation',method:'PUT',matches:false}]);assert.equal(account.stops.find(s=>s.name==='Flores')!.nights,before+2);milestones.push('nights-reorder-ack-reload');assert.deepEqual(h.errors,[]);
    t.diagnostic(JSON.stringify({realReactAndIndexedDb:true,controlledAuth:true,strictSyntheticAccountCas:true,realOAuthOrSql:false,externalRequestsBlocked:true,milestones,accountWrites:writes,conflicts}));
   }catch(error){t.diagnostic(JSON.stringify({milestones,writes,conflicts,requestTrace,pathname:new URL(page.url()).pathname}));t.diagnostic((await page.locator('body').innerText()).slice(-4500));throw error;}finally{release();await h.close();}
  });

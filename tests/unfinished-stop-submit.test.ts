@@ -64,7 +64,7 @@ for(const path of ['/','/journey/new']) for(const text of ['', 'Unselected optio
       await h.page.getByRole('button',{name:'Plan my trip',exact:true}).click();
       await h.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:5000});
       release();
-      await h.page.getByText('Saved on this device',{exact:true}).first().waitFor();
+      await h.page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
       const read=()=>h.page.evaluate((key:string)=>{
         const stored=JSON.parse(localStorage.getItem(key)??'null');
         const records=Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:v2:guest:')).map(k=>JSON.parse(localStorage.getItem(k)!));

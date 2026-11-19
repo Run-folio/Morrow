@@ -38,7 +38,7 @@ test('session hydration keeps an owned save pending without presenting it as sep
   await view.page.evaluate(()=>{(window as any).__BUILDER_TEST_OWNER__='owner-a';window.dispatchEvent(new Event('builder-test-owner'));});
   await view.page.getByText('Saving to your account…',{exact:true}).waitFor();await view.page.waitForTimeout(100);
   assert.equal(writes.length,1);assert.equal(await view.page.getByRole('link',{name:'Open device copy',exact:true}).count(),0);
-  release();await view.page.getByText('Saved to your account',{exact:true}).waitFor();assert.deepEqual(view.errors,[]);
+  release();await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.deepEqual(view.errors,[]);
  }finally{release();await view.close();}
 });
 test('a separate recovery opens Builder and explicit discard unlocks the current cloud editor without reloading',{skip:!enabled,timeout:30000},async()=>{
@@ -48,7 +48,7 @@ test('a separate recovery opens Builder and explicit discard unlocks the current
   const open=view.page.getByRole('link',{name:'Open device copy',exact:true});await open.waitFor();assert.equal(await open.getAttribute('href'),'/journey/new?trip='+cloud.id+'&recover=1');
   await assertRecoveryBlocksEdit(view.page,cloud.id,writes);
   await view.page.getByRole('button',{name:'Discard device copy',exact:true}).click();const confirm=view.page.getByRole('dialog');await confirm.getByRole('button',{name:'Discard device edits',exact:true}).click();await confirm.waitFor({state:'hidden'});await open.waitFor({state:'hidden'});
-  const composer=await add(view.page,'After deliberate discard');await composer.waitFor({state:'hidden'});await view.page.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(writes.length,1);assert.equal(cloud.travellers,2);assert(cloud.planItems.some(d=>d.notes.includes('After deliberate discard')));assert.deepEqual(view.errors,[]);
+  const composer=await add(view.page,'After deliberate discard');await composer.waitFor({state:'hidden'});await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(writes.length,1);assert.equal(cloud.travellers,2);assert(cloud.planItems.some(d=>d.notes.includes('After deliberate discard')));assert.deepEqual(view.errors,[]);
  }finally{await view.close();}
 });
 
@@ -63,7 +63,7 @@ test('discarding a failed current edit returns to the account copy before the ne
   await (await add(view.page,'Failed edit deliberately discarded')).waitFor({state:'hidden'});
   await view.page.getByRole('button',{name:'Discard device copy',exact:true}).click();
   const confirm=view.page.getByRole('dialog');await confirm.getByRole('button',{name:'Discard device edits',exact:true}).click();await confirm.waitFor({state:'hidden'});
-  await (await add(view.page,'New edit after failed-copy discard')).waitFor({state:'hidden'});await view.page.getByText('Saved to your account',{exact:true}).waitFor();
+  await (await add(view.page,'New edit after failed-copy discard')).waitFor({state:'hidden'});await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
   assert.equal(writes.length,2);assert(cloud.planItems.some(day=>day.notes.includes('New edit after failed-copy discard')));
   assert(!cloud.planItems.some(day=>day.notes.includes('Failed edit deliberately discarded')),'A deliberately discarded optimistic body must never be resaved by a subsequent edit');assert.deepEqual(view.errors,[]);
  }finally{await view.close();}
@@ -92,6 +92,6 @@ test('sequential discard of failed current and newer separate copies cannot revi
   await first.getByRole('button',{name:'Discard device edits',exact:true}).click();await first.waitFor({state:'hidden'});
   const surviving=await view.page.evaluate((id:string)=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:')&&k.includes(id)).map(k=>JSON.parse(localStorage.getItem(k)!)),cloud.id);assert.equal(surviving.length,1);assert.equal(surviving[0].writeId,'separate-copy-b');assert.equal(surviving[0].trip.travellers,4);
   await view.page.getByRole('button',{name:'Discard device copy',exact:true}).click();const second=view.page.getByRole('dialog');await second.getByRole('button',{name:'Discard device edits',exact:true}).click();await second.waitFor({state:'hidden'});
-  await (await add(view.page,'Accepted copy C')).waitFor({state:'hidden'});await view.page.getByText('Saved to your account',{exact:true}).waitFor();assert.equal(writes.length,2);assert.equal(cloud.travellers,2);assert(cloud.planItems.some(day=>day.notes.includes('Accepted copy C')));assert(!cloud.planItems.some(day=>day.notes.includes('Failed current copy A')),'Resolving the remaining separate copy must not revive the previously discarded current body');assert.deepEqual(view.errors,[]);
+  await (await add(view.page,'Accepted copy C')).waitFor({state:'hidden'});await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();assert.equal(writes.length,2);assert.equal(cloud.travellers,2);assert(cloud.planItems.some(day=>day.notes.includes('Accepted copy C')));assert(!cloud.planItems.some(day=>day.notes.includes('Failed current copy A')),'Resolving the remaining separate copy must not revive the previously discarded current body');assert.deepEqual(view.errors,[]);
  }finally{await view.close();}
 });

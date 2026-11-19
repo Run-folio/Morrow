@@ -1,13 +1,16 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import type { BuilderNoticePhase } from "./builder-success-notice";
+import { BuilderSuccessNotice } from "./builder-success-notice-view";
+import { useBuilderSuccessNotice } from "./use-builder-success-notice";
 import { TripBuilderRouteWorkspace } from "./trip-builder-route-workspace";
 import styles from "./trip-builder.module.css";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { adaptedDiscoveryPlaces } from "@/lib/easyt/discovery-evidence-adapter";
-import { MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import matchedAfricaFixture from "@/tests/fixtures/main-staging-africa-control.json";
 import type { PlanningEvidenceState } from '@/lib/easyt/planning-evidence-state';
@@ -229,4 +232,56 @@ export const RouteActionMenuStates: Story = {
 export const RouteActionMenuStatesMobile: Story = {
   ...RouteActionMenuStates,
   globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+/** The fixture simulates accepted edits; production owns mutation readiness. */
+function SuccessNoticeStory() {
+  const [save, setSave] = useState<BuilderNoticePhase>("idle");
+  const [revision, setRevision] = useState(0);
+  const [undo, setUndo] = useState(false);
+  const notice = useBuilderSuccessNotice({ scopeKey: "storybook-builder-success", save, saveKey: revision, undoActive: undo });
+  return <>
+    <div>
+      <EasyTButton onClick={() => { setRevision(value => value + 1); setSave("pending"); }}>Start saving a date edit</EasyTButton>
+      <EasyTButton onClick={() => setSave("success")}>Acknowledge date edit</EasyTButton>
+      <EasyTButton onClick={() => setUndo(current => !current)}>Toggle Undo</EasyTButton>
+    </div>
+    <SemanticControlsStory />
+    {undo ? <div className={styles.builderUndoToast}><MorroviaBriefNotice variant="toast" title="Trip updated"
+      action={<EasyTButton onClick={() => setUndo(false)}>Undo</EasyTButton>} /></div> : null}
+    <BuilderSuccessNotice title={notice === "save" ? "Dates updated" : null} />
+  </>;
+}
+
+export const SuccessNoticeActiveThenIdle: Story = {
+  render: () => <SuccessNoticeStory />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toast = () => canvasElement.querySelector("[data-builder-success-toast]");
+    await expect(toast()).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Start saving a date edit" }));
+    await expect(toast()).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Acknowledge date edit" }));
+    await waitFor(() => expect(toast()).toHaveTextContent("Dates updated"));
+    await expect(canvasElement.querySelector('[role="status"][aria-live="polite"].sr-only')).toHaveTextContent("Dates updated");
+    await waitFor(() => expect(toast()).toBeNull(), { timeout: 5_500 });
+  },
+};
+
+export const SuccessNoticeDoesNotCompeteWithUndo: Story = {
+  render: () => <SuccessNoticeStory />,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toast = () => canvasElement.querySelector("[data-builder-success-toast]");
+    await userEvent.click(canvas.getByRole("button", { name: "Start saving a date edit" }));
+    await expect(toast()).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Acknowledge date edit" }));
+    await waitFor(() => expect(toast()).toBeInTheDocument());
+    await userEvent.click(canvas.getByRole("button", { name: "Toggle Undo" }));
+    await expect(toast()).toBeNull();
+    await expect(canvas.getByRole("button", { name: /^Undo$/ })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: /^Undo$/ }));
+    await expect(toast()).toBeNull();
+  },
 };

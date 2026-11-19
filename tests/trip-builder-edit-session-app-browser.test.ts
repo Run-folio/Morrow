@@ -40,7 +40,7 @@ test('undated stay requests permit deliberate night and order edits while booked
     for(let i=0;i<50&&(cloud.stops[1]!.name!=='Hiroshima'||cloud.stops.find(stop=>stop.name==='Kyoto')!.nights!==4);i++)await view.page.waitForTimeout(100);
     assert.equal(cloud.stops[1]!.name,'Hiroshima');assert.equal(cloud.stops.find(stop=>stop.name==='Kyoto')!.nights,4);
     assert.equal(cloud.brief.intent.route.orderAuthority,'manual');
-    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+    await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
     await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     assert.equal(await view.page.getByRole('button',{name:/Add one night to Kyoto; 4 nights/}).count(),1);assert.deepEqual(view.errors,[]);
   }finally{await view.close()}
@@ -76,7 +76,7 @@ for(const repeated of [false,true])test(`A20 mounted removal confirms the same o
     if(repeated)assert.equal(cloud.stops[1]!.id,'batch14-trip-stop-kyoto','stable sibling identity must survive');
     assert.equal(cloud.brief.retainedAuthoredContent?.entries[0]?.sourceStop.canonicalPlaceId,'place:hiroshima');
     assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
-    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+    await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
     await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     assert.equal(await view.page.getByLabel('Actions for Hiroshima',{exact:true}).count(),repeated?1:0);assert.deepEqual(view.errors,[]);
   }finally{release();await view.close()}
@@ -163,7 +163,7 @@ test('mounted_partial_origin_survives_budget_autosave_and_reload', {skip:!enable
     await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     await openBuilderDetails(view.page);const origin=view.page.locator('#builder-origin').getByRole('combobox').first();await origin.fill('  unfinished origin  ');
     await openBuilderDetails(view.page);await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
-    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved on this device'),undefined,{timeout:5000});
+    await view.page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor({timeout:5000});
     for(let attempt=0;attempt<50 && cloud.brief.budgetBand!=='high';attempt++)await view.page.waitForTimeout(100);
     assert.equal(cloud.brief.budgetBand,'high');assert.equal(cloud.brief.origin,'London');
     await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
@@ -189,7 +189,7 @@ test('mounted_second_edit_Undo_delayed_ACK_and_reload_preserve_latest_canonical'
     assert.equal(writes.length,1,'only one request may be in flight');
     release();
     for(let attempt=0;attempt<50 && writes.length<2;attempt++)await view.page.waitForTimeout(100);
-    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+    await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
     assert.equal(cloud.stops.find(s=>s.name==='Kyoto')!.nights,4);assert.equal(cloud.stops.find(s=>s.name==='Hiroshima')!.nights,2);
     assert.ok(writes.length>=2);assert.equal(cloud.brief.budgetBand,'high');assert.ok(writes.slice(1).every(write=>write.ownerId==='owner-a'));
     await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
@@ -210,7 +210,7 @@ test('mounted_row_edit_autosaves_through_one_account_writer_without_Build', {ski
     await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:5000});
     const button=view.page.getByRole('button',{name:/Add one night to Kyoto/});await button.click();
     for(let attempt=0;attempt<50 && !writes.length;attempt++) await view.page.waitForTimeout(100);
-    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'),undefined,{timeout:5000});
+    await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor({timeout:5000});
     assert.ok(writes.length>0,'ordinary row edit must autosave without Build');
     assert.equal(cloud.stops.find(s=>s.name==='Kyoto')!.nights,4);
     assert.deepEqual(view.errors,[]);

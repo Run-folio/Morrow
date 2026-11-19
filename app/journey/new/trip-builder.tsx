@@ -5,6 +5,8 @@ import {builderBookingStopIds} from '@/lib/easyt/builder-booking-stop-associatio
 import { releaseAvailability } from "@/lib/easyt/release-availability";
 import {createTripCreationToken,loadTripCreationContinuation,loadReservedTripCreation,type TripCreationToken} from "@/lib/easyt/trip-creation-provenance";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
+import { useBuilderSuccessNotice } from "./use-builder-success-notice";
+import { BuilderSuccessNotice } from "./builder-success-notice-view";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
 import { currentBuilderTransferAssessments, transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
 import { requestCanonicalTransferResolution, completedTransferResolutionLeg } from '@/lib/easyt/transfer-resolution-client';
@@ -5968,6 +5970,22 @@ function TripBuilderDocument() {
             : deviceStorageBlocked || deviceRecoveryBlocked || mountedBuilder?.snapshot.error?.category === "storage"
               ? "Changes are only in this tab"
               : "Changes not synced to your account";
+  const routeFeedback = builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments, mountedBuilder?.snapshot.routeWorkBlocked);
+  const partialDeviceSave = deviceRecoveryDurable && (devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete");
+  const accountNeedsSync = saveState === "local" && Boolean(tripOwnerId || authenticatedOwnerId);
+  const saveNeedsAttention = Boolean(partialDeviceSave || accountNeedsSync || cloudAuthInterrupted || cloudConflictTrip || cloudSaveError
+    || deviceRecoveryBlocked || deviceStorageBlocked || mountedBuilder?.snapshot.error || buildNeedsReview || editNeedsReview);
+  const undoNoticeVisible = Boolean(mountedBuilder && structuralFeedbackIsCurrent && lastStructuralChange?.canonical);
+  const successNotice = useBuilderSuccessNotice({
+    scopeKey: JSON.stringify([activeBrowserOwnerId, tripId]),
+    save: saveNeedsAttention || visibleSaveState === "error" ? "error" : visibleSaveState === "saving" ? "pending" : "success",
+    route: !hasRouteSkeleton ? "idle" : routeFeedback.state === "saved" ? "success" : routeFeedback.state === "saving" ? "pending" : "error",
+    saveKey: mountedBuilder?.snapshot.inputRevision,
+    routeKey: mountedBuilder?.snapshot.acceptedRevision,
+    undoActive: undoNoticeVisible,
+    blocked: !hydrated || !mountedBuilder || sessionPending || !browserContextReady || ownerScopeMismatch || saveNeedsAttention || tripUnavailable
+      || Boolean(interruptedInputs || pendingInterruptedInputsRef.current.length || mountedBuilder?.snapshot.draft.fields.some(field => field.status === "binding-conflict")),
+  });
   const recoverFromSaveError = async () => {
     if(builderEditSessionRef.current) {
       if (mountedBuilder?.snapshot.error?.retryableEdit) {
@@ -6207,7 +6225,8 @@ function TripBuilderDocument() {
   </div>:null;
 
   return (
-    <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
+    <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} data-builder-save-state={saveState} data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
+      <BuilderSuccessNotice title={successNotice === "save" ? visibleSaveLabel : successNotice === "route" ? routeFeedback.label : null} />
       {interruptedInputs && !sessionPending && interruptedInputs.ownerId===activeBrowserOwnerId && interruptedInputs.tripId===tripId
         ?<InterruptedInputReview records={interruptedInputs.records} unreadable={interruptedInputs.unreadable} language={language}/>:null}
       <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
@@ -6215,13 +6234,13 @@ function TripBuilderDocument() {
           <div id="builder-summary" tabIndex={-1} className={styles.stack} onInputCapture={retireBuilderEntryForInput}>
               <header className={styles.stepHero}>
                 <h1 className={styles.stepHeroTitle} data-route-editor-title={hasRouteSkeleton || undefined}>{hasRouteSkeleton
-                  ? (language === "es" ? "Dale forma a la ruta." : "Shape the route.")
+                  ? (language === "es" ? "Planifica tu ruta." : "Plan your route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
                     ? (language === "es" ? "Demos forma a tu ruta." : "Let’s shape your route.")
                     : entryKind === "fresh"
                       ? (language === "es" ? "Nuevo viaje" : "New trip")
                     : (language === "es" ? "Empieza tu viaje." : "Start your trip.")}</h1>
-                {(hasRouteSkeleton || hasPromptContext) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
+                {(hasRouteSkeleton || hasPromptContext) && (visibleSaveState === "saving" || visibleSaveState === "error" || saveNeedsAttention) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
               {pendingInterpretation ? <MorroviaSectionStatus
                 state={tripBriefCaptureError ? "error" : "loading"}
@@ -6655,9 +6674,9 @@ function TripBuilderDocument() {
                 legReview={legId=>necessaryReview(["leg"],legId)}
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={builderNightEditWarning(nightEditFeedback, totalNights - allocatedNights, language)}
-                reviewControl={<div className={styles.builderReviewActions}>
-                  <MorroviaSaveStatus {...builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments, mountedBuilder?.snapshot.routeWorkBlocked)} />
-                </div>}
+                reviewControl={routeFeedback.state !== "saved" ? <div className={styles.builderReviewActions}>
+                  <MorroviaSaveStatus {...routeFeedback} />
+                </div> : null}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}
                 onPreviewOrder={setRoutePreviewStopIds}

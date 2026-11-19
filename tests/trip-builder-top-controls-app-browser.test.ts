@@ -281,7 +281,7 @@ test('A17 mounted actual resolver saves the pending removal and reloads the acti
   assert.deepEqual(cloud.stops.map(stop=>stop.nights),[3,4,3]);assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
   await view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
   release();await waitFor(()=>cloud.legs.every(leg=>leg.routeMetadata.pending!==true));await view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
-  const saved=structuredClone(cloud);await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+  const saved=structuredClone(cloud);await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();
   await view.page.evaluate(()=>{const url=new URL(location.href);url.searchParams.set('recover','1');history.replaceState(null,'',url)});assert.match(view.page.url(),/recover=1/);await view.page.reload();await view.page.locator('[data-builder-top-controls]').waitFor();
   assert.deepEqual(cloud,saved);assert.equal(await view.page.getByRole('combobox',{name:'Start from',exact:true}).inputValue(),' origin unfinished ');assert.equal(await view.page.getByRole('button',{name:'Remove Hue',exact:true}).count(),0);assert.deepEqual(view.errors,[]);
  }finally{release();await view.close()}

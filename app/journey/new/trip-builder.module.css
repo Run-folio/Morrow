@@ -1802,6 +1802,18 @@
   .builderUndoToast { right:12px; left:12px; bottom:calc(var(--morrovia-builder-action-height, 82px) + 24px + var(--morrovia-mobile-dock-offset)); }
 }
 
+.builderSuccessToast { pointer-events:none; }
+.builderSuccessToast > div[data-variant="toast"] {
+  min-height:36px;
+  width:fit-content;
+  max-width:min(320px,calc(100vw - 24px));
+  padding:6px 12px;
+  box-shadow:var(--morrovia-shadow-overlay);
+}
+@media(max-width:700px) {
+  .builderSuccessToast { right:12px; left:auto; bottom:calc(var(--morrovia-builder-action-height, 82px) + 24px + var(--morrovia-mobile-dock-offset)); }
+}
+
 .necessaryReview { display: grid; gap: 4px; color: var(--morrovia-danger); font: var(--morrovia-type-fine-print); }
 .necessaryReview > span { margin: 0; }
 .necessaryReview button { justify-self: start; }
