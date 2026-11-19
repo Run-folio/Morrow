@@ -174,7 +174,10 @@ export const HomepageTravellerListbox: Story = {
     await userEvent.click(trigger);
     await expect(page.getAllByRole('option')).toHaveLength(12);
     await expect(page.getByRole('option',{name:'2 travellers'})).toHaveAttribute('aria-selected','true');
-    await userEvent.keyboard('{End}{Enter}');await expect(trigger).toHaveTextContent('12 travellers');
+    const scrollY=canvasElement.ownerDocument.defaultView!.scrollY;
+    await userEvent.keyboard('{End}');
+    await expect(canvasElement.ownerDocument.defaultView!.scrollY).toBe(scrollY);
+    await userEvent.keyboard('{Enter}');await expect(trigger).toHaveTextContent('12 travellers');
     await expect(trigger).toHaveFocus();
     await userEvent.click(trigger);await userEvent.keyboard('{Home}{ArrowDown}{Enter}');
     await expect(trigger).toHaveTextContent('2 travellers');

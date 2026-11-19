@@ -33,7 +33,15 @@ export function MorroviaTravellerListbox({className,disabled,label,value,min,max
     document.addEventListener('pointerdown',outside);document.addEventListener('focusin',outside);
     return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true);document.removeEventListener('pointerdown',outside);document.removeEventListener('focusin',outside);};
   },[open]);
-  useEffect(()=>{if(open)panel.current?.querySelector(`[data-quantity="${active}"]`)?.scrollIntoView({block:'nearest'});},[active,open]);
+  useLayoutEffect(()=>{
+    const list=panel.current, option=list?.querySelector<HTMLElement>(`[data-quantity="${active}"]`);
+    if(!open||!list||!option)return;
+    // Scroll only this list, never the document/trigger or an ancestor scroller.
+    const bounds=list.getBoundingClientRect(), row=option.getBoundingClientRect();
+    const top=bounds.top+list.clientTop, bottom=top+list.clientHeight;
+    if(row.top<top)list.scrollTop-=top-row.top;
+    else if(row.bottom>bottom)list.scrollTop+=row.bottom-bottom;
+  },[active,open,position]);
   const key=(event:KeyboardEvent<HTMLButtonElement>)=>{
     if(event.key==='Tab'){setOpen(false);return;}
     if(event.key==='Escape'){if(open){event.preventDefault();setOpen(false);}return;}
