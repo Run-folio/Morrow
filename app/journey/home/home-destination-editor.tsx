@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
@@ -12,15 +12,19 @@ import { searchCompletedPlaceCandidates } from "@/lib/easyt/completed-place-sear
 import { MorroviaDestinationField, MorroviaDestinationTag, destinationAddClassName } from "@/components/easyt/morrovia-destination-field";
 import styles from "./home-destination-editor.module.css";
 
-export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
+export function HomeDestinationEditor({ entries: savedEntries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
   entries: HomepageDestinationEntry[]; language: EasyTLanguage; disabled?: boolean;
   focusEntryId?: string | null; focusRequestKey?: number; createEntry?: () => HomepageDestinationEntry;
   onChange: (entries: HomepageDestinationEntry[]) => void;
 }) {
   const es = language === "es";
+  const emptyId = useId();
+  // A visual empty slot is not a persisted stop until the traveller types/selects.
+  const entries = savedEntries.length ? savedEntries : [{id: `destination-empty-${emptyId}`, text: '', selection: null}];
+  const firstEmpty = entries.length === 1 && !entries[0].selection && !entries[0].text.trim();
   // Startup follows restored entries; explicit open/closed state belongs to the traveller.
   const [requestedEditingId, setEditingId] = useState<string | null | undefined>(undefined);
-  const editingId = requestedEditingId === undefined ? entries.find(entry => !entry.selection)?.id ?? null : requestedEditingId;
+  const editingId = firstEmpty ? entries[0].id : requestedEditingId === undefined ? entries.find(entry => !entry.selection)?.id ?? null : requestedEditingId;
   const nodes = useRef(new Map<string, HTMLElement>());
   const addRef = useRef<HTMLButtonElement>(null);
   const latest = useRef({ entries, disabled, onChange });
@@ -90,7 +94,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
       onEdit={()=>{focusTarget.current=entry.id;setEditingId(entry.id)}}
       onRemove={()=>{
         const next=removeHomepageDestination(latest.current.entries,entry.id);
-        focusTarget.current=next[Math.min(index,next.length-1)]?.id??"add";
+        focusTarget.current=next[Math.min(index,next.length-1)]?.id??`destination-empty-${emptyId}`;
         if(editingId===entry.id)setEditingId(null);
         onChange(next);
       }} editor={editingId===entry.id ? <div onKeyDown={event=>{

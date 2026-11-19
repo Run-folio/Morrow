@@ -1,3 +1,4 @@
+import { expect, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ArrowRight, Plus, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
@@ -159,3 +160,30 @@ export const DatePickerShortLandscape: Story = {
   ...DatePickerMobile390,
   globals: { viewport: { value: "morroviaLandscape", isRotated: false } },
 };
+
+export const HomepageTravellerListbox: Story = {
+  render: function HomepageTravellers() {
+    const [value,setValue]=useState(2);
+    return <div style={{width:'min(620px,100%)',overflow:'hidden'}}><MorroviaQuantitySelector
+      fieldPresentation="planner" plannerDropdown label="Travellers" value={value} onChange={setValue} />
+      <EasyTButton>Outside action</EasyTButton></div>;
+  },
+  play: async ({canvasElement}) => {
+    const canvas=within(canvasElement), page=within(canvasElement.ownerDocument.body);
+    const trigger=canvas.getByRole('combobox',{name:'Travellers'});
+    await userEvent.click(trigger);
+    await expect(page.getAllByRole('option')).toHaveLength(12);
+    await expect(page.getByRole('option',{name:'2 travellers'})).toHaveAttribute('aria-selected','true');
+    await userEvent.keyboard('{End}{Enter}');await expect(trigger).toHaveTextContent('12 travellers');
+    await expect(trigger).toHaveFocus();
+    await userEvent.click(trigger);await userEvent.keyboard('{Home}{ArrowDown}{Enter}');
+    await expect(trigger).toHaveTextContent('2 travellers');
+    await userEvent.click(trigger);await userEvent.keyboard('12{Enter}');await expect(trigger).toHaveTextContent('12 travellers');
+    await userEvent.click(trigger);await userEvent.keyboard('{Escape}');await expect(trigger).toHaveAttribute('aria-expanded','false');
+    await userEvent.click(trigger);await userEvent.click(canvas.getByRole('button',{name:'Outside action'}));
+    await expect(trigger).toHaveAttribute('aria-expanded','false');
+    await userEvent.click(trigger);await userEvent.click(page.getByRole('option',{name:'1 traveller'}));
+    await expect(trigger).toHaveTextContent('1 traveller');await expect(trigger).toHaveFocus();
+  },
+};
+export const HomepageTravellerListbox390: Story = {...HomepageTravellerListbox,globals:{viewport:{value:'morrovia390',isRotated:false}}};

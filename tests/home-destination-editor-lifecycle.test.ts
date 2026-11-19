@@ -58,3 +58,17 @@ test('repeated external focus works for an already-open draft and waits until en
   assert.equal((await h.read()).entries[0].text,'Asia');assert.equal((await h.read()).entries[0].selection,null);
  }finally{await h.close()}
 });
+
+test('an empty restored route and last removal always expose the first typeable destination',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture([]);try{
+  const input=h.page.getByRole('combobox',{name:'Destination',exact:true});
+  assert.equal(await input.count(),1);assert.equal(await input.inputValue(),'');
+  assert.equal((await h.read()).entries.length,0,'visual empty slot does not mutate restored draft');
+  await input.press('Escape');assert.equal(await input.count(),1);
+  await input.fill('Kyoto draft');assert.equal((await h.read()).entries[0].text,'Kyoto draft');
+  await h.replace({entries:[selectedEntry('last-selected','Tokyo')]});
+  await h.page.getByRole('button',{name:/^Remove Tokyo/}).click();
+  assert.equal(await input.count(),1);await input.fill('Osaka');
+  assert.equal((await h.read()).entries[0].text,'Osaka');
+ }finally{await h.close()}
+});

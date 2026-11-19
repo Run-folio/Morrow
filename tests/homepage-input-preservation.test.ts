@@ -303,3 +303,15 @@ test("missing-field legacy endings and fresh route choices survive materialisati
     assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot: restored.snapshot, receipt }), true);
   }
 });
+
+test("visual first-entry IDs survive exact persisted snapshot parsing and route projection", () => {
+  const snapshot=selectedStopsHomepageInput("owner-a");
+  snapshot.entries[0].id="destination-empty-:r3:";
+  snapshot.travellers={state:"selected",value:12};
+  const storage={getItem:(key:string)=>key===homepageInputStorageKey("owner-a")?JSON.stringify({snapshot}):null};
+  const read=readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!),"owner-a");
+  assert.ok(read);assert.deepEqual(read.snapshot,JSON.parse(JSON.stringify(snapshot)));
+  const projected=projectHomepageInput({snapshot,profile:null,handoffId:"visual-entry-proof"});
+  assert.equal(projected.ok,true);
+  if(projected.ok)assert.equal(projected.draft.travellers,12);
+});
