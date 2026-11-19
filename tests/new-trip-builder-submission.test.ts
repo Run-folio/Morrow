@@ -138,7 +138,7 @@ test("direct Describe submission records one pending receipt in mounted Builder 
     assert.equal(pending.receipt?.version, 2);
     assert.equal(pending.href, "/journey/new");
     assert.equal(pending.handoff, null);
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     assert.equal(view.captureRequests(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }

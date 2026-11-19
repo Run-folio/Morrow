@@ -70,7 +70,7 @@ test("populated Builder directly exposes explicit, Same as start and unknown jou
         assert.equal(await type.getByRole("button",{name:"One way",exact:true}).getAttribute("aria-pressed"),"false");
       }
       assert.equal(await top.getByRole("button",{name:"Edit trip",exact:true}).count(),0);
-      assert.equal(await view.page.getByRole("heading",{name:"Nights per stop"}).count(),1);
+      assert.equal(await view.page.locator('[data-builder-route-workspace]').count(),1);
       assert.equal(await view.page.getByRole("textbox",{name:"Start your plan",exact:true}).count(),0);
       assert.deepEqual(view.errors,[]);
     } finally {await view.close();}

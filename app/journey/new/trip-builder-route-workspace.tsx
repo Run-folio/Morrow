@@ -5,7 +5,7 @@ import { builderHasUsablePlanningTransfer } from "@/lib/easyt/builder-planning-s
 import { transportAssessmentState } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferAssessmentForLeg, transportEvidenceMessage } from '@/lib/easyt/planning-evidence-presentation';
 
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
@@ -22,7 +22,7 @@ import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt
 import styles from "./trip-builder.module.css";
 import { useCompactBuilderRows } from "./use-compact-builder-rows";
 import { completeBuilderMenuMove, useBuilderStopReorder } from "./use-builder-stop-reorder";
-import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
+import { builderNightProgressLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 import { tripNightsBetween } from "@/lib/easyt/night-allocation";
 import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates} from '@/lib/easyt/geographic-binding';
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
@@ -189,17 +189,9 @@ export function TripBuilderRouteWorkspace({
     <div className={styles.builderRouteGrid}>
       <div className={styles.builderRouteList}>
         <header className={styles.builderRouteHeader}>
-          <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
-            <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
-              {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />} {" "}
-              <span className="sr-only">{nightStatus.language === "es" ? "Tu ruta — Noches por parada: " : "Your route — Nights per stop: "}</span>
-              <span>
-                {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
-                {" · "}
-                {builderNightAllocationLabel(nightStatus)}
-              </span>
-            </h2>
-            {nightReview ? <div className={styles.builderRouteNightDetail}>{nightReview}</div> : null}
+          <div>
+            <h2 id="builder-route-title">{nightStatus.language === "es" ? "Tu ruta" : "Your route"}</h2>
+            {nightReview ? <div className={styles.builderRouteNightDetail} role="status">{nightReview}</div> : null}
           </div>
           {reviewControl}
         </header>
@@ -317,6 +309,11 @@ export function TripBuilderRouteWorkspace({
             <div className={styles.builderRouteUsable} role="cell" aria-colindex={5} aria-label="Not an overnight stop">—</div>
             <div className={styles.builderRouteActionsCell} role="cell" aria-colindex={6} />
           </div> : null}
+          <div className={styles.builderRouteNightProgress} data-builder-night-progress role="row">
+            <div role="cell" aria-colindex={1} aria-colspan={6}>
+              <span role="status" aria-live="polite" aria-atomic="true">{builderNightProgressLabel(nightStatus)}</span>
+            </div>
+          </div>
         </div>
       </div>
       </div>

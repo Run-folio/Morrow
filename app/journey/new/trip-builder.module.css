@@ -635,11 +635,7 @@
 .builderRouteList{grid-area:rows;min-width:0;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper)}
 .builderRouteHeader{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px;padding:8px 14px;border-bottom:1px solid var(--line)}
 .builderRouteHeader>div{display:grid;gap:4px;min-width:0}.builderRouteHeader p,.builderRouteHeader h2,.builderRouteHeader span{margin:0}.builderRouteHeader p{color:var(--signal);font:800 9px var(--morrovia-meta);letter-spacing:.12em}.builderRouteHeader h2{color:var(--ink);font-family:var(--morrovia-display);font-size:clamp(28px,2.6vw,38px);font-weight:600;line-height:1;letter-spacing:-.04em}.builderRouteHeader span{color:var(--muted);font-size:12px;line-height:1.4}
-.builderRouteNightStatus{display:flex!important;flex-wrap:wrap;align-items:center;gap:7px}.builderRouteNightStatus svg{width:16px;height:16px;color:var(--morrovia-success)}.builderRouteNightStatus strong,.builderRouteNightStatus b{color:var(--ink);font-weight:650}
-.builderRouteNightStatusIncomplete{box-sizing:border-box;flex:0 0 100%;inline-size:100%;padding-block:10px;padding-inline:14px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-warning-soft)}
-.builderRouteHeader:has(.builderRouteNightStatusIncomplete) .builderReviewActions{margin-inline-start:auto}
-.builderRouteNightStatusIncomplete svg{color:var(--morrovia-ink-soft)}
-.builderRouteHeader .builderRouteNightDetail{font:var(--morrovia-type-fine-print);letter-spacing:0;color:var(--morrovia-ink-soft);flex-basis:100%}
+.builderRouteHeader .builderRouteNightDetail{font:var(--morrovia-type-fine-print);letter-spacing:0;color:var(--morrovia-ink-soft)}
 .builderRouteGrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);grid-template-areas:"rows map";gap:14px;align-items:start}
 .builderRouteRows{position:relative;overflow:visible;border-radius:0 0 var(--morrovia-control-radius) var(--morrovia-control-radius)}
 .builderRouteRow:last-child{border-radius:0 0 var(--morrovia-control-radius) var(--morrovia-control-radius)}
@@ -1845,8 +1841,6 @@
 }
 
 /* Allocation is supporting status; warnings retain their semantic treatment. */
-.builderRouteHeader .builderRouteNightStatus h2 { font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); letter-spacing: 0; line-height: 1.5; }
-.builderRouteHeader .builderRouteNightStatus h2.builderRouteAllocationWarning { color: var(--morrovia-ink); }
 .placesSection .builderPlanningNotice[data-tone="warning"] { background: var(--morrovia-warning-soft); border-color: var(--morrovia-line); }
 .placesSection .builderPlanningNotice[data-tone="warning"] > svg { color: var(--morrovia-ink-soft); }
 .builderRouteGrip { min-width: 44px; min-height: 44px; }
@@ -1856,3 +1850,13 @@
 
 /* This working-route heading uses the UI face at every width; other editorial headings retain the display face. */
 .stepHero h1[data-route-editor-title] { font-family: var(--morrovia-ui); }
+
+/* A neutral allocation summary is the final non-interactive Route table row. */
+.builderRouteNightProgress {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--morrovia-control-radius) var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+@media (max-width: 700px) { .builderRouteNightProgress { padding-inline: 11px; } }

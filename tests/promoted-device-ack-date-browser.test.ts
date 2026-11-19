@@ -71,7 +71,7 @@ test('promoted reopened guest date edit during completed durable ACK awaiting ed
  return {status:row.status,body:{trip:jsonbObjectOrder(response),outcome:method==='POST'?'promoted':'updated'}};
  }});
  const page=h.page;page.setDefaultTimeout(6000);
- const settled=async()=>{await page.waitForFunction(()=>{const s=(window as any).__calendar.current;return s?.error||s?.saveState==='cloud'||s?.saveState==='saved'},{},{timeout:12000});const s=await page.evaluate(()=>(window as any).__calendar.current);assert.equal(s.error,null,JSON.stringify(s));await page.getByText('Saved to your account',{exact:true}).first().waitFor();};
+ const settled=async()=>{await page.waitForFunction(()=>{const s=(window as any).__calendar.current;return s?.error||s?.saveState==='cloud'||s?.saveState==='saved'},{},{timeout:12000});const s=await page.evaluate(()=>(window as any).__calendar.current);assert.equal(s.error,null,JSON.stringify(s));await page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor();};
  await page.getByRole('button',{name:'Plan my trip',exact:true}).click();await page.locator('[data-builder-edit-session="active"]').waitFor();
  await page.getByRole('button',{name:/^Build trip/}).click();await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
  if(creationMode==='guest'){await page.getByRole('link',{name:'Sign up to keep this route across devices',exact:true}).click();await page.getByRole('button',{name:'Complete simulated sign in',exact:true}).click();}

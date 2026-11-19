@@ -51,7 +51,7 @@ test("published route edits, nights and order survive durable reload and remain 
     assert.equal(await view.page.getByText("Changes saved on this device", { exact: true }).count(), 1);
 
     await view.page.reload();
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.deepEqual(await routeNames(), editedOrder);
     const restored = await recoveryTrip();
     assert.equal(restored.brief.journeyEnd?.mode, "same_as_start");

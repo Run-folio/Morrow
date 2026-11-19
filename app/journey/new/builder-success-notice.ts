@@ -50,7 +50,7 @@ export function advanceBuilderNotice(state: State, input: BuilderNoticeInput, no
   const route = advanceStream(state.route, observe(input.route, input.routeKey), interrupted);
   const suppressed = builderNoticeSuppressed(input);
   const success = route.fresh ? 'route' : save.fresh ? 'save' : null;
-  const notice = suppressed ? null
+  const notice: Notice | null = suppressed ? null
     : success ? { kind: success, expiresAt: now + BUILDER_NOTICE_DURATION_MS }
     : state.notice && state.notice.expiresAt > now ? state.notice : null;
   return { scopeKey: input.scopeKey, save: save.stream, route: route.stream, notice };

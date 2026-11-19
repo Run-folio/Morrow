@@ -236,11 +236,11 @@ test("pending Describe hydrates one reserved Builder document before capture and
   try {
     assert.match(await view.page.locator("body").innerText(), /Tokyo and Kyoto/);
     assert.equal(await view.page.locator('[aria-label="Your route"]').count(), 0);
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.includes("trip-pending-browser")));
     assert.equal(view.captureRequests(), 1);
     await view.page.reload();
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     assert.equal(view.captureRequests(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -263,7 +263,7 @@ test("a late capture cannot apply when another tab replaces the durable receipt"
       localStorage.setItem("easyt-home-trip-draft", JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: nextReceipt }));
     }, { key: homepageInputStorageKey(null), nextSnapshot, nextReceipt });
     await view.page.waitForTimeout(1800);
-    assert.equal(await view.page.getByText("Your route — Nights per stop:").count(), 0);
+    assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 0);
     assert.equal(await view.page.evaluate(() => Object.keys(localStorage).some((key) => key.includes("trip-old-capture"))), false);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -283,7 +283,7 @@ test("failed pending interpretation keeps the frozen idea and retries under the 
     assert.match(await view.page.locator("body").innerText(), /Tokyo and Kyoto/);
     assert.equal(view.captureRequests(), 1);
     await view.page.getByRole("button", { name: "Try again" }).click();
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     assert.equal(view.captureRequests(), 2);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -298,7 +298,7 @@ test("direct pending intake reloads before interpretation without a fresh starte
     assert.equal(await view.page.getByRole("heading", { name: "New trip" }).count(), 0);
     await view.page.reload();
     await view.page.getByText(snapshot.prompt).waitFor();
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.startsWith("easyt:trip-recovery:v2:") && key.includes("trip-direct-reload")));
     const reservedRecoveryIds = await view.page.evaluate(() => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:") && key.includes("trip-direct-reload")));
@@ -398,7 +398,7 @@ test("direct New Trip domain Edit stays in Builder and restores exact intake", {
     assert.equal(editable.review.phase, "editing");
     await prompt.fill("A one-way trip through Japan: Tokyo 3 nights, Kyoto 2 nights");
     await view.page.getByRole("button", { name: "Plan my trip", exact: true }).click();
-    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-route-workspace]').waitFor({ timeout: 20_000 });
     await view.page.waitForFunction(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null")?.receipt?.version === 1);
     const final = await view.page.evaluate(() => {
       const input = JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null");

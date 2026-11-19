@@ -34,7 +34,9 @@ for (const allPinned of [false, true]) test(`mounted Add preserves ${allPinned ?
     }
     if (allPinned) {
       assert.deepEqual(cloud.stops.map(stop => stop.nights), [7, 7, 0]);
-      await view.page.getByText('Stays need nights', { exact: false }).waitFor();
+      await view.page.locator('[data-builder-night-progress]').waitFor();
+      assert.equal(await view.page.locator('[data-builder-night-progress]').innerText(), '14/14 nights planned.');
+      await view.page.locator('[data-builder-route-workspace]').getByText('No nights allocated', { exact: true }).waitFor();
     } else {
       assert.equal(cloud.stops.reduce((sum, stop) => sum + (stop.nights ?? 0), 0), 14);
       assert.ok(cloud.stops.slice(1).every(stop => (stop.nights ?? 0) > 0));

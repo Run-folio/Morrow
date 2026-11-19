@@ -31,7 +31,7 @@ function AllocationStory({ initialNights, language, totalNights = 7, singleStop 
     lockedStopIds={[]}
     fixedOrder={false}
     routeCheckProposalStopIds={null}
-    nightStatus={{ total: totalNights, allocated, complete: allocated === totalNights, language }}
+    nightStatus={{ total: totalNights, allocated, complete: allocated === totalNights && trip.stops.every(stop => (stop.nights ?? 0) > 0), language }}
     onSelectStop={setSelectedStopId}
     onPreviewOrder={() => {}}
     onCommitOrder={() => false}
@@ -45,9 +45,31 @@ const meta = { title: "Morrovia/05 Product Patterns/Builder route allocation", c
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const TwoNightsLeft: Story = {};
-export const OneNightTooMany: Story = { args: { initialNights: [4, 2, 2] } };
-export const AllAllocated: Story = { args: { initialNights: [3, 2, 2] } };
+async function checkFinalNightProgress(canvasElement: HTMLElement, expected: RegExp) {
+  const canvas = within(canvasElement);
+  const table = canvas.getByRole("table", { name: "Route stops" });
+  const rows = within(table).getAllByRole("row");
+  const progress = rows.at(-1)!;
+  await expect(progress).toHaveAttribute("data-builder-night-progress");
+  await expect(within(progress).getByRole("status")).toHaveTextContent(expected);
+}
+
+export const TwoNightsLeft: Story = { play: ({ canvasElement }) => checkFinalNightProgress(canvasElement, /5\/7 nights planned\. 2 nights remaining\./) };
+export const OneNightTooMany: Story = {
+  args: { initialNights: [4, 2, 2] },
+  play: ({ canvasElement }) => checkFinalNightProgress(canvasElement, /8\/7 nights planned\. 1 night too many\./),
+};
+export const AllAllocated: Story = {
+  args: { initialNights: [3, 2, 2] },
+  play: ({ canvasElement }) => checkFinalNightProgress(canvasElement, /7\/7 nights planned\./),
+};
+export const FullCountWithZeroNightStop: Story = {
+  args: { initialNights: [0, 4, 3] },
+  play: async ({ canvasElement }) => {
+    await checkFinalNightProgress(canvasElement, /7\/7 nights planned\./);
+    await expect(within(canvasElement).getByText("No nights allocated")).toBeVisible();
+  },
+};
 export const SingleStopFullyAllocated: Story = { args: { initialNights: [7], singleStop: true } };
 export const UnaNocheSobra: Story = { args: { initialNights: [4, 2, 2], language: "es" } };
 
@@ -182,12 +204,8 @@ export const RoutineCautionAndSavedInputConflict: Story = {
     const canvas = within(canvasElement);
     const workspace = canvas.getByRole("region", { name: /Your route/ });
     const local = within(workspace);
-    const notice = local.getByText(/3 nights left to plan/);
-    await expect(notice).toBeVisible();
-    const panel = notice.closest('[role="status"]')!;
-    const header = panel.closest("header")!;
-    const innerWidth = header.clientWidth - parseFloat(getComputedStyle(header).paddingInlineStart) - parseFloat(getComputedStyle(header).paddingInlineEnd);
-    await expect(Math.abs(panel.getBoundingClientRect().width - innerWidth)).toBeLessThanOrEqual(2);
+    await checkFinalNightProgress(canvasElement, /4\/7 nights planned\. 3 nights remaining\./);
+    await expect(local.queryByText(/3 nights left to plan/)).not.toBeInTheDocument();
     await expect(local.getByText("No nights allocated")).toBeVisible();
     await expect(local.getByRole("alert")).toHaveTextContent("Review your saved input");
     await expect(local.getByRole("button", { name: "Discard input" })).toBeVisible();

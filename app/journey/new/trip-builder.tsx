@@ -5980,7 +5980,7 @@ function TripBuilderDocument() {
     scopeKey: JSON.stringify([activeBrowserOwnerId, tripId]),
     save: saveNeedsAttention || visibleSaveState === "error" ? "error" : visibleSaveState === "saving" ? "pending" : "success",
     route: !hasRouteSkeleton ? "idle" : routeFeedback.state === "saved" ? "success" : routeFeedback.state === "saving" ? "pending" : "error",
-    saveKey: mountedBuilder?.snapshot.inputRevision,
+    saveKey: mountedBuilder ? `${mountedBuilder.snapshot.acceptedRevision}:${mountedBuilder.snapshot.inputRevision}` : undefined,
     routeKey: mountedBuilder?.snapshot.acceptedRevision,
     undoActive: undoNoticeVisible,
     blocked: !hydrated || !mountedBuilder || sessionPending || !browserContextReady || ownerScopeMismatch || saveNeedsAttention || tripUnavailable

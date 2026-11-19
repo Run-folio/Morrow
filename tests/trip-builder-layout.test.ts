@@ -97,7 +97,7 @@ browserTest("useful homepage and template handoffs show route timing immediately
     const view = entry === "home" ? await renderHomeDraft(draft) : await renderBuilder({query:"?inspire=morocco-rail"});
     try {
       const text = await view.page.locator("body").innerText();
-      assert.match(text, /Nights per stop/);
+      assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
       assert.match(text, /Marrakech/);
       assert.doesNotMatch(text, /Make the time|Budget \(optional\)/,
         "the unified workspace should not retain duplicate legacy timing controls");
@@ -166,7 +166,7 @@ browserTest("homepage handoff adopts its durable recovery URL once and restores 
     await view.page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
 
     await view.page.reload();
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.equal(new URL(view.page.url()).searchParams.get("trip"), "trip-reserved-direct");
     assert.equal(await view.page.getByText("Tokyo", { exact: true }).count() > 0, true);
     assert.deepEqual(view.errors, []);
@@ -521,7 +521,7 @@ test("Journey is the only Add stop entry point after a route exists", async () =
     "the Route workspace must not duplicate the Journey Add stop action");
 });
 
-test("night allocation is compact Route metadata instead of a separate band", async () => {
+test("night allocation is the final route-table progress row rather than a separate band", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
 
@@ -529,15 +529,13 @@ test("night allocation is compact Route metadata instead of a separate band", as
     "the existing canonical night totals should feed Route presentation directly");
   assert.doesNotMatch(builder, /className=\{styles\.timeAllocationState\}/,
     "night allocation must not retain its own full-width band");
-  assert.match(workspace, /builderRouteNightStatusIncomplete[\s\S]*role="status"/,
-    "Route metadata should retain an accessible status announcement");
-  assert.match(workspace, /nightStatus\.complete \? <CheckCircle2[\s\S]*: <AlertTriangle/,
-    "unresolved night allocation must not use the resolved success icon");
-  assert.match(workspace, /builderRouteList[\s\S]*<header[\s\S]*builderRouteHeader[\s\S]*role="table"/,
-    "allocation belongs directly on the route list rather than on a full-width warning card");
+  assert.match(workspace, /builderRouteList[\s\S]*<header[\s\S]*builderRouteHeader[\s\S]*role="table"[\s\S]*data-builder-night-progress role="row"/,
+    "allocation belongs inside the route table after the stop and return rows");
+  assert.match(workspace, /data-builder-night-progress role="row"[\s\S]*role="cell" aria-colindex=\{1\} aria-colspan=\{6\}[\s\S]*role="status" aria-live="polite" aria-atomic="true"[\s\S]*<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*<section/,
+    "the final row spans the table and announces progress changes without interrupting");
   assert.match(workspace, /const needsNights = \(stop.nights \?\? 0\) === 0;/);
   assert.match(workspace, /needsNights \? <small className=\{styles.builderRouteStopNightCue\}>/);
-  assert.match(workspace, /builderNightAllocationLabel\(nightStatus\)/,
+  assert.match(workspace, /builderNightProgressLabel\(nightStatus\)/,
     "Route metadata must use the tested canonical count and allocation-state wording");
 });
 
@@ -596,7 +594,7 @@ browserTest("first-place selection creates route timing without requiring endpoi
   const view = await renderBuilder();
   try {
     await submitFirstTokyo(view);
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
     assert.equal(await view.page.getByRole("button", { name: /Build trip/ }).isDisabled(), true);
@@ -607,7 +605,7 @@ browserTest("passive validation preserves Starting from focus while typing after
   const view = await renderBuilder();
   try {
     await submitFirstTokyo(view);
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     const origin = view.page.getByRole("combobox", { name: "Start from", exact: true });
     await origin.focus();
     await origin.pressSequentially("London", { delay: 100 });
@@ -629,7 +627,7 @@ browserTest("first-place resolution keeps the pending selection visible and prev
       started();await pending;await route.fulfill({contentType:"application/json",body:JSON.stringify({candidates:[{name:"Pending City",country:"Japan",canonicalPlaceId:"fixture:pending-city",providerId:"fixture:pending-city-provider",coordinates:[139.6917,35.6895],kind:"city",routability:"direct_destination"}]})}).catch(()=>{});
     });
     await view.page.getByRole("button",{name:"Plan my trip",exact:true}).click();await Promise.race([requestStarted,new Promise((_,reject)=>setTimeout(()=>reject(new Error("Expected the coordinate-less first place enrichment request")),5000))]);
-    await view.page.getByRole("heading",{name:"Nights per stop"}).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.equal(await view.page.getByText("Pending City",{exact:true}).count()>0,true,"submitted first place remains visible while enrichment is pending");
     assert.equal(await view.page.getByRole("button",{name:"Plan my trip",exact:true}).count(),0,"submitted capture is replaced, so a competing intake cannot be submitted");
     assert.equal(await view.page.getByRole("tab",{name:"Describe my trip",exact:true}).count(),0);
@@ -645,7 +643,7 @@ browserTest("endpoint-only handoff does not create an overnight route or timing 
   assert.equal(projectHomepageInput({snapshot,profile:null,handoffId:"endpoint-only"}).ok,false);
   const view=await renderBuilder({storedInput:{snapshot}});
   try {
-    assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 0);
+    assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 0);
     assert.equal(await view.page.getByRole("complementary", { name: "Trip at a glance" }).count(), 0);
   } finally { await view.close(); }
 });
@@ -656,7 +654,7 @@ browserTest("direct text capture uses the existing parser then replaces capture 
     await view.page.getByRole("tab", {name:"Describe my trip",exact:true}).click();
     await view.page.getByRole("textbox", { name: "Start your plan",exact:true }).fill("Tokyo for one week");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
     assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
     assert.deepEqual(view.errors, []);
@@ -668,10 +666,10 @@ browserTest("legacy populated links focus summary or timing once while the whole
     const view = await renderBuilder({ query: `?inspire=morocco-rail&step=${legacy}` });
     try {
       await view.page.waitForFunction((id: string) => document.activeElement?.id === id, target);
-      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
+      assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
       assert.equal(new URL(view.page.url()).searchParams.has("step"), false);
       assert.equal(await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).count(), 1);
-      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
+      assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
     } finally { await view.close(); }
   }
 });
@@ -681,9 +679,6 @@ test("routine Builder warnings use a pale semantic surface with neutral text wit
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
-  assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*background:var\(--morrovia-warning-soft\)/);
-  assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*inline-size:100%;[^}]*padding-block:10px;[^}]*padding-inline:14px;[^}]*border-radius:/);
-  assert.match(styles, /\.builderRouteNightStatusIncomplete svg\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteStopNightCue\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteUsable svg\{[^}]*color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderPlanningNotice\[data-tone="warning"\][^{}]*\{[^}]*background: var\(--morrovia-warning-soft\)/);

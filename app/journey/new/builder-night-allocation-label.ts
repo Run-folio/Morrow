@@ -16,10 +16,24 @@ export function builderNightAllocationLabel(status: BuilderNightStatus): string 
   return language === "es" ? "Hay estancias sin noches" : "Stays need nights";
 }
 
+export function builderNightProgressLabel({ total, allocated, language }: BuilderNightStatus): string {
+  const remaining = total - allocated;
+  if (language === "es") {
+    const progress = `${allocated}/${total} ${total === 1 ? "noche planificada" : "noches planificadas"}.`;
+    if (remaining > 0) return `${progress} ${remaining === 1 ? "Queda 1 noche" : `Quedan ${remaining} noches`}.`;
+    if (remaining < 0) return `${progress} ${remaining === -1 ? "Sobra 1 noche" : `Sobran ${-remaining} noches`}.`;
+    return progress;
+  }
+  const progress = `${allocated}/${total} ${total === 1 ? "night" : "nights"} planned.`;
+  if (remaining > 0) return `${progress} ${remaining} ${remaining === 1 ? "night" : "nights"} remaining.`;
+  if (remaining < 0) return `${progress} ${-remaining} ${remaining === -1 ? "night" : "nights"} too many.`;
+  return progress;
+}
+
 export type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning"; balanceDelta?: number };
 
 /** Keep edit warnings distinct from the current total. Skip only the numerical
- * title when the route header is already reporting that same signed difference. */
+ * title when the route progress is already reporting that same signed difference. */
 export function builderNightEditWarning(feedback: NightEditFeedback | null, currentDelta: number, language: "en" | "es") {
   if (!feedback || feedback.tone !== "warning") return null;
   if (currentDelta !== 0 && feedback.balanceDelta === currentDelta && feedback.detail) return feedback.detail;
