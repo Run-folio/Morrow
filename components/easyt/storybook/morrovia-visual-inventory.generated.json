@@ -183,7 +183,7 @@
     "rawColors": [
       {
         "value": "#fff",
-        "count": 505,
+        "count": 504,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5300,7 +5300,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 655,
+        "count": 662,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5320,7 +5320,7 @@
       },
       {
         "value": "10px",
-        "count": 560,
+        "count": 564,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "14px",
-        "count": 360,
+        "count": 362,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5340,7 +5340,7 @@
       },
       {
         "value": "18px",
-        "count": 342,
+        "count": 339,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5370,7 +5370,7 @@
       },
       {
         "value": "4px",
-        "count": 297,
+        "count": 302,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5389,23 +5389,23 @@
         ]
       },
       {
-        "value": "20px",
-        "count": 268,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/admin/feedback/feedback.module.css",
-          "app/journey/contact/contact.module.css",
-          "app/journey/dashboard/dashboard.module.css"
-        ]
-      },
-      {
         "value": "6px",
-        "count": 268,
+        "count": 273,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
           "app/journey/home/home.module.css",
           "app/journey/home/immersive/immersive.module.css"
+        ]
+      },
+      {
+        "value": "20px",
+        "count": 267,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/admin/feedback/feedback.module.css",
+          "app/journey/contact/contact.module.css",
+          "app/journey/dashboard/dashboard.module.css"
         ]
       },
       {
@@ -5430,7 +5430,7 @@
       },
       {
         "value": "3px",
-        "count": 166,
+        "count": 167,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5450,7 +5450,7 @@
       },
       {
         "value": "2px",
-        "count": 159,
+        "count": 162,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5490,7 +5490,7 @@
       },
       {
         "value": "15px",
-        "count": 113,
+        "count": 112,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5550,7 +5550,7 @@
       },
       {
         "value": "1px",
-        "count": 41,
+        "count": 42,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/home/home.module.css",
@@ -6276,6 +6276,16 @@
         ]
       },
       {
+        "value": "inherit",
+        "count": 9,
+        "examples": [
+          "app/journey/admin/feedback/feedback.module.css",
+          "app/journey/home/immersive/immersive.module.css",
+          "components/easyt/morrovia-map-preview.module.css",
+          "components/easyt/trip-itinerary-workspace.module.css"
+        ]
+      },
+      {
         "value": "13px",
         "count": 7,
         "examples": [
@@ -6293,16 +6303,6 @@
           "app/journey/home/home-polish.module.css",
           "app/journey/home/home.module.css",
           "app/journey/home/product-shots.module.css"
-        ]
-      },
-      {
-        "value": "inherit",
-        "count": 7,
-        "examples": [
-          "app/journey/admin/feedback/feedback.module.css",
-          "app/journey/home/immersive/immersive.module.css",
-          "components/easyt/morrovia-map-preview.module.css",
-          "components/easyt/trip-itinerary-workspace.module.css"
         ]
       },
       {
@@ -7639,12 +7639,12 @@
       },
       {
         "value": "max-width: 720px",
-        "count": 28,
+        "count": 29,
         "examples": [
+          "app/journey/home/home-destination-editor.module.css",
           "app/journey/home/home-fidelity.module.css",
           "app/journey/journey.module.css",
-          "app/journey/new/new-trip.module.css",
-          "app/journey/new/trip-builder-top-controls.module.css"
+          "app/journey/new/new-trip.module.css"
         ]
       },
       {
@@ -7984,13 +7984,6 @@
         ]
       },
       {
-        "value": "min-width: 1161px",
-        "count": 1,
-        "examples": [
-          "app/journey/new/trip-builder.module.css"
-        ]
-      },
-      {
         "value": "min-width: 1181px",
         "count": 1,
         "examples": [
@@ -8057,7 +8050,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1875,
+      "raw-color": 1874,
       "large-accent-surface": 0,
       "raw-radius": 549,
       "raw-shadow": 167,
@@ -8132,7 +8125,7 @@
         },
         {
           "path": "app/journey/new/trip-builder.module.css",
-          "count": 280
+          "count": 279
         },
         {
           "path": "app/journey/new/new-trip.module.css",

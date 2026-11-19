@@ -1,5 +1,6 @@
 import type {Meta,StoryObj} from '@storybook/nextjs-vite';
 import {useState} from 'react';
+import {expect,userEvent,within} from 'storybook/test';
 import {TripBuilderTopControls} from './trip-builder-top-controls';
 import {MorroviaSaveStatus,MorroviaStatusBanner} from '@/components/easyt/morrovia-feedback';
 import {EasyTButton} from '@/components/easyt/easyt-controls';
@@ -8,13 +9,32 @@ import {requireReadableTripDocument} from '@/lib/easyt/trip-document';
 import {createBuilderInputDraft,updateBuilderInputDraft} from '@/lib/easyt/trip-builder-input-draft';
 import {prepareAcceptedBuilderEdit} from '@/lib/easyt/trip-builder-edit';
 import {builderDocumentFingerprint} from '@/lib/easyt/trip-builder-document-commit';
+import {acceptedGeographicPlace,stopGeographicPlace} from '@/lib/easyt/geographic-binding';
 const meta={title:'Morrovia/05 Product Patterns/Builder top controls',parameters:{layout:'padded'}} satisfies Meta;
 export default meta;type Story=StoryObj<typeof meta>;
-function Controls({es=false,type='return_to_start',provisional=false,area=false,raw=false,lookupFailed=false,datesSuggested=false,outcome,state='device'}:{es?:boolean;type?:'return_to_start'|'one_way'|'unknown_legacy';provisional?:boolean;area?:boolean;raw?:boolean;lookupFailed?:boolean;datesSuggested?:boolean;outcome?:'none'|'unavailable';state?:'device'|'saved'|'error'}){
- const [trip,setTrip]=useState(()=>{const t=requireReadableTripDocument(canonicalRouteFixture());t.brief.intent.route.tripType=type;t.brief.intent.route.journeyEnd=type==='return_to_start'?{mode:'same_as_start'}:{mode:'unknown'};t.brief.journeyEnd=t.brief.intent.route.journeyEnd;if(provisional)t.brief.intent.route.destinations[1]!.resolution='unavailable';if(area){const [a,b,c]=t.brief.intent.route.destinations;t.brief.intent.route.destinations=[{...a!,kind:'planning_area',sourceText:'Japan',selectedPlace:{name:'Japan',country:'Japan',canonicalPlaceId:'country:japan'},stopIds:[...a!.stopIds,...b!.stopIds]},c!]};return t});
+function confirmedFixture() {
+ const trip=requireReadableTripDocument(canonicalRouteFixture());
+ const route=trip.brief.intent.route;
+ const origin={name:'London',country:'United Kingdom',canonicalPlaceId:'place:london',providerId:'storybook:london',coordinates:[-.1276,51.5072] as [number,number]};
+ const acceptedOrigin=acceptedGeographicPlace(origin,{...origin,placeType:'city',routability:'direct_destination'},'endpoint');
+ if(!acceptedOrigin)throw new Error('The Builder story needs a verified origin.');
+ route.origin=acceptedOrigin;
+ trip.brief.origin=origin.name;trip.brief.originCountry=origin.country;trip.brief.originCoordinates=origin.coordinates;
+ for(const stop of trip.stops){
+  const place={...stopGeographicPlace(stop),providerId:`storybook:${stop.id}`};
+  const verified=acceptedGeographicPlace(place,{...place,placeType:'city',routability:'direct_destination'});
+  if(!verified)throw new Error(`The Builder story needs a verified stop: ${stop.name}.`);
+  stop.providerId=verified.providerId;stop.geographicBinding=verified.geographicBinding;
+  const intent=route.destinations.find(intent=>intent.stopIds.includes(stop.id));
+  if(intent)intent.selectedPlace=verified;
+ }
+ return trip;
+}
+function Controls({collapseWhenReady=false,es=false,type='return_to_start',provisional=false,area=false,raw=false,lookupFailed=false,datesSuggested=false,outcome,state='device'}:{collapseWhenReady?:boolean;es?:boolean;type?:'return_to_start'|'one_way'|'unknown_legacy';provisional?:boolean;area?:boolean;raw?:boolean;lookupFailed?:boolean;datesSuggested?:boolean;outcome?:'none'|'unavailable';state?:'device'|'saved'|'error'}){
+ const [trip,setTrip]=useState(()=>{const t=collapseWhenReady?confirmedFixture():requireReadableTripDocument(canonicalRouteFixture());t.brief.intent.route.tripType=type;t.brief.intent.route.journeyEnd=type==='return_to_start'?{mode:'same_as_start'}:{mode:'unknown'};t.brief.journeyEnd=t.brief.intent.route.journeyEnd;if(provisional)t.brief.intent.route.destinations[1]!.resolution='unavailable';if(area){const [a,b,c]=t.brief.intent.route.destinations;t.brief.intent.route.destinations=[{...a!,kind:'planning_area',sourceText:'Japan',selectedPlace:{name:'Japan',country:'Japan',canonicalPlaceId:'country:japan'},stopIds:[...a!.stopIds,...b!.stopIds]},c!]};return t});
  const [draft,setDraft]=useState(()=>{const d=createBuilderInputDraft(trip);return raw?updateBuilderInputDraft(d,trip,{kind:'origin'},'Hong Kong part'):d});
  const accept=(edit:Parameters<typeof prepareAcceptedBuilderEdit>[1])=>{const result=prepareAcceptedBuilderEdit(trip,edit,builderDocumentFingerprint(trip));if(result.ok)setTrip(result.trip)};
- return <main className="morrovia-editorial-page"><MorroviaSaveStatus state={state}/><TripBuilderTopControls trip={trip} draft={draft} language={es?'es':'en'}
+ return <main className="morrovia-editorial-page"><MorroviaSaveStatus state={state}/><TripBuilderTopControls trip={trip} draft={draft} language={es?'es':'en'} canCollapse={collapseWhenReady&&!lookupFailed&&!datesSuggested}
  onType={type=>accept({kind:'type',tripType:type})} onOriginInput={raw=>setDraft(updateBuilderInputDraft(draft,trip,{kind:'origin'},raw))} onOriginSelect={()=>{}} onOriginClear={()=>accept({kind:'origin',place:null})}
  onDateInput={(field,raw)=>setDraft(updateBuilderInputDraft(draft,trip,{kind:'date',field},raw))} onDates={(startDate,endDate)=>accept({kind:'dates',startDate,endDate})} onTravellers={travellers=>accept({kind:'travellers',travellers})} onBudget={budget=>accept({kind:'budget',budget})}
  onAdd={()=>{}} onEditIntent={()=>true} onRemoveIntent={()=>{}} onRemoveStop={()=>{}} onIntentInput={(intentId,raw)=>setDraft(updateBuilderInputDraft(draft,trip,{kind:'destination',intentId},raw))} onIntentSelect={()=>false}
@@ -35,3 +55,42 @@ export const SuggestedDates:Story={render:()=> <Controls datesSuggested/>};
 
 export const NoBetterOrder:Story={render:()=> <Controls outcome="none"/>};
 export const OptimizationUnavailable:Story={render:()=> <Controls outcome="unavailable"/>};
+
+/** Completed one-way journeys do not need a separate finish to use the summary. */
+export const CompletedCompact:Story={
+ render:()=> <Controls collapseWhenReady type="one_way" state="saved"/>,
+ play:async({canvasElement})=>{
+  const canvas=within(canvasElement);
+  const edit=canvas.getByRole('button',{name:'Edit trip details'});
+  await expect(edit).toHaveAttribute('aria-expanded','false');
+  await expect(canvas.getByText('London → Tokyo → Kyoto → Hiroshima')).toBeVisible();
+  await expect(canvas.queryByRole('combobox',{name:'Start from'})).toBeNull();
+ },
+};
+
+export const CompletedEdit390:Story={
+ globals:{viewport:{value:'morrovia390',isRotated:false}},
+ render:()=> <Controls collapseWhenReady type="one_way" state="saved"/>,
+ play:async({canvasElement})=>{
+  const canvas=within(canvasElement);
+  const open=()=>canvas.getByRole('button',{name:'Edit trip details'});
+  const close=()=>canvas.getByRole('button',{name:'Hide trip details'});
+  await userEvent.click(open());
+  await expect(canvas.getByRole('combobox',{name:'Start from'})).toHaveValue('London');
+  await expect(canvas.getByRole('button',{name:'Clear Start from'})).toBeVisible();
+  await expect(close()).toHaveAttribute('aria-expanded','true');
+  await userEvent.click(close());
+  await expect(open()).toHaveFocus();
+  await userEvent.click(open());
+ },
+};
+
+export const IncompleteRemainsExpanded:Story={
+ render:()=> <Controls collapseWhenReady type="one_way" provisional/>,
+ play:async({canvasElement})=>{
+  const canvas=within(canvasElement);
+  await expect(canvas.getByText('Some places need confirmation.')).toBeVisible();
+  await expect(canvas.getByRole('combobox',{name:'Start from'})).toBeVisible();
+  await expect(canvas.queryByRole('button',{name:'Edit trip details'})).toBeNull();
+ },
+};

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, within } from "storybook/test";
 import { tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { TripBuilderRouteWorkspace } from "./trip-builder-route-workspace";
 import styles from "./trip-builder.module.css";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { adaptedDiscoveryPlaces } from "@/lib/easyt/discovery-evidence-adapter";
-import { MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
+import { MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import matchedAfricaFixture from "@/tests/fixtures/main-staging-africa-control.json";
 import type { PlanningEvidenceState } from '@/lib/easyt/planning-evidence-state';
@@ -147,7 +148,8 @@ export const ReorderProtectedArrival: Story = { render: () => <ReorderAcceptance
 export const ReorderAt320: Story = { ...ReorderAccepted, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 
 
-function SemanticControlsStory() {
+function SemanticControlsStory({ showSavedInputConflict = false }: { showSavedInputConflict?: boolean }) {
+  const [hasSavedInput, setHasSavedInput] = useState(showSavedInputConflict);
   const [trip, setTrip] = useState<EasyTTrip>(() => ({
     ...tourTripFixture,
     stops: tourTripFixture.stops.map((stop, index) => ({ ...stop, nights: index === 0 ? 0 : stop.nights,
@@ -158,6 +160,10 @@ function SemanticControlsStory() {
   return <TripBuilderRouteWorkspace canonicalTrip={trip} previewStopIds={null} selectedStopId={selectedStopId}
     lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
     nightStatus={{ total: 7, allocated, complete: allocated === 7, language: "en" }}
+    reviewControl={hasSavedInput ? <MorroviaStatusBanner tone="warning"
+      title="Review your saved input"
+      detail="The trip changed while this input was being checked. It remains saved on this device."
+      actions={<EasyTButton variant="quiet" size="small" onClick={() => setHasSavedInput(false)}>Discard input</EasyTButton>} /> : undefined}
     onSelectStop={setSelectedStopId} onPreviewOrder={() => {}}
     onCommitOrder={(ids) => { setTrip(current => ({ ...current, stops: ids.map((id, order) => ({ ...current.stops.find(stop => stop.id === id)!, order })) })); return true; }}
     onEditNights={(id, nights) => setTrip(current => ({ ...current, stops: current.stops.map(stop => stop.id === id ? { ...stop, nights } : stop) }))}
@@ -165,3 +171,52 @@ function SemanticControlsStory() {
     onTransportChoiceChange={() => {}} />;
 }
 export const SemanticControls: Story = { render: () => <SemanticControlsStory /> };
+
+
+export const RoutineCautionAndSavedInputConflict: Story = {
+  render: () => <SemanticControlsStory showSavedInputConflict />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const workspace = canvas.getByRole("region", { name: /Your route/ });
+    const local = within(workspace);
+    await expect(local.getByText(/3 nights left to plan/)).toBeVisible();
+    await expect(local.getByText("No nights allocated")).toBeVisible();
+    await expect(local.getByRole("alert")).toHaveTextContent("Review your saved input");
+    await expect(local.getByRole("button", { name: "Discard input" })).toBeVisible();
+    await expect(local.getByRole("table")).toContainElement(local.getByText("No nights allocated"));
+  },
+};
+
+export const RouteActionMenuStates: Story = {
+  render: () => <ReorderAcceptanceStory />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const table = canvas.getByRole("table", { name: "Route stops" });
+    const controls = within(table);
+    for (const [name, earlier, later] of [["Cusco", false, true], ["Ollantaytambo", true, true], ["Arequipa", true, false]] as const) {
+      const summary = controls.getByLabelText(`Actions for ${name}`);
+      await userEvent.click(summary);
+      const menu = summary.closest("details")!;
+      const actions = within(menu);
+      await expect(menu).toHaveAttribute("open");
+      await expect(table.querySelectorAll("details[data-stop-actions][open]")).toHaveLength(1);
+      if (earlier) await expect(actions.getByRole("button", { name: "Move earlier" })).toBeVisible();
+      else await expect(actions.queryByRole("button", { name: "Move earlier" })).not.toBeInTheDocument();
+      if (later) await expect(actions.getByRole("button", { name: "Move later" })).toBeVisible();
+      else await expect(actions.queryByRole("button", { name: "Move later" })).not.toBeInTheDocument();
+      await expect(actions.getByRole("button", { name: "Remove stop" })).toBeVisible();
+    }
+    const lastSummary = controls.getByLabelText("Actions for Arequipa");
+    await userEvent.keyboard("{Escape}");
+    await expect(lastSummary).toHaveFocus();
+    await expect(table.querySelectorAll("details[data-stop-actions][open]")).toHaveLength(0);
+    await userEvent.click(controls.getByLabelText("Actions for Cusco"));
+    await userEvent.click(canvas.getByRole("heading", { name: /Your route/ }));
+    await expect(table.querySelectorAll("details[data-stop-actions][open]")).toHaveLength(0);
+  },
+};
+
+export const RouteActionMenuStatesMobile: Story = {
+  ...RouteActionMenuStates,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
