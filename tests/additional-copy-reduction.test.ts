@@ -41,7 +41,7 @@ test('All four compact Overview cards keep details inside their information trig
   const cards = prep().slice(prep().indexOf('export function TripPreparationCards'));
   assert.match(cards, /const infoDetail = isInsuranceAd\s*\? disclosure\s*:\s*isSponsoredLink.*: task.detail/);
   assert.match(cards, /<OverviewInfo label=\{isInsuranceAd[\s\S]*?\}>\{infoDetail\}<\/OverviewInfo>/);
-  assert.match(cards, /isSponsoredLink \? <small className=\{styles.overviewPrepAdLabel\}>\{language === "es" \? "Publicidad" : "Ad"\}/);
+  assert.doesNotMatch(cards, /overviewPrepAdLabel/);
   const article = cards.slice(cards.indexOf('return <article'));
   assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>|overviewPrepDisclosure/);
   assert.match(article, /action\?\.opensTravellerDetails[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);

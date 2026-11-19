@@ -272,7 +272,6 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
               : (language === "es" ? `Más información: ${task.title}` : `More information: ${task.title}`)}>{infoDetail}</OverviewInfo> : null}
           </div>
           <div className={`${styles.overviewPrepAction} ${isSponsoredLink ? styles.overviewPrepAdAction : ""}`}>
-            {isSponsoredLink ? <small className={styles.overviewPrepAdLabel}>{language === "es" ? "Publicidad" : "Ad"}</small> : null}
             {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
               : action?.href && action.affiliate && (action.provider === "world-nomads" || action.provider === "saily") ? <MorroviaAffiliateLink
                 action={{ provider: action.provider, category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity", href: action.href, cta: action.label, affiliate: true }}

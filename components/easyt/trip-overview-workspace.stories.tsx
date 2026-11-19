@@ -505,7 +505,7 @@ export const PracticalPrep: Story = {
       await expect(review).toBeVisible();
       const initialReview = review.getAttribute("aria-checked");
       if (kind === "insurance" || kind === "connectivity") {
-        await expect(controls.getByText("Ad", { exact: true })).toBeVisible();
+        await expect(controls.queryByText(/^(Ad|Publicidad)$/)).not.toBeInTheDocument();
         await expect(primary).toHaveAttribute("target", "_blank");
         await expect(primary).toHaveAttribute("rel", "sponsored noopener noreferrer");
       }
