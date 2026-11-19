@@ -213,8 +213,15 @@ function ActivityFace({ card, location, index, total, articleRef, titleRef, styl
   start: (event: PointerEvent<HTMLElement>) => void; move: (event: PointerEvent<HTMLElement>) => void;
   end: (event: PointerEvent<HTMLElement>, cancelled: boolean) => void; animationDone: () => void;
 }) {
-  const [hasPhoto, setHasPhoto] = useState(false);
-  const loaded = useCallback((visible: boolean) => setHasPhoto(visible), []);
+  const photoUrl = card.image || null;
+  const [displayedPhoto, setDisplayedPhoto] = useState<string | null>(null);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const hasPhoto = !!photoUrl && displayedPhoto === photoUrl && failedPhoto !== photoUrl;
+  // A warm data/provider URL may be complete before React observes its load
+  // event. Check at attachment; never let a passive reset overwrite success.
+  const checkCachedPhoto = useCallback((image: HTMLImageElement | null) => {
+    if (photoUrl && image?.complete && image.naturalWidth > 0) setDisplayedPhoto(photoUrl);
+  }, [photoUrl]);
   return <article ref={articleRef} className={styles.card} data-deck-card data-photo={hasPhoto} data-motion={motion} data-direction={direction} style={style}
     onPointerDown={start} onPointerMove={move} onPointerUp={event => end(event, false)}
     onPointerCancel={event => end(event, true)}
@@ -225,7 +232,10 @@ function ActivityFace({ card, location, index, total, articleRef, titleRef, styl
     }}
     onPointerLeave={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) end(event, true); }}
     onAnimationEnd={event => { if (event.target === event.currentTarget) animationDone(); }}>
-    <ResilientImage className={styles.photo} src={card.image} alt="" draggable={false} fallback={<span className={styles.noPhoto} aria-hidden="true"><MapPin /></span>} onDisplayState={loaded} />
+    {photoUrl && failedPhoto !== photoUrl ? <img key={photoUrl} ref={checkCachedPhoto} className={styles.photo} src={photoUrl}
+      alt="" draggable={false} style={hasPhoto ? undefined : { visibility: "hidden" }}
+      onLoad={() => setDisplayedPhoto(photoUrl)} onError={() => setFailedPhoto(photoUrl)} />
+      : <span className={styles.noPhoto} aria-hidden="true"><MapPin /></span>}
     <span className={styles.count} aria-hidden="true">{index} of {total}</span>
     <div className={styles.overlay}>
       <h3 className={styles.title} tabIndex={-1} ref={titleRef}>{card.title}</h3>

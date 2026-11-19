@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { useState } from "react";
 import { starterKyotoCards, starterKyotoFixture } from "./storybook/starter-kyoto.fixture";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
@@ -73,5 +73,14 @@ export const KyotoSwipeUndoMobile:Story={...KyotoSwipeMobile,play:async(ctx)=>{
   await expect(await content.findByRole("heading",{name:"Arashiyama Bamboo Grove"})).toBeVisible();
   await expect(content.getByText("0 stays shortlisted · 0 ideas saved")).toBeVisible();
   await userEvent.click(content.getByRole("button",{name:"Undo"}));
-  await expect(await content.findByRole("heading",{name:"Fushimi Inari Taisha"})).toBeVisible();
+  const restored = await content.findByRole("heading",{name:"Fushimi Inari Taisha"});
+  await expect(restored).toBeVisible();
+  // Undo remounts the first card with a warm photo. After the entry and
+  // passive effects settle, the visible asset must retain its scrim.
+  const card = restored.closest("[data-deck-card]");
+  await waitFor(async () => {
+    await expect(card).toHaveAttribute("data-motion","idle");
+    await expect(card).toHaveAttribute("data-photo","true");
+    await expect(card?.querySelector("img")).toBeVisible();
+  });
 }};
