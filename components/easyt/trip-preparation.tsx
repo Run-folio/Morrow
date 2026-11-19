@@ -250,11 +250,6 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
     {tasks.map((task) => {
       const Icon = iconByKind[task.id];
       const action = task.action;
-      const genericOverviewDetail = (kind: string, detail: string) =>
-        (kind === "insurance" && ["Consider whether you need cover for your trip.", "Valora si necesitas cobertura para tu viaje."].includes(detail))
-        || (kind === "connectivity" && ["Compare eSIM coverage, data amounts and validity.", "Compara cobertura eSIM, datos y periodos de validez."].includes(detail))
-        || (kind === "passport" && ["Add nationality and residence for more useful entry guidance.", "Añade nacionalidad y residencia para una orientación de entrada más útil."].includes(detail))
-        || (kind === "activity" && ["Check key activities, opening days and cancellation terms before booking.", "Consulta las actividades clave, los días de apertura y las condiciones de cancelación antes de reservar."].includes(detail));
       const reviewed = task.status === "sorted" || task.status === "not-needed";
       const legacyTask: TripPrepTask = { ...task, kind: task.id, category: "good", status: "to-do" };
       const disclosure = language === "es"
@@ -262,9 +257,11 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
           ? "Recibimos una comisión cuando obtienes una cotización de World Nomads mediante este enlace. No representamos a World Nomads. Esto no es una recomendación de contratar un seguro de viaje."
           : "Enlace de socio · Morrovia puede recibir una comisión sin coste adicional para ti. La reserva, el pago y las condiciones del proveedor se aplican en su sitio."
         : affiliateDisclosureForProvider(action?.provider ?? "");
-      const isInsuranceAd = task.id === "insurance" && Boolean(action?.affiliate && action.href);
-      const genericDetail = genericOverviewDetail(task.id, task.detail);
-      const infoDetail = isInsuranceAd ? disclosure : (task.id === "passport" || task.id === "activity") && genericDetail ? task.detail : null;
+      const isSponsoredLink = Boolean(action?.affiliate && action.href);
+      const isInsuranceAd = task.id === "insurance" && isSponsoredLink;
+      const infoDetail = isInsuranceAd
+        ? disclosure
+        : isSponsoredLink ? <><p>{task.detail}</p><p>{disclosure}</p></> : task.detail;
       return <article key={task.id} className={styles.overviewPrepCard} data-prep-kind={task.id} data-prep-state={task.status}>
         <span className={styles.overviewPrepIcon}><Icon aria-hidden="true" /></span>
         <div className={styles.overviewPrepCopy}>
@@ -274,10 +271,8 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
               ? (language === "es" ? "Información sobre este anuncio de seguro" : "About this insurance ad")
               : (language === "es" ? `Más información: ${task.title}` : `More information: ${task.title}`)}>{infoDetail}</OverviewInfo> : null}
           </div>
-          {genericDetail ? null : <p>{task.detail}</p>}
-          {action?.affiliate && !isInsuranceAd ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
-          <div className={`${styles.overviewPrepAction} ${isInsuranceAd ? styles.overviewPrepAdAction : ""}`}>
-            {isInsuranceAd ? <small className={styles.overviewPrepAdLabel}>{language === "es" ? "Publicidad" : "Ad"}</small> : null}
+          <div className={`${styles.overviewPrepAction} ${isSponsoredLink ? styles.overviewPrepAdAction : ""}`}>
+            {isSponsoredLink ? <small className={styles.overviewPrepAdLabel}>{language === "es" ? "Publicidad" : "Ad"}</small> : null}
             {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
               : action?.href && action.affiliate && (action.provider === "world-nomads" || action.provider === "saily") ? <MorroviaAffiliateLink
                 action={{ provider: action.provider, category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity", href: action.href, cta: action.label, affiliate: true }}

@@ -5300,7 +5300,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 663,
+        "count": 666,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5320,7 +5320,7 @@
       },
       {
         "value": "10px",
-        "count": 565,
+        "count": 566,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "14px",
-        "count": 363,
+        "count": 361,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5340,7 +5340,7 @@
       },
       {
         "value": "18px",
-        "count": 339,
+        "count": 338,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5360,7 +5360,7 @@
       },
       {
         "value": "16px",
-        "count": 324,
+        "count": 323,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5370,7 +5370,7 @@
       },
       {
         "value": "4px",
-        "count": 304,
+        "count": 303,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5380,7 +5380,7 @@
       },
       {
         "value": "9px",
-        "count": 289,
+        "count": 288,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5390,7 +5390,7 @@
       },
       {
         "value": "6px",
-        "count": 274,
+        "count": 276,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5420,7 +5420,7 @@
       },
       {
         "value": "5px",
-        "count": 237,
+        "count": 236,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5440,7 +5440,7 @@
       },
       {
         "value": "22px",
-        "count": 163,
+        "count": 162,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5450,7 +5450,7 @@
       },
       {
         "value": "2px",
-        "count": 162,
+        "count": 161,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7788,16 +7788,6 @@
         ]
       },
       {
-        "value": "max-width: 1100px",
-        "count": 6,
-        "examples": [
-          "app/journey/home/home.module.css",
-          "app/journey/stamped/stamped.module.css",
-          "components/easyt/morrovia-trip-capture.module.css",
-          "components/easyt/trip-preparation.module.css"
-        ]
-      },
-      {
         "value": "max-width: 420px",
         "count": 6,
         "examples": [
@@ -7816,6 +7806,16 @@
         ]
       },
       {
+        "value": "max-width: 1100px",
+        "count": 5,
+        "examples": [
+          "app/journey/home/home.module.css",
+          "app/journey/stamped/stamped.module.css",
+          "components/easyt/morrovia-trip-capture.module.css",
+          "components/easyt/trip-stay-workspace.module.css"
+        ]
+      },
+      {
         "value": "min-width: 1700px",
         "count": 5,
         "examples": [
@@ -7828,15 +7828,6 @@
         "count": 4,
         "examples": [
           "app/journey/home/home.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 380px",
-        "count": 3,
-        "examples": [
-          "components/easyt/easyt-product-tour-mobile.module.css",
-          "components/easyt/trip-preparation.module.css",
-          "components/easyt/trip-today-workspace.module.css"
         ]
       },
       {
@@ -7895,6 +7886,14 @@
         "examples": [
           "components/easyt/trip-explore-workspace.module.css",
           "components/easyt/trip-stay-workspace.module.css"
+        ]
+      },
+      {
+        "value": "max-width: 380px",
+        "count": 2,
+        "examples": [
+          "components/easyt/easyt-product-tour-mobile.module.css",
+          "components/easyt/trip-today-workspace.module.css"
         ]
       },
       {
