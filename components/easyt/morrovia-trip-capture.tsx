@@ -268,7 +268,7 @@ export function MorroviaTripCapture({
   const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
   const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.utilityCell} fieldPresentation="planner" mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} minToday typedDraft={homepageEntry.dateTypedDraft} onTypedDraftChange={homepageEntry.onDateTypedDraftChange} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
   const homepagePersonalize = homepageEntry?.travellersOnly ? <MorroviaQuantitySelector
-    className={styles.utilityCell} fieldPresentation="planner" label={text.travellers} locale={language}
+    className={styles.utilityCell} fieldPresentation="planner" plannerDropdown={Boolean(homepageEntry.planner)} label={text.travellers} locale={language}
     noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"}
     value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange}
   /> : homepageEntry ? <div className={styles.utilityCell}>

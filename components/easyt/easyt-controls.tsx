@@ -179,14 +179,14 @@ export const EasyTSelect = forwardRef<
     hint?: string;
     error?: string;
     optional?: boolean;
-    plannerPresentation?: { icon: LucideIcon; valueLabel: string };
+    plannerPresentation?: { icon: LucideIcon; valueLabel: string; valueOnly?: boolean };
   }
 >(function EasyTSelect({ className = "", fieldClassName, label, labelClassName, hint, error, optional, plannerPresentation, id: suppliedId, children, ...props }, ref) {
   const generatedId = useId();
   const id = suppliedId || generatedId;
   if (plannerPresentation) return <FieldShell className={fieldClassName} id={id} label={label} labelClassName="sr-only" hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
-    <span className={`${plannerFieldButtonClassName} ${plannerFieldStyles.selectField}`} data-disabled={props.disabled || undefined}>
-      <span aria-hidden="true"><MorroviaPlannerFieldContent label={label} value={plannerPresentation.valueLabel} icon={plannerPresentation.icon} /></span>
+    <span className={`${plannerFieldButtonClassName} ${plannerFieldStyles.selectField}`} data-morrovia-planner-trigger={plannerPresentation.valueOnly || undefined} data-value-only={plannerPresentation.valueOnly || undefined} data-disabled={props.disabled || undefined}>
+      <span aria-hidden="true"><MorroviaPlannerFieldContent label={plannerPresentation.valueOnly ? undefined : label} value={plannerPresentation.valueLabel} icon={plannerPresentation.icon} /></span>
       <select {...props} ref={ref} id={id} className={`${plannerFieldStyles.nativeSelect} ${className}`} aria-invalid={Boolean(error)} aria-describedby={error || hint ? `${id}-description` : undefined}>{children}</select>
     </span>
   </FieldShell>;

@@ -2,6 +2,7 @@
 
 import { Minus, Plus, UsersRound } from "lucide-react";
 import { useId, type KeyboardEvent } from "react";
+import { EasyTSelect } from "./easyt-controls";
 import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
 import styles from "./morrovia-quantity-selector.module.css";
 
@@ -9,6 +10,7 @@ export function MorroviaQuantitySelector({
   className = "",
   compact = false,
   fieldPresentation,
+  plannerDropdown = false,
   disabled = false,
   label,
   locale = "en",
@@ -24,6 +26,7 @@ export function MorroviaQuantitySelector({
   compact?: boolean;
   disabled?: boolean;
   fieldPresentation?: "planner";
+  plannerDropdown?: boolean;
   label: string;
   locale?: "en" | "es";
   max?: number;
@@ -61,6 +64,17 @@ export function MorroviaQuantitySelector({
       update(max);
     }
   };
+
+  if (fieldPresentation === "planner" && plannerDropdown) return <EasyTSelect
+    label={label} fieldClassName={className} disabled={disabled} value={boundedValue}
+    plannerPresentation={{ icon: UsersRound, valueLabel, valueOnly: true }}
+    onChange={(event) => update(Number(event.currentTarget.value))}
+  >
+    {Array.from({ length: max - min + 1 }, (_, index) => {
+      const quantity = min + index;
+      return <option key={quantity} value={quantity}>{quantity} {quantity === 1 ? noun : nounPlural}</option>;
+    })}
+  </EasyTSelect>;
 
   if (fieldPresentation === "planner") return <div className={`${plannerFieldButtonClassName} ${styles.planner} ${className}`} data-disabled={disabled || undefined}>
     <div className={styles.plannerStepper} role="group" aria-labelledby={labelId} onKeyDown={onKeyDown}>

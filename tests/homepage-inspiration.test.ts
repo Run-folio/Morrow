@@ -84,3 +84,14 @@ test("homepage titles shorten the route name without mutating its countries", ()
   assert.equal(homepageInspirationTitle({ ...route, key: "balkans-overland", countries }, false), "The Balkans");
   assert.deepEqual(countries, ["Croatia", "Montenegro", "Albania", "North Macedonia"]);
 });
+
+test("homepage caption shading is local and leaves room for photo attribution", () => {
+  const css = read("app/journey/home/immersive/immersive.module.css");
+  assert.doesNotMatch(css, /\.inspirationPhoto::after/);
+  assert.match(css, /\.inspirationTitle \{[^}]*width:max-content;[^}]*background:color-mix\(in srgb,var\(--morrovia-photo-ink\) 66%,transparent\)/);
+  assert.match(css, /\.inspirationCard:has\(\.inspirationCredit\) \.inspirationTitle \{ max-width:calc\(100% - 44px\)/);
+  const linear = (value: number) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  const paperLuminance = 0.2126 * linear(251 / 255) + 0.7152 * linear(250 / 255) + 0.0722;
+  const brightestBackdropLuminance = linear(1 - 0.66);
+  assert.ok((paperLuminance + 0.05) / (brightestBackdropLuminance + 0.05) > 6);
+});

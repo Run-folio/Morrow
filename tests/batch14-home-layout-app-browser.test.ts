@@ -21,7 +21,7 @@ test('homepage route fields share one rounded boundary and type toggles without 
  if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
  const group=origin.locator('xpath=ancestor::*[@data-home-route-fields]');assert.equal(await group.count(),1,'origin and destination have one connected owner');
  assert.equal(await group.getByRole('combobox',{name:'Destination',exact:true}).count(),1);
- for(const width of [1440,768,430,390]){
+ for(const width of [1440,768,720,640,430,390,320]){
   await page.setViewportSize({width,height:900});
   const appearance=await group.evaluate(el=>{const c=getComputedStyle(el);return {border:parseFloat(c.borderTopWidth),radius:parseFloat(c.borderTopLeftRadius),cols:c.gridTemplateColumns}});assert.ok(appearance.border>0&&appearance.radius>0);
   const inner=await origin.evaluate(el=>parseFloat(getComputedStyle(el).borderTopWidth));assert.equal(inner,0,'origin uses the shared boundary');
@@ -50,7 +50,14 @@ test('homepage route fields share one rounded boundary and type toggles without 
   await removeAdded.click();
   await group.getByRole('button',{name:'Edit Tokyo',exact:true}).click();
   await destination.fill('');
-  const route=await group.boundingBox();const type=await page.getByRole('group',{name:'Trip type',exact:true}).boundingBox();assert.ok(route&&type);assert.ok(type.y+type.height<=route.y+1&&route.y-type.y-type.height<=16,'type is attached above its fields');
+  const route=await group.boundingBox();const type=await page.getByRole('group',{name:'Trip type',exact:true}).boundingBox();assert.ok(route&&type);const gap=route.y-(type.y+type.height);assert.ok(gap>=-1&&gap<=16,'type is grouped above its fields');
+  if(width<=720){
+   assert.ok(Math.abs(type.x-route.x)<=1&&Math.abs(type.width-route.width)<=1,'mobile toggle fits the route fields edge to edge');
+   const buttons=await page.getByRole('group',{name:'Trip type',exact:true}).getByRole('button').all();
+   const [left,right]=await Promise.all(buttons.map(button=>button.boundingBox()));
+   assert.ok(left&&right&&Math.abs(left.width-right.width)<=1&&Math.min(left.height,right.height)>=44,'equal mobile segments retain tap targets');
+   assert.ok(Math.abs(gap-12)<=1,'mobile toggle and fields are separated by 12px');
+  }
  }
  await page.getByRole('button',{name:'Return',exact:true}).click();await page.getByRole('button',{name:'One way',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');
  await page.reload();await origin.waitFor();assert.equal(await page.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'true');await page.getByRole('button',{name:'Return',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);

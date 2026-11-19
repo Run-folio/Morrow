@@ -81,22 +81,19 @@ export const TravellersKeyboard: Story = {
   render: () => <ConnectedComposition />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const group = await canvas.findByRole("group", { name: "Travellers" });
-    const increase = within(group).getByRole("button", { name: /Increase travellers/ });
-    await waitFor(() => expect(increase).toBeEnabled());
-    const original = Number(group.querySelector("output")?.textContent?.match(/\d+/)?.[0] ?? "2");
-    increase.focus();
-    await userEvent.keyboard("{Home}");
-    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("1 traveller"));
-    await userEvent.keyboard("{ArrowUp}");
-    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("2 travellers"));
-    await userEvent.keyboard("{End}");
-    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent("12 travellers"));
-    within(group).getByRole("button", { name: /Decrease travellers/ }).focus();
-    await userEvent.keyboard("{Home}");
-    increase.focus();
-    for (let count = 1; count < original; count += 1) await userEvent.keyboard("{ArrowUp}");
-    await waitFor(() => expect(group.querySelector("output")).toHaveTextContent(`${original} ${original === 1 ? "traveller" : "travellers"}`));
+    const travellers = await canvas.findByRole<HTMLSelectElement>("combobox", { name: "Travellers" });
+    await waitFor(() => expect(travellers).toBeEnabled());
+    const original = travellers.value;
+    expect(within(travellers).getAllByRole("option")).toHaveLength(12);
+    travellers.focus();
+    await expect(travellers).toHaveFocus();
+    await userEvent.selectOptions(travellers, "1");
+    await expect(travellers).toHaveDisplayValue("1 traveller");
+    await userEvent.selectOptions(travellers, "12");
+    await expect(travellers).toHaveDisplayValue("12 travellers");
+    await userEvent.selectOptions(travellers, original);
+    await userEvent.tab();
+    await expect(canvas.getByRole("button", { name: "Plan my trip" })).toHaveFocus();
   },
 };
 

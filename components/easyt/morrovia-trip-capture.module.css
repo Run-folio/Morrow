@@ -303,13 +303,12 @@
 .plannerUtilities { overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
 /* One shared frame. Labels remain in the accessibility tree and keep owning their controls. */
 .plannerUtilities > .utilityCell { min-height: 54px; }
-.plannerUtilities > .utilityCell + .utilityCell { padding: 4px 6px 4px 12px; border: 0; border-left: 1px solid var(--morrovia-line); border-radius: 0; }
+.plannerUtilities > .utilityCell + .utilityCell { padding: 0; border: 0; border-left: 1px solid var(--morrovia-line); border-radius: 0; }
 .plannerUtilities .utilityCell :global([data-morrovia-planner-trigger]) { min-height: 54px; padding-block: 4px; }
 .plannerUtilities :global([data-morrovia-field-label]) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .plannerUtilities :global(span:has(> [data-morrovia-field-icon])) { grid-template-rows: auto; align-self: center; }
 .plannerUtilities :global([data-morrovia-field-secondary]),
 .plannerUtilities :global([data-morrovia-field-secondary] + svg) { grid-row: 1; }
-.plannerUtilities :global([role="group"] > span:has(> [data-morrovia-field-icon])) { grid-template-columns: 20px minmax(0, 1fr); }
 .plannerBottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "controls action" "personalize personalize"; gap: 12px; }
 .plannerUtilities { grid-area: controls; }
 .plannerBottom .personalizePanel { grid-area: personalize; }
@@ -319,14 +318,12 @@
   .plannerHeader { align-items: flex-start; flex-direction: column; }
   .plannerBottom { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "personalize" "action"; }
   .plannerCard .personalizePanel { grid-template-columns: minmax(0, 1fr); }
-  .plannerType > div { width: 100%; }
+  .plannerType { align-self: stretch; }
+  .plannerType > div, .plannerType :global([role="group"]) { width: 100%; }
 }
 @media (max-width: 430px) {
-  .plannerUtilities { grid-template-columns: minmax(0, 1fr) minmax(178px, 1.3fr); }
-  .plannerUtilities > .utilityCell + .utilityCell,
-  .plannerUtilities .utilityCell :global([data-morrovia-planner-trigger]) { padding-inline: 5px; }
+  .plannerUtilities .utilityCell :global([data-morrovia-planner-trigger]) { padding-inline: 8px; }
   .plannerUtilities :global(span:has(> [data-morrovia-field-icon])) { grid-template-columns: 16px minmax(0, 1fr) 12px; column-gap: 4px; }
-  .plannerUtilities :global([role="group"] > span:has(> [data-morrovia-field-icon])) { grid-template-columns: 16px minmax(0, 1fr); }
   .plannerUtilities :global([data-morrovia-field-icon]) { width: 16px; height: 16px; }
   .plannerUtilities :global([data-morrovia-field-secondary]) { font-size: 12px; }
 }
@@ -336,7 +333,7 @@
 /* Compact Home composition; shared field and action behavior stays with its owner. */
 @media (max-width: 700px) {
   .plannerCard { gap: 0; }
-  .plannerHeader { gap: 8px; padding: 0; }
+  .plannerHeader { gap: 8px; padding: 0 0 12px; }
   .plannerRoute :global([data-homepage-origin]) { padding-block: 4px; }
   .plannerRoute :global([role="tabpanel"]) { padding-block: 10px; }
   .plannerBottom { padding: 8px 0 0; gap: 10px; }

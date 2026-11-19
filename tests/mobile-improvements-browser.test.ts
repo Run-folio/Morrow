@@ -13,18 +13,22 @@ test('Home direct travellers preserve budget and dates without a summary or budg
  const snapshot={...emptyHomepageInput('owner-a'),budget:{state:'selected' as const,value:'high' as const},dates:{state:'selected' as const,value:{start:'2030-06-01',end:'2030-06-12'}},travellers:{state:'selected' as const,value:2}};
  const h=await renderBuilder({path:'/',ownerId:'owner-a',styled:true,offlineOnly:true,storedInput:{snapshot}});
  try{const p=h.page;await p.setViewportSize({width:390,height:844});await p.getByRole('tab',{name:'Plan',exact:true}).waitFor();
-  assert.equal(await p.getByRole('group',{name:'Travellers',exact:true}).count(),1,'direct traveller group is present');
+  const travellers=p.getByRole('combobox',{name:'Travellers',exact:true});
+  assert.equal(await travellers.count(),1,'direct traveller select is present');
+  assert.equal(await travellers.inputValue(),'2');
   assert.equal(await p.getByRole('region',{name:'Destinations',exact:true}).count(),1);
   assert.equal(await p.getByRole('button',{name:'Budget and travellers',exact:true}).count(),0);
   assert.equal(await p.locator('[class*="plannerSummary"]').count(),0);
-  await p.getByRole('button',{name:'Increase travellers; 2 travellers currently',exact:true}).click();
+  await travellers.selectOption('3');
   await p.getByRole('tab',{name:'Describe',exact:true}).click();await p.getByRole('tab',{name:'Plan',exact:true}).click();
   await settle(p);const stored=await p.evaluate((key:string)=>JSON.parse(localStorage.getItem(key)!),homepageInputStorageKey('owner-a'));
   assert.deepEqual(stored.snapshot.budget,snapshot.budget);assert.deepEqual(stored.snapshot.dates,snapshot.dates);assert.equal(stored.snapshot.travellers.value,3);
-  await p.getByRole('button',{name:'Increase travellers; 3 travellers currently',exact:true}).press('End');
-  assert.equal(await p.getByRole('button',{name:'Increase travellers; 12 travellers currently',exact:true}).isDisabled(),true);
-  await p.getByRole('button',{name:'Decrease travellers; 12 travellers currently',exact:true}).press('Home');
-  assert.equal(await p.getByRole('button',{name:'Decrease travellers; 1 traveller currently',exact:true}).isDisabled(),true);
+  assert.equal(await travellers.inputValue(),'3');
+  assert.deepEqual(await travellers.getByRole('option').evaluateAll((options:HTMLOptionElement[])=>options.map(option=>option.value)),Array.from({length:12},(_,index)=>String(index+1)));
+  await travellers.selectOption('12');
+  assert.equal(await travellers.inputValue(),'12');
+  await travellers.selectOption('1');
+  assert.equal(await travellers.inputValue(),'1');
   await p.screenshot({path:`${evidence}/home-390.png`});assert.deepEqual(h.errors,[]);
  }finally{await h.close();}
 });
@@ -74,11 +78,11 @@ for(const budget of [{state:'cleared' as const},{state:'untouched' as const}]) t
  const snapshot={...emptyHomepageInput('owner-a'),budget,travellers:{state:'selected' as const,value:2}};
  const h=await renderBuilder({path:'/',ownerId:'owner-a',styled:true,offlineOnly:true,storedInput:{snapshot}});
  try{let p=h.page;await p.setViewportSize({width:320,height:844});await p.getByRole('region',{name:'Destinations',exact:true}).waitFor();
-  const increase=p.getByRole('button',{name:'Increase travellers; 2 travellers currently',exact:true});assert.ok((await increase.boundingBox())!.width>=43.9);await increase.click();await settle(p);
+  const travellers=p.getByRole('combobox',{name:'Travellers',exact:true});const box=await travellers.boundingBox();assert.ok(box && box.width>=43.9 && box.height>=43.9);await travellers.selectOption('3');await settle(p);
   // The harness reseeds its initial snapshot on every navigation of its original page.
   // A fresh same-context page exercises a real persisted reload without that fixture reset.
   const url=p.url();p=await p.context().newPage();await p.addInitScript(()=>{(window as any).__BUILDER_TEST_OWNER__='owner-a'});await p.setViewportSize({width:320,height:844});await p.goto(url);
-  await p.getByRole('button',{name:'Increase travellers; 3 travellers currently',exact:true}).waitFor();
+  await p.getByRole('combobox',{name:'Travellers',exact:true}).and(p.locator('select:has(option[value="3"]:checked)')).waitFor();
   const stored=await p.evaluate((key:string)=>JSON.parse(localStorage.getItem(key)!),homepageInputStorageKey('owner-a'));
   assert.deepEqual(stored.snapshot.budget,budget);assert.equal(stored.snapshot.travellers.value,3);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(h.errors,[]);
  }finally{await h.close();}
