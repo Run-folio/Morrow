@@ -677,18 +677,18 @@ browserTest("legacy populated links focus summary or timing once while the whole
 });
 
 
-test("routine Builder warnings use violet hierarchy without changing actionable error states", () => {
+test("routine Builder warnings use a pale semantic surface with neutral text without changing actionable error states", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
-  assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*background:var\(--morrovia-lilac\)/);
+  assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*background:var\(--morrovia-warning-soft\)/);
   assert.match(styles, /\.builderRouteNightStatusIncomplete svg\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteStopNightCue\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteUsable svg\{[^}]*color:var\(--morrovia-ink-soft\)/);
-  assert.match(styles, /\.builderPlanningNotice\[data-tone="warning"\][^{}]*\{[^}]*background: var\(--morrovia-lilac\)/);
+  assert.match(styles, /\.builderPlanningNotice\[data-tone="warning"\][^{}]*\{[^}]*background: var\(--morrovia-warning-soft\)/);
   assert.equal((builder.match(/className=\{styles\.builderPlanningNotice\}/g) ?? []).length, 1, "saved-entry and blocked-removal banners keep their shared treatment");
   assert.match(styles, /\.inlinePlaceResolution\{[^}]*color:var\(--morrovia-ink-soft\)/);
-  assert.match(styles, /\.timingWarning:not\(\.timingWarningBlocking\) \{[^}]*background: var\(--morrovia-lilac\)/);
+  assert.match(styles, /\.timingWarning:not\(\.timingWarningBlocking\) \{[^}]*background: var\(--morrovia-warning-soft\)/);
   assert.match(styles, /\.timingWarningBlocking \{ border-color: var\(--signal\)/);
   assert.match(workspace, /<AlertTriangle aria-label="Compressed stop" \/>/);
 });
