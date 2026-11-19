@@ -91,6 +91,7 @@
 .overviewPrepIcon svg { width: 19px; height: 19px; }
 .overviewPrepCopy { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; }
 .overviewPrepHeading { display: flex; align-items: center; gap: 2px; width: 100%; }
+.overviewPrepHeading.overviewPrepHeading > button { margin: 0; }
 .overviewPrepCopy h3 { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--morrovia-ink); font: 600 20px/1.15 var(--morrovia-display); letter-spacing: -.035em; }
 .overviewPrepCopy p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .overviewPrepAction { width: 100%; }

@@ -479,21 +479,40 @@ export const AllPreparationIncomplete: Story = {
 export const InsuranceQuoteHandoff: Story = {};
 
 export const PracticalPrep: Story = {
+  args: { initialPrepActions: [...prepActions, {
+    id: "storybook-insurance", category: "travel_insurance", provider: "world-nomads",
+    title: "Travel insurance", detail: "Compare insurance", cta: "Get a travel insurance quote",
+    href: "https://www.worldnomads.com/", tripId: baseTrip.id, affiliate: true, livePrice: false,
+  }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("heading", { name: /passport.*traveller/i })).toBeVisible();
-    await expect(canvas.getByRole("heading", { name: "Activities" })).toBeVisible();
+    await canvas.findByRole("heading", { name: "Practical prep" });
     const surface = within(canvasElement.ownerDocument.body);
-    const passportInfo = canvas.getByRole("button", { name: /^More information: Passport/i });
-    await userEvent.hover(passportInfo);
-    await expect(await surface.findByRole("tooltip")).toHaveTextContent("Add nationality and residence for more useful entry guidance.");
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
-    const activityInfo = canvas.getByRole("button", { name: "More information: Activities" });
-    await userEvent.hover(activityInfo);
-    await expect(await surface.findByRole("tooltip")).toHaveTextContent("Check key activities, opening days and cancellation terms before booking.");
-    await userEvent.unhover(activityInfo);
-    await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
+    for (const [kind, infoLabel, guide, action] of [
+      ["passport", /^More information: Passport/i, "Add nationality and residence for more useful entry guidance.", /Review traveller details/i],
+      ["insurance", /^About this insurance ad$/, "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.", /Get a travel insurance quote/i],
+      ["connectivity", /^More information: Connectivity$/, "Compare eSIM coverage, data amounts and validity.", /Check eSIM coverage/i],
+      ["activity", /^More information: Activities$/, "Check key activities, opening days and cancellation terms before booking.", /Browse activities/i],
+    ] as const) {
+      const card = canvasElement.querySelector<HTMLElement>(`[data-prep-kind="${kind}"]`)!;
+      const controls = within(card);
+      const info = controls.getByRole("button", { name: infoLabel });
+      await expect(info).toHaveAttribute("aria-expanded", "false");
+      await expect(controls.queryByText(guide, { exact: true })).not.toBeInTheDocument();
+      await expect(controls.getByRole(kind === "passport" ? "button" : "link", { name: action })).toBeVisible();
+      await expect(controls.getByRole("checkbox")).toBeVisible();
+      if (kind === "insurance" || kind === "connectivity") await expect(controls.getByText("Ad", { exact: true })).toBeVisible();
+      await userEvent.hover(info);
+      const tooltip = await surface.findByRole("tooltip");
+      await expect(tooltip).toHaveTextContent(guide);
+      if (kind === "connectivity") {
+        await expect(tooltip).toHaveTextContent("Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.");
+      }
+      await userEvent.keyboard("{Escape}");
+      await userEvent.unhover(info);
+      await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
+      await expect(info).toHaveAttribute("aria-expanded", "false");
+    }
   },
 };
 
