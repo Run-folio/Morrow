@@ -22,7 +22,8 @@ export function MorroviaTravellerListbox({className,disabled,label,value,min,max
   useEffect(()=>{if(disabled)setOpen(false);},[disabled]);
   useLayoutEffect(()=>{
     if(!open)return;
-    const place=()=>{
+    const place=(event?:Event)=>{
+      if(event?.target instanceof Node && panel.current?.contains(event.target))return;
       const r=trigger.current?.getBoundingClientRect();if(!r)return;
       const width=Math.min(r.width,window.innerWidth-24), below=window.innerHeight-r.bottom-12, above=r.top-12;
       const down=below>=Math.min(320,above), height=Math.min(320,Math.max(88,down?below:above));
@@ -41,7 +42,7 @@ export function MorroviaTravellerListbox({className,disabled,label,value,min,max
     const top=bounds.top+list.clientTop, bottom=top+list.clientHeight;
     if(row.top<top)list.scrollTop-=top-row.top;
     else if(row.bottom>bottom)list.scrollTop+=row.bottom-bottom;
-  },[active,open,position]);
+  },[active,open,position.maxHeight]);
   const key=(event:KeyboardEvent<HTMLButtonElement>)=>{
     if(event.key==='Tab'){setOpen(false);return;}
     if(event.key==='Escape'){if(open){event.preventDefault();setOpen(false);}return;}

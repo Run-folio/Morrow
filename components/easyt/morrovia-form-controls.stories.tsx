@@ -177,6 +177,11 @@ export const HomepageTravellerListbox: Story = {
     const scrollY=canvasElement.ownerDocument.defaultView!.scrollY;
     await userEvent.keyboard('{End}');
     await expect(canvasElement.ownerDocument.defaultView!.scrollY).toBe(scrollY);
+    const list=page.getByRole('listbox',{name:'Travellers'});
+    list.scrollTop=0;
+    list.dispatchEvent(new Event('scroll'));
+    await new Promise(resolve=>setTimeout(resolve,80));
+    await expect(list.scrollTop).toBe(0);
     await userEvent.keyboard('{Enter}');await expect(trigger).toHaveTextContent('12 travellers');
     await expect(trigger).toHaveFocus();
     await userEvent.click(trigger);await userEvent.keyboard('{Home}{ArrowDown}{Enter}');
