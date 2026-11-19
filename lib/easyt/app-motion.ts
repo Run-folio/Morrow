@@ -11,3 +11,9 @@ export function createRevealGate() {
 export function canSpring({reduced = false, disabled = false, excluded = false}: {reduced?: boolean; disabled?: boolean; excluded?: boolean}) {
   return !reduced && !disabled && !excluded;
 }
+
+/** Cancelled effect setup does not consume the opening (React StrictMode safe). */
+export function scheduleReveal(gate: (open: boolean, ready: boolean) => boolean, play: () => void, request: (callback: FrameRequestCallback) => number, cancel: (id: number) => void) {
+  const frame = request(() => { if (gate(true,true)) play(); });
+  return () => cancel(frame);
+}

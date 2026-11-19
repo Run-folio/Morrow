@@ -1,7 +1,7 @@
 "use client";
 
 import { Children, forwardRef, useEffect, useRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type RefObject } from 'react';
-import { canSpring, createRevealGate } from '@/lib/easyt/app-motion';
+import { canSpring, createRevealGate, scheduleReveal } from '@/lib/easyt/app-motion';
 import Link from "next/link";
 
 /** A non-layout sentinel animates existing children without reparenting controls.
@@ -12,18 +12,25 @@ export function EntryReveal({active = true, ready = true, selector}: {active?: b
   const ref = useRef<HTMLSpanElement>(null);
   const gate = useRef(createRevealGate());
   useEffect(() => {
-    const shouldReveal = gate.current(active,ready);
     const parent = ref.current?.parentElement;
-    if (!parent || !shouldReveal || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!active) gate.current(false,ready);
+    if (!parent || !active || !ready) return;
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const targets = selector ? Array.from(parent.querySelectorAll<HTMLElement>(selector)) : Array.from(parent.children).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== ref.current && !node.hidden);
-    const animations = targets.filter(node => typeof node.animate === 'function').map((node,index) => node.animate(
-      [{opacity:.55,translate:'0 5px'},{opacity:1,translate:'0 0'}],
-      {duration:420,delay:Math.min(index,4)*45,easing:'cubic-bezier(.2,.7,.2,1)',fill:'backwards'}));
-    const finish = () => animations.forEach(animation => animation.cancel());
+    let animations: Animation[] = [];
+    // Consume the opening only on a real frame, not StrictMode's transient setup.
+    const cancelFrame = scheduleReveal(gate.current, () => {
+      if (preference.matches) return;
+      const targets = selector ? Array.from(parent.querySelectorAll<HTMLElement>(selector)) : Array.from(parent.children).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== ref.current && !node.hidden);
+      animations = targets.filter(node => typeof node.animate === 'function').map((node,index) => node.animate(
+        [{opacity:.55,translate:'0 5px'},{opacity:1,translate:'0 0'}],
+        {duration:420,delay:Math.min(index,4)*45,easing:'cubic-bezier(.2,.7,.2,1)',fill:'backwards'}));
+    }, requestAnimationFrame, cancelAnimationFrame);
+    const cancel = () => {cancelFrame();animations.forEach(animation => animation.cancel());};
+    // Real input wins even before the first frame; it must not replay on refinement.
+    const finish = () => {gate.current(true,true);cancel();};
     parent.addEventListener('keydown',finish); parent.addEventListener('pointerdown',finish);
     preference.addEventListener('change',finish);
-    return () => {finish();parent.removeEventListener('keydown',finish);parent.removeEventListener('pointerdown',finish);preference.removeEventListener('change',finish);};
+    return () => {cancel();parent.removeEventListener('keydown',finish);parent.removeEventListener('pointerdown',finish);preference.removeEventListener('change',finish);};
   }, [active,ready,selector]);
   return <span hidden ref={ref} data-entry-reveal aria-hidden="true" />;
 }
