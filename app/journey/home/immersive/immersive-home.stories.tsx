@@ -68,7 +68,7 @@ export const FullComposition: Story = {
 export const DescribeMode: Story = {
   render: () => <ConnectedComposition />,
   play: async ({ canvasElement }) => {
-    const tab = await within(canvasElement).findByRole("tab", { name: "Describe", exact: true });
+    const tab = await within(canvasElement).findByRole("tab", { name: /^Describe$/ });
     await waitFor(() => expect(tab).toBeEnabled());
     await userEvent.click(tab);
     await waitFor(() => expect(canvasElement.querySelector("textarea")).toBeVisible());
@@ -108,8 +108,8 @@ export const Mobile390: Story = {
     const stops = canvasElement.querySelector<HTMLElement>("[data-home-route-fields]");
     if (!stops) throw new Error("Route fields must be present");
     const controls = within(toggle);
-    const returnButton = controls.getByRole("button", { name: "Return", exact: true });
-    const oneWay = controls.getByRole("button", { name: "One way", exact: true });
+    const returnButton = controls.getByRole("button", { name: /^Return$/ });
+    const oneWay = controls.getByRole("button", { name: /^One way$/ });
     if (window.matchMedia("(max-width: 700px)").matches) {
       const group = toggle.getBoundingClientRect(), fields = stops.getBoundingClientRect();
       await expect(Math.abs(group.width - fields.width)).toBeLessThanOrEqual(2);

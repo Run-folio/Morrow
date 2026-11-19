@@ -109,9 +109,19 @@ export function TripBuilderRouteWorkspace({
       const open = openMenu();
       if (open && event.target instanceof Node && !open.contains(event.target)) open.open = false;
     };
+    const escapeOpen = (event: KeyboardEvent) => {
+      const open = openMenu();
+      if (event.key !== "Escape" || event.defaultPrevented || !open) return;
+      if (!(event.target instanceof Node) || (!root.contains(event.target) && event.target !== document.body)) return;
+      event.preventDefault();
+      open.open = false;
+      open.querySelector("summary")?.focus();
+    };
+    document.addEventListener("keydown", escapeOpen);
     document.addEventListener("pointerdown", dismissOutside, true);
     document.addEventListener("focusin", dismissOutside, true);
     return () => {
+      document.removeEventListener("keydown", escapeOpen);
       document.removeEventListener("pointerdown", dismissOutside, true);
       document.removeEventListener("focusin", dismissOutside, true);
       const open = openMenu();
@@ -265,7 +275,7 @@ export function TripBuilderRouteWorkspace({
                 {!needsNights && usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
               </div>
               <div className={styles.builderRouteActionsCell} role="cell" aria-colindex={6}>
-                <details data-stop-actions name={menuGroup} className={styles.builderRouteActions} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onClick={(event) => event.stopPropagation()}>
+                <details data-stop-actions name={menuGroup} className={styles.builderRouteActions} onClick={(event) => event.stopPropagation()}>
                   <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
                   <div>
                     <dl className={styles.builderStopFacts}><dt>Country</dt><dd>{stop.country || "To confirm"}</dd><dt>Usable time</dt><dd>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</dd></dl>

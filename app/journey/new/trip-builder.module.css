@@ -636,7 +636,8 @@
 .builderRouteHeader{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px;padding:8px 14px;border-bottom:1px solid var(--line)}
 .builderRouteHeader>div{display:grid;gap:4px;min-width:0}.builderRouteHeader p,.builderRouteHeader h2,.builderRouteHeader span{margin:0}.builderRouteHeader p{color:var(--signal);font:800 9px var(--morrovia-meta);letter-spacing:.12em}.builderRouteHeader h2{color:var(--ink);font-family:var(--morrovia-display);font-size:clamp(28px,2.6vw,38px);font-weight:600;line-height:1;letter-spacing:-.04em}.builderRouteHeader span{color:var(--muted);font-size:12px;line-height:1.4}
 .builderRouteNightStatus{display:flex!important;flex-wrap:wrap;align-items:center;gap:7px}.builderRouteNightStatus svg{width:16px;height:16px;color:var(--morrovia-success)}.builderRouteNightStatus strong,.builderRouteNightStatus b{color:var(--ink);font-weight:650}
-.builderRouteNightStatusIncomplete{padding:2px 7px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-warning-soft)}
+.builderRouteNightStatusIncomplete{box-sizing:border-box;flex:0 0 100%;inline-size:100%;padding-block:10px;padding-inline:14px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-warning-soft)}
+.builderRouteHeader:has(.builderRouteNightStatusIncomplete) .builderReviewActions{margin-inline-start:auto}
 .builderRouteNightStatusIncomplete svg{color:var(--morrovia-ink-soft)}
 .builderRouteHeader .builderRouteNightDetail{font:var(--morrovia-type-fine-print);letter-spacing:0;color:var(--morrovia-ink-soft);flex-basis:100%}
 .builderRouteGrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);grid-template-areas:"rows map";gap:14px;align-items:start}
@@ -659,7 +660,7 @@
 .builderRouteNights button{display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--morrovia-paper);color:var(--ink);font-size:15px;cursor:pointer}.builderRouteNights button:disabled{cursor:not-allowed;opacity:.35}.builderRouteNights strong{text-align:center;font-size:13px}.builderRouteUsable{display:flex;align-items:center;gap:4px;color:var(--ink);font-size:11px}.builderRouteUsable svg{width:14px;height:14px;color:var(--morrovia-ink-soft)}
 .builderRouteActionsCell{position:absolute;top:14px;right:8px}.builderRouteActions{position:relative}.builderRouteRow:has(.builderRouteActions[open]){z-index:2}
 /* morrovia-ui-audit-allow-next-line raw-radius -- The icon-only route-row disclosure intentionally retains the canonical circular overflow silhouette. */
-.builderRouteActions summary{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;color:var(--morrovia-action);cursor:pointer;list-style:none}.builderRouteActions summary::-webkit-details-marker{display:none}.builderRouteActions summary:hover{background:var(--morrovia-disabled)}.builderRouteActions summary svg{width:17px;height:17px}.builderRouteActions>div{position:absolute;z-index:9;top:34px;right:0;display:grid;gap:4px;min-width:150px;padding:10px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);box-shadow:var(--morrovia-shadow-overlay)}.builderRouteActions strong{padding:2px 5px;color:var(--muted);font:800 9px var(--morrovia-meta);letter-spacing:.08em}.builderRouteActions button{min-height:34px;padding:0 9px;border:0;border-radius:var(--morrovia-control-radius);background:transparent;color:var(--ink);font:650 11px var(--morrovia-ui);text-align:left;cursor:pointer}.builderRouteActions button:hover:not(:disabled){background:var(--morrovia-disabled)}.builderRouteActions button:disabled{opacity:.4;cursor:not-allowed}
+.builderRouteActions summary{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;color:var(--morrovia-action);cursor:pointer;list-style:none}.builderRouteActions summary::-webkit-details-marker{display:none}.builderRouteActions summary:hover{background:var(--morrovia-disabled)}.builderRouteActions summary svg{width:17px;height:17px}.builderRouteActions>div{position:absolute;z-index:9;inset-block-start:0;inset-inline-end:calc(100% + 6px);display:grid;gap:4px;min-width:150px;padding:10px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);box-shadow:var(--morrovia-shadow-overlay)}.builderRouteActions strong{padding:2px 5px;color:var(--muted);font:800 9px var(--morrovia-meta);letter-spacing:.08em}.builderRouteActions button{min-height:34px;padding:0 9px;border:0;border-radius:var(--morrovia-control-radius);background:transparent;color:var(--ink);font:650 11px var(--morrovia-ui);text-align:left;cursor:pointer}.builderRouteActions button:hover:not(:disabled){background:var(--morrovia-disabled)}.builderRouteActions button:disabled{opacity:.4;cursor:not-allowed}
 .builderRouteMap{grid-area:map;position:sticky;top:var(--morrovia-sticky-content-offset);height:clamp(360px,43vw,540px);min-height:360px;overflow:hidden;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-disabled)}
 .builderRouteMapToggle{display:none}.builderRouteMapBody{height:100%;min-height:100%}.builderRouteMapBody[hidden]{display:none}.builderRouteMapBody>div{height:100%;min-height:100%}
 .builderRouteMapFallback{display:grid;place-items:center;align-content:center;gap:8px;height:100%;min-height:100%;padding:24px;background:var(--morrovia-paper);color:var(--muted);text-align:center}.builderRouteMapFallback svg{width:24px;height:24px;color:var(--morrovia-action)}.builderRouteMapFallback strong{color:var(--ink);font-family:var(--morrovia-display);font-size:20px}.builderRouteMapFallback span{max-width:260px;font-size:12px;line-height:1.45}
@@ -1137,7 +1138,7 @@
 .routeInsights,
 .timingWarning { overflow: hidden; border: 1px solid var(--line); border-radius: var(--morrovia-control-radius); background: #fff; }
 .timingWarning { border-color: var(--morrovia-warning-line, #eccb96); background: var(--morrovia-warning-soft); }
-.timingWarningBlocking { border-color: var(--signal); }
+.timingWarningBlocking { border-color: var(--morrovia-line); background: var(--morrovia-warning-soft); }
 .timingWarning:focus { outline: 3px solid color-mix(in srgb, var(--signal) 24%, transparent); outline-offset: 3px; }
 .disclosureHead { display: grid; grid-template-columns: 24px minmax(0, 1fr) 20px; align-items: center; gap: 11px; width: 100%; min-height: 62px; padding: 11px 18px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .disclosureHead > svg { width: 20px; height: 20px; color: var(--morrovia-action); }
@@ -1791,7 +1792,6 @@
   .builderRouteNights button { width: 44px; height: 44px; }
   .builderRouteActionsCell { position: relative; grid-area: actions; inset: auto; align-self: start; }
   .builderRouteActions summary { width: 44px; height: 44px; }
-  .builderRouteActions > div { top: 44px; }
   .builderRouteActions button { min-height: 44px; }
 }
 

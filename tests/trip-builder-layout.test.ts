@@ -682,6 +682,7 @@ test("routine Builder warnings use a pale semantic surface with neutral text wit
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*background:var\(--morrovia-warning-soft\)/);
+  assert.match(styles, /\.builderRouteNightStatusIncomplete\{[^}]*inline-size:100%;[^}]*padding-block:10px;[^}]*padding-inline:14px;[^}]*border-radius:/);
   assert.match(styles, /\.builderRouteNightStatusIncomplete svg\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteStopNightCue\{color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.builderRouteUsable svg\{[^}]*color:var\(--morrovia-ink-soft\)/);
@@ -689,7 +690,7 @@ test("routine Builder warnings use a pale semantic surface with neutral text wit
   assert.equal((builder.match(/className=\{styles\.builderPlanningNotice\}/g) ?? []).length, 1, "saved-entry and blocked-removal banners keep their shared treatment");
   assert.match(styles, /\.inlinePlaceResolution\{[^}]*color:var\(--morrovia-ink-soft\)/);
   assert.match(styles, /\.timingWarning:not\(\.timingWarningBlocking\) \{[^}]*background: var\(--morrovia-warning-soft\)/);
-  assert.match(styles, /\.timingWarningBlocking \{ border-color: var\(--signal\)/);
+  assert.match(styles, /\.timingWarningBlocking \{ border-color: var\(--morrovia-line\); background: var\(--morrovia-warning-soft\)/);
   assert.match(workspace, /<AlertTriangle aria-label="Compressed stop" \/>/);
 });
 

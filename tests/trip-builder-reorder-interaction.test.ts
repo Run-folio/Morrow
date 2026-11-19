@@ -153,7 +153,11 @@ browserTest("only one stop disclosure is open; boundary actions and keyboard foc
     await first.locator("summary").press("Enter");
     assert.equal(await first.getByRole("button", { name: "Move earlier" }).count(), 0);
     assert.equal(await first.getByRole("button", { name: "Move later" }).isVisible(), true);
-    await second.locator("summary").click();
+    await second.locator("summary").scrollIntoViewIfNeeded();
+    const adjacent = await second.locator("summary").boundingBox();
+    assert.ok(adjacent);
+    await view.page.mouse.click(adjacent.x + adjacent.width / 2, adjacent.y + adjacent.height / 2);
+    assert.notEqual(await second.getAttribute("open"), null, "the adjacent real pointer must reach its trigger");
     assert.equal(await view.page.locator("[data-stop-actions][open]").count(), 1);
     assert.equal(await first.getAttribute("open"), null);
     await second.getByRole("button", { name: "Move earlier" }).focus();

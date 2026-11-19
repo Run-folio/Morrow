@@ -179,7 +179,12 @@ export const RoutineCautionAndSavedInputConflict: Story = {
     const canvas = within(canvasElement);
     const workspace = canvas.getByRole("region", { name: /Your route/ });
     const local = within(workspace);
-    await expect(local.getByText(/3 nights left to plan/)).toBeVisible();
+    const notice = local.getByText(/3 nights left to plan/);
+    await expect(notice).toBeVisible();
+    const panel = notice.closest('[role="status"]')!;
+    const header = panel.closest("header")!;
+    const innerWidth = header.clientWidth - parseFloat(getComputedStyle(header).paddingInlineStart) - parseFloat(getComputedStyle(header).paddingInlineEnd);
+    await expect(Math.abs(panel.getBoundingClientRect().width - innerWidth)).toBeLessThanOrEqual(2);
     await expect(local.getByText("No nights allocated")).toBeVisible();
     await expect(local.getByRole("alert")).toHaveTextContent("Review your saved input");
     await expect(local.getByRole("button", { name: "Discard input" })).toBeVisible();
@@ -195,6 +200,11 @@ export const RouteActionMenuStates: Story = {
     const controls = within(table);
     for (const [name, earlier, later] of [["Cusco", false, true], ["Ollantaytambo", true, true], ["Arequipa", true, false]] as const) {
       const summary = controls.getByLabelText(`Actions for ${name}`);
+      // Check physical hit-testing, not just a synthetic click delivered to the element.
+      summary.scrollIntoView({block:"nearest"});
+      const rect = summary.getBoundingClientRect();
+      const hit = summary.ownerDocument.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      await expect(summary.contains(hit)).toBe(true);
       await userEvent.click(summary);
       const menu = summary.closest("details")!;
       const actions = within(menu);
