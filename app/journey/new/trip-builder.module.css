@@ -594,7 +594,7 @@
 .tripUnderstood{display:grid;gap:0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.88)}
 .pickedPreferences>strong,.unresolvedPlaces>strong,.placesSummaryRail>span,.placesSummaryNext>span{display:flex;align-items:center;gap:6px;color:var(--signal);font:800 10px var(--morrovia-meta);letter-spacing:.11em}
 .placesSection{display:grid;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);scroll-margin-top:40px}
-.inlinePlaceResolution{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;color:var(--morrovia-warning);font:var(--morrovia-type-supporting-body);overflow-wrap:anywhere}
+.inlinePlaceResolution{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;color:var(--morrovia-ink-soft);font:var(--morrovia-type-supporting-body);overflow-wrap:anywhere}
 .inlinePlaceResolution>span{min-width:0}
 .handoffStop>.inlinePlaceResolution{grid-column:1/-1;padding:0 10px 8px}
 .placesSection:last-of-type{border-bottom:0}.placesSectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.placesSectionHead>strong{color:var(--ink);font-size:15px}.placesSectionHead>button,.inlineEditor>button{display:inline-flex;align-items:center;gap:6px;justify-content:center;min-height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:700 12px var(--morrovia-ui);cursor:pointer}.placesSectionHead>button:hover,.inlineEditor>button:hover{border-color:var(--morrovia-action);color:var(--morrovia-action)}.placesSectionHead svg{width:14px;height:14px}
@@ -636,7 +636,8 @@
 .builderRouteHeader{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px;padding:8px 14px;border-bottom:1px solid var(--line)}
 .builderRouteHeader>div{display:grid;gap:4px;min-width:0}.builderRouteHeader p,.builderRouteHeader h2,.builderRouteHeader span{margin:0}.builderRouteHeader p{color:var(--signal);font:800 9px var(--morrovia-meta);letter-spacing:.12em}.builderRouteHeader h2{color:var(--ink);font-family:var(--morrovia-display);font-size:clamp(28px,2.6vw,38px);font-weight:600;line-height:1;letter-spacing:-.04em}.builderRouteHeader span{color:var(--muted);font-size:12px;line-height:1.4}
 .builderRouteNightStatus{display:flex!important;flex-wrap:wrap;align-items:center;gap:7px}.builderRouteNightStatus svg{width:16px;height:16px;color:var(--morrovia-success)}.builderRouteNightStatus strong,.builderRouteNightStatus b{color:var(--ink);font-weight:650}
-.builderRouteNightStatusIncomplete svg,.builderRouteNightStatusIncomplete b{color:var(--morrovia-warning)}
+.builderRouteNightStatusIncomplete{padding:2px 7px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-lilac)}
+.builderRouteNightStatusIncomplete svg{color:var(--morrovia-ink-soft)}
 .builderRouteHeader .builderRouteNightDetail{font:var(--morrovia-type-fine-print);letter-spacing:0;color:var(--morrovia-ink-soft);flex-basis:100%}
 .builderRouteGrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);grid-template-areas:"rows map";gap:14px;align-items:start}
 .builderRouteRows{position:relative;overflow:visible;border-radius:0 0 var(--morrovia-control-radius) var(--morrovia-control-radius)}
@@ -645,7 +646,7 @@
 /* morrovia-ui-audit-allow-next-line raw-shadow -- The inset signal preserves selected-row geometry while matching the map marker and route-order highlight. */
 .builderRouteRowSelected{box-shadow:inset 3px 0 0 var(--signal);background:var(--morrovia-lilac)}
 @media(hover:hover){.builderRouteRow[data-builder-stop-id]:not([aria-selected="true"]):hover{background:color-mix(in srgb,var(--morrovia-lilac) 50%,var(--morrovia-paper))}}
-.builderRouteIdentity .builderRouteStopNightCue{color:var(--morrovia-warning);font-weight:650}
+.builderRouteIdentity .builderRouteStopNightCue{color:var(--morrovia-ink-soft);font-weight:650}
 .builderRouteRow:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:-3px}
 .builderRouteRowDragging{z-index:1;transform:scale(.995);opacity:.72;background:color-mix(in srgb,var(--morrovia-lilac) 58%,var(--morrovia-paper));box-shadow:var(--morrovia-shadow-overlay)}
 .builderRouteDropTarget:before{position:absolute;z-index:3;top:-1px;right:8px;left:8px;height:2px;border-radius:999px;background:var(--morrovia-signal);content:"";pointer-events:none}
@@ -655,7 +656,7 @@
 .builderRouteIdentity>b{display:grid;place-items:center;flex:none;width:29px;height:29px;border:1px solid var(--line);border-radius:50%;background:var(--morrovia-paper);color:var(--ink);font:700 13px var(--morrovia-display)}.builderRouteIdentity>span,.builderRouteTransfer>span{display:grid;gap:2px;min-width:0}.builderRouteIdentity strong,.builderRouteTransfer strong{overflow:hidden;color:var(--ink);font-size:12px;text-overflow:ellipsis;white-space:nowrap}.builderRouteIdentity small,.builderRouteTransfer small{color:var(--muted);font-size:10px}.builderRouteTransfer>svg{flex:none;width:15px;height:15px;color:var(--morrovia-action)}
 .builderRouteNights{display:grid;grid-template-columns:27px 22px 27px;align-items:center;gap:3px}
 /* morrovia-ui-audit-allow-next-line raw-radius -- Compact plus and minus stepper controls use the established circular field-control silhouette. */
-.builderRouteNights button{display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--morrovia-paper);color:var(--ink);font-size:15px;cursor:pointer}.builderRouteNights button:disabled{cursor:not-allowed;opacity:.35}.builderRouteNights strong{text-align:center;font-size:13px}.builderRouteUsable{display:flex;align-items:center;gap:4px;color:var(--ink);font-size:11px}.builderRouteUsable svg{width:14px;height:14px;color:var(--morrovia-warning)}
+.builderRouteNights button{display:grid;place-items:center;width:27px;height:27px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--morrovia-paper);color:var(--ink);font-size:15px;cursor:pointer}.builderRouteNights button:disabled{cursor:not-allowed;opacity:.35}.builderRouteNights strong{text-align:center;font-size:13px}.builderRouteUsable{display:flex;align-items:center;gap:4px;color:var(--ink);font-size:11px}.builderRouteUsable svg{width:14px;height:14px;color:var(--morrovia-ink-soft)}
 .builderRouteActionsCell{position:absolute;top:14px;right:8px}.builderRouteActions{position:relative}.builderRouteRow:has(.builderRouteActions[open]){z-index:2}
 /* morrovia-ui-audit-allow-next-line raw-radius -- The icon-only route-row disclosure intentionally retains the canonical circular overflow silhouette. */
 .builderRouteActions summary{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;color:var(--morrovia-action);cursor:pointer;list-style:none}.builderRouteActions summary::-webkit-details-marker{display:none}.builderRouteActions summary:hover{background:var(--morrovia-disabled)}.builderRouteActions summary svg{width:17px;height:17px}.builderRouteActions>div{position:absolute;z-index:9;top:34px;right:0;display:grid;gap:4px;min-width:150px;padding:10px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);box-shadow:var(--morrovia-shadow-overlay)}.builderRouteActions strong{padding:2px 5px;color:var(--muted);font:800 9px var(--morrovia-meta);letter-spacing:.08em}.builderRouteActions button{min-height:34px;padding:0 9px;border:0;border-radius:var(--morrovia-control-radius);background:transparent;color:var(--ink);font:650 11px var(--morrovia-ui);text-align:left;cursor:pointer}.builderRouteActions button:hover:not(:disabled){background:var(--morrovia-disabled)}.builderRouteActions button:disabled{opacity:.4;cursor:not-allowed}
@@ -1348,7 +1349,12 @@
 .timeCommitments article small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .timeCommitments .commitmentProtected { display: inline-flex; grid-auto-flow: column; align-items: center; gap: 5px; color: var(--morrovia-success); font: var(--morrovia-type-control); }
 .timeCommitments .commitmentProtected svg { width: 14px; height: 14px; }
-.timingWarningStrong { border-width: 2px; border-color: var(--morrovia-warning); background: color-mix(in srgb, var(--morrovia-warning-soft) 72%, #fff); }
+/* Routine planning cautions remain distinct by icon and weight; blocking
+   conflicts retain the stronger shared warning treatment. */
+.timingWarning:not(.timingWarningBlocking) { border-color: var(--morrovia-line); background: var(--morrovia-lilac); }
+.timingWarning:not(.timingWarningBlocking) .disclosureHead > svg:first-child { color: var(--morrovia-ink-soft); }
+.timingWarning:not(.timingWarningBlocking) .timingWarningContent > section { border-color: var(--morrovia-line); }
+.timingWarningStrong:not(.timingWarningBlocking) { border-width: 2px; border-color: color-mix(in srgb, var(--morrovia-ink-soft) 30%, var(--morrovia-line)); }
 .disclosureHead:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
 .completedAreaSummaries { display: flex; flex-wrap: wrap; gap: 7px; }
 .completedAreaSummaries > span { display: flex; min-height: 44px; align-items: center; gap: 7px; padding: 4px 4px 4px 11px; border: 1px solid var(--line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
@@ -1765,7 +1771,6 @@
 .stepHero .saveState { justify-self: end; }
 .builderRouteHeader h2 > span { color: inherit; font: inherit; }
 .builderRouteHeader h2 > svg { display: inline-block; vertical-align: middle; }
-.builderRouteHeader .builderRouteAllocationWarning { color: var(--morrovia-warning); }
 @media (max-width: 700px) {
   .stepHero:has(.saveState) { grid-template-columns: minmax(0, 1fr); }
   .stepHero .saveState { justify-self: start; }
@@ -1829,8 +1834,13 @@
 
 /* Allocation is supporting status; warnings retain their semantic treatment. */
 .builderRouteHeader .builderRouteNightStatus h2 { font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); letter-spacing: 0; line-height: 1.5; }
-.builderRouteHeader .builderRouteNightStatus h2.builderRouteAllocationWarning { color: var(--morrovia-warning); }
+.builderRouteHeader .builderRouteNightStatus h2.builderRouteAllocationWarning { color: var(--morrovia-ink); }
+.placesSection .builderPlanningNotice[data-tone="warning"] { background: var(--morrovia-lilac); border-color: var(--morrovia-line); }
+.placesSection .builderPlanningNotice[data-tone="warning"] > svg { color: var(--morrovia-ink-soft); }
 .builderRouteGrip { min-width: 44px; min-height: 44px; }
 @media (prefers-reduced-motion: reduce) { .builderRouteRow, .builderRouteGrip { transition: none; animation: none; } }
 
 .builderRouteActions button[aria-disabled="true"] { color: var(--morrovia-muted); opacity: .5; cursor: not-allowed; }
+
+/* This working-route heading uses the UI face at every width; other editorial headings retain the display face. */
+.stepHero h1[data-route-editor-title] { font-family: var(--morrovia-ui); }

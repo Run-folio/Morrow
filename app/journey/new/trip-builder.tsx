@@ -6214,7 +6214,7 @@ function TripBuilderDocument() {
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack} onInputCapture={retireBuilderEntryForInput}>
               <header className={styles.stepHero}>
-                <h1 className={styles.stepHeroTitle}>{hasRouteSkeleton
+                <h1 className={styles.stepHeroTitle} data-route-editor-title={hasRouteSkeleton || undefined}>{hasRouteSkeleton
                   ? (language === "es" ? "Dale forma a la ruta." : "Shape the route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
                     ? (language === "es" ? "Demos forma a tu ruta." : "Let’s shape your route.")
@@ -6419,7 +6419,7 @@ function TripBuilderDocument() {
                         : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
                   </div>}
-                  {!stops.length && totalNights > 0 ? <MorroviaStatusBanner tone="warning" title={builderNightAllocationLabel({ total: totalNights, allocated: 0, complete: false, language })} /> : null}
+                  {!stops.length && totalNights > 0 ? <MorroviaStatusBanner tone="warning" className={styles.builderPlanningNotice} title={builderNightAllocationLabel({ total: totalNights, allocated: 0, complete: false, language })} /> : null}
                   {!mountedBuilder && stops.length > 0 && <div className={styles.handoffStops} role="list" aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
                       {stops.map((stop, index) => {
                         const locked = scheduleLocks.stopIds.includes(stop.id);
