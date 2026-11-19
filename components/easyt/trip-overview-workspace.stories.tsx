@@ -480,7 +480,7 @@ export const InsuranceQuoteHandoff: Story = {};
 
 export const PracticalPrep: Story = {
   args: { initialPrepActions: [...prepActions, {
-    id: "storybook-insurance", category: "travel_insurance", provider: "world-nomads",
+    id: "storybook-insurance", category: "insurance", provider: "world-nomads",
     title: "Travel insurance", detail: "Compare insurance", cta: "Get a travel insurance quote",
     href: "https://www.worldnomads.com/", tripId: baseTrip.id, affiliate: true, livePrice: false,
   }] },
@@ -499,9 +499,16 @@ export const PracticalPrep: Story = {
       const info = controls.getByRole("button", { name: infoLabel });
       await expect(info).toHaveAttribute("aria-expanded", "false");
       await expect(controls.queryByText(guide, { exact: true })).not.toBeInTheDocument();
-      await expect(controls.getByRole(kind === "passport" ? "button" : "link", { name: action })).toBeVisible();
-      await expect(controls.getByRole("checkbox")).toBeVisible();
-      if (kind === "insurance" || kind === "connectivity") await expect(controls.getByText("Ad", { exact: true })).toBeVisible();
+      const primary = controls.getByRole(kind === "passport" ? "button" : "link", { name: action });
+      await expect(primary).toBeVisible();
+      const review = controls.getByRole("checkbox");
+      await expect(review).toBeVisible();
+      const initialReview = review.getAttribute("aria-checked");
+      if (kind === "insurance" || kind === "connectivity") {
+        await expect(controls.getByText("Ad", { exact: true })).toBeVisible();
+        await expect(primary).toHaveAttribute("target", "_blank");
+        await expect(primary).toHaveAttribute("rel", "sponsored noopener noreferrer");
+      }
       await userEvent.hover(info);
       const tooltip = await surface.findByRole("tooltip");
       await expect(tooltip).toHaveTextContent(guide);
@@ -512,6 +519,7 @@ export const PracticalPrep: Story = {
       await userEvent.unhover(info);
       await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
       await expect(info).toHaveAttribute("aria-expanded", "false");
+      await expect(review).toHaveAttribute("aria-checked", initialReview!);
     }
   },
 };
