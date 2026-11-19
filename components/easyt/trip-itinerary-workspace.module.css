@@ -1404,14 +1404,14 @@
 
 .contextualAddResults { display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
 .contextualAddResults > p { margin: 0; color: var(--morrovia-muted); font-size: 13px; }
-.contextualAddResult { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-width: 0; padding: 9px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
-.contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr) auto; }
+.contextualAddResult { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: center; min-width: 0; padding: 9px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr); }
 .contextualAddResult > img { width: 72px; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); }
-.contextualAddResult > div:nth-child(2) { min-width: 0; display: grid; gap: 3px; }
-.contextualAddResultNoMedia > div:first-child { min-width: 0; display: grid; gap: 3px; }
+.contextualAddResult > .contextualAddResultText { min-width: 0; display: grid; gap: 3px; }
 .contextualAddResult strong { overflow-wrap: anywhere; font-size: 13px; }
 .contextualAddResult span { color: var(--morrovia-muted); font-size: 11px; }
-.contextualAddResultActions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.contextualAddResultActions { grid-column: 1 / -1; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-start; }
+.contextualAddResultDisclosure { flex-basis: 100%; min-width: 0; }
 .contextualAddResultActions button { min-height: 40px; }
 .contextualAddManual { display: flex; align-items: end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--morrovia-line); }
 .contextualAddManual > :first-child { flex: 1; min-width: 0; }
@@ -1422,7 +1422,6 @@
   .contextualAddResult { grid-template-columns: 56px minmax(0, 1fr); }
   .contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr); }
   .contextualAddResult > img { width: 56px; height: 56px; }
-  .contextualAddResultActions { grid-column: 1 / -1; justify-content: flex-start; }
   .contextualAddManual { flex-wrap: wrap; }
   .contextualAddManual > :first-child { flex-basis: 100%; }
 }

@@ -2799,7 +2799,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
           const meta = [result.category, result.duration, result.price, result.rating === undefined ? null : `${result.rating.toFixed(1)} ${addLabels.rating}`, result.idea.source === "live-provider-inventory" ? `Viator · ${addLabels.planOnly}` : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null].filter(Boolean).join(" · ");
           return <article key={result.identity} className={`${styles.contextualAddResult} ${result.image ? "" : styles.contextualAddResultNoMedia}`} data-add-result-id={result.sourceId}>
             {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
-            <div><strong>{result.title}</strong><span>{meta || result.location}</span></div>
+            <div className={styles.contextualAddResultText}><strong>{result.title}</strong><span>{meta || result.location}</span></div>
             <div className={styles.contextualAddResultActions}>
               <EasyTButton
                 size="small"
@@ -2828,7 +2828,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                   if (isCurrent() && !accepted) setAddResultError(addLabels.saveError);
                 }}
               >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
-              {productAction ? <><MorroviaAffiliateLink action={productAction} context={{ placement: "itinerary_day_experiences", tripId: trip.id, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure provider="viator" /></> : null}
+              {productAction ? <><MorroviaAffiliateLink action={productAction} context={{ placement: "itinerary_day_experiences", tripId: trip.id, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.contextualAddResultDisclosure} provider="viator" /></> : null}
             </div>
           </article>;
         })}
