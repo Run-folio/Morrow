@@ -281,7 +281,7 @@ export const SuccessNoticeActiveThenIdle: Story = {
     await expect(toast()).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Acknowledge date edit" }));
     await waitFor(() => expect(toast()).toHaveTextContent("Dates updated"));
-    await expect(canvasElement.querySelector('[role="status"][aria-live="polite"].sr-only')).toHaveTextContent("Dates updated");
+    await expect(canvasElement.querySelector('[data-builder-success-announcement][role="status"][aria-live="polite"]')).toHaveTextContent("Dates updated");
     await waitFor(() => expect(toast()).toBeNull(), { timeout: 5_500 });
   },
 };

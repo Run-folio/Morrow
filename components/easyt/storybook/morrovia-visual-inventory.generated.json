@@ -5310,7 +5310,7 @@
       },
       {
         "value": "12px",
-        "count": 582,
+        "count": 583,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5320,7 +5320,7 @@
       },
       {
         "value": "10px",
-        "count": 565,
+        "count": 564,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5350,7 +5350,7 @@
       },
       {
         "value": "7px",
-        "count": 329,
+        "count": 328,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5470,7 +5470,7 @@
       },
       {
         "value": "11px",
-        "count": 136,
+        "count": 137,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7609,7 +7609,7 @@
     "breakpoints": [
       {
         "value": "max-width: 700px",
-        "count": 51,
+        "count": 52,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",

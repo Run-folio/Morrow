@@ -5984,7 +5984,7 @@ function TripBuilderDocument() {
     routeKey: mountedBuilder?.snapshot.acceptedRevision,
     undoActive: undoNoticeVisible,
     blocked: !hydrated || !mountedBuilder || sessionPending || !browserContextReady || ownerScopeMismatch || saveNeedsAttention || tripUnavailable
-      || Boolean(interruptedInputs || pendingInterruptedInputsRef.current.length || mountedBuilder?.snapshot.draft.fields.some(field => field.status === "binding-conflict")),
+      || Boolean(interruptedInputs?.unreadable || interruptedInputs?.records.length || pendingInterruptedInputsRef.current.length || mountedBuilder?.snapshot.draft.fields.some(field => field.status === "binding-conflict")),
   });
   const recoverFromSaveError = async () => {
     if(builderEditSessionRef.current) {
