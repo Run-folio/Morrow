@@ -538,3 +538,13 @@ test("Planner focus handoff keeps its orientation ref stable across registry ren
   assert.match(itinerary, /if \(!activityEditHandoffRef.current\) setSelectedItemId/);
   assert.doesNotMatch(itinerary, /ref=\{\(element\) => \{ plannerElementRef.current/);
 });
+
+test("commercial activity actions cannot consume the title column in the desktop Add dialog", () => {
+  const base = styles.slice(styles.indexOf(".contextualAddResults {"), styles.indexOf("@media", styles.indexOf(".contextualAddResults {")));
+  const rule = (name: string) => base.split(name + " {")[1]?.split("}")[0] ?? "";
+  assert.match(rule(".contextualAddResult"), /grid-template-columns: 72px minmax\(0, 1fr\);/);
+  assert.match(rule(".contextualAddResultNoMedia"), /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(rule(".contextualAddResultActions"), /grid-column: 1 \/ -1/);
+  assert.match(rule(".contextualAddResultDisclosure"), /flex-basis: 100%/);
+  assert.match(itinerary, /<MorroviaAffiliateDisclosure className=\{styles.contextualAddResultDisclosure\} provider="viator"/);
+});
