@@ -15,6 +15,7 @@ for(const anotherPending of [false,true])test(`completed country top Edit reopen
   .filter(key=>key.startsWith('easyt:trip-recovery:v2:')).map(key=>JSON.parse(localStorage.getItem(key)!))
   .sort((a,b)=>(Date.parse(b.savedAt)||0)-(Date.parse(a.savedAt)||0)||b.writeId.localeCompare(a.writeId))[0]?.trip));
  const addCountry=async(name:string)=>{
+  const editDetails=view.page.getByRole('button',{name:'Edit trip details',exact:true});if(await editDetails.isVisible())await editDetails.click();
   await view.page.getByRole('button',{name:'Add destination',exact:true}).click();
   await view.page.getByRole('combobox',{name:'Add a stop',exact:true}).fill(name);
   await view.page.getByRole('option',{name:new RegExp(`^${name}`)}).first().click();

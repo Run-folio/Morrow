@@ -6,7 +6,7 @@ import { transportAssessmentState } from "@/lib/easyt/itinerary-transport-agenda
 import { transferAssessmentForLeg, transportEvidenceMessage } from '@/lib/easyt/planning-evidence-presentation';
 
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import type { JourneyStop } from "@/lib/journey";
@@ -99,6 +99,25 @@ export function TripBuilderRouteWorkspace({
   const currentScopeRef = useRef(scopeKey);
   currentScopeRef.current = scopeKey;
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const menuGroup = useId();
+  const actionsRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = actionsRoot.current;
+    if (!root) return;
+    const openMenu = () => root.querySelector<HTMLDetailsElement>("details[data-stop-actions][open]");
+    const dismissOutside = (event: Event) => {
+      const open = openMenu();
+      if (open && event.target instanceof Node && !open.contains(event.target)) open.open = false;
+    };
+    document.addEventListener("pointerdown", dismissOutside, true);
+    document.addEventListener("focusin", dismissOutside, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside, true);
+      document.removeEventListener("focusin", dismissOutside, true);
+      const open = openMenu();
+      if (open) open.open = false;
+    };
+  }, [scopeKey]);
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [mapLifecycle, setMapLifecycle] = useState<"loading" | "ready" | "unavailable">("loading");
   const [JourneyPlannerMap, setJourneyPlannerMap] = useState<typeof import("@/components/journey-planner-map").JourneyPlannerMap | null>(null);
@@ -157,24 +176,24 @@ export function TripBuilderRouteWorkspace({
   };
 
   return <section data-builder-reorder-surface data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
-    <header className={styles.builderRouteHeader}>
-      <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
-        <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
-          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />} {" "}
-          <span className="sr-only">{nightStatus.language === "es" ? "Tu ruta — Noches por parada: " : "Your route — Nights per stop: "}</span>
-          <span>
-            {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
-            {" · "}
-            {builderNightAllocationLabel(nightStatus)}
-          </span>
-        </h2>
-      </div>
-      {nightReview}
-      {reviewControl}
-    </header>
-
     <div className={styles.builderRouteGrid}>
-      <div className={styles.builderRouteRows} aria-label="Route stops" role="table" aria-colcount={6}>
+      <div className={styles.builderRouteList}>
+        <header className={styles.builderRouteHeader}>
+          <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
+            <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
+              {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />} {" "}
+              <span className="sr-only">{nightStatus.language === "es" ? "Tu ruta — Noches por parada: " : "Your route — Nights per stop: "}</span>
+              <span>
+                {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
+                {" · "}
+                {builderNightAllocationLabel(nightStatus)}
+              </span>
+            </h2>
+            {nightReview ? <div className={styles.builderRouteNightDetail}>{nightReview}</div> : null}
+          </div>
+          {reviewControl}
+        </header>
+      <div ref={actionsRoot} className={styles.builderRouteRows} aria-label="Route stops" role="table" aria-colcount={6}>
         <div className={styles.builderRouteColumns} role="row">
           <span role="columnheader" aria-colindex={1} className="sr-only">Reorder</span>
           <span role="columnheader" aria-colindex={2}>Stop</span><span role="columnheader" aria-colindex={3}>Transfer</span><span role="columnheader" aria-colindex={4}>Nights</span><span role="columnheader" aria-colindex={5}>Usable time</span>
@@ -189,6 +208,7 @@ export function TripBuilderRouteWorkspace({
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
             const airportAssumption = airportAssumptionForLeg(leg);
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
+            const needsNights = (stop.nights ?? 0) === 0;
             const stopNotice = stopReview?.(stop.id);
             const isLocked = fixedOrder || locked.has(stop.id);
             const isSelected = selectedStopId === stop.id;
@@ -214,7 +234,7 @@ export function TripBuilderRouteWorkspace({
                   <GripVertical aria-hidden="true" />
                 </button>
               </div>
-              <div className={styles.builderRouteIdentity} role="cell" aria-colindex={2}><b>{index + 1}</b><span><strong data-builder-stop-name>{stop.name}</strong><small>{stop.country}</small>{stopNotice ? <span data-builder-stop-review>{stopNotice}</span> : null}</span></div>
+              <div className={styles.builderRouteIdentity} role="cell" aria-colindex={2}><b>{index + 1}</b><span><strong data-builder-stop-name>{stop.name}</strong><small data-builder-stop-country>{stop.country}</small>{needsNights ? <small className={styles.builderRouteStopNightCue}>{nightStatus.language === "es" ? "Sin noches asignadas" : "No nights allocated"}</small> : null}{stopNotice ? <span data-builder-stop-review>{stopNotice}</span> : null}</span></div>
               <div className={styles.builderRouteTransfer} role="cell" aria-colindex={3}>
                 <Route aria-hidden="true" />
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? (routeWorkBlocked ? "Transport checks paused" : "Checking transport options…") : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong>{(!leg && index === 0) || (assessment === "pending" && !routeWorkBlocked) ? null : <small>{assessment === "pending" ? "Timing to confirm" : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? `${leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(leg)}${leg.mode === "flight" && transferMinutes !== null ? " total" : ""}` : "No arrival transfer"}</small>}
@@ -239,23 +259,22 @@ export function TripBuilderRouteWorkspace({
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
                 <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) >= tripNightsBetween(canonicalTrip.startDate, canonicalTrip.endDate)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
               </div>
-              <div className={styles.builderRouteUsable} data-usable-warning={usableDays !== null && usableDays < 1 || undefined} role="cell" aria-colindex={5}>
+              <div className={styles.builderRouteUsable} data-usable-warning={!needsNights && usableDays !== null && usableDays < 1 || undefined} role="cell" aria-colindex={5}>
                 <span className={styles.mobileFieldLabel}>Usable time</span>
                 <strong>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>
-                {usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
+                {!needsNights && usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
               </div>
               <div className={styles.builderRouteActionsCell} role="cell" aria-colindex={6}>
-                <details className={styles.builderRouteActions} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onClick={(event) => event.stopPropagation()}>
+                <details data-stop-actions name={menuGroup} className={styles.builderRouteActions} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onClick={(event) => event.stopPropagation()}>
                   <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
                   <div>
                     <dl className={styles.builderStopFacts}><dt>Country</dt><dd>{stop.country || "To confirm"}</dd><dt>Usable time</dt><dd>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</dd></dl>
-                    <strong>Move stop</strong>
                     {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                    <button type="button" aria-disabled={!reorder.canMoveFromMenu(stop.id, index - 1)} onClick={(event) => { if (!reorder.canMoveFromMenu(stop.id, index - 1)) return; return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index - 1), () => currentScopeRef.current === scopeKey); }}>Earlier</button>
+                    {reorder.canMoveFromMenu(stop.id, index - 1) && <button type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index - 1), () => currentScopeRef.current === scopeKey); }}>Move earlier</button>}
                     {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                    <button type="button" aria-disabled={!reorder.canMoveFromMenu(stop.id, index + 1)} onClick={(event) => { if (!reorder.canMoveFromMenu(stop.id, index + 1)) return; return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index + 1), () => currentScopeRef.current === scopeKey); }}>Later</button>
+                    {reorder.canMoveFromMenu(stop.id, index + 1) && <button type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index + 1), () => currentScopeRef.current === scopeKey); }}>Move later</button>}
                     {/* morrovia-ui-audit-allow-next-line native-control -- Stop removal reuses this row's existing action menu and the Builder's guarded mutation owner. */}
-                    <button type="button" disabled={locked.has(stop.id)} onClick={() => onRemoveStop(stop.id)}>Remove stop</button>
+                    <button type="button" disabled={locked.has(stop.id)} onClick={(event) => { const menu = event.currentTarget.closest("details"); if (menu) { menu.open = false; menu.querySelector("summary")?.focus(); } onRemoveStop(stop.id); }}>Remove stop</button>
                   </div>
                 </details>
               </div>
@@ -289,6 +308,7 @@ export function TripBuilderRouteWorkspace({
             <div className={styles.builderRouteActionsCell} role="cell" aria-colindex={6} />
           </div> : null}
         </div>
+      </div>
       </div>
 
       <section className={styles.builderRouteMap} aria-label="Route map" data-map-lifecycle={mapLifecycle}>

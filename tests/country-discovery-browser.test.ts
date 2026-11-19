@@ -506,8 +506,8 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
       };
       const middleMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
       await middleMenu.click();
-      base.earlierLater = await route.getByRole('button', { name: 'Earlier', exact: true }).isVisible()
-        && await route.getByRole('button', { name: 'Later', exact: true }).isVisible();
+      base.earlierLater = await route.getByRole('button', { name: 'Move earlier', exact: true }).isVisible()
+        && await route.getByRole('button', { name: 'Move later', exact: true }).isVisible();
       await middleMenu.click();
       return base;
     };
@@ -545,9 +545,9 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     const direction = moveLater ? 1 : -1;
     const shiftedOrder = [...initialOrder];
     [shiftedOrder[kyotoIndex], shiftedOrder[kyotoIndex + direction]] = [shiftedOrder[kyotoIndex + direction], shiftedOrder[kyotoIndex]];
-    await route.getByRole('button', { name: moveLater ? 'Later' : 'Earlier', exact: true }).click();
+    await route.getByRole('button', { name: moveLater ? 'Move later' : 'Move earlier', exact: true }).click();
     assert.deepEqual(await routeOrder(), shiftedOrder, 'accessible move action shifts the selected row by one position');
-    const inverseAction = route.getByRole('button', { name: moveLater ? 'Earlier' : 'Later', exact: true });
+    const inverseAction = route.getByRole('button', { name: moveLater ? 'Move earlier' : 'Move later', exact: true });
     if (!await inverseAction.isVisible().catch(() => false)) await route.locator('summary[aria-label="Actions for Kyoto"]').click();
     await inverseAction.click();
     assert.deepEqual(await routeOrder(), initialOrder, 'the inverse accessible move restores the original row order');

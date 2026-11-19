@@ -17,6 +17,10 @@ function canonicalRouteFixture() {
  for(const stop of trip.stops){const place={...stopGeographicPlace(stop),providerId:`fixture:confirmed-${stop.id}`};const verified=acceptedGeographicPlace(place,{...place,placeType:'city',routability:'direct_destination'});assert.ok(verified);stop.providerId=verified.providerId;stop.geographicBinding=verified.geographicBinding;}
  return trip;
 }
+async function openBuilderDetails(page:Awaited<ReturnType<typeof renderBuilder>>['page']){
+ const edit=page.getByRole('button',{name:'Edit trip details',exact:true});
+ if(await edit.isVisible())await edit.click();
+}
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
 test('undated stay requests permit deliberate night and order edits while booked stays stay protected',{skip:!enabled,timeout:30000},async()=>{
   let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
@@ -32,7 +36,7 @@ test('undated stay requests permit deliberate night and order edits while booked
     assert.equal(await view.page.getByRole('button',{name:/Add one night to Tokyo/}).isDisabled(),true);
     await kyoto.click();
     await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();
-    await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
+    await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();
     for(let i=0;i<50&&(cloud.stops[1]!.name!=='Hiroshima'||cloud.stops.find(stop=>stop.name==='Kyoto')!.nights!==4);i++)await view.page.waitForTimeout(100);
     assert.equal(cloud.stops[1]!.name,'Hiroshima');assert.equal(cloud.stops.find(stop=>stop.name==='Kyoto')!.nights,4);
     assert.equal(cloud.brief.intent.route.orderAuthority,'manual');
@@ -59,7 +63,7 @@ for(const repeated of [false,true])test(`A20 mounted removal confirms the same o
   }});
   try{
     await view.page.locator('[data-builder-edit-session="active"]').waitFor();
-    await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+    await openBuilderDetails(view.page);await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
     for(let i=0;i<50&&!writes.length;i++)await view.page.waitForTimeout(100);assert.equal(writes.length,1);
     await view.page.getByLabel('Actions for Hiroshima',{exact:true}).last().click();
     await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();
@@ -137,7 +141,7 @@ test('mounted_two_current_sessions_CAS_conflict_retains_B_input_recovery_and_rel
     await a.page.getByRole('button',{name:/Add one night to Kyoto/}).click();
     for(let attempt=0;attempt<50 && cloud.stops.find(s=>s.name==='Kyoto')!.nights!==4;attempt++)await a.page.waitForTimeout(100);
     const raw='  B unfinished origin  ';await b.page.locator('#builder-origin').getByRole('combobox').first().fill(raw);
-    await b.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+    await openBuilderDetails(b.page);await b.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
     await b.page.getByText('This device trip conflicts with the account trip. Review recovery before continuing.',{exact:true}).waitFor({timeout:5000});
     assert.equal(cloud.brief.budgetBand,'mid');assert.equal(cloud.stops.find(s=>s.name==='Kyoto')!.nights,4);
     assert.equal(new URL(b.page.url()).searchParams.get('recover'),'1');
@@ -157,8 +161,8 @@ test('mounted_partial_origin_survives_budget_autosave_and_reload', {skip:!enable
   }});
   try{
     await view.page.locator('[data-builder-edit-session="active"]').waitFor();
-    const origin=view.page.locator('#builder-origin').getByRole('combobox').first();await origin.fill('  unfinished origin  ');
-    await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+    await openBuilderDetails(view.page);const origin=view.page.locator('#builder-origin').getByRole('combobox').first();await origin.fill('  unfinished origin  ');
+    await openBuilderDetails(view.page);await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
     await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved on this device'),undefined,{timeout:5000});
     for(let attempt=0;attempt<50 && cloud.brief.budgetBand!=='high';attempt++)await view.page.waitForTimeout(100);
     assert.equal(cloud.brief.budgetBand,'high');assert.equal(cloud.brief.origin,'London');
@@ -180,7 +184,7 @@ test('mounted_second_edit_Undo_delayed_ACK_and_reload_preserve_latest_canonical'
     await view.page.getByRole('button',{name:/Add one night to Kyoto/}).click();
     for(let attempt=0;attempt<50 && !writes.length;attempt++)await view.page.waitForTimeout(100);assert.equal(writes.length,1);
     await view.page.getByRole('button',{name:/Add one night to Hiroshima/}).click();
-    await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+    await openBuilderDetails(view.page);await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
     await view.page.getByRole('button',{name:'Undo',exact:true}).click();
     assert.equal(writes.length,1,'only one request may be in flight');
     release();
@@ -222,7 +226,7 @@ test('mounted_remove_order_Undo_preserve_full_authored_content_and_later_prefere
   await view.page.locator('[data-builder-edit-session="active"]').waitFor();
   await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();
   await view.page.getByRole('dialog').getByRole('button',{name:'Remove Hiroshima',exact:true}).click();
-  await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+  await openBuilderDetails(view.page);await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
   for(let i=0;i<50&&cloud.stops.length!==2;i++)await view.page.waitForTimeout(100);assert.equal(cloud.stops.length,2);
   assert.ok(cloud.brief.retainedAuthoredContent?.entries.length);assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
   await view.page.getByRole('button',{name:'Undo',exact:true}).click();
@@ -232,7 +236,7 @@ test('mounted_remove_order_Undo_preserve_full_authored_content_and_later_prefere
   const authoredDay=({contextNotes:_generated,...day}:typeof cloud.planItems[number])=>day;
   assert.deepEqual(restored.map(authoredDay),original.planItems.filter(item=>item.stopId===original.stops[2]!.id).map(authoredDay));
   assert.ok(restored.every(item=>item.contextNotes?.length),'restored slots receive current generated guidance without changing authored fields');
-  await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
+  await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();
   for(let i=0;i<50&&cloud.brief.intent.route.orderedStopIds[1]!==original.stops[2]!.id;i++)await view.page.waitForTimeout(100);
   assert.equal(cloud.brief.intent.route.orderAuthority,'manual');assert.equal(cloud.stops[1]!.id,original.stops[2]!.id);
   await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();assert.deepEqual(view.errors,[]);
@@ -247,7 +251,7 @@ test('mounted_selected_origin_type_and_dates_autosave_dependencies_without_Save_
  }});
  try{
  await view.page.locator('[data-builder-edit-session="active"]').waitFor();
- const origin=view.page.locator('#builder-origin').getByRole('combobox',{name:'Start from',exact:true});await origin.fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click({timeout:5000});
+ await openBuilderDetails(view.page);const origin=view.page.locator('#builder-origin').getByRole('combobox',{name:'Start from',exact:true});await origin.fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click({timeout:5000});
  await view.page.getByRole('button',{name:'Return to start',exact:true}).click();
  await view.page.getByRole('button',{name:/Increase travellers/}).click();
  await view.page.getByRole('button',{name:/Travel dates/}).click();

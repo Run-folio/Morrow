@@ -16,6 +16,7 @@ async function fixture(discoveryRequest?:NonNullable<Parameters<typeof renderBui
   cloud={...candidate,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
  }});
  await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+ const editDetails=view.page.getByRole('button',{name:'Edit trip details',exact:true});if(await editDetails.isVisible())await editDetails.click();
  return {view,cloud:()=>cloud};
 }
 async function until(view:Awaited<ReturnType<typeof renderBuilder>>,condition:()=>boolean){for(let i=0;i<60;i++){if(condition())return;await view.page.waitForTimeout(100)}assert.ok(condition(),'Cloud projection did not reach the expected state')}
@@ -81,7 +82,7 @@ test('failed gateway with pending recommendation group persists exact residual a
  const residual=()=>cloud.brief.cascadeStatus?.routeReconciliation?.residual??[];
  const untilCondition=async(condition:()=>boolean)=>{for(let i=0;i<70&&!condition();i++)await view.page.waitForTimeout(100);assert.ok(condition(),JSON.stringify(residual()))};
  try{
- await view.page.locator('[data-builder-edit-session="active"]').waitFor();phase='edit';
+ await view.page.locator('[data-builder-edit-session="active"]').waitFor();const editDetails=view.page.getByRole('button',{name:'Edit trip details',exact:true});if(await editDetails.isVisible())await editDetails.click();phase='edit';
  await view.page.locator('#builder-origin').getByRole('combobox',{name:'Start from',exact:true}).fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click();
  await untilCondition(()=>residual().some(u=>u.kind==='leg'&&u.phase==='failed'));
  await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');

@@ -68,3 +68,11 @@ test('Spanish duplicate details translate the uncertainty without changing sourc
   assert.match(detail,item.canonicalPlaceId.startsWith('reference:')?/GeoNames/:/Morrovia curated place catalog/);
  }
 });
+
+test('compact Builder origin keeps country for a unique place and admin detail for same-country duplicates',()=>{
+ const place={name:'Drammen',country:'Norway',placeType:'city',administrativeHierarchy:['Buskerud']};
+ assert.equal(placeSuggestionLocationDetail(place,[place],'en',true),'Norway');
+ const other={...place,administrativeHierarchy:['Akershus']};
+ assert.equal(placeSuggestionLocationDetail(place,[place,other],'en',true),'Buskerud · Norway');
+ assert.equal(placeSuggestionLocationDetail(other,[place,other],'en',true),'Akershus · Norway');
+});

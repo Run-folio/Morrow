@@ -35,7 +35,8 @@ test("drag, keyboard and menu share one preview and commit boundary", () => {
     "the interaction layer must never own persistence");
 
   assert.match(workspace, /aria-label=\{`Reorder \$\{stop\.name\}, stop \$\{index \+ 1\}`\}/);
-  assert.match(workspace, />Move stop</);
+  assert.doesNotMatch(workspace, />Move stop</);
+  assert.match(workspace, /name=\{menuGroup\}/);
   assert.match(workspace, /moveFromMenu\(stop\.id, index - 1\)/);
   assert.match(workspace, /moveFromMenu\(stop\.id, index \+ 1\)/);
   assert.match(workspace, /onPreviewOrder/);
@@ -73,7 +74,7 @@ browserTest("keyboard and menu reorder the same canonical route exactly once", a
     assert.equal(afterKeyboard[1], first);
 
     await view.page.locator(`summary[aria-label="Actions for ${first}"]`).click();
-    await view.page.getByRole("button", { name: "Earlier" }).click();
+    await view.page.getByRole("button", { name: "Move earlier" }).click();
     assert.deepEqual(await routeNames(), initial);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -141,5 +142,30 @@ browserTest("canonical destination chips reorder first, middle and last occurren
     assert.equal(await drag(2, 0), true);
     assert.deepEqual(await names(), initial);
     assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+browserTest("only one stop disclosure is open; boundary actions and keyboard focus stay usable", async () => {
+  const view = await renderBuilder({ query: "?inspire=morocco-rail" });
+  try {
+    const menus = view.page.locator("[data-stop-actions]");
+    const first = menus.first(), second = menus.nth(1), last = menus.last();
+    await first.locator("summary").press("Enter");
+    assert.equal(await first.getByRole("button", { name: "Move earlier" }).count(), 0);
+    assert.equal(await first.getByRole("button", { name: "Move later" }).isVisible(), true);
+    await second.locator("summary").click();
+    assert.equal(await view.page.locator("[data-stop-actions][open]").count(), 1);
+    assert.equal(await first.getAttribute("open"), null);
+    await second.getByRole("button", { name: "Move earlier" }).focus();
+    await view.page.keyboard.press("Escape");
+    assert.equal(await second.locator("summary").evaluate((el: Element) => el === document.activeElement), true);
+    await last.locator("summary").click();
+    assert.equal(await last.getByRole("button", { name: "Move later" }).count(), 0);
+    await last.getByRole("button", { name: "Remove stop" }).focus();
+    await view.page.keyboard.press("Tab");
+    assert.equal(await view.page.locator("[data-stop-actions][open]").count(), 0);
+    await first.locator("summary").click();
+    await view.page.locator("[data-builder-stop-name]").first().click();
+    assert.equal(await view.page.locator("[data-stop-actions][open]").count(), 0);
   } finally { await view.close(); }
 });

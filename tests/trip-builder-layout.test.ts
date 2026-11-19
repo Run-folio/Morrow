@@ -242,14 +242,15 @@ test("the unified route workspace projects canonical occurrences beside the map"
   assert.match(workspace, /key=\{stop\.id\}/);
   assert.match(workspace, /<b>\{index \+ 1\}<\/b>/,
     "row ordinals must be derived from occurrence order, matching map markers");
-  assert.match(styles, /\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(0,1\.4fr\) minmax\(320px,1fr\)/,
+  assert.match(styles, /\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(0,2fr\) minmax\(320px,1fr\)/,
     "wide desktop should give the primary route table more space than the supporting map");
-  assert.match(styles, /@media\(min-width:1161px\) and \(max-width:1320px\)\{\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(680px,1\.85fr\) minmax\(320px,1fr\)/,
-    "smaller desktop should protect a meaningful table width before shrinking the map");
   assert.match(styles, /@media\(max-width:1160px\)\{\.builderRouteGrid\{[^}]*grid-template-areas:"rows" "map"/,
     "the desktop workspace should stack the primary route table before the map once both no longer fit");
-  assert.match(styles, /@media\(max-width:700px\)[\s\S]*?\.builderRouteGrid\{[^}]*grid-template-areas:"map" "rows"/,
-    "the established collapsible-map-first mobile composition should remain intact");
+  assert.match(styles, /@media\(max-width:700px\)[\s\S]*?\.builderRouteGrid\{[^}]*grid-template-areas:"rows" "map"/,
+    "the mobile route must precede its supporting collapsible map");
+  assert.match(styles, /\[data-builder-stop-country\] \{ display: none; \}/,
+    "compact rows hide only the country metadata, never allocation or location warnings");
+  assert.doesNotMatch(styles, /\.builderRouteIdentity small \{ display: none/);
   assert.match(styles, /\.builderRouteRows\{[^}]*overflow:visible/,
     "row action menus must be able to escape the table boundary without expanding it");
   assert.match(styles, /\.builderRouteRow:has\(\.builderRouteActions\[open\]\)\{z-index:2\}/,
@@ -532,6 +533,10 @@ test("night allocation is compact Route metadata instead of a separate band", as
     "Route metadata should retain an accessible status announcement");
   assert.match(workspace, /nightStatus\.complete \? <CheckCircle2[\s\S]*: <AlertTriangle/,
     "unresolved night allocation must not use the resolved success icon");
+  assert.match(workspace, /builderRouteList[\s\S]*<header[\s\S]*builderRouteHeader[\s\S]*role="table"/,
+    "allocation belongs directly on the route list rather than on a full-width warning card");
+  assert.match(workspace, /const needsNights = \(stop.nights \?\? 0\) === 0;/);
+  assert.match(workspace, /needsNights \? <small className=\{styles.builderRouteStopNightCue\}>/);
   assert.match(workspace, /builderNightAllocationLabel\(nightStatus\)/,
     "Route metadata must use the tested canonical count and allocation-state wording");
 });
@@ -577,7 +582,7 @@ test("manual night edits use canonical rebalance, durable stop intent and shared
     "manual Builder edits must use the canonical night-allocation owner");
   assert.match(builder, /manualStopIds: nextManualStopIds/,
     "the edited stop must become authoritative for the pass");
-  assert.match(builder, /nightReview=\{nightEditFeedback\?\.tone==="warning"/,
+  assert.match(builder, /nightReview=\{builderNightEditWarning\(nightEditFeedback, totalNights - allocatedNights, language\)/,
     "blocking night feedback belongs beside night allocation; normal accepted edits stay quiet");
   assert.doesNotMatch(builder, /sort\(\(a, b\) => nextAllocation\[b\.id\] - nextAllocation\[a\.id\]\)/,
     "the removed largest-stay donor shortcut must not return");

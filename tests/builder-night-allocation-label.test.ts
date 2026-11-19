@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { builderNightAllocationLabel } from "../app/journey/new/builder-night-allocation-label.ts";
+import { builderNightAllocationLabel, builderNightEditWarning } from "../app/journey/new/builder-night-allocation-label.ts";
 
 test("night allocation copy reports the canonical difference in English and Spanish", () => {
   assert.equal(builderNightAllocationLabel({ total: 14, allocated: 12, complete: false, language: "en" }), "2 nights left to plan");
@@ -18,4 +18,12 @@ test("night allocation copy reports the canonical difference in English and Span
 test("a matching total with a required empty stay asks for nights",()=>{
  assert.equal(builderNightAllocationLabel({total:14,allocated:14,complete:false,language:"en"}),"Stays need nights");
  assert.equal(builderNightAllocationLabel({total:14,allocated:14,complete:false,language:"es"}),"Hay estancias sin noches");
+});
+
+test("route-local edit warnings survive balanced or protected state; only proven duplicate totals are omitted", () => {
+ const warning={tone:"warning" as const,title:"2 nights need to be removed",detail:"No unlocked donor.",balanceDelta:-2};
+ assert.equal(builderNightEditWarning(warning,-2,"en"),"No unlocked donor.");
+ assert.match(builderNightEditWarning(warning,0,"en")!,/Last edit: 2 nights need to be removed No unlocked donor/);
+ assert.equal(builderNightEditWarning({tone:"warning",title:"Protected stay"},0,"en"),"Last edit: Protected stay");
+ assert.equal(builderNightEditWarning({...warning,tone:"info"},0,"en"),null);
 });

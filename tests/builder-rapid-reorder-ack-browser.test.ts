@@ -125,7 +125,7 @@ test('two mounted reorder handlers preserve both representations across a late p
  };
  const move=async(name:string,direction:'Earlier'|'Later')=>{
   await page.getByLabel('Actions for '+name,{exact:true}).click();
-  await page.getByLabel('Actions for '+name,{exact:true}).locator('..').getByRole('button',{name:direction,exact:true}).click();
+  await page.getByLabel('Actions for '+name,{exact:true}).locator('..').getByRole('button',{name:`Move ${direction.toLowerCase()}`,exact:true}).click();
  };
  try{
   await page.getByRole('button',{name:'Plan my trip',exact:true}).click();await page.locator('[data-builder-edit-session="active"]').waitFor();

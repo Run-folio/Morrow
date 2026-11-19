@@ -60,7 +60,7 @@ test('original Builder hierarchy wraps long names, keeps second-row menus and pr
  const first=p.locator('[data-builder-stop-index="0"]');assert.equal(await first.getByRole('button',{name:/Remove one night/}).isDisabled(),true);
  await first.getByRole('button',{name:/Add one night/}).click();assert.deepEqual(await p.locator('[data-builder-stop-index] [class*="builderRouteNights"] strong').allTextContents(),['1','3','3']);
  await first.getByRole('button',{name:/Remove one night/}).click();assert.deepEqual(await p.locator('[data-builder-stop-index] [class*="builderRouteNights"] strong').allTextContents(),['0','3','3']);
- await first.locator('summary').click();await first.getByRole('button',{name:'Later',exact:true}).click();assert.match(await p.locator('[data-builder-stop-index="1"]').innerText(),/San Cristóbal/);
+ await first.locator('summary').click();await first.getByRole('button',{name:'Move later',exact:true}).click();assert.match(await p.locator('[data-builder-stop-index="1"]').innerText(),/San Cristóbal/);
  await p.screenshot({path:`${evidence}/builder-430-large.png`});assert.deepEqual(h.errors,[]);
  }finally{await h.close();}
 });

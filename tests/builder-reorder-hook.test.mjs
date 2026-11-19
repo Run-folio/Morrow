@@ -53,3 +53,15 @@ test('menu completion restores its own focus, but never steals focus from anothe
   if(focusMoved)h.document.activeElement=other;release(true);await pending;assert.equal(focused,!focusMoved);
  }
 });
+
+test('a completed move at a boundary returns lost focus to its own still-open summary',async()=>{
+ for(const open of [true,false]){
+  const h=runner();let release,focused=false;
+  const summary={focus(){focused=true}},button={isConnected:true,closest:()=>details};
+  const details={open:true,isConnected:true,contains:value=>value===button,querySelector:()=>summary};
+  h.document.activeElement=button;
+  const pending=h.exports.completeBuilderMenuMove(button,()=>new Promise(r=>{release=r}),()=>true);
+  button.isConnected=false;details.open=open;h.document.body={};h.document.activeElement=h.document.body;
+  release(true);await pending;assert.equal(focused,open);
+ }
+});

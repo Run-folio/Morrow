@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, GripVertical, Plus, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ArrowRight, GripVertical, Pencil, Plus, SlidersHorizontal } from 'lucide-react';
 import { EasyTButton, EasyTSelect, EasyTSegmentedControl } from '@/components/easyt/easyt-controls';
 import { CanonicalPlaceAutocomplete } from '@/components/easyt/canonical-place-autocomplete';
 import { MorroviaDatePicker } from '@/components/easyt/morrovia-date-picker';
@@ -13,18 +13,19 @@ import styles from './trip-builder-top-controls.module.css';
 import plannerStyles from '@/components/easyt/morrovia-planner-controls.module.css';
 import { builderChipOccurrenceOrder } from '@/lib/easyt/trip-builder-order';
 import { destinationIntentPresentationInput, destinationSelectionLabel } from '@/lib/easyt/destination-intent-presentation';
+import { formatLocalDateRange } from '@/lib/easyt/local-date';
 import { useBuilderStopReorder } from './use-builder-stop-reorder';
 
 type Type= 'return_to_start'|'one_way';
 const noChipPreview=()=>{};
-export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onRemoveStop,onIntentInput,onIntentSelect,personalize,updateRouteFeedback,originReview,destinationReview,dateReview,onUpdateRoute,updatingRoute=false,onReorder,fixedOrder=false,lockedStopIds,onConfirmSavedFinish}:{
+export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onRemoveStop,onIntentInput,onIntentSelect,personalize,updateRouteFeedback,originReview,destinationReview,dateReview,onUpdateRoute,updatingRoute=false,onReorder,fixedOrder=false,lockedStopIds,onConfirmSavedFinish,canCollapse=false}:{
  trip:CanonicalEasyTTrip;draft:BuilderInputDraft;language:'en'|'es';disabled?:boolean;
  onType:(type:Type)=>void;onOriginInput:(raw:string)=>void;onOriginSelect:(place:CanonicalPlaceSuggestion)=>void;onOriginClear:()=>void;
  onDates:(start:string,end:string)=>void|boolean|Promise<void|boolean>;onDateInput:(field:"startDate"|"endDate",raw:string)=>void;onTravellers:(n:number)=>void;onBudget:(budget:CanonicalEasyTTrip['brief']['budgetBand'])=>void;
  onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean|Promise<boolean>;onRemoveIntent:(intent:DestinationIntent)=>void;
  onRemoveStop?:(stopId:string)=>void;
  onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean|Promise<boolean>;
- personalize?:ReactNode;updateRouteFeedback?:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean|Promise<boolean>;fixedOrder?:boolean;lockedStopIds?:readonly string[];onConfirmSavedFinish?:()=>void;
+ personalize?:ReactNode;updateRouteFeedback?:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean|Promise<boolean>;fixedOrder?:boolean;lockedStopIds?:readonly string[];onConfirmSavedFinish?:()=>void;canCollapse?:boolean;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
  const identity=JSON.stringify([trip.id,trip.ownerId,draft.tripId,draft.ownerId]);
@@ -66,14 +67,28 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  // Stable drop targets avoid moving the native drag source under the pointer.
  const displayedIntents=chipOccurrences?sourceIds.map(id=>route.destinations.find(intent=>intent.stopIds[0]===id)!):route.destinations;
  useEffect(()=>{if(mountedRef.current&&scopeRef.current===renderScope&&focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip,renderScope]);
+ const editorPanelId=useId();
+ const [expandedFor,setExpandedFor]=useState<string|null>(null);
+ const editableDraft=draft.fields.some(field=>field.binding.kind!=='nights');
+ const dateRange=formatLocalDateRange(trip.startDate,trip.endDate,language);
+ // A one-way route's last destination can be its finish without an extra endpoint.
+ const finishComplete=route.tripType==='return_to_start'?route.journeyEnd.mode==='same_as_start':route.tripType==='one_way'&&(route.journeyEnd.mode==='unknown'||(route.journeyEnd.mode==='explicit'&&Boolean(route.journeyEnd.place.coordinates)));
+ const canSummarize=Boolean(canCollapse&&!disabled&&!editingId&&!editableDraft&&route.origin?.name&&route.origin.coordinates&&trip.startDate&&trip.endDate&&dateRange&&Date.parse(trip.endDate)>=Date.parse(trip.startDate)&&finishComplete&&displayedIntents.length&&displayedIntents.every(intent=>intent.resolution==='resolved'));
+ const collapsed=canSummarize&&expandedFor!==identity;
  const originField=draft.fields.find(f=>f.binding.kind==='origin'&&f.status==='editable');
  const days=Math.round((Date.parse(trip.endDate)-Date.parse(trip.startDate))/86400000)+1;
  return <section className={`${styles.root} ${plannerStyles.planner}`} aria-label={es?'Detalles del viaje':'Journey details'} data-builder-reorder-surface data-builder-top-controls>
+  {canSummarize?<div className={styles.summary} data-builder-top-summary>
+    <div className={styles.summaryContent}><strong>{[route.origin?.name,...displayedIntents.map(intent=>intent.selectedPlace?.name??intent.sourceText),...(route.journeyEnd.mode==='explicit'?[route.journeyEnd.place.name]:[])].filter(Boolean).join(' → ')}</strong>
+    <span>{[route.tripType==='return_to_start'?(es?'Ida y vuelta':'Return'):(es?'Solo ida':'One way'),dateRange,`${trip.travellers} ${es?(trip.travellers===1?'viajero':'viajeros'):(trip.travellers===1?'traveller':'travellers')}`,es?({value:'Ajustado',mid:'Medio',high:'Alto'}[trip.brief.budgetBand]):({value:'Value',mid:'Mid-range',high:'High'}[trip.brief.budgetBand])].join(' · ')}</span></div>
+    <EasyTButton variant="secondary" icon={collapsed?Pencil:undefined} aria-label={collapsed?(es?'Editar detalles del viaje':'Edit trip details'):(es?'Ocultar detalles del viaje':'Hide trip details')} aria-controls={editorPanelId} aria-expanded={!collapsed} onClick={()=>setExpandedFor(collapsed?identity:null)}>{collapsed?(es?'Editar':'Edit'):(es?'Listo':'Done')}</EasyTButton>
+  </div>:null}
+  <div id={editorPanelId} className={styles.fullDetails} hidden={collapsed} onFocusCapture={()=>{if(expandedFor!==identity)setExpandedFor(identity)}}>
   <div className={styles.typeRow}><EasyTSegmentedControl<Type|"unknown_legacy"> ariaLabel={es?'Tipo de viaje':'Trip type'} value={route.tripType} onChange={type=>{if(type!=='unknown_legacy')onType(type)}} disabled={disabled}
     options={[{value:'return_to_start',label:es?'Volver al inicio':'Return to start'},{value:'one_way',label:es?'Solo ida':'One way'}]} /></div>
   {route.tripType==='unknown_legacy'?<p className={styles.context}>{es?'El final de este viaje guardado no está confirmado.':'This saved trip’s ending is unconfirmed.'}</p>:route.journeyEnd.mode==='explicit'?<p className={styles.context}>{es?'Final guardado':'Saved finish'}: <strong>{route.journeyEnd.place.name}</strong>{!route.journeyEnd.place.coordinates&&onConfirmSavedFinish?<EasyTButton variant="quiet" size="small" disabled={disabled} onClick={onConfirmSavedFinish}>{es?'Confirmar final guardado':'Confirm saved finish'}</EasyTButton>:null}</p>:null}
   <div className={plannerStyles.fields}><div id="builder-origin" className={styles.origin}><span data-morrovia-field-label className={plannerStyles.label}>{es?"Salida desde":"Start from"}</span><CanonicalPlaceAutocomplete language={language} label={es?'Salida desde':'Start from'} placeholder={es?'Ciudad o lugar de salida':'City or departure place'} value={originField?.raw??route.origin?.name??''}
-    disabled={disabled} requireCoordinates
+    disabled={disabled} requireCoordinates compactBuilderOrigin
     onChange={onOriginInput} onSelect={onOriginSelect} onClear={onOriginClear} />
   {originReview}</div><div>
   <MorroviaDestinationField label={es?'Lugares que quieres visitar':'Places you want to visit'}
@@ -87,7 +102,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
       const bases=route.orderedStopIds.filter(id=>intent.stopIds.includes(id)).map(id=>trip.stops.find(stop=>stop.id===id)).filter((stop):stop is CanonicalEasyTTrip['stops'][number]=>Boolean(stop));
       if(intent.kind==='planning_area' && bases.length) return <li key={intent.id} className={styles.parentGroup} data-destination-intent-id={intent.id} data-destination-parent-group ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}>
         <div role="group" aria-label={label}>
-          <ul className={styles.baseChips}>{bases.map(stop=><MorroviaDestinationTag key={stop.id} id={`${intent.id}:${stop.id}`} stopId={stop.id} label={stop.name} disabled={disabled||isIntentPending(intent.id)} removeDisabled={!onRemoveStop||trip.brief.scheduleLocks?.stopIds.includes(stop.id)}
+          <ul className={styles.baseChips}>{bases.map(stop=><MorroviaDestinationTag key={stop.id} id={`${intent.id}:${stop.id}`} stopId={stop.id} label={stop.name} containedActions disabled={disabled||isIntentPending(intent.id)} removeDisabled={!onRemoveStop||trip.brief.scheduleLocks?.stopIds.includes(stop.id)}
             editLabel={`${es?'Editar':'Edit'} ${stop.name}`} removeLabel={`${es?'Quitar':'Remove'} ${stop.name}`}
             onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveStop?.(stop.id)} />)}</ul>
         </div>
@@ -95,7 +110,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
       const repeated=route.destinations.filter(other=>(other.selectedPlace?.name??other.sourceText)===rawLabel).length>1;
       const reorderLabel=`${es?'Reordenar':'Reorder'} ${label}${repeated?`, ${es?'parada':'stop'} ${route.orderedStopIds.indexOf(intent.stopIds[0])+1}`:''}`;
       return <MorroviaDestinationTag key={intent.id} id={intent.id} ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}
-        label={label} disabled={disabled||isIntentPending(intent.id)} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
+        label={label} containedActions disabled={disabled||isIntentPending(intent.id)} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
         reorderGrip={canReorder?<EasyTButton variant="quiet" icon={GripVertical} iconOnly className={`${styles.grip} ${reorder.previewIds?.[index]===reorder.draggingId?styles.dropTarget:''}`} disabled={reorderLocks.includes(intent.stopIds[0])} aria-label={reorderLabel} {...reorder.gripProps(intent.stopIds[0])}>{reorderLabel}</EasyTButton>:undefined}
         reorderProps={canReorder?{'data-builder-chip-index':index,onDragOver:event=>{event.preventDefault();reorder.previewActiveAt(index)},onDrop:event=>{event.preventDefault();reorder.drop()}}:undefined}
         editLabel={`${es?'Editar':'Edit'} ${label}`} removeLabel={`${es?'Quitar':'Remove'} ${label}`}
@@ -120,5 +135,6 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
   </div>
   {personalize}
   <div className={styles.actions}><span>{days} {es?'días':'days'}</span><EasyTButton variant="secondary" data-route-action="optional-optimization" icon={ArrowRight} loading={updatingRoute} disabled={disabled||!onUpdateRoute} onClick={onUpdateRoute}>{es?'Actualizar ruta':'Update route'}</EasyTButton>{updateRouteFeedback}</div>
+  </div>
  </section>;
 }

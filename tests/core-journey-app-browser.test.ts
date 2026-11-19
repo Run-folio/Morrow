@@ -775,6 +775,7 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  trip=await recoveryTrip(page,id);assert.ok(trip);assert.deepEqual(trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),before.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
  assert.equal(trip.brief.intent!.route!.tripType,type);assert.deepEqual(trip.brief.structuredBrief!.completedPlanningAreaMentionIds,before.brief.structuredBrief!.completedPlanningAreaMentionIds);
  await durableBuilderTripId(page);
+ const editDetails=page.getByRole('button',{name:'Edit trip details',exact:true});if(await editDetails.isVisible())await editDetails.click();
  await page.getByRole('button',{name:type==='one_way'?'Return to start':'One way',exact:true}).click();
  const switchedType=type==='one_way'?'return_to_start':'one_way';
  await page.waitForFunction(label=>[...document.querySelectorAll('[data-builder-top-controls] button')]

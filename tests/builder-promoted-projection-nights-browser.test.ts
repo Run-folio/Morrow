@@ -147,7 +147,7 @@ test('promoted mounted Builder serializes nights behind a real automatic project
     const lifecycle=await evidence(),beforeOrder=writes.length;
     holdTransfer=true;holdAck=true;
     await page.getByLabel('Actions for Takayama',{exact:true}).click();
-    await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
+    await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();
     await until(()=>transferHeld,'actual scheduler must dispatch transfer reconciliation');
     await until(()=>ackHeld&&writes.length>beforeOrder&&current().stops[1]?.name==='Takayama','authored reorder server commit with ACK response held');
     milestones.push('reorder-server-committed-ack-and-transfer-held');

@@ -67,6 +67,7 @@ export function CanonicalPlaceAutocomplete({
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
   menuPlacement = "overlay",
+  compactBuilderOrigin = false,
 }: {
   id?: string;
   language?: EasyTLanguage;
@@ -106,6 +107,8 @@ export function CanonicalPlaceAutocomplete({
   revealSuggestionsKey?: number;
   /** Inline placement keeps the list reachable inside a scrolling modal. */
   menuPlacement?: "overlay" | "inline";
+  /** Builder origin uses a compact attribution disclosure below actual suggestions. */
+  compactBuilderOrigin?: boolean;
 }) {
   const resolvedEmptyMessage = emptyMessage ?? (language === "es" ? "No encontramos lugares coincidentes. Prueba el lugar con su país." : "No matching places found. Try the place with its country.");
   const resolvedFailureMessage = failureMessage ?? (language === "es" ? "La búsqueda de lugares no está disponible temporalmente." : "Place search is temporarily unavailable.");
@@ -376,7 +379,7 @@ export function CanonicalPlaceAutocomplete({
 
   const canClear = Boolean(onClear && (homepageInlineSearch ? value.trim() : value));
 
-  return <div ref={rootRef} data-home-destination-input={homepageInlineSearch || undefined} className={`${styles.root} ${canClear ? styles.hasClear : ""} ${homepageInlineSearch ? styles.homepageInlineSearch : ""}`}
+  return <div ref={rootRef} data-builder-origin-field={compactBuilderOrigin || undefined} data-home-destination-input={homepageInlineSearch || undefined} className={`${styles.root} ${canClear ? styles.hasClear : ""} ${homepageInlineSearch ? styles.homepageInlineSearch : ""}`}
     onBlur={(event) => {
       if (event.currentTarget.contains(event.relatedTarget)) return;
       completionVisibleRef.current = false;
@@ -455,7 +458,7 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language,compactBuilderOrigin),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
         if (visibleCompletedStatus === "failed" && onFreeTextSearch) runCompletedSearch();
         else setRetryNonce((current) => current + 1);
       }}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
@@ -464,7 +467,7 @@ export function CanonicalPlaceAutocomplete({
         <EasyTButton variant="secondary" size="small" disabled={disabled} onPointerDown={event => event.preventDefault()} onClick={() => runCompletedSearch(undefined,true)}>{language === "es" ? "Buscar nombres de lugares públicos" : "Search public place names"}</EasyTButton>
       </div> : null}
       {mapChoice && mapHref ? <a className={styles.mapChoice} href={mapHref} target="_blank" rel="noopener noreferrer" aria-label={`${language === "es" ? "Ver en mapa" : "View on map"}: ${mapChoice.name}, ${placeSuggestionLocationDetail(mapChoice,suggestions,language)}`}>{language === "es" ? `Ver ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} en el mapa` : `View ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} on map`}</a> : null}
-      <MorroviaPlaceDataCredit language={language} sources={[
+      <MorroviaPlaceDataCredit language={language} compact={compactBuilderOrigin} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:|island-snapshot:)/.test(p.id)||p.supports.startsWith('Physical island verified: OSM ')))?['openstreetmap' as const]:[]),

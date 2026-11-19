@@ -18,7 +18,7 @@ function confirmSyntheticLocations(cloud:ReturnType<typeof requireReadableTripDo
  cloud.brief.intent.route.origin=acceptedGeographicPlace(origin,{...origin,placeType:'city',routability:'direct_destination'},'endpoint')!;
  for(const stop of cloud.stops){const place={...stopGeographicPlace(stop),providerId:`fixture:confirmed-${stop.id}`};const verified=acceptedGeographicPlace(place,{...place,placeType:'city',routability:'direct_destination'});if(verified){stop.providerId=verified.providerId;stop.geographicBinding=verified.geographicBinding;}}
 }
-async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void,geocodeCandidates:Record<string,unknown[]>={}) {
+async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void,geocodeCandidates:Record<string,unknown[]>={},openDetails=true) {
  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
  if(legacy){cloud.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima'}};cloud.brief.journeyEnd=cloud.brief.intent.route.journeyEnd}
  configure?.(cloud);
@@ -29,7 +29,10 @@ async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireRe
  if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);
  if(next.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};
  writes++;cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
- }});view.page.setDefaultTimeout(5000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud,writes:()=>writes};
+ }});view.page.setDefaultTimeout(5000);await view.page.locator('[data-builder-top-controls]').waitFor();
+ const editDetails=view.page.getByRole('button',{name:'Edit trip details',exact:true});
+ if(openDetails&&await editDetails.isVisible())await editDetails.click();
+ return {view,cloud:()=>cloud,writes:()=>writes};
 }
 async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<50;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
 test('unresolved saved finish is confirmed deliberately without adding a stay or changing authoritative order',{skip:!enabled,timeout:30000},async()=>{
@@ -71,6 +74,26 @@ test('late saved finish lookup cannot restore an endpoint after dismissal and ac
  await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');const accepted=structuredClone(h.cloud());
  release();await h.view.page.waitForTimeout(200);assert.deepEqual(h.cloud(),accepted);assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.view.errors,[]);
  }finally{release();await h.view.close()}
+});
+test('completed one-way details without an extra finish collapse, expand on Edit and close without writes',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,trip=>{
+  trip.brief.intent.route.tripType='one_way';
+  trip.brief.intent.route.journeyEnd=trip.brief.journeyEnd={mode:'unknown'};
+  trip.brief.endDateIsSuggestion=false;
+  delete trip.brief.cascadeStatus;
+  delete trip.brief.structuredBrief;
+ },{},false);try{
+ const top=h.view.page.locator('[data-builder-top-controls]');
+ const edit=top.getByRole('button',{name:'Edit trip details',exact:true});
+ await edit.waitFor();assert.equal(await edit.getAttribute('aria-expanded'),'false');
+ const summary=await top.locator('[data-builder-top-summary]').innerText();assert.match(summary,/Tokyo.*Kyoto/);assert.match(summary,/One way/);
+ assert.equal(await top.getByRole('combobox',{name:'Start from',exact:true}).isVisible(),false);
+ await edit.click();await top.getByRole('combobox',{name:'Start from',exact:true}).waitFor();
+ const done=top.getByRole('button',{name:'Hide trip details',exact:true});assert.equal(await done.getAttribute('aria-expanded'),'true');
+ await done.click();await edit.waitFor();
+ assert.equal(await edit.evaluate((element:Element)=>document.activeElement===element),true);
+ assert.equal(h.writes(),0);
+ }finally{await h.view.close()}
 });
 test('top controls have two type choices, unordered chips, one add owner and no optional preference controls',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{

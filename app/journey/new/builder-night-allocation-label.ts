@@ -15,3 +15,13 @@ export function builderNightAllocationLabel(status: BuilderNightStatus): string 
   }
   return language === "es" ? "Hay estancias sin noches" : "Stays need nights";
 }
+
+export type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning"; balanceDelta?: number };
+
+/** Keep edit warnings distinct from the current total. Skip only the numerical
+ * title when the route header is already reporting that same signed difference. */
+export function builderNightEditWarning(feedback: NightEditFeedback | null, currentDelta: number, language: "en" | "es") {
+  if (!feedback || feedback.tone !== "warning") return null;
+  if (currentDelta !== 0 && feedback.balanceDelta === currentDelta && feedback.detail) return feedback.detail;
+  return [language === "es" ? "Última edición:" : "Last edit:", feedback.title, feedback.detail].filter(Boolean).join(" ");
+}

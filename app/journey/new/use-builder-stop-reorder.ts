@@ -201,7 +201,10 @@ export async function completeBuilderMenuMove(
   const details = button.closest("details");
   const ownedFocus = Boolean(details?.contains(document.activeElement));
   const accepted = await move();
-  if (ownedFocus && scopeIsCurrent() && details?.isConnected && details.contains(document.activeElement)) {
+  // A boundary move can unmount the action that just became unavailable.
+  // Restore only if the still-open disclosure owned it; never reclaim a later focus.
+  const lostRemovedAction = !button.isConnected && document.activeElement === document.body;
+  if (ownedFocus && scopeIsCurrent() && details?.isConnected && details.open && (details.contains(document.activeElement) || lostRemovedAction)) {
     details.open = false;
     details.querySelector("summary")?.focus();
   }

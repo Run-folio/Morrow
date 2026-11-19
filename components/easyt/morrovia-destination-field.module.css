@@ -24,3 +24,8 @@
 .destinationField[data-home-destination-field] { align-items: center; }
 .destinationField[data-home-destination-field] .entries { flex: 1 1 auto; }
 .destinationField[data-home-destination-field] .editing { flex: 1 1 100%; }
+
+.entry[data-contained-chip]:not(.editing) { padding: 2px; }
+.entry[data-contained-chip] > button { flex-shrink: 0; border-radius: calc(var(--morrovia-control-radius) - 3px); }
+.entry[data-contained-chip] > .chip { flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
+.entry[data-contained-chip] > button:focus-visible { outline-offset: -2px; }

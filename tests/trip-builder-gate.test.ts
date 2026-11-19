@@ -819,7 +819,7 @@ test("mobile Builder keeps destination intents visible while the single Add flow
     assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand", "Tokyo"]);
 
     await routeWorkspace.locator('summary[aria-label="Actions for Samarkand"]').click();
-    await routeWorkspace.getByRole("button", { name: "Earlier" }).click();
+    await routeWorkspace.getByRole("button", { name: "Move earlier" }).click();
     assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand", "Tokyo"], "manual table order must not reorder unordered intent chips");
     assert.equal(await routeWorkspace.locator("[data-builder-stop-index]").first().locator("strong").first().innerText(), "Samarkand");
 

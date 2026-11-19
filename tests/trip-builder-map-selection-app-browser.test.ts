@@ -59,7 +59,7 @@ for (const width of [1440, 1024, 390]) test(`Builder selection uses blue destina
     assert.equal(await rows.nth(3).getAttribute("aria-selected"), "true");
     const damaralandActions = rows.nth(3).locator("details");
     await damaralandActions.locator("summary").click();
-    await damaralandActions.getByRole("button", { name: "Earlier" }).click();
+    await damaralandActions.getByRole("button", { name: "Move earlier" }).click();
     assert.match(await rows.nth(2).innerText(), /Damaraland/);
     assert.equal(await rows.nth(2).getAttribute("aria-selected"), "true");
     assert.equal(await marker("damaraland").getAttribute("aria-pressed"), "true");

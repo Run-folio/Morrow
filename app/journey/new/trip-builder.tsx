@@ -101,7 +101,7 @@ import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-a
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { TripBuilderDetailsEditor, type TripBuilderDetailsDraft } from "./trip-builder-details-editor";
 import { TripBuilderRouteWorkspace, type BuilderOrderSource } from "./trip-builder-route-workspace";
-import { builderNightAllocationLabel } from "./builder-night-allocation-label";
+import { builderNightAllocationLabel, builderNightEditWarning, type NightEditFeedback } from "./builder-night-allocation-label";
 import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderClarificationChoice, type BuilderClarificationRouteShape, type BuilderClarificationSelectedPlace, type BuilderClarificationSuggestion } from "@/components/easyt/builder-clarification-dialog";
 import { DiscoveryModal } from "@/components/easyt/discovery-modal";
 import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
@@ -155,7 +155,6 @@ const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-iti
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; geographicBinding?:JourneyEndpointPlace['geographicBinding']; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; canonicalSession?: BuilderEditSession; acceptedRevision?: number; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
-type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
 type LocationChoice = HandoffLocationChoice;
 type PlaceSelectionDraft = Omit<PlaceSelection, "mentionId" | "routeStopId">;
@@ -175,11 +174,13 @@ function nightRebalanceFeedback(
     ? moved.map((change) => `${change.nights} ${change.nights === 1 ? "night" : "nights"} ${change.direction === "added" ? "to" : "from"} ${change.name}`).join(", ")
     : undefined;
   if (result.balanceDelta > 0) return {
+    balanceDelta: result.balanceDelta,
     tone: "warning",
     title: language === "es" ? `${result.balanceDelta} ${result.balanceDelta === 1 ? "noche pendiente" : "noches pendientes"}` : `${result.balanceDelta} ${result.balanceDelta === 1 ? "night left" : "nights left"} to add`,
     detail: movedDetail ?? (language === "es" ? "Las opciones disponibles están demasiado igualadas para elegir una en silencio." : "The available destinations are too evenly matched for Morrovia to choose silently."),
   };
   if (result.balanceDelta < 0) return {
+    balanceDelta: result.balanceDelta,
     tone: "warning",
     title: language === "es" ? `${Math.abs(result.balanceDelta)} ${Math.abs(result.balanceDelta) === 1 ? "noche por quitar" : "noches por quitar"}` : `${Math.abs(result.balanceDelta)} ${Math.abs(result.balanceDelta) === 1 ? "night needs" : "nights need"} to be removed`,
     detail: movedDetail ?? (language === "es" ? "Ninguna estancia desbloqueada puede reducirse con suficiente seguridad." : "No unlocked stay is a sufficiently clear safe donor."),
@@ -6285,6 +6286,12 @@ function TripBuilderDocument() {
               </section>}
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
+                  canCollapse={!endDateStillSuggested && !originError && !originMissing && !inlineOriginPlanningMention
+                    && !mountedBuilder.snapshot.error && !stopError && !detailsCommitError && !topAddOpen
+                    && !activePlaceMentions.some(mention=>Boolean(renderPlaceResolution(mention)))
+                    && !renderSavedLocationReview("origin") && !renderSavedLocationReview("end")
+                    && !necessaryReview(["endpoint","schedule","assessment"])?.length
+                    && !mountedBuilder.snapshot.trip.legs.some(leg=>leg.toEndpoint?.kind==="end" && necessaryReview(["leg"],leg.id)?.length)}
                   onConfirmSavedFinish={()=>{void confirmSavedFinish()}}
                   onReorder={async ids=>await commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology} lockedStopIds={protectedBuilderStopIds}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
@@ -6647,7 +6654,7 @@ function TripBuilderDocument() {
                 routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
                 legReview={legId=>necessaryReview(["leg"],legId)}
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
-                nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
+                nightReview={builderNightEditWarning(nightEditFeedback, totalNights - allocatedNights, language)}
                 reviewControl={<div className={styles.builderReviewActions}>
                   <MorroviaSaveStatus {...builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments, mountedBuilder?.snapshot.routeWorkBlocked)} />
                 </div>}

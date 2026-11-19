@@ -26,5 +26,13 @@
 /* The approved Builder origin is a bounded autocomplete inside the joined fields. */
 .root .origin input { border: 1px solid var(--morrovia-line); }
 .root .origin input:hover { border-color: var(--morrovia-ink-soft); }
-.root .origin input:focus-visible { border-color: var(--morrovia-signal); }
+.root .origin input:focus-visible { border-color: transparent; outline: 2px solid var(--morrovia-focus-ring); outline-offset: -2px; box-shadow: none; }
 .root .origin input[aria-invalid="true"] { border-color: var(--morrovia-danger); }
+
+.fullDetails { display: grid; min-width: 0; gap: inherit; }
+.fullDetails[hidden] { display: none; }
+.summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; }
+.summaryContent { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.summaryContent strong { font: var(--morrovia-type-control); color: var(--morrovia-ink); }
+.summaryContent span { font: var(--morrovia-type-fine-print); color: var(--morrovia-muted); }
+.summary > button { flex: none; }

@@ -40,10 +40,11 @@ export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(su
   return all.findIndex(other=>sameFacts(other,item)&&(!sameAttributionRequired||sameArray(attribution(other),attribution(item))))===index;
  });
 }
-export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[], language:'en'|'es'='en'){
+export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[], language:'en'|'es'='en', preferCountry = false){
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
  const sameLabel=suggestions.filter(other=>nameKey(other.name)===nameKey(item.name)
    && other.country===item.country&&other.placeType===item.placeType);
+ if(preferCountry&&sameLabel.length<=1&&item.country)return item.country;
  const hierarchy=item.administrativeHierarchy?.filter(Boolean)??(item.region?[item.region]:[]);
  for(let depth=1;depth<=hierarchy.length;depth++){
   const key=hierarchy.slice(0,depth).join('|');

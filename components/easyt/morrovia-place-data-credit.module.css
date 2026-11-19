@@ -1,2 +1,6 @@
 .credit { margin: 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .credit a { color: inherit; text-decoration: underline; }
+.disclosure { justify-self: start; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.disclosure summary { cursor: pointer; padding: 6px 8px; }
+.disclosure summary:focus-visible { outline: 2px solid var(--morrovia-focus-ring); outline-offset: -2px; }
+.disclosure .credit { padding: 0 8px 6px; }

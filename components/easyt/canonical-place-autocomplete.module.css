@@ -34,3 +34,8 @@
 .homepageInlineSearch > .clear, .homepageInlineSearch > .searchAction { position:static; flex:none; min-width:44px; min-height:44px; margin:0; }
 .homepageInlineSearch > .clear { padding:0; }
 .homepageInlineSearch > .searchAction { padding-inline:10px; }
+
+.root[data-builder-origin-field] > .clear { top: 50%; right: 3px; min-width: 44px; min-height: 44px; transform: translateY(-50%); border-radius: calc(var(--morrovia-control-radius) - 3px); }
+.root[data-builder-origin-field] > .clear:hover:not(:disabled),
+.root[data-builder-origin-field] > .clear:active:not(:disabled) { transform: translateY(-50%); }
+.root[data-builder-origin-field] > .clear:focus-visible { outline-offset: -2px; }

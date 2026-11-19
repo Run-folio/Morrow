@@ -109,7 +109,7 @@ test('already-signed-in edits preserve unrelated completed account history with 
   const p=writes.length;await page.getByRole('button',{name:'Add destination',exact:true}).click();await page.getByRole('combobox',{name:'Add a stop',exact:true}).fill('Guatemala City');
   await page.getByRole('option',{name:/^Guatemala City/}).first().click();
   await until(()=>writes.length>p&&current().stops.some(s=>s.name==='Guatemala City'),'same-country city add must reach current account');await saved();milestones.push('city-add-ack');
-  const m=writes.length;await page.getByLabel('Actions for David',{exact:true}).click();await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
+  const m=writes.length;await page.getByLabel('Actions for David',{exact:true}).click();await page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Move earlier',exact:true}).last().click();
   await until(()=>writes.length>m,'reorder must reach current account');await saved();milestones.push('reorder-ack');
   const initialNights=current().stops.find(s=>s.name==='Flores')!.nights!,n=writes.length;
   await page.getByRole('button',{name:/^Add one night to Flores/}).click();

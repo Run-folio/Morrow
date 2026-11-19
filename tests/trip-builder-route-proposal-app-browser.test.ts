@@ -18,7 +18,7 @@ async function fixture(authority:'manual'|'explicit'|'legacy_preserved'|'optimiz
  if(unknown){cloud.stops[1]!.longitude=null;cloud.stops[1]!.latitude=null}
  cloud.brief.intent.route.projectionInputKey=routeProjectionInputKey(cloud);const initial=structuredClone(cloud);const writes:typeof cloud[]=[];
  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:({method,trip})=>{if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);if(next.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};writes.push(structuredClone(next));cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}}}});
- view.page.setDefaultTimeout(4000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud,initial,writes};
+ view.page.setDefaultTimeout(4000);await view.page.locator('[data-builder-top-controls]').waitFor();const edit=view.page.getByRole('button',{name:'Edit trip details',exact:true});if(await edit.isVisible())await edit.click();return {view,cloud:()=>cloud,initial,writes};
 }
 async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<60;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
 test('Update route preview Keep and Escape leave canonical bytes and saves unchanged and restore focus',{skip:!enabled,timeout:30000},async()=>{

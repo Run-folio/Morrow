@@ -31,7 +31,7 @@ test("published route edits, nights and order survive durable reload and remain 
     const initialOrder = await routeNames();
     const moved = initialOrder[1]!;
     await view.page.locator(`summary[aria-label="Actions for ${moved}"]`).click();
-    await view.page.getByRole("button", { name: "Later" }).click();
+    await view.page.getByRole("button", { name: "Move later" }).click();
     const editedOrder = await routeNames();
     assert.notDeepEqual(editedOrder, initialOrder);
 
