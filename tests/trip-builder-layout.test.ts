@@ -529,7 +529,7 @@ test("night allocation is the final route-table progress row rather than a separ
     "the existing canonical night totals should feed Route presentation directly");
   assert.doesNotMatch(builder, /className=\{styles\.timeAllocationState\}/,
     "night allocation must not retain its own full-width band");
-  assert.match(workspace, /builderRouteList[\s\S]*<header[\s\S]*builderRouteHeader[\s\S]*role="table"[\s\S]*data-builder-night-progress role="row"/,
+  assert.match(workspace, /builderRouteList[\s\S]*className="sr-only"[\s\S]*nightReview \|\| reviewControl \?[\s\S]*builderRouteHeader[\s\S]*role="table"[\s\S]*data-builder-night-progress role="row"/,
     "allocation belongs inside the route table after the stop and return rows");
   assert.match(workspace, /data-builder-night-progress role="row"[\s\S]*role="cell" aria-colindex=\{1\} aria-colspan=\{6\}[\s\S]*role="status" aria-live="polite" aria-atomic="true"[\s\S]*<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*<section/,
     "the final row spans the table and announces progress changes without interrupting");

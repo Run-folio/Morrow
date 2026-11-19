@@ -188,13 +188,11 @@ export function TripBuilderRouteWorkspace({
   return <section data-builder-reorder-surface data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <div className={styles.builderRouteGrid}>
       <div className={styles.builderRouteList}>
-        <header className={styles.builderRouteHeader}>
-          <div>
-            <h2 id="builder-route-title">{nightStatus.language === "es" ? "Tu ruta" : "Your route"}</h2>
-            {nightReview ? <div className={styles.builderRouteNightDetail} role="status">{nightReview}</div> : null}
-          </div>
+        <h2 id="builder-route-title" className="sr-only">{nightStatus.language === "es" ? "Tu ruta" : "Your route"}</h2>
+        {nightReview || reviewControl ? <div className={styles.builderRouteHeader} data-builder-route-feedback>
+          {nightReview ? <div className={styles.builderRouteNightDetail} role="status">{nightReview}</div> : null}
           {reviewControl}
-        </header>
+        </div> : null}
       <div ref={actionsRoot} className={styles.builderRouteRows} aria-label="Route stops" role="table" aria-colcount={6}>
         <div className={styles.builderRouteColumns} role="row">
           <span role="columnheader" aria-colindex={1} className="sr-only">Reorder</span>

@@ -61,7 +61,12 @@ export const OneNightTooMany: Story = {
 };
 export const AllAllocated: Story = {
   args: { initialNights: [3, 2, 2] },
-  play: ({ canvasElement }) => checkFinalNightProgress(canvasElement, /7\/7 nights planned\./),
+  play: async ({ canvasElement }) => {
+    await checkFinalNightProgress(canvasElement, /7\/7 nights planned\./);
+    const region = within(canvasElement).getByRole("region", { name: "Your route" });
+    await expect(region.querySelector("[data-builder-route-feedback]")).toBeNull();
+    await expect(within(region).getByRole("heading", { name: "Your route" })).toHaveClass("sr-only");
+  },
 };
 export const FullCountWithZeroNightStop: Story = {
   args: { initialNights: [0, 4, 3] },
