@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -56,8 +57,8 @@ export function EasyTFirstVisitTourPrompt() {
   if (!visible) return null;
   return <div className={styles.firstVisitPrompt} data-product-tour-prompt="true">
     <span>{text.prompt}</span>
-    <button type="button" onClick={() => { setVisible(false); window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); }}>{text.takeTour}</button>
-    <button className={styles.promptDismiss} type="button" aria-label={text.dismissPrompt} onClick={() => { rememberTourSeen(); setVisible(false); window.dispatchEvent(new CustomEvent(PRODUCT_TOUR_STATE_EVENT, { detail: { open: false } })); }}><X aria-hidden="true" /></button>
+    <MotionButton type="button" onClick={() => { setVisible(false); window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); }}>{text.takeTour}</MotionButton>
+    <MotionButton className={styles.promptDismiss} type="button" aria-label={text.dismissPrompt} onClick={() => { rememberTourSeen(); setVisible(false); window.dispatchEvent(new CustomEvent(PRODUCT_TOUR_STATE_EVENT, { detail: { open: false } })); }}><X aria-hidden="true" /></MotionButton>
   </div>;
 }
 
@@ -124,15 +125,15 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
   }, [initialIndex, listenForOpen]);
 
   return <div className={mobileStyles.tour}>
-    {showTrigger ? <button ref={triggerRef} className={styles.trigger} type="button" aria-label={triggerLabel ?? text.trigger} onClick={() => {
+    {showTrigger ? <MotionButton ref={triggerRef} className={styles.trigger} type="button" aria-label={triggerLabel ?? text.trigger} onClick={() => {
       if (dispatchOpen) { window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); return; }
       returnFocusRef.current = triggerRef.current;
       setStep(initialIndex);
       setOpen(true);
-    }}>{triggerLabel ?? text.trigger}</button> : null}
+    }}>{triggerLabel ?? text.trigger}</MotionButton> : null}
     {open ? createPortal(<div className={mobileStyles.tour}><div className={styles.overlay} role="presentation" onMouseDown={close}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" aria-describedby="easyt-tour-description" onMouseDown={(event) => event.stopPropagation()}>
-        <button className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></button>
+        <MotionButton className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></MotionButton>
         <div className={styles.visual}><p className={styles.example}>{text.example} · <a href="/journey/product-shots/tour/credits.html" target="_blank" rel="noreferrer" aria-label={text.creditsLabel}>{text.credits}</a></p><div className={styles.mediaFrame}><div className={styles.screen}><picture><source media="(max-width: 680px)" srcSet={current.mobileImage} /><img src={current.image} alt={current.alt} /></picture></div></div></div>
         <div className={styles.content}>
           <div className={styles.stepCopy} aria-live="polite" aria-atomic="true">
@@ -141,8 +142,8 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
           <p id="easyt-tour-description">{current.copy}</p>
           </div>
           <div className={styles.dots}><span className={styles.progress}>{`${text.step} ${step + 1} ${text.of} ${text.steps.length}`}</span>{text.steps.map((item, index) => <i aria-hidden="true" className={index === step ? styles.dotActive : ""} key={item.label} />)}</div>
-          <div className={styles.actions}>{step > 0 ? <button className={styles.back} type="button" onClick={() => { setStep(step - 1); nextRef.current?.focus(); }}><ArrowLeft aria-hidden="true" /> {text.back}</button> : <span />}{step === text.steps.length - 1 ? <button ref={nextRef} className={styles.next} type="button" onClick={close}><Check aria-hidden="true" /> {text.finish}</button> : <button ref={nextRef} className={styles.next} type="button" onClick={() => setStep(step + 1)}>{text.next} <ArrowRight aria-hidden="true" /></button>}</div>
-          <button className={styles.skip} type="button" onClick={close}>{text.skip}</button>
+          <div className={styles.actions}>{step > 0 ? <MotionButton className={styles.back} type="button" onClick={() => { setStep(step - 1); nextRef.current?.focus(); }}><ArrowLeft aria-hidden="true" /> {text.back}</MotionButton> : <span />}{step === text.steps.length - 1 ? <MotionButton ref={nextRef} className={styles.next} type="button" onClick={close}><Check aria-hidden="true" /> {text.finish}</MotionButton> : <MotionButton ref={nextRef} className={styles.next} type="button" onClick={() => setStep(step + 1)}>{text.next} <ArrowRight aria-hidden="true" /></MotionButton>}</div>
+          <MotionButton className={styles.skip} type="button" onClick={close}>{text.skip}</MotionButton>
         </div>
       </section>
     </div></div>, document.body) : null}

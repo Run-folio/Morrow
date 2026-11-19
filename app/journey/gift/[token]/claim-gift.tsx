@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,11 +31,11 @@ export default function ClaimGift({ token }: { token: string }) {
   return (
     <div className={styles.giftClaimActions}>
       {error ? <p className={styles.syncError}>{error}</p> : null}
-      <button type="button" className={styles.primaryLink} onClick={claim} disabled={state !== "idle"}>
+      <MotionButton type="button" className={styles.primaryLink} onClick={claim} disabled={state !== "idle"}>
         {state === "done" ? <Check aria-hidden="true" /> : <Gift aria-hidden="true" />}
         {state === "working" ? "Adding to your trips…" : "Claim editable copy"}
         {state === "idle" ? <ArrowRight aria-hidden="true" /> : null}
-      </button>
+      </MotionButton>
     </div>
   );
 }

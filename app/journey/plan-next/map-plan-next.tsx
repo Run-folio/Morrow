@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -179,9 +180,9 @@ export default function MapPlanNext() {
     </header>
 
     <section className={styles.timeline} aria-label="Route stops">
-      {map.stops.map((stop, index) => <button key={stop.id} type="button" className={stop.id === selectedStop.id ? styles.activeStop : ""} onClick={() => onSelect(stop.id)}>
+      {map.stops.map((stop, index) => <MotionButton key={stop.id} type="button" className={stop.id === selectedStop.id ? styles.activeStop : ""} onClick={() => onSelect(stop.id)}>
         <span>{String(index + 1).padStart(2, "0")}</span><b>{stop.city}</b><small>{stop.date} · {trip.stops.find((item) => item.id === stop.id)?.nights ?? 0} nights</small>
-      </button>)}
+      </MotionButton>)}
     </section>
 
     <div className={styles.workspace}>
@@ -202,7 +203,7 @@ export default function MapPlanNext() {
       </section>
 
       <aside className={styles.decisions}>
-        <div className={styles.decisionsHeading}><div><p className={styles.eyebrow}>Trip decisions</p><h2>{decisions.length ? `${decisions.length} to review` : "Route looks clear"}</h2></div><button type="button" onClick={() => setShowDecisions((value) => !value)}>{showDecisions ? "Hide" : "Show"}</button></div>
+        <div className={styles.decisionsHeading}><div><p className={styles.eyebrow}>Trip decisions</p><h2>{decisions.length ? `${decisions.length} to review` : "Route looks clear"}</h2></div><MotionButton type="button" onClick={() => setShowDecisions((value) => !value)}>{showDecisions ? "Hide" : "Show"}</MotionButton></div>
         {showDecisions && <div className={styles.decisionList}>{decisions.length ? decisions.map((issue) => <article key={issue.id} className={issue.severity === "critical" ? styles.critical : ""}><CircleAlert aria-hidden="true" /><div><b>{issue.message}</b><p>{issue.evidence}</p></div><Link href={currentHref} aria-label="Resolve in current planner"><ChevronRight aria-hidden="true" /></Link></article>) : <p className={styles.clear}>No blocking route decisions. Confirm live timings before booking.</p>}</div>}
       </aside>
     </div>
@@ -210,7 +211,7 @@ export default function MapPlanNext() {
     <section className={styles.daySheet}>
       <div className={styles.sheetHeading}><div><p className={styles.eyebrow}>At {selectedStop.city}</p><h2>Shape the day</h2></div><span>{selectedItems.length || 1} day{selectedItems.length === 1 ? "" : "s"}</span></div>
       <div className={styles.finderTabs} role="tablist" aria-label="Plan options">
-        {(["plan", "stay", "eat", "see"] as FinderTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={finderTab === tab} className={finderTab === tab ? styles.activeTab : ""} onClick={() => setFinderTab(tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
+        {(["plan", "stay", "eat", "see"] as FinderTab[]).map((tab) => <MotionButton key={tab} type="button" role="tab" aria-selected={finderTab === tab} className={finderTab === tab ? styles.activeTab : ""} onClick={() => setFinderTab(tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</MotionButton>)}
       </div>
       {finderTab === "plan" ? <div className={styles.planList}>{selectedItems.length ? selectedItems.map((item) => <article key={item.id}><span>Day {item.dayNumber}</span><div><b>{item.title}</b><p>{item.reason}</p></div></article>) : <p>No day detail yet. Use the current planner to shape this stop.</p>}</div> : <div className={styles.finderPrompt}><p>{finderTab === "stay" ? "Accommodation" : finderTab === "eat" ? "Food nearby" : "Places to see"}</p><strong>Open the current planner to search and save {finderTab === "stay" ? "stays" : finderTab === "eat" ? "restaurants" : "places"} for this stop.</strong><Link href={currentHref}>Open current planner <ChevronRight aria-hidden="true" /></Link></div>}
     </section>

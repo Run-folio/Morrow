@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { ArrowLeft, Check, ChevronRight, Plus, X } from "lucide-react";
 import { forwardRef, useEffect, useId, useState } from "react";
@@ -222,11 +223,10 @@ export function BuilderClarificationDialog({
                   <p>{candidate.reason}</p>
                   {candidate.stayGuidance ? <small>{candidate.stayGuidance}</small> : null}
                   {candidate.source ? <a className={styles.discoverySource} href={candidate.source.url} target="_blank" rel="noreferrer">{discoveryText.source}: {candidate.source.label}</a> : null}
-                  {/* morrovia-ui-audit-allow-next-line native-control -- A pressed-state selection control in a discovery card, not a generic action button. */}
-                  <button type="button" aria-pressed={selected} disabled={candidate.alreadyInTrip} aria-label={`${candidate.name}: ${candidate.alreadyInTrip ? discoveryText.alreadyInTripAria : selected ? discoveryText.selectedRemoveAria : discoveryText.addAria}`} onClick={() => discovery.onToggle(candidate.id, !selected)}>
+                  <MotionButton type="button" aria-pressed={selected} disabled={candidate.alreadyInTrip} aria-label={`${candidate.name}: ${candidate.alreadyInTrip ? discoveryText.alreadyInTripAria : selected ? discoveryText.selectedRemoveAria : discoveryText.addAria}`} onClick={() => discovery.onToggle(candidate.id, !selected)}>
                     {selected ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
                     {candidate.alreadyInTrip ? discoveryText.alreadyInTrip : selected ? discoveryText.selectedRemove : discoveryText.add}
-                  </button>
+                  </MotionButton>
                 </div>
               </article>;
             })}
@@ -239,10 +239,9 @@ export function BuilderClarificationDialog({
           <div>{routeShapes.map((shape) => {
             const reviewing = reviewingShapeId === shape.id;
             return <article key={shape.id}>
-              {/* morrovia-ui-audit-allow-next-line native-control -- Route-shape disclosure owns aria-expanded and an embedded review region, which is not a push-button action. */}
-              <button type="button" aria-expanded={reviewing} onClick={() => setReviewingShapeId(reviewing ? null : shape.id)}>
+              <MotionButton type="button" aria-expanded={reviewing} onClick={() => setReviewingShapeId(reviewing ? null : shape.id)}>
                 <span><b>{shape.title}</b><small>{shape.summary}</small><em>{shape.reason}</em></span><ChevronRight aria-hidden="true" />
-              </button>
+              </MotionButton>
               {reviewing ? <div className={styles.shapeReview}>
                 <p>{text.review}</p>
                 <ul>{shape.places.map((place) => <li key={place.id}><b>{place.name}</b><span>{place.detail}</span></li>)}</ul>
@@ -255,10 +254,9 @@ export function BuilderClarificationDialog({
         {(!discovery || suggestions.length || suggestionsStatus) ? <section className={styles.suggestions} aria-label={suggestionsLabel ?? text.suggested}>
           <strong>{suggestionsLabel ?? text.suggested}</strong>
           {suggestions.length ? <div>{suggestions.map((suggestion) => <div key={suggestion.id}>
-            {/* morrovia-ui-audit-allow-next-line native-control -- A suggestion option has two-line place metadata and a list-selection contract distinct from the shared action button. */}
-            <button type="button" onClick={() => onAddSuggestion?.(suggestion)}>
+            <MotionButton type="button" onClick={() => onAddSuggestion?.(suggestion)}>
             <Plus aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.detail}</small></span>
-            </button>
+            </MotionButton>
           </div>)}</div> : null}
           {suggestionsStatus ? <p className={styles.suggestionStatus} role="status">{suggestionsStatus}</p> : null}
           {suggestionsActionLabel && onSuggestionsAction ? <EasyTButton className={styles.suggestionsMore} variant="quiet" size="small" onClick={onSuggestionsAction}>{suggestionsActionLabel}</EasyTButton> : null}

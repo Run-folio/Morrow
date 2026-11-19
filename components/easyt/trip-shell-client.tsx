@@ -1,4 +1,5 @@
 "use client";
+import { MotionLink } from "./app-motion";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
@@ -710,14 +711,14 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
   const renderLink = (view: typeof views[number]) => {
     const Icon = view.icon;
     const active = activeView === view.id;
-    return <Link key={view.id} prefetch={true} className={active ? styles.subnavActive : undefined}
+    return <MotionLink key={view.id} prefetch={true} className={active ? styles.subnavActive : undefined}
       href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
       aria-current={active ? "page" : undefined}
       data-pending={(navigation?.queuedView ?? navigation?.pendingView) === view.id ? "true" : undefined}
       onNavigate={(event) => { navigation?.navigate(view.id, active, () => event.preventDefault()); }}
       onClick={() => setMoreOpen(false)}>
       <Icon aria-hidden="true" /><span>{mobile && view.id === "stay" ? "Stays" : view.label}</span>
-    </Link>;
+    </MotionLink>;
   };
   const openMap = () => {
     const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;

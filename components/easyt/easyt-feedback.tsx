@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MessageCircleHeart, X } from "lucide-react";
@@ -129,7 +130,7 @@ export function EasyTFeedback({ ownerId, onDismiss, onSubmitted, storyState }: P
     ) : <div className={styles.form}>
       <h3 ref={questionRef} tabIndex={-1} id={`${formId}-question`}>{copy.question}</h3>
       <div className={styles.faces} role="radiogroup" aria-labelledby={`${formId}-question`}>
-        {faces.map((face, index) => <button key={index} type="button" role="radio" aria-checked={flow.rating === index + 1}
+        {faces.map((face, index) => <MotionButton key={index} type="button" role="radio" aria-checked={flow.rating === index + 1}
           tabIndex={flow.rating === index + 1 || (!flow.rating && index === 0) ? 0 : -1}
           aria-label={`${index + 1} out of 5`} className={flow.rating === index + 1 ? styles.selectedFace : styles.face}
           disabled={flow.phase === "sending" || flow.phase === "uncertain"}
@@ -140,7 +141,7 @@ export function EasyTFeedback({ ownerId, onDismiss, onSubmitted, storyState }: P
             edit((current) => ({ ...current, rating: next + 1, phase: "open" }));
             (event.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
           }}
-          onClick={() => edit((current) => ({ ...current, rating: index + 1, phase: "open" }))}>{face}</button>)}
+          onClick={() => edit((current) => ({ ...current, rating: index + 1, phase: "open" }))}>{face}</MotionButton>)}
       </div>
       <EasyTTextArea label={copy.note} optional value={flow.comment} maxLength={1000} rows={3}
         disabled={flow.phase === "sending" || flow.phase === "uncertain"}

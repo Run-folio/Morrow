@@ -6540,6 +6540,13 @@
         ]
       },
       {
+        "value": "50% !important",
+        "count": 1,
+        "examples": [
+          "components/easyt/morrovia-date-picker.module.css"
+        ]
+      },
+      {
         "value": "6px !important",
         "count": 1,
         "examples": [
@@ -8043,7 +8050,7 @@
   },
   "audit": {
     "totals": {
-      "native-control": 191,
+      "native-control": 125,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
@@ -8069,26 +8076,6 @@
           "count": 45
         },
         {
-          "path": "app/journey/new/trip-builder.tsx",
-          "count": 23
-        },
-        {
-          "path": "app/journey/stamped/stamped-client.tsx",
-          "count": 15
-        },
-        {
-          "path": "app/journey/trip/trip-mode-client.tsx",
-          "count": 8
-        },
-        {
-          "path": "components/easyt/easyt-product-tour.tsx",
-          "count": 8
-        },
-        {
-          "path": "components/easyt/easyt-trip-copilot.tsx",
-          "count": 8
-        },
-        {
           "path": "components/journey-local-finder.tsx",
           "count": 8
         },
@@ -8105,12 +8092,32 @@
           "count": 6
         },
         {
-          "path": "app/journey/profile/profile-form.tsx",
+          "path": "components/journey-restaurant-finder.tsx",
           "count": 6
         },
         {
-          "path": "components/journey-restaurant-finder.tsx",
-          "count": 6
+          "path": "app/journey/admin/feedback/feedback-triage-list.tsx",
+          "count": 4
+        },
+        {
+          "path": "components/image-lightbox.tsx",
+          "count": 4
+        },
+        {
+          "path": "components/journey-globe.tsx",
+          "count": 4
+        },
+        {
+          "path": "app/journey/new/trip-builder-review.stories.tsx",
+          "count": 3
+        },
+        {
+          "path": "app/journey/plan-next/map-plan-next.tsx",
+          "count": 3
+        },
+        {
+          "path": "app/journey/stamped/stamped-client.tsx",
+          "count": 3
         }
       ],
       "deprecated-ui-owner": [],
@@ -8273,6 +8280,6 @@
         }
       ]
     },
-    "documentedExceptions": 76
+    "documentedExceptions": 64
   }
 }

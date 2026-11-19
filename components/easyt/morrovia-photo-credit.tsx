@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { Camera } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -125,13 +126,12 @@ export default function MorroviaPhotoCredit({
     : null;
 
   const root = <div className={`${styles.root} ${size === "compact" ? styles.compact : ""} ${className}`} data-placement={placement}>
-    {/* morrovia-ui-audit-allow-next-line native-control -- The disclosure is an icon-only, 44px camera target with its own popover semantics, not a styled action button. */}
-    <button ref={triggerRef} type="button" className={styles.trigger} aria-label={ariaLabel} aria-expanded={open} aria-haspopup="dialog" aria-controls={popoverId} onClick={(event) => {
+    <MotionButton ref={triggerRef} type="button" className={styles.trigger} aria-label={ariaLabel} aria-expanded={open} aria-haspopup="dialog" aria-controls={popoverId} onClick={(event) => {
       event.stopPropagation();
       setOpen((current) => !current);
     }}>
       <Camera className={styles.cameraGlyph} aria-hidden="true" />
-    </button>
+    </MotionButton>
   </div>;
 
   const portal = portalReady && open ? createPortal(<div ref={panelRef} id={popoverId} role="dialog" aria-label={language === "es" ? "Información de la foto" : "Photo information"} className={styles.panel} style={panelStyle ? { left: panelStyle.left, top: panelStyle.top, width: panelStyle.width } : { left: 12, top: 12, width: "min(280px, calc(100vw - 24px))" }} onClick={(event) => event.stopPropagation()}>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { MotionLink, MotionButton } from "./app-motion";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import {
   forwardRef,
@@ -67,7 +67,7 @@ export const EasyTButton = forwardRef<
   ref,
 ) {
   return (
-    <button
+    <MotionButton
       {...props}
       ref={ref}
       type={type}
@@ -77,7 +77,7 @@ export const EasyTButton = forwardRef<
     >
       {loading ? <span className={styles.spinner} aria-hidden="true" /> : Icon ? <Icon aria-hidden="true" /> : null}
       {iconOnly ? <span className="sr-only">{children}</span> : children}
-    </button>
+    </MotionButton>
   );
 });
 
@@ -95,7 +95,7 @@ export function EasyTLinkButton({
   ...props
 }: SharedControlProps & { href: string; prefetch?: boolean | null } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "className" | "href">) {
   return (
-    <Link
+    <MotionLink
       {...props}
       href={href}
       aria-busy={loading || undefined}
@@ -111,7 +111,7 @@ export function EasyTLinkButton({
     >
       {loading ? <span className={styles.spinner} aria-hidden="true" /> : Icon ? <Icon aria-hidden="true" /> : null}
       {iconOnly ? <span className="sr-only">{children}</span> : children}
-    </Link>
+    </MotionLink>
   );
 }
 
@@ -263,7 +263,7 @@ export function EasyTSegmentedControl<T extends string>({
       {options.map((option) => {
         const active = option.value === value;
         return (
-          <button
+          <MotionButton
             key={option.value}
             type="button"
             disabled={disabled}
@@ -274,7 +274,7 @@ export function EasyTSegmentedControl<T extends string>({
           >
             {option.label}
             {option.count !== undefined ? <span className={styles.segmentCount}>{option.count}</span> : null}
-          </button>
+          </MotionButton>
         );
       })}
     </div>

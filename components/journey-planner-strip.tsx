@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
@@ -43,7 +44,7 @@ export function JourneyRouteStopTrack({
   >
     {stops.map((stop, index) => (
       <div className={styles.stopGroup} key={stop.id}>
-        <button
+        <MotionButton
           ref={stop.active ? activeRef : undefined}
           type="button"
           className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
@@ -58,7 +59,7 @@ export function JourneyRouteStopTrack({
             fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "All" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>}
           />
           <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
-        </button>
+        </MotionButton>
         {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
       </div>
     ))}
@@ -110,8 +111,8 @@ export function JourneyPlannerStrip({
       </div> : null}
 
       <div className={styles.actions}>
-        {onWholeRoute ? <button data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</button> : null}
-        {onFullTrip ? <button data-map-expand-control type="button" className={styles.fullTrip} onClick={onFullTrip} aria-pressed={fullTripExpanded} title={fullTripLabel}>{fullTripExpanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}{fullTripLabel}</button> : fullTripHref ? <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link> : null}
+        {onWholeRoute ? <MotionButton data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</MotionButton> : null}
+        {onFullTrip ? <MotionButton data-map-expand-control type="button" className={styles.fullTrip} onClick={onFullTrip} aria-pressed={fullTripExpanded} title={fullTripLabel}>{fullTripExpanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}{fullTripLabel}</MotionButton> : fullTripHref ? <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link> : null}
         <details className={styles.overflow}>
           <summary aria-label="Trip actions"><MoreHorizontal aria-hidden="true" /></summary>
           <div>{overflow}</div>

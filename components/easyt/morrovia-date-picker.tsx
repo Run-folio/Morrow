@@ -1,4 +1,6 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
+import { EntryReveal } from "./app-motion";
 
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -172,9 +174,9 @@ function CalendarPanel({
 
   return <div className={styles.calendar}>
     <div className={styles.calendarHead}>
-      <button type="button" onClick={() => onMonthChange(addLocalMonths(month, -1))} aria-label={copy[locale].previousMonth}><ChevronLeft aria-hidden="true" /></button>
+      <MotionButton type="button" onClick={() => onMonthChange(addLocalMonths(month, -1))} aria-label={copy[locale].previousMonth}><ChevronLeft aria-hidden="true" /></MotionButton>
       <strong aria-live="polite">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(monthDate)}</strong>
-      <button type="button" onClick={() => onMonthChange(addLocalMonths(month, 1))} aria-label={copy[locale].nextMonth}><ChevronRight aria-hidden="true" /></button>
+      <MotionButton type="button" onClick={() => onMonthChange(addLocalMonths(month, 1))} aria-label={copy[locale].nextMonth}><ChevronRight aria-hidden="true" /></MotionButton>
     </div>
     <div className={styles.calendarWeekdays} aria-hidden="true">
       {weekdays.map((day) => <span key={day.long} title={day.long}>{day.short}</span>)}
@@ -189,12 +191,13 @@ function CalendarPanel({
             ? [day === startValue ? copy[locale].rangeStart : "", day === endValue ? copy[locale].rangeEnd : ""].filter(Boolean).join(", ")
             : selected ? copy[locale].selected : "";
           const focusValue = activeBoundary === "end" ? endValue || startValue : startValue;
-          return <button
+          return <MotionButton
             type="button"
             role="gridcell"
             aria-colindex={index + 1}
             key={day}
             data-date={day}
+            data-range-marker={isRange && Boolean(startValue && endValue) || undefined}
             disabled={disabled}
             tabIndex={day === focusValue || (!focusValue && day === today) ? 0 : -1}
             aria-current={day === today ? "date" : undefined}
@@ -203,7 +206,7 @@ function CalendarPanel({
             className={`${selected ? styles.calendarDaySelected : ""} ${inRange ? styles.calendarDayInRange : ""} ${day === startValue ? styles.calendarRangeStart : ""} ${day === endValue ? styles.calendarRangeEnd : ""}`}
             onClick={() => onPick(day)}
             onKeyDown={(event) => onDayKeyDown(event, day)}
-          >{localDateFromIso(day)!.getDate()}</button>;
+          >{localDateFromIso(day)!.getDate()}</MotionButton>;
         })() : <span key={`blank-${index}`} aria-hidden="true" />)}
       </div>)}
     </div>
@@ -393,7 +396,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const placeholder = props.placeholder ?? copy[locale].chooseDate;
   const rootClass = [styles.root, props.size === "compact" ? styles.compact : "", props.className ?? ""].filter(Boolean).join(" ");
 
-  const trigger = (boundary: DateBoundary, label: string, value: string, triggerRef: typeof startTriggerRef, displayValue?: string) => <button
+  const trigger = (boundary: DateBoundary, label: string, value: string, triggerRef: typeof startTriggerRef, displayValue?: string) => <MotionButton
     type="button"
     className={props.fieldPresentation === "planner" ? plannerFieldButtonClassName : `${styles.trigger} ${open && activeBoundary === boundary ? styles.triggerOpen : ""}`}
     data-morrovia-planner-trigger={props.fieldPresentation === "planner" ? true : undefined}
@@ -408,16 +411,16 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       <span data-morrovia-field-label>{label}</span>
       <b><CalendarDays aria-hidden="true" /><strong data-morrovia-field-value>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
     </>}
-  </button>;
+  </MotionButton>;
 
   const calendarOverlay = open ? <>
-    <button type="button" className={styles.mobileBackdrop} tabIndex={-1} aria-label={copy[locale].close} onClick={() => close(true)} />
+    <MotionButton motion={false} type="button" className={styles.mobileBackdrop} tabIndex={-1} aria-label={copy[locale].close} onClick={() => close(true)} />
     <div className={`${styles.popover} ${popoverPosition ? styles.popoverPositioned : ""}`} style={popoverPosition ?? undefined} ref={popoverRef} id={dialogId} role="dialog" aria-modal="true" aria-label={panelLabel} aria-describedby={isRange ? helpId : undefined} onKeyDown={trapDialogFocus}>
       <div className={styles.popoverTitle}>
         <div><strong>{panelLabel}</strong>{isRange ? <span id={helpId}>{copy[locale].rangeHelp}</span> : null}</div>
-        <button type="button" aria-label={copy[locale].close} onClick={() => close(true)}><X aria-hidden="true" /></button>
+        <MotionButton type="button" aria-label={copy[locale].close} onClick={() => close(true)}><X aria-hidden="true" /></MotionButton>
       </div>
-      <div className={styles.popoverBody}>
+      <div className={styles.popoverBody}><EntryReveal selector="[role=row]" />
       <CalendarPanel
         activeBoundary={activeBoundary}
         isRange={isRange}
@@ -432,8 +435,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       />
       <div className={styles.calendarFooter}>
         <div className={styles.calendarFooterActions}>
-          <button type="button" onClick={() => pick(todayLocalIso())} disabled={!isWithin(todayLocalIso(), calendarMin, props.max)}>{copy[locale].today}</button>
-          {isRange && props.onClear && (props.startValue || props.endValue) ? <button type="button" onClick={() => { props.onClear?.(); close(true); }}>{props.clearLabel ?? (locale === "es" ? "Borrar fechas" : "Clear dates")}</button> : null}
+          <MotionButton type="button" onClick={() => pick(todayLocalIso())} disabled={!isWithin(todayLocalIso(), calendarMin, props.max)}>{copy[locale].today}</MotionButton>
+          {isRange && props.onClear && (props.startValue || props.endValue) ? <MotionButton type="button" onClick={() => { props.onClear?.(); close(true); }}>{props.clearLabel ?? (locale === "es" ? "Borrar fechas" : "Clear dates")}</MotionButton> : null}
         </div>
         <label><span>{copy[locale].typeIt}</span><input value={typedDate} inputMode="numeric" placeholder={locale === "es" ? "AAAA-MM-DD" : "YYYY-MM-DD"} aria-label={copy[locale].dateFormat} onChange={(event) => {setTypedDate(event.target.value);props.onTypedDraftChange?.(activeBoundary,event.target.value)}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitTypedDate(); } }} /></label>
       </div>

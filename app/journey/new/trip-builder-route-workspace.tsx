@@ -1,4 +1,6 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
+import { EntryReveal } from "@/components/easyt/app-motion";
 
 import { transferTimingLabel } from '@/lib/easyt/transfer-timing-label';
 import { builderHasUsablePlanningTransfer } from "@/lib/easyt/builder-planning-status";
@@ -187,7 +189,7 @@ export function TripBuilderRouteWorkspace({
 
   return <section data-builder-reorder-surface data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <div className={styles.builderRouteGrid}>
-      <div className={styles.builderRouteList}>
+      <div className={styles.builderRouteList}><EntryReveal active={Boolean(nightReview || reviewControl)} selector="[data-builder-route-feedback]" />
         <h2 id="builder-route-title" className="sr-only">{nightStatus.language === "es" ? "Tu ruta" : "Your route"}</h2>
         {nightReview || reviewControl ? <div className={styles.builderRouteHeader} data-builder-route-feedback>
           {nightReview ? <div className={styles.builderRouteNightDetail} role="status">{nightReview}</div> : null}
@@ -229,10 +231,9 @@ export function TripBuilderRouteWorkspace({
               onDrop={(event) => { event.preventDefault(); reorder.drop(); }}
             >
               <div className={styles.builderRouteGripCell} role="cell" aria-colindex={1}>
-                {/* morrovia-ui-audit-allow-next-line native-control -- The drag grip owns native draggable pointer and keyboard semantics rather than a standard push-button action. */}
-                <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
+                <MotionButton motion={false} type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
                   <GripVertical aria-hidden="true" />
-                </button>
+                </MotionButton>
               </div>
               <div className={styles.builderRouteIdentity} role="cell" aria-colindex={2}><b>{index + 1}</b><span><strong data-builder-stop-name>{stop.name}</strong><small data-builder-stop-country>{stop.country}</small>{needsNights ? <small className={styles.builderRouteStopNightCue}>{nightStatus.language === "es" ? "Sin noches asignadas" : "No nights allocated"}</small> : null}{stopNotice ? <span data-builder-stop-review>{stopNotice}</span> : null}</span></div>
               <div className={styles.builderRouteTransfer} role="cell" aria-colindex={3}>
@@ -253,11 +254,9 @@ export function TripBuilderRouteWorkspace({
               </div>
               <div className={styles.builderRouteNights} data-builder-nights role="cell" aria-colindex={4}>
                 <span className={styles.mobileFieldLabel}>Nights</span>
-                {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
-                <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, -1); else onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
+                <MotionButton type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, -1); else onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</MotionButton>
                 <strong>{stop.nights ?? 0}</strong>
-                {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
-                <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) >= tripNightsBetween(canonicalTrip.startDate, canonicalTrip.endDate)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
+                <MotionButton type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) >= tripNightsBetween(canonicalTrip.startDate, canonicalTrip.endDate)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</MotionButton>
               </div>
               <div className={styles.builderRouteUsable} data-usable-warning={!needsNights && usableDays !== null && usableDays < 1 || undefined} role="cell" aria-colindex={5}>
                 <span className={styles.mobileFieldLabel}>Usable time</span>
@@ -269,12 +268,9 @@ export function TripBuilderRouteWorkspace({
                   <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
                   <div>
                     <dl className={styles.builderStopFacts}><dt>Country</dt><dd>{stop.country || "To confirm"}</dd><dt>Usable time</dt><dd>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</dd></dl>
-                    {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                    {reorder.canMoveFromMenu(stop.id, index - 1) && <button type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index - 1), () => currentScopeRef.current === scopeKey); }}>Move earlier</button>}
-                    {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
-                    {reorder.canMoveFromMenu(stop.id, index + 1) && <button type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index + 1), () => currentScopeRef.current === scopeKey); }}>Move later</button>}
-                    {/* morrovia-ui-audit-allow-next-line native-control -- Stop removal reuses this row's existing action menu and the Builder's guarded mutation owner. */}
-                    <button type="button" disabled={locked.has(stop.id)} onClick={(event) => { const menu = event.currentTarget.closest("details"); if (menu) { menu.open = false; menu.querySelector("summary")?.focus(); } onRemoveStop(stop.id); }}>Remove stop</button>
+                    {reorder.canMoveFromMenu(stop.id, index - 1) && <MotionButton type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index - 1), () => currentScopeRef.current === scopeKey); }}>Move earlier</MotionButton>}
+                    {reorder.canMoveFromMenu(stop.id, index + 1) && <MotionButton type="button" onClick={(event) => { return completeBuilderMenuMove(event.currentTarget, () => reorder.moveFromMenu(stop.id, index + 1), () => currentScopeRef.current === scopeKey); }}>Move later</MotionButton>}
+                    <MotionButton type="button" disabled={locked.has(stop.id)} onClick={(event) => { const menu = event.currentTarget.closest("details"); if (menu) { menu.open = false; menu.querySelector("summary")?.focus(); } onRemoveStop(stop.id); }}>Remove stop</MotionButton>
                   </div>
                 </details>
               </div>
@@ -317,12 +313,11 @@ export function TripBuilderRouteWorkspace({
       </div>
 
       <section className={styles.builderRouteMap} aria-label="Route map" data-map-lifecycle={mapLifecycle}>
-        {/* morrovia-ui-audit-allow-next-line native-control -- This mobile disclosure owns aria-expanded and the embedded map region rather than a standard push-button action. */}
-        <button type="button" className={styles.builderRouteMapToggle} aria-expanded={!mapCollapsed} onClick={() => setMapCollapsed((current) => !current)}>
+        <MotionButton type="button" className={styles.builderRouteMapToggle} aria-expanded={!mapCollapsed} onClick={() => setMapCollapsed((current) => !current)}>
           <MapIcon aria-hidden="true" />
           {mapCollapsed ? "Show map" : "Collapse map"}
           {mapCollapsed ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
-        </button>
+        </MotionButton>
         <div className={styles.builderRouteMapBody} hidden={mapCollapsed}>
           {mapLifecycle === "unavailable" ? <div className={styles.builderRouteMapFallback} role="status">
             <MapIcon aria-hidden="true" />

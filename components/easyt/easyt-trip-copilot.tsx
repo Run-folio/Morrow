@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import { Bot, ChevronDown, Send, Sparkles } from "lucide-react";
@@ -187,15 +188,15 @@ export default function EasyTTripCopilot({ surface, dayCount = 0, destination, c
   };
   const mutation = reply?.mutationPreview;
   return <aside className={`${styles.copilot} ${compact ? styles.compact : ""} ${open ? styles.open : ""}`} aria-label={text.eyebrow} data-copilot-scope={surface === "map" ? scope : undefined}>
-    <button ref={triggerRef} type="button" className={styles.trigger} onClick={() => setPanelOpen(!open)} aria-expanded={open} aria-label={open ? (language === "es" ? "Cerrar Luna, asistente de viaje con IA" : "Close Luna, AI travel assistant") : text.open}>
+    <MotionButton ref={triggerRef} type="button" className={styles.trigger} onClick={() => setPanelOpen(!open)} aria-expanded={open} aria-label={open ? (language === "es" ? "Cerrar Luna, asistente de viaje con IA" : "Close Luna, AI travel assistant") : text.open}>
       <span><Bot aria-hidden="true" /><small>{text.eyebrow}</small><strong>{open ? (surface === "map" ? (language === "es" ? mapTitlesEs[scope] : mapTitles[scope]) : text.builderTitle) : text.open}</strong></span><ChevronDown aria-hidden="true" />
-    </button>
+    </MotionButton>
     {open ? <div className={styles.panel}>
       <p className={styles.context}><Sparkles aria-hidden="true" /> {context}</p>
-      <div className={styles.prompts}>{prompts.map((prompt, index) => <button type="button" key={prompt} disabled={requestState === "loading" || applyState === "applying"} onClick={() => choosePrompt(prompt, index)}>{prompt}</button>)}</div>
+      <div className={styles.prompts}>{prompts.map((prompt, index) => <MotionButton type="button" key={prompt} disabled={requestState === "loading" || applyState === "applying"} onClick={() => choosePrompt(prompt, index)}>{prompt}</MotionButton>)}</div>
       {live ? <form className={styles.askForm} onSubmit={(event) => { event.preventDefault(); void ask(message); }}>
         <input value={message} maxLength={500} disabled={requestState === "loading" || applyState === "applying"} onChange={(event) => setMessage(event.target.value)} placeholder={text.askPlaceholder} aria-label={text.askPlaceholder} />
-        <button type="submit" disabled={requestState === "loading" || applyState === "applying" || !message.trim()} aria-label={text.send}><Send aria-hidden="true" /></button>
+        <MotionButton type="submit" disabled={requestState === "loading" || applyState === "applying" || !message.trim()} aria-label={text.send}><Send aria-hidden="true" /></MotionButton>
       </form> : null}
       {requestState === "loading" || applyState === "applying" ? <p className={styles.loading} role="status"><span aria-hidden="true" />{applyState === "applying" ? text.applying : text.thinking}</p> : null}
       {requestError ? <p className={styles.error} role="alert">{requestError}</p> : null}
@@ -204,8 +205,8 @@ export default function EasyTTripCopilot({ surface, dayCount = 0, destination, c
         {reply.proposedChange && !mutation ? <p className={styles.proposal}><strong>{text.proposal}</strong><span>{reply.proposedChange.summary}</span></p> : null}
         {mutation && mutation.alternatives.length > 1 && !activePreview ? <section className={styles.alternatives} aria-label={text.choose}>
           <strong>{text.choose}</strong>
-          {mutation.alternatives.map((option) => <button type="button" key={option.previewId} onClick={() => { setRequestError(""); setActivePreview(option); }}>{option.summary}</button>)}
-          <button type="button" className={styles.keepButton} onClick={() => { setReply(null); setActivePreview(null); }}>{text.keep}</button>
+          {mutation.alternatives.map((option) => <MotionButton type="button" key={option.previewId} onClick={() => { setRequestError(""); setActivePreview(option); }}>{option.summary}</MotionButton>)}
+          <MotionButton type="button" className={styles.keepButton} onClick={() => { setReply(null); setActivePreview(null); }}>{text.keep}</MotionButton>
         </section> : null}
         {activePreview ? <section className={styles.preview} aria-label={text.review}>
           <header><small>{text.review}</small><strong>{activePreview.summary}</strong></header>
@@ -214,8 +215,8 @@ export default function EasyTTripCopilot({ surface, dayCount = 0, destination, c
           {activePreview.warnings.length ? <ul>{activePreview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
           {!canApplyChanges ? <p className={styles.applyBlocked}>{text.localEdits}</p> : null}
           <div className={styles.previewActions}>
-            <button type="button" onClick={() => void applyPreview()} disabled={!canApplyChanges || applyState === "applying"}>{text.apply}</button>
-            <button type="button" onClick={() => { setActivePreview(null); setRequestError(""); if (!mutation?.alternatives.length) setReply(null); }} disabled={applyState === "applying"}>{text.keep}</button>
+            <MotionButton type="button" onClick={() => void applyPreview()} disabled={!canApplyChanges || applyState === "applying"}>{text.apply}</MotionButton>
+            <MotionButton type="button" onClick={() => { setActivePreview(null); setRequestError(""); if (!mutation?.alternatives.length) setReply(null); }} disabled={applyState === "applying"}>{text.keep}</MotionButton>
           </div>
         </section> : null}
       </div> : staticAnswer !== null ? <p className={styles.answer} role="status">{answers[staticAnswer]}</p> : null}

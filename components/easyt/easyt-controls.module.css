@@ -29,7 +29,7 @@
 }
 
 .control:hover:not(:disabled) {
-  transform: translateY(-1px);
+  /* The shared inner visual springs; the control hit area remains stationary. */
 }
 
 /* Pressed-state foreground and surface must change together. Cross-fading

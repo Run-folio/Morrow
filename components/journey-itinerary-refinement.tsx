@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { legacyItineraryIdeas } from "@/lib/easyt/trip";
 
@@ -125,7 +126,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
   </div> : null;
   return <section className={`${styles.panel} ${compact ? styles.compact : ""}`} aria-labelledby={`refinement-${stop.id}`}>
     <h3 className="sr-only" id={`refinement-${stop.id}`}>Places near {stop.name}</h3>
-    {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { void changeSelection(title, false); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
+    {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<MotionButton type="button" onClick={() => { void changeSelection(title, false); }} aria-label={`Remove ${title}`}><X /></MotionButton></span>)}</div></div> : null}
     {loading ? <MorroviaSectionStatus title="Finding places nearby" detail="Keeping this day and your selected places in place while mapped attractions load." /> : null}
     {loading && !places.length ? <div className={styles.loadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={54} radius="card" /><MorroviaSkeleton height={54} radius="card" /></div> : null}
     {!loading && searchStatus !== "ready" ? <MorroviaSectionStatus state="error" title={searchStatus === "incomplete" ? "Places are not ready yet" : "Attractions are unavailable"} detail={assessment ? planningLaneMessage(assessment, "en") : "Your day and existing selections are unchanged."} retryLabel="Try places again" onRetry={searchStatus === "error" && assessment?.retryable !== false || searchStatus === "incomplete" && assessment?.retryable === true ? () => setSearchVersion((current) => current + 1) : undefined} /> : null}
@@ -135,7 +136,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
       const scheduledPart = scheduledIdea?.dayPart ? scheduledIdea.dayPart[0]!.toUpperCase() + scheduledIdea.dayPart.slice(1) : null;
       const scheduledDay = scheduledIdea?.dayId ? trip.planItems.find((item) => item.id === scheduledIdea.dayId)?.dayNumber : day?.dayNumber;
       const mapSelected = selectedPlaceId === place.id;
-      return <article key={place.id} className={mapSelected ? styles.placeSelected : ""}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><EasyTButton variant="quiet" size="small" className={styles.placeSelect} aria-pressed={mapSelected} onClick={() => onPlaceSelect?.(place)}><strong>{place.title}</strong>{place.description ? <p>{place.description}</p> : null}</EasyTButton><button type="button" aria-pressed={isSelected} onClick={() => { onPlaceSelect?.(place); void changeSelection(place, !isSelected); }}>{isSelected ? <>{scheduledDay ? `Added to Day ${scheduledDay}${scheduledPart ? ` · ${scheduledPart}` : ""}` : "Added to a day"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to a day"}</>}</button></article>;
+      return <article key={place.id} className={mapSelected ? styles.placeSelected : ""}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><EasyTButton variant="quiet" size="small" className={styles.placeSelect} aria-pressed={mapSelected} onClick={() => onPlaceSelect?.(place)}><strong>{place.title}</strong>{place.description ? <p>{place.description}</p> : null}</EasyTButton><MotionButton type="button" aria-pressed={isSelected} onClick={() => { onPlaceSelect?.(place); void changeSelection(place, !isSelected); }}>{isSelected ? <>{scheduledDay ? `Added to Day ${scheduledDay}${scheduledPart ? ` · ${scheduledPart}` : ""}` : "Added to a day"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to a day"}</>}</MotionButton></article>;
     })}</div> : !loading && searchStatus === "ready" ? <p className={styles.state}>No places are available for this stop yet.</p> : null}
     {rankedPlaces.length > visible.length ? <EasyTButton variant="secondary" size="small" className={styles.showMore} onClick={() => setVisibleCount((count) => Math.min(rankedPlaces.length, count + 6))}>Show more places</EasyTButton> : null}
     {day && onSaveInventoryIdea && onScheduleInventoryIdea ? <LiveActivityInventory

@@ -1,4 +1,5 @@
 "use client";
+import { EntryReveal } from "@/components/easyt/app-motion";
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useId, useState } from "react";
@@ -176,7 +177,7 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
         </div>
         <p className={styles.planNote}>{isSpanish ? "Esto cambia tu plan, no una reserva." : "This changes your plan, not a booking."}</p>
         <EasyTButton size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`${id}-estimates`} onClick={() => setDetailsOpen((value) => !value)}>{isSpanish ? "Detalles y estimaciones" : "Journey details and estimates"}</EasyTButton>
-        <div id={`${id}-estimates`} hidden={!detailsOpen} className={styles.estimateDetails}>{choice.provider ? <p>{choice.provider}</p> : null}{choice.details.map((detail, index) => <p key={index}>{detail}</p>)}</div>
+        <div id={`${id}-estimates`} hidden={!detailsOpen} className={styles.estimateDetails}><EntryReveal active={detailsOpen} />{choice.provider ? <p>{choice.provider}</p> : null}{choice.details.map((detail, index) => <p key={index}>{detail}</p>)}</div>
         {applyFailed ? <p role="alert">{isSpanish ? 'No se pudo aplicar esta opción. Actualiza las opciones antes de volver a intentarlo.' : 'Could not apply this option. Refresh options before trying again.'}</p> : null}
         <footer className={styles.dialogFooter}><EasyTButton variant="secondary" onClick={close} disabled={pending}>{isSpanish ? "Cancelar" : "Cancel"}</EasyTButton><EasyTButton variant="primary" disabled={pending || !refresh.allowed || !options.some(option => option.identity === draft) || draft === currentIdentity} loading={pending} onClick={() => void apply()}>{isSpanish ? "Usar" : "Use"} {label(choice.mode).toLocaleLowerCase()}</EasyTButton></footer>
       </div>

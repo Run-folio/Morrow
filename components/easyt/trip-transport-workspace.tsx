@@ -1,4 +1,5 @@
 "use client";
+import { EntryReveal } from "@/components/easyt/app-motion";
 import {TripFlightSearchAirports} from './trip-flight-search-airports';
 import {flightSearchAirportPlan} from '@/lib/easyt/flight-search-airport-choice';
 import {missingReturnJourney} from '@/lib/easyt/missing-return-journey';
@@ -348,7 +349,7 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
     </div> : null}
     {action ? <small className={styles.partnerNote}>{visibleAffiliateDisclosure}</small> : null}
     <EasyTButton className={styles.journeyDetailsToggle} size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`journey-estimates-${leg.id}`} onClick={() => setDetailsOpen((open) => !open)}>{copy.journeyDetails}</EasyTButton>
-    <div id={`journey-estimates-${leg.id}`} hidden={!detailsOpen} className={styles.journeyDetails}>
+    <div id={`journey-estimates-${leg.id}`} hidden={!detailsOpen} className={styles.journeyDetails}><EntryReveal active={detailsOpen} />
       {journeyParts.parts.length ? <ol className={styles.journeyParts} aria-label={copy.savedParts}>{journeyParts.parts.map((part, index) => <li key={`${part.id}-${index}`}><span>{copy.partModes[part.mode]} · {part.fromEndpoint.name} → {part.toEndpoint.name}</span><small>{transferTimingLabel(part, "total", copy.timeUnknown)}{part.scheduleNeedsChecking ? ` · ${copy.checkService}` : ""}</small></li>)}</ol> : null}
       {detailNotes.map((note) => <p key={note}>{note}</p>)}
       {leg.provider ? <p>{leg.provider}</p> : null}

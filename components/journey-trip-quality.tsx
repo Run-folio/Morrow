@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { Check, CircleAlert, MapPin, Plus, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -36,7 +37,7 @@ export function JourneyTripQuality({ ownerId, origin, originCoordinates, startDa
     <div className={styles.heading}><div><p>{copy.eyebrow}</p><h2>{copy.title}</h2></div><span>{copy.status}</span></div>
     <div className={styles.list}>{checks.map((check) => <article key={check.id} className={check.state === "complete" ? styles.complete : check.state === "missing" ? styles.missing : styles.attention}>
       {check.state === "complete" ? <Check aria-hidden="true" /> : check.id === "traveller-details" ? <UserRound aria-hidden="true" /> : check.id === "origin" ? <MapPin aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}
-      <div><strong>{check.title}</strong><p>{check.detail}</p>{check.missingPlaces?.length ? <div className={styles.missingPlaces}>{check.missingPlaces.map((place) => <button type="button" key={place} onClick={() => onAddMissingPlace?.(place)}><Plus aria-hidden="true" />{place}</button>)}</div> : null}{check.state !== "complete" && actionFor(check.id) ? <button type="button" className={styles.reviewButton} onClick={actionFor(check.id)}>{language === "es" ? "Revisar" : "Review"}</button> : null}</div>
+      <div><strong>{check.title}</strong><p>{check.detail}</p>{check.missingPlaces?.length ? <div className={styles.missingPlaces}>{check.missingPlaces.map((place) => <MotionButton type="button" key={place} onClick={() => onAddMissingPlace?.(place)}><Plus aria-hidden="true" />{place}</MotionButton>)}</div> : null}{check.state !== "complete" && actionFor(check.id) ? <MotionButton type="button" className={styles.reviewButton} onClick={actionFor(check.id)}>{language === "es" ? "Revisar" : "Review"}</MotionButton> : null}</div>
     </article>)}</div>
   </section>;
 }

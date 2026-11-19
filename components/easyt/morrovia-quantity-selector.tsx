@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { Minus, Plus, UsersRound } from "lucide-react";
 import { useId, type KeyboardEvent } from "react";
@@ -79,19 +80,19 @@ export function MorroviaQuantitySelector({
   if (fieldPresentation === "planner") return <div className={`${plannerFieldButtonClassName} ${styles.planner} ${className}`} data-disabled={disabled || undefined}>
     <div className={styles.plannerStepper} role="group" aria-labelledby={labelId} onKeyDown={onKeyDown}>
       <MorroviaPlannerFieldContent label={label} labelId={labelId} value={<output aria-live="polite" aria-atomic="true">{valueLabel}</output>} icon={UsersRound} showChevron={false} />
-      <button type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></button>
-      <button type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></button>
+      <MotionButton type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></MotionButton>
+      <MotionButton type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></MotionButton>
     </div>
   </div>;
 
   return <div className={`${styles.root} ${compact ? styles.compact : ""} ${className}`}>
     <span data-morrovia-field-label className={styles.label} id={labelId}>{label}</span>
     <div className={styles.stepper} role="group" aria-labelledby={labelId} onKeyDown={onKeyDown}>
-      <button type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></button>
+      <MotionButton type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></MotionButton>
       <output data-morrovia-field-value className={styles.value} aria-live="polite" aria-atomic="true">
         {showIcon ? <UsersRound aria-hidden="true" /> : null}<strong>{boundedValue}</strong><span>{boundedValue === 1 ? noun : nounPlural}</span>
       </output>
-      <button type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></button>
+      <MotionButton type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></MotionButton>
     </div>
   </div>;
 }

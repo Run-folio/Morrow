@@ -156,7 +156,21 @@
 .calendarGrid button[aria-current="date"]::after { position: absolute; right: 50%; bottom: 3px; width: 3px; height: 3px; border-radius: 50%; background: currentColor; content: ""; transform: translateX(50%); }
 .calendarGrid button:disabled { color: color-mix(in srgb, var(--morrovia-muted) 50%, white); cursor: not-allowed; }
 .calendarDayInRange { border-radius: 6px !important; background: var(--morrovia-lilac) !important; }
-.calendarDaySelected { border-color: var(--morrovia-signal) !important; background: var(--morrovia-signal) !important; color: #fff !important; font-weight: 800 !important; }
+/* Keep the existing full grid-cell target and focus ring. Only its visual marker is circular. */
+.calendarDaySelected { border-color: transparent !important; background: transparent !important; color: #fff !important; font-weight: 800 !important; }
+.calendarDaySelected > [data-motion-label] {
+  display: inline-grid !important;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  max-width: 100%;
+  /* morrovia-ui-audit-allow-next-line raw-radius -- A fixed square date marker is a circle, independent of its unchanged full-cell target. */
+  border-radius: 50%;
+  background: var(--morrovia-signal);
+}
+.calendarRangeStart[data-range-marker]:not(.calendarRangeEnd) { background: linear-gradient(to right, transparent 50%, var(--morrovia-lilac) 50%) !important; }
+.calendarRangeEnd[data-range-marker]:not(.calendarRangeStart) { background: linear-gradient(to left, transparent 50%, var(--morrovia-lilac) 50%) !important; }
+
 
 .calendarFooter {
   display: grid;

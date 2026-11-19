@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { ArrowUpRight, BedDouble, Map } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -45,7 +46,7 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
 
   if (compact) return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="itinerary-accommodation-title">
     <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
-    <div className={styles.stayActions}><button type="button" className={sortedCount === overnightStops.length ? "" : styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: reviewStop.id }); onExploreMap(reviewStop); }}>Review stays <Map /></button></div>
+    <div className={styles.stayActions}><MotionButton type="button" className={sortedCount === overnightStops.length ? "" : styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: reviewStop.id }); onExploreMap(reviewStop); }}>Review stays <Map /></MotionButton></div>
   </section>;
   return <section className={styles.panel} aria-labelledby="itinerary-accommodation-title">
     <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
@@ -60,8 +61,8 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
             <div><strong>{stop.name}</strong><small>{accommodationDateLabel(stop)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"} · {trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</small></div>
             <em className={sorted ? styles.sorted : styles.needsStay}>{sorted ? "Stay sorted" : "Needs a stay"}</em>
           </div>
-          {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></button></div></> : <div className={styles.stayActions}>
-            <button type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></button>
+          {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><MotionButton type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></MotionButton></div></> : <div className={styles.stayActions}>
+            <MotionButton type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></MotionButton>
             {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "map_stay_finder", workspace_view: "map" }); }}>{action.cta} <ArrowUpRight /></a> : null}
           </div>}
         </article>;

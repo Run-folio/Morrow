@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import { ArrowUpRight, CarFront, CircleHelp, MapPin, Plane, Plus, Ship, TrainFront } from "lucide-react";
@@ -73,8 +74,8 @@ function AgendaRow({ item, navigation }: { item: MapPlanAgendaItem; navigation: 
     {item.kind === "activity" && item.mapSelectionId ? <MapPin className={styles.mapPlanMappable} aria-hidden="true" /> : null}
   </>;
   return <li className={`${styles.mapPlanAgendaItem} ${item.kind === "transfer" ? styles.mapPlanTransfer : ""}`}>
-    {item.kind === "transfer" ? <button type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectTransfer(item.id)} aria-label={`Show transfer ${item.title} on the map`}>{content}</button>
-      : item.mapSelectionId ? <button type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectItem(item.mapSelectionId!)} aria-label={`Show ${item.title} on the map`}>{content}</button>
+    {item.kind === "transfer" ? <MotionButton type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectTransfer(item.id)} aria-label={`Show transfer ${item.title} on the map`}>{content}</MotionButton>
+      : item.mapSelectionId ? <MotionButton type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectItem(item.mapSelectionId!)} aria-label={`Show ${item.title} on the map`}>{content}</MotionButton>
         : <div className={styles.mapPlanAgendaRow}>{content}</div>}
     {item.detail ? <details className={styles.mapPlanTransferDetail}><summary>Transfer details</summary><p>{item.detail}</p></details> : null}
   </li>;
@@ -90,7 +91,7 @@ export function PlanWorkspace({ context, activity, navigation, editHref, copy, g
       {days.length > 1 ? <nav className={styles.mapPlanDays} aria-label={`Days in ${selectedStop.city}`}>
         {days.map((day) => {
           const active = day.dayNumber === planItem?.dayNumber;
-          return <button key={day.id} type="button" aria-current={active ? "date" : undefined} aria-pressed={active} onClick={() => navigation.onSelectDay(day.dayNumber)}><strong>Day {day.dayNumber}</strong><small>{dayDateLabel(day.date)}</small></button>;
+          return <MotionButton key={day.id} type="button" aria-current={active ? "date" : undefined} aria-pressed={active} onClick={() => navigation.onSelectDay(day.dayNumber)}><strong>Day {day.dayNumber}</strong><small>{dayDateLabel(day.date)}</small></MotionButton>;
         })}
       </nav> : null}
 
@@ -113,10 +114,10 @@ export function PlanWorkspace({ context, activity, navigation, editHref, copy, g
         </ul>
       </section> : null}
 
-      {freeTime ? <button type="button" className={styles.mapPlanFreeTime} onClick={() => navigation.onFindNearby(freeTime)}><span><strong>{titleCase(freeTime)} free</strong><small>Find something nearby</small></span><ArrowUpRight aria-hidden="true" /></button> : null}
+      {freeTime ? <MotionButton type="button" className={styles.mapPlanFreeTime} onClick={() => navigation.onFindNearby(freeTime)}><span><strong>{titleCase(freeTime)} free</strong><small>Find something nearby</small></span><ArrowUpRight aria-hidden="true" /></MotionButton> : null}
 
       <footer className={styles.mapPlanActions}>
-        <button type="button" aria-expanded={addingActivity} onClick={() => setAddingActivity((open) => !open)}><Plus aria-hidden="true" />{copy.addActivity}</button>
+        <MotionButton type="button" aria-expanded={addingActivity} onClick={() => setAddingActivity((open) => !open)}><Plus aria-hidden="true" />{copy.addActivity}</MotionButton>
         <Link href={editHref}>Edit full itinerary</Link>
       </footer>
       {addingActivity ? <form className={styles.addActivity} onSubmit={(event) => {
@@ -126,8 +127,8 @@ export function PlanWorkspace({ context, activity, navigation, editHref, copy, g
         setAddingActivity(false);
       }}>
         <input autoFocus value={activity.draft} onChange={(event) => activity.onDraftChange(event.target.value)} placeholder={copy.addActivity} aria-label={copy.addActivity} />
-        <button type="submit" disabled={!activity.draft.trim()}>{copy.add}</button>
-        <button type="button" className={styles.cancelDayTool} onClick={() => { activity.onDraftChange(""); setAddingActivity(false); }}>{copy.cancel}</button>
+        <MotionButton type="submit" disabled={!activity.draft.trim()}>{copy.add}</MotionButton>
+        <MotionButton type="button" className={styles.cancelDayTool} onClick={() => { activity.onDraftChange(""); setAddingActivity(false); }}>{copy.cancel}</MotionButton>
       </form> : null}
     </section>
   );

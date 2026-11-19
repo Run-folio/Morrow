@@ -1,4 +1,6 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
+import { EntryReveal } from "@/components/easyt/app-motion";
 
 import { type CompletedPlaceSearchResult, publicPlaceQueryAllowed, submittedPublicPlaceInput } from '@/lib/easyt/public-place-search-input';
 import { MapPin, X } from "lucide-react";
@@ -445,10 +447,10 @@ export function CanonicalPlaceAutocomplete({
       onPointerDown={event => event.preventDefault()}
       onClick={() => runCompletedSearch()}
     >{language === "es" ? "Buscar" : "Search"}</EasyTButton> : null}
+    <EntryReveal active={menuVisible} ready={suggestions.length > 0} selector="[role=option]" />
     {menuVisible ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
       {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? <div id={listId} role="listbox" className={styles.optionsList}>{suggestions.map((suggestion, index) => (
-        /* morrovia-ui-audit-allow-next-line native-control -- Listbox options require role=option and aria-selected semantics rather than the standard action-button contract. */
-        <button
+        <MotionButton
         type="button"
         role="option"
         tabIndex={-1}
@@ -458,7 +460,7 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language,compactBuilderOrigin),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language,compactBuilderOrigin),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></MotionButton>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
         if (visibleCompletedStatus === "failed" && onFreeTextSearch) runCompletedSearch();
         else setRetryNonce((current) => current + 1);
       }}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}

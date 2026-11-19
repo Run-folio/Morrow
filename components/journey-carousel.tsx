@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
@@ -38,15 +39,15 @@ export function JourneyCarousel({ images, city, storyKey }: { images: JourneyIma
           </motion.div>
         </AnimatePresence>
         {images.length > 1 ? <div className={styles.carouselControls}>
-          <button type="button" onClick={() => move(-1)} aria-label="Previous image"><ArrowLeft /></button>
-          <button type="button" onClick={() => move(1)} aria-label="Next image"><ArrowRight /></button>
+          <MotionButton type="button" onClick={() => move(-1)} aria-label="Previous image"><ArrowLeft /></MotionButton>
+          <MotionButton type="button" onClick={() => move(1)} aria-label="Next image"><ArrowRight /></MotionButton>
         </div> : null}
         <span className={styles.imageCount}>{String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}</span>
       </div>
       <figcaption>
         <span>{image.caption}</span>
         <div className={styles.carouselDots} aria-label="Choose image">
-          {images.map((item, dotIndex) => <button key={item.src} type="button" className={dotIndex === index ? styles.currentDot : ""} onClick={() => { setDirection(dotIndex > index ? 1 : -1); setIndex(dotIndex); }} aria-label={`View image ${dotIndex + 1}`} />)}
+          {images.map((item, dotIndex) => <MotionButton key={item.src} type="button" className={dotIndex === index ? styles.currentDot : ""} onClick={() => { setDirection(dotIndex > index ? 1 : -1); setIndex(dotIndex); }} aria-label={`View image ${dotIndex + 1}`} />)}
         </div>
         <a href={image.sourceUrl} target="_blank" rel="noreferrer">{image.sourceLabel ?? "Wikimedia"} ↗</a>
       </figcaption>

@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import {
@@ -467,31 +468,31 @@ export function StampedExperience({
       {loadError ? <div className={styles.notice} data-tone="error" role="alert">
         <span>{loadError}</span>
         <span className={styles.noticeActions}>
-          {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
-          {onClearError ? <button type="button" onClick={onClearError}>{language === "es" ? "Cerrar" : "Dismiss"}</button> : null}
+          {onRetryLoad ? <MotionButton type="button" onClick={onRetryLoad}>{labels.retry}</MotionButton> : null}
+          {onClearError ? <MotionButton type="button" onClick={onClearError}>{language === "es" ? "Cerrar" : "Dismiss"}</MotionButton> : null}
         </span>
       </div> : null}
 
       {loadState === "stale" ? <div className={styles.notice} data-tone="warning" role="status">
         <span>{labels.stale}</span>
-        {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
+        {onRetryLoad ? <MotionButton type="button" onClick={onRetryLoad}>{labels.retry}</MotionButton> : null}
       </div> : null}
 
       {secondaryWarning ? <div className={styles.notice} data-tone="warning" role="status">
         <span>{secondaryWarning}</span>
-        {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
+        {onRetryLoad ? <MotionButton type="button" onClick={onRetryLoad}>{labels.retry}</MotionButton> : null}
       </div> : null}
 
       {saveError ? <div className={styles.notice} data-tone="error" role="alert">
         <span>{saveError}</span>
-        {onClearError ? <button type="button" onClick={onClearError}>{language === "es" ? "Cerrar" : "Dismiss"}</button> : null}
+        {onClearError ? <MotionButton type="button" onClick={onClearError}>{language === "es" ? "Cerrar" : "Dismiss"}</MotionButton> : null}
       </div> : null}
 
       {!authenticated && savePrompt ? <div className={styles.notice} role="status">
         <span><strong>{labels.keep}</strong> · {labels.keepText}</span>
         <span className={styles.noticeActions}>
           <EasyTLinkButton href="/journey/login?mode=sign-up&next=%2Fjourney%2Fstamped" size="small" onClick={() => window.localStorage.setItem(guestPromotionConsentKey, "1")}>{labels.keepAction}</EasyTLinkButton>
-          {onDismissSavePrompt ? <button type="button" onClick={onDismissSavePrompt}>{language === "es" ? "Ahora no" : "Not now"}</button> : null}
+          {onDismissSavePrompt ? <MotionButton type="button" onClick={onDismissSavePrompt}>{language === "es" ? "Ahora no" : "Not now"}</MotionButton> : null}
         </span>
       </div> : null}
 
@@ -572,7 +573,7 @@ export function StampedExperience({
                     <p>{statusName(selectedStatus, labels)}</p>
                   </div>
                 </div>
-                <button type="button" className={styles.closeButton} aria-label={labels.close} onClick={closeCountry}><X aria-hidden="true" /></button>
+                <MotionButton type="button" className={styles.closeButton} aria-label={labels.close} onClick={closeCountry}><X aria-hidden="true" /></MotionButton>
               </header>
 
               <div className={styles.cardBody}>
@@ -596,7 +597,7 @@ export function StampedExperience({
                   <div className={styles.editorMeta}><span>{draftNote.length} / 2000</span><span>{labels.choosePhoto}</span></div>
                   {draftPhoto ? <figure className={styles.photoDraft}>
                     <img src={draftPhoto} alt={language === "es" ? `Recuerdo de ${selectedCountry.name}` : `Memory from ${selectedCountry.name}`} />
-                    <button type="button" onClick={() => setDraftPhoto(null)}>{labels.photoRemove}</button>
+                    <MotionButton type="button" onClick={() => setDraftPhoto(null)}>{labels.photoRemove}</MotionButton>
                   </figure> : <label className={styles.photoPicker}><Camera aria-hidden="true" />{labels.addPhoto}<input type="file" accept="image/*" onChange={choosePhoto} /></label>}
                   {editorError ? <p className={styles.editorError} role="alert">{editorError}</p> : null}
                   <div className={styles.editorActions}>
@@ -604,7 +605,7 @@ export function StampedExperience({
                     <EasyTButton size="small" loading={savingMemory} onClick={() => void saveMemory()}>{labels.save}</EasyTButton>
                   </div>
                 </div> : selectedNote || selectedPhoto ? <div className={styles.memoryBlock}>
-                  <div className={styles.memoryHeading}><span>{labels.memory}</span><button type="button" className={styles.editMemory} onClick={beginMemory}><Pencil aria-hidden="true" />{language === "es" ? "Editar" : "Edit"}</button></div>
+                  <div className={styles.memoryHeading}><span>{labels.memory}</span><MotionButton type="button" className={styles.editMemory} onClick={beginMemory}><Pencil aria-hidden="true" />{language === "es" ? "Editar" : "Edit"}</MotionButton></div>
                   {selectedNote ? <p className={styles.memoryText}>{selectedNote}</p> : null}
                   {selectedPhoto ? <figure className={styles.memoryPhoto}><img src={selectedPhoto} alt={language === "es" ? `Recuerdo de ${selectedCountry.name}` : `Memory from ${selectedCountry.name}`} /></figure> : null}
                   {!selectedStatus ? <p className={styles.editorMeta}>{labels.unmarkedMemory}</p> : null}
@@ -659,11 +660,11 @@ export function StampedExperience({
               const groupId = `stamp-region-${group.region.toLowerCase()}`;
               return <section className={styles.regionGroup} key={group.region}>
                 <h3 className={styles.regionHeading}>
-                  <button type="button" aria-expanded={expanded} aria-controls={groupId} onClick={() => toggleRegion(group.region)}>
+                  <MotionButton type="button" aria-expanded={expanded} aria-controls={groupId} onClick={() => toggleRegion(group.region)}>
                     <span>{group.region}</span>
                     <span>{group.visited} {language === "es" ? "visitados" : "visited"}</span>
                     <ChevronDown aria-hidden="true" />
-                  </button>
+                  </MotionButton>
                 </h3>
                 {expanded ? <ul id={groupId} className={styles.countryRows}>
                   {group.countries.map((country: StampCountry) => {
@@ -674,13 +675,13 @@ export function StampedExperience({
                     const wantLabel = countryStatus === "want" ? `${labels.added}: ${labels.removeWant(country.name)}` : labels.markWant(country.name);
                     return <li key={country.id} className={styles.countryRow} data-selected={selectedCountryId === country.id || undefined}>
                       <div className={styles.rowMain}>
-                        <button type="button" className={styles.rowCountry} aria-controls={selectedCountry ? "selected-stamp-country" : undefined} aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
+                        <MotionButton type="button" className={styles.rowCountry} aria-controls={selectedCountry ? "selected-stamp-country" : undefined} aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
                           <span className={styles.flag} aria-hidden="true">{stampCountryFlag(country.id)}</span>
                           <span className={styles.rowIdentity}>
                             <strong>{country.name}</strong>
                             <span className={styles.rowStatusText} data-status={value}>{countryStatus ? statusName(countryStatus, labels) : labels.notYet}{selectedCountryId === country.id ? <span className={styles.selectedLabel}> · {labels.selected}</span> : null}</span>
                           </span>
-                        </button>
+                        </MotionButton>
                         <span className={styles.rowActions} role="group" aria-label={labels.statusFor(country.name)} aria-busy={pending || undefined}>
                           <EasyTButton size="small" variant="secondary" data-status="visited" data-active={countryStatus === "visited" || undefined} disabled={pending} aria-pressed={countryStatus === "visited"} aria-label={visitedLabel} title={visitedLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "visited"), "explorer")}><span>{labels.statusLabel.visited}</span><Check aria-hidden="true" /></EasyTButton>
                           <EasyTButton size="small" variant="secondary" data-status="want" data-active={countryStatus === "want" || undefined} disabled={pending} aria-pressed={countryStatus === "want"} aria-label={wantLabel} title={wantLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "want"), "explorer")}><span>{countryStatus === "want" ? labels.added : labels.add}</span><Plus aria-hidden="true" /></EasyTButton>
@@ -693,7 +694,7 @@ export function StampedExperience({
               </section>;
             }) : <div className={styles.noResults}>
               <strong>{labels.noResults}</strong>
-              <button type="button" onClick={() => { setSearch(""); setRegion("all"); setStatusFilter("all"); }}>{labels.clearFilters}</button>
+              <MotionButton type="button" onClick={() => { setSearch(""); setRegion("all"); setStatusFilter("all"); }}>{labels.clearFilters}</MotionButton>
             </div>}
           </div>
         </aside>

@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { Mic, Square } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -189,10 +190,10 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
 
   return <div className={`${styles.voice} ${compact ? styles.compact : ""} ${className ?? ""}`}>
     <div className={styles.voiceActions}>
-      <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null || disabled} onClick={requestStart}>
+      <MotionButton type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null || disabled} onClick={requestStart}>
         {listening ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />}
         <span className={compact ? "sr-only" : undefined}>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
-      </button>
+      </MotionButton>
       <MorroviaContextualDisclosure
         id={disclosureId}
         open={disclosureOpen}

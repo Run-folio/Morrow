@@ -1,4 +1,6 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
+import { EntryReveal } from "@/components/easyt/app-motion";
 
 import {builderBookingStopIds} from '@/lib/easyt/builder-booking-stop-association';
 
@@ -375,15 +377,14 @@ function RadioGroup<T extends string>({ label, help, value, options, onChange }:
         {options.map((opt) => {
           const on = opt.value === value;
           return (
-            /* morrovia-ui-audit-allow-next-line native-control -- Semantic card-radio interaction is owned by this existing Builder RadioGroup rather than the shared push-button control. */
-            <button type="button" key={opt.value} role="radio" aria-checked={on}
+            <MotionButton type="button" key={opt.value} role="radio" aria-checked={on}
               className={`${styles.radioCard} ${on ? styles.radioCardOn : ""}`} onClick={() => onChange(opt.value)}>
               <span className={styles.radioDot} />
               <span>
                 <strong>{opt.label}</strong>
                 <small>{opt.note}</small>
               </span>
-            </button>
+            </MotionButton>
           );
         })}
       </div>
@@ -6232,7 +6233,7 @@ function TripBuilderDocument() {
       <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack} onInputCapture={retireBuilderEntryForInput}>
-              <header className={styles.stepHero}>
+              <header className={styles.stepHero}><EntryReveal />
                 <h1 className={styles.stepHeroTitle} data-route-editor-title={hasRouteSkeleton || undefined}>{hasRouteSkeleton
                   ? (language === "es" ? "Planifica tu ruta." : "Plan your route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
@@ -6416,9 +6417,9 @@ function TripBuilderDocument() {
                         onChange={(value) => { retireBuilderEntryForInput(); planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: "" })); }}
                         onSelect={async (suggestion) => { void selectOriginBase(inlineOriginPlanningMention, suggestion); }}
                       />
-                      <button type="button" onClick={async () => {
+                      <MotionButton type="button" onClick={async () => {
                         return await cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId, "origin");
-                      }}>{language === "es" ? "Cancelar" : "Cancel"}</button>
+                      }}>{language === "es" ? "Cancelar" : "Cancel"}</MotionButton>
                     </div>
                     {baseSearchErrors[inlineOriginPlanningMention.mentionId] ? <p id={`${originErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineOriginPlanningMention.mentionId]}</p> : null}
                   </div> : null}
@@ -6458,10 +6459,10 @@ function TripBuilderDocument() {
                           <b aria-hidden="true">{index + 1}</b>
                           <span>{stop.name}</span>
                           <span className={styles.handoffStopMoves}>
-                            <button type="button" aria-label={`${language === "es" ? "Mover" : "Move"} ${stop.name} ${language === "es" ? "arriba" : "up"}`} disabled={locked || index === 0} onClick={async () => await moveStop(index, index - 1)}><ArrowUp /></button>
-                            <button type="button" aria-label={`${language === "es" ? "Mover" : "Move"} ${stop.name} ${language === "es" ? "abajo" : "down"}`} disabled={locked || index === stops.length - 1} onClick={async () => await moveStop(index, index + 1)}><ArrowDown /></button>
+                            <MotionButton type="button" aria-label={`${language === "es" ? "Mover" : "Move"} ${stop.name} ${language === "es" ? "arriba" : "up"}`} disabled={locked || index === 0} onClick={async () => await moveStop(index, index - 1)}><ArrowUp /></MotionButton>
+                            <MotionButton type="button" aria-label={`${language === "es" ? "Mover" : "Move"} ${stop.name} ${language === "es" ? "abajo" : "down"}`} disabled={locked || index === stops.length - 1} onClick={async () => await moveStop(index, index + 1)}><ArrowDown /></MotionButton>
                           </span>
-                          <button type="button" className={styles.handoffStopRemove} aria-label={locked ? `${stop.name}, ${language === "es" ? "parada bloqueada" : "locked stop"}` : `${language === "es" ? "Quitar" : "Remove"} ${stop.name}, ${language === "es" ? "parada" : "stop"} ${index + 1}`} disabled={locked} onClick={async () => await requestRemoveStop(stop.id)}>{locked ? <Lock aria-hidden="true" /> : <X aria-hidden="true" />}</button>
+                          <MotionButton type="button" className={styles.handoffStopRemove} aria-label={locked ? `${stop.name}, ${language === "es" ? "parada bloqueada" : "locked stop"}` : `${language === "es" ? "Quitar" : "Remove"} ${stop.name}, ${language === "es" ? "parada" : "stop"} ${index + 1}`} disabled={locked} onClick={async () => await requestRemoveStop(stop.id)}>{locked ? <Lock aria-hidden="true" /> : <X aria-hidden="true" />}</MotionButton>
                           {stopResolutionMentions.has(stop.id) ? renderPlaceResolution(stopResolutionMentions.get(stop.id)!) : null}
                         </div>;
                       })}
@@ -6507,7 +6508,7 @@ function TripBuilderDocument() {
                         onChange={(value) => { retireBuilderEntryForInput(); planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [inlineStopBaseMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineStopBaseMention.mentionId]: "" })); }}
                         onSelect={async (suggestion) => { void addStop(suggestion.name, suggestion.country, inlineStopBaseMention.mentionId, undefined, suggestion); }}
                       />
-                      <button type="button" onClick={async () => { return await cancelTransientPlanningClarification(inlineStopBaseMention.mentionId, "stop"); }}>{language === "es" ? "Cancelar" : "Cancel"}</button>
+                      <MotionButton type="button" onClick={async () => { return await cancelTransientPlanningClarification(inlineStopBaseMention.mentionId, "stop"); }}>{language === "es" ? "Cancelar" : "Cancel"}</MotionButton>
                     </div>
                     {baseSearchErrors[inlineStopBaseMention.mentionId] ? <p id={`${stopErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineStopBaseMention.mentionId]}</p> : null}
                   </div> : <>
@@ -6531,7 +6532,7 @@ function TripBuilderDocument() {
                     {countryAddReviewControl}
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
-                    {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={async () => await addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}
+                    {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <MotionButton type="button" key={suggestion.canonicalPlaceId} onClick={async () => await addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</MotionButton>)}</div>}
                   </>}</div>}
                 </section>}
 
@@ -6556,7 +6557,7 @@ function TripBuilderDocument() {
                     return <article key={mention.mentionId} aria-label={`${placeDisplayName(mention)}, ${multiPlace ? "route places" : relationship} ${selectedNames}`}>
                       <Check aria-hidden="true" />
                       <p><strong>{placeDisplayName(mention)}</strong><span>{multiPlace ? selectedNames : selection.kind === "visit" ? (language === "es" ? `visita desde ${selection.selectedName}` : `visiting from ${selection.selectedName}`) : originRelationship ? (language === "es" ? `saliendo desde ${selection.selectedName}` : `starting from ${selection.selectedName}`) : selection.kind === "base" ? (language === "es" ? `estancia en ${selection.selectedName}` : `staying in ${selection.selectedName}`) : (language === "es" ? `confirmado como ${selection.selectedName}` : `confirmed as ${selection.selectedName}`)}</span></p>
-                      <button type="button" onClick={async () => {
+                      <MotionButton type="button" onClick={async () => {
                         if (originRelationship) {
                           setOriginPlanningMentionId(mention.mentionId);
                           setSummaryFocus("origin");
@@ -6566,7 +6567,7 @@ function TripBuilderDocument() {
                           setResolvingPlaceMentionId((current) => current === mention.mentionId ? null : mention.mentionId);
                         }
                         setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: "" }));
-                      }}>{originRelationship ? (language === "es" ? "Cambiar salida" : "Change departure") : multiPlace ? (language === "es" ? "Añadir o cambiar lugares" : "Add or change places") : (language === "es" ? "Cambiar base" : "Change base")}<span className="sr-only"> {placeDisplayName(mention)}</span></button>
+                      }}>{originRelationship ? (language === "es" ? "Cambiar salida" : "Change departure") : multiPlace ? (language === "es" ? "Añadir o cambiar lugares" : "Add or change places") : (language === "es" ? "Cambiar base" : "Change base")}<span className="sr-only"> {placeDisplayName(mention)}</span></MotionButton>
                       {selection.kind === "base" && !originRelationship && resolvingPlaceMentionId === mention.mentionId ? <div className={styles.baseSelector}>
                         <CanonicalPlaceAutocomplete
                           requireCoordinates
@@ -6591,7 +6592,7 @@ function TripBuilderDocument() {
                 {!mountedBuilder && pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias" : "Preferences"}><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
               {!mountedBuilder && (effectiveIntent.hardConstraints.fixedCommitments.length > 0 || showTripDetails) && <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
-                <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}><span><b>{language === "es" ? "Planes fijos" : "Fixed plans"}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? <small>{language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} guardado${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : `${effectiveIntent.hardConstraints.fixedCommitments.length} saved`}</small> : null}</span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</button>
+                <MotionButton type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}><span><b>{language === "es" ? "Planes fijos" : "Fixed plans"}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? <small>{language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} guardado${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : `${effectiveIntent.hardConstraints.fixedCommitments.length} saved`}</small> : null}</span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</MotionButton>
                 {showTripDetails && <div id={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} className={isHomepagePromptHandoff ? styles.advancedContent : undefined}>
                 <div className={styles.intentGrid}>
                   <section className={styles.intentHard}>
@@ -6603,11 +6604,11 @@ function TripBuilderDocument() {
                     </div>
                     {stops.length > 0 && <div className={styles.mustSeeStops}><span>{language === "es" ? "PARADAS IMPRESCINDIBLES" : "MUST-SEE STOPS"}</span><div>{stops.map((stop) => {
                       const mustSee = !effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id);
-                      return <button type="button" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={async () => await toggleOptionalStop(stop.id)}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</button>;
+                      return <MotionButton type="button" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={async () => await toggleOptionalStop(stop.id)}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</MotionButton>;
                     })}</div></div>}
                     <div className={styles.intentToggle} role="group" aria-label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"}>
-                      <button type="button" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={async () => await updateTimingFlexibility("fixed")}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</button>
-                      <button type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={async () => await updateTimingFlexibility("flexible")}>{language === "es" ? "Duración flexible" : "Flexible duration"}</button>
+                      <MotionButton type="button" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={async () => await updateTimingFlexibility("fixed")}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</MotionButton>
+                      <MotionButton type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={async () => await updateTimingFlexibility("flexible")}>{language === "es" ? "Duración flexible" : "Flexible duration"}</MotionButton>
                     </div>
                     <div className={styles.fixedCommitment}>
                       <label><span>{language === "es" ? "LUGAR DEL PLAN FIJO" : "FIXED PLAN PLACE"}</span><input value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"} /></label>
@@ -6620,7 +6621,7 @@ function TripBuilderDocument() {
                         value={fixedCommitmentDate}
                         onChange={setFixedCommitmentDate}
                       />
-                      <button type="button" onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}><Plus />{language === "es" ? "Añadir" : "Add"}</button>
+                      <MotionButton type="button" onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}><Plus />{language === "es" ? "Añadir" : "Add"}</MotionButton>
                     </div>
                   </section>
                   <section className={styles.intentPreferences}>
@@ -6638,17 +6639,17 @@ function TripBuilderDocument() {
                         max={12}
                         onChange={updateTravellers}
                       />
-                      <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={async () => await updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
+                      <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <MotionButton type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={async () => await updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</MotionButton>)}</div></div>
                     </div>
                     <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={async () => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); await updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
+                      <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <MotionButton type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={async () => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); await updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</MotionButton>)}</div></div>
                     </div>
                     <label className={styles.dislikesField}><span>{language === "es" ? "EVITAR (OPCIONAL)" : "AVOID (OPTIONAL)"}</span><input value={effectiveIntent.preferences.dislikes.join(", ")} onChange={async (event) => await updateIntentPreferences({ dislikes: event.target.value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6) })} placeholder={language === "es" ? "Ej. traslados nocturnos, calor extremo" : "e.g. overnight transfers, extreme heat"} /></label>
                   </section>
                 </div>
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </div>}
-                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && (!isHomepagePromptHandoff || showTripDetails) && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={async () => await removeFixedCommitment(item.id)}><X /></button></span>)}</div>}
+                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && (!isHomepagePromptHandoff || showTripDetails) && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<MotionButton type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={async () => await removeFixedCommitment(item.id)}><X /></MotionButton></span>)}</div>}
               </section>}
               </section>}
 
@@ -6730,8 +6731,8 @@ function TripBuilderDocument() {
                         </span>
                         <div className={styles.routeStopName}><b>{index + 1}</b><span><strong>{stop.name}</strong></span></div>
                       </div>
-                      <div className={styles.routeTransferSummary} role="cell"><TransferIcon aria-hidden="true" /><span><strong className={styles.transferContext}>{transferContext}</strong>{leg && !transferIsUnknown && <span className={`${styles.transferDurationLine} ${styles.transferTiming}`}><small>{durationLabel(transferMinutes)}{includesFlight && transferMinutes !== null ? " total" : ""}</small>{includesFlight && transferMinutes !== null && <span className={styles.transferDurationHelp}><button type="button" aria-label={language === "es" ? "El total estimado puerta a puerta incluye el traslado al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce, y el traslado hasta tu alojamiento. Morrovia usa este total para calcular el tiempo aprovechable." : "The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Morrovia uses this total to calculate usable time."}><Info aria-hidden="true" /></button><span className={styles.transferDurationTooltip} role="tooltip" aria-hidden="true">{language === "es" ? "Total estimado puerta a puerta: acceso al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce y traslado hasta tu alojamiento. Se usa para calcular el tiempo aprovechable." : "Estimated door-to-door total: airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Used to calculate usable time."}</span></span>}</span>}</span></div>
-                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><button type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || locked} onClick={async () => await adjustAllocatedDays(stop.id, -1)}>−</button><strong aria-label={`${days} nights`}>{days}</strong><button type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || locked} onClick={async () => await adjustAllocatedDays(stop.id, 1)}>+</button></div>
+                      <div className={styles.routeTransferSummary} role="cell"><TransferIcon aria-hidden="true" /><span><strong className={styles.transferContext}>{transferContext}</strong>{leg && !transferIsUnknown && <span className={`${styles.transferDurationLine} ${styles.transferTiming}`}><small>{durationLabel(transferMinutes)}{includesFlight && transferMinutes !== null ? " total" : ""}</small>{includesFlight && transferMinutes !== null && <span className={styles.transferDurationHelp}><MotionButton type="button" aria-label={language === "es" ? "El total estimado puerta a puerta incluye el traslado al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce, y el traslado hasta tu alojamiento. Morrovia usa este total para calcular el tiempo aprovechable." : "The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Morrovia uses this total to calculate usable time."}><Info aria-hidden="true" /></MotionButton><span className={styles.transferDurationTooltip} role="tooltip" aria-hidden="true">{language === "es" ? "Total estimado puerta a puerta: acceso al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce y traslado hasta tu alojamiento. Se usa para calcular el tiempo aprovechable." : "Estimated door-to-door total: airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Used to calculate usable time."}</span></span>}</span>}</span></div>
+                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><MotionButton type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || locked} onClick={async () => await adjustAllocatedDays(stop.id, -1)}>−</MotionButton><strong aria-label={`${days} nights`}>{days}</strong><MotionButton type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || locked} onClick={async () => await adjustAllocatedDays(stop.id, 1)}>+</MotionButton></div>
                       <div className={`${styles.usableTime} ${compressed ? styles.usableTimeWarning : ""}`} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Tiempo útil" : "Usable time"}</span><strong>{usableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>{compressed && <AlertTriangle aria-label="Compressed stop" />}</div>
                     </div>;
                   })}
@@ -6751,9 +6752,9 @@ function TripBuilderDocument() {
                 </div>
               </section>}
               {showRouteStatus && !geographyGateConflict && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
-                <button type="button" className={styles.disclosureHead} aria-expanded={timingWarningOpen} aria-controls="timing-warning-content" onClick={() => setTimingWarningOpen((current) => !current)}>
+                <MotionButton type="button" className={styles.disclosureHead} aria-expanded={timingWarningOpen} aria-controls="timing-warning-content" onClick={() => setTimingWarningOpen((current) => !current)}>
                   <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : routeRecommendationVisible && !showTimingWarning ? (language === "es" ? "Sugerencia: " : "Suggestion: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong></span><ChevronRight aria-hidden="true" />
-                </button>
+                </MotionButton>
                 {timingWarningOpen && <div id="timing-warning-content" className={styles.timingWarningContent}>
                   {gateConflict?.code !== "itinerary-stop-uncovered" && <section><strong>{language === "es" ? "Qué significa" : "What this means"}</strong><ul>
                     {highlyCompressedTrip && <><li>{language === "es" ? `${oneNightStopCount} de ${stops.length} paradas tienen una noche o menos.` : `${oneNightStopCount} of ${stops.length} stops have one night or less.`}</li>{unknownTransferCount > 0 && <li>{language === "es" ? `${unknownTransferCount === 1 ? "Un traslado" : `${unknownTransferCount} traslados`} aún necesita comprobarse, por lo que el tiempo aprovechable puede ser menor.` : `${unknownTransferCount === 1 ? "One transfer" : `${unknownTransferCount} transfers`} still ${unknownTransferCount === 1 ? "needs" : "need"} checking, so usable time may be lower.`}</li>}{longTransferCount > 0 && <li>{language === "es" ? `${longTransferCount === 1 ? "Un traslado ocupa" : `${longTransferCount} traslados ocupan`} gran parte de un día.` : `${longTransferCount === 1 ? "One transfer uses" : `${longTransferCount} transfers use`} a large part of a day.`}</li>}</>}
@@ -6763,7 +6764,7 @@ function TripBuilderDocument() {
                     {!gateConflict && routeCoverageNotice && <li>{routeCoverageNotice}</li>}
                     {!gateConflict && transportReviewNotice && <li>{transportReviewNotice}</li>}
                   </ul></section>}
-                  {!gateConflict && !routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><button type="button" onClick={async () => await applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</button></article>)}</div></section> : null}
+                  {!gateConflict && !routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><MotionButton type="button" onClick={async () => await applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</MotionButton></article>)}</div></section> : null}
                   {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Alternativa estimada" : "Estimated alternative"}</strong><p>{language === "es" ? "Los horarios y las tarifas aún no se han verificado para tus fechas." : "Schedules and fares have not been verified for your dates."}</p>{!routeJourneyEnd && stops.at(-1)?.id !== routeIntelligence.route.recommendedStopIds.at(-1) ? <p>{language === "es" ? `Cambia el final a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} en lugar de ${stops.at(-1)?.name}.` : `Changes the finish to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} instead of ${stops.at(-1)?.name}.`}</p> : null}{!routeIntelligenceInput.origin.coordinates && stops[0]?.id !== routeIntelligence.route.recommendedStopIds[0] ? <p>{language === "es" ? `Cambia el inicio a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} en lugar de ${stops[0]?.name}.` : `Changes the start to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} instead of ${stops[0]?.name}.`}</p> : null}{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
                 </div>}
               </section>}
@@ -7529,13 +7530,13 @@ function TripBuilderDocument() {
         <div className={styles.footRight}>
           {endDateStillSuggested && <small className={styles.gate}>{language === "es" ? "Confirma las fechas arriba" : "Confirm trip dates above"}</small>}
           {gate && gateConflict?.code !== "itinerary-stop-uncovered" && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={endDateStillSuggested || Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
+          <MotionButton type="button" className={styles.primary} disabled={endDateStillSuggested || Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate || endDateStillSuggested) return;
               buildTrip();
             }}>
             {openingTrip ? (language === "es" ? "Abriendo tu ruta…" : "Opening your route…") : (language === "es" ? "Crear viaje" : "Build trip")} {!openingTrip ? "→" : ""}
-          </button>
+          </MotionButton>
         </div>
       </div>
       }

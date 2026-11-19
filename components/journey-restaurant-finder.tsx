@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import { ArrowUpRight, RotateCcw, Utensils } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -160,18 +161,18 @@ export function JourneyRestaurantFinder({ stopId, city, dayId, onSelectRestauran
     {restaurants.length ? <div className={styles.mealPicker}>
       <span>Find a meal</span>
       <div role="group" aria-label="Choose lunch or dinner">
-        {(["lunch", "dinner"] as const).map((meal) => <button key={meal} type="button" aria-pressed={activeMeal === meal} onClick={() => chooseMeal(meal)}>{meal}</button>)}
+        {(["lunch", "dinner"] as const).map((meal) => <MotionButton key={meal} type="button" aria-pressed={activeMeal === meal} onClick={() => chooseMeal(meal)}>{meal}</MotionButton>)}
       </div>
     </div> : null}
     {activeMeal && question && !recommendation ? <div className={styles.restaurantQuestion}>
       <p>{question.eyebrow} <b>{questionIndex + 1} / {questions.length + 1}</b></p>
       <h3>{question.title}</h3>
-      <div>{question.options.map((option) => <button key={option.value} type="button" onClick={() => choose(question.key, option.value)}>{option.label}</button>)}</div>
+      <div>{question.options.map((option) => <MotionButton key={option.value} type="button" onClick={() => choose(question.key, option.value)}>{option.label}</MotionButton>)}</div>
     </div> : null}
     {activeMeal && questionIndex === -1 && needsDish && !savedRecommendation ? <div className={styles.restaurantQuestion}>
       <p>Finally, choose a direction <b>{questions.length + 1} / {questions.length + 1}</b></p>
       <h3>What do you actually want to eat?</h3>
-      <div className={styles.dishOptions}>{dishOptions.map((dish) => <button key={dish} type="button" onClick={() => choose("dish", dish)}>{dishLabels[dish]}</button>)}</div>
+      <div className={styles.dishOptions}>{dishOptions.map((dish) => <MotionButton key={dish} type="button" onClick={() => choose("dish", dish)}>{dishLabels[dish]}</MotionButton>)}</div>
     </div> : null}
     {recommendation ? <article className={styles.restaurantResult}>
       <p><span>{isSavedForDay ? `Your ${activeMeal} pick` : `Suggested ${activeMeal} pick`}</span><b>{isSavedForDay ? "In today’s itinerary ↑" : "Not added yet"}</b></p>
@@ -182,9 +183,9 @@ export function JourneyRestaurantFinder({ stopId, city, dayId, onSelectRestauran
       <dl><dt>Order</dt><dd>{recommendation.order}</dd></dl>
       <div className={styles.restaurantActions}>
         <a href={recommendation.mapsUrl} target="_blank" rel="noreferrer">Open in Maps <ArrowUpRight /></a>
-        <button type="button" className={styles.restaurantSave} onClick={saveRecommendation} disabled={isSavedForDay}>{isSavedForDay ? "Added to itinerary" : "Add to today"}</button>
-        {ranked.length > 1 ? <button type="button" onClick={() => { setSavedSelections((current) => { const updated = { ...current }; delete updated[dayId]; return updated; }); setResultIndex((index) => index + 1); }}>{isSavedForDay ? "Change pick" : "Try another"}</button> : null}
-        <button type="button" aria-label="Change restaurant preferences" onClick={() => saveAnswers({ meal: activeMeal })}><RotateCcw /></button>
+        <MotionButton type="button" className={styles.restaurantSave} onClick={saveRecommendation} disabled={isSavedForDay}>{isSavedForDay ? "Added to itinerary" : "Add to today"}</MotionButton>
+        {ranked.length > 1 ? <MotionButton type="button" onClick={() => { setSavedSelections((current) => { const updated = { ...current }; delete updated[dayId]; return updated; }); setResultIndex((index) => index + 1); }}>{isSavedForDay ? "Change pick" : "Try another"}</MotionButton> : null}
+        <MotionButton type="button" aria-label="Change restaurant preferences" onClick={() => saveAnswers({ meal: activeMeal })}><RotateCcw /></MotionButton>
       </div>
       <small>Shortlist for March 2027. Confirm hours closer to travel.</small>
     </article> : null}

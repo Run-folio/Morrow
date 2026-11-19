@@ -16,6 +16,9 @@ function renderPicker(props: Record<string, unknown>, clock = { now: new Date(20
   const exports: Record<string, any> = {};
   const dependencies: Record<string, unknown> = {
     "react/jsx-runtime": require("react/jsx-runtime"),
+    // Motion is a DOM-only visual adapter; this fixture keeps its native host and inert effects.
+    "@/components/easyt/app-motion": { MotionButton: "button" },
+    "./app-motion": { EntryReveal: () => null },
     react: {
       useState: (initial: unknown) => { const index = stateIndex++; return [index in stateOverrides ? stateOverrides[index] : typeof initial === "function" ? initial() : initial, () => {}]; },
       useEffect: () => {}, useId: () => "id", useRef: (current: unknown) => ({ current }), useMemo: (compute: () => unknown) => compute(),

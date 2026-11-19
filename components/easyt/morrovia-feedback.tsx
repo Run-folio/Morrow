@@ -1,4 +1,5 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
 import { AlertCircle, Check, CircleAlert, Cloud, HardDrive, Info, LoaderCircle, RotateCcw, X, type LucideIcon } from "lucide-react";
@@ -101,7 +102,7 @@ export function MorroviaContextualDisclosure({
       <div className={styles.contextualDisclosureHeading}>
         <Info aria-hidden="true" />
         <strong id={titleId}>{title}</strong>
-        <button data-disclosure-close="true" className={styles.contextualDisclosureClose} type="button" onClick={close} aria-label={`Close ${title}`}><X aria-hidden="true" /></button>
+        <MotionButton data-disclosure-close="true" className={styles.contextualDisclosureClose} type="button" onClick={close} aria-label={`Close ${title}`}><X aria-hidden="true" /></MotionButton>
       </div>
       <p id={detailId}>{detail}</p>
       {(linkHref && linkLabel) || actions ? <div className={styles.contextualDisclosureActions}>
@@ -262,7 +263,7 @@ export function MorroviaBriefNotice({
       {tone === "danger" ? <AlertCircle aria-hidden="true" /> : <Check aria-hidden="true" />}
       <div><strong>{title}</strong>{detail ? <span>{detail}</span> : null}</div>
       {action}
-      {onDismiss ? <button className={styles.dismiss} type="button" onClick={onDismiss} aria-label={`Dismiss ${title}`}><X aria-hidden="true" /></button> : null}
+      {onDismiss ? <MotionButton className={styles.dismiss} type="button" onClick={onDismiss} aria-label={`Dismiss ${title}`}><X aria-hidden="true" /></MotionButton> : null}
     </div>
   );
 }

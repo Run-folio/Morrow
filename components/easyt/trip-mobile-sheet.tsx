@@ -1,4 +1,5 @@
 "use client";
+import { EntryReveal } from "@/components/easyt/app-motion";
 
 import { X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -18,7 +19,7 @@ export function TripMobileSheet({ open, title, onClose, onReturnFocus, children 
     return () => viewport.removeEventListener('change', closeOnDesktop);
   }, [open, onClose]);
   return <MorroviaContentDialog open={open} ariaLabel={title} className={styles.sheet} autoFocusSelector="[data-sheet-close]" onClose={onClose} onReturnFocus={onReturnFocus}>
-    <div className={styles.body}>
+    <div className={styles.body}><EntryReveal active={open} />
       <header><h2>{title}</h2><EasyTButton data-sheet-close icon={X} iconOnly variant="quiet" aria-label={`Close ${title}`} onClick={onClose}>Close</EasyTButton></header>
       <div className={styles.content}>{children}</div>
     </div>

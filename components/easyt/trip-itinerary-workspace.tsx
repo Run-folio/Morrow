@@ -1,4 +1,6 @@
 "use client";
+import { MotionButton } from "@/components/easyt/app-motion";
+import { EntryReveal } from "@/components/easyt/app-motion";
 import {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
@@ -977,7 +979,7 @@ export default function TripItineraryWorkspace({
             <p className={legacyStyles.eyebrow}>{copy.draft}</p>
             <h2>{tripDisplayTitle(trip)}</h2>
           </div>
-          {onEditBrief ? <button type="button" className={legacyStyles.primary} onClick={onEditBrief}>{copy.editBrief}</button> : null}
+          {onEditBrief ? <MotionButton type="button" className={legacyStyles.primary} onClick={onEditBrief}>{copy.editBrief}</MotionButton> : null}
         </div>
         <div className={legacyStyles.draftSummary}>
           <span><CalendarDays /> {days.length} days</span>
@@ -990,7 +992,7 @@ export default function TripItineraryWorkspace({
             <LegacyDayContent day={active} stop={stop} image={image} index={index} days={days} setSelectedIndex={setSelectedIndex} copy={copy} language={language} />
           </section>
         </div>
-        {onOpenMap ? <div className={legacyStyles.draftFoot}><button type="button" className={legacyStyles.primary} onClick={onOpenMap}>{copy.openMap}</button></div> : null}
+        {onOpenMap ? <div className={legacyStyles.draftFoot}><MotionButton type="button" className={legacyStyles.primary} onClick={onOpenMap}>{copy.openMap}</MotionButton></div> : null}
       </div>
     );
   }
@@ -1627,7 +1629,7 @@ export default function TripItineraryWorkspace({
 
   return (
     <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""}`} aria-label="Trip itinerary">
-      <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}>
+      <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}><EntryReveal />
         <h2 className="sr-only">{workspaceView === "calendar" ? copy.calendar : copy.dayByDay}</h2>
         <div className={styles.dateNavigation}>
           {workspaceView === "calendar" && todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
@@ -1683,8 +1685,7 @@ export default function TripItineraryWorkspace({
             const dayStop = stopForDay(workingTrip, day);
             const DayIcon = iconForPlanItem(day.type);
             const subtitle = itineraryDaySubtitle(day.title, dayStop?.name);
-            // morrovia-ui-audit-allow-next-line native-control -- Restored itinerary day tab has its own roving-focus keyboard contract.
-            return <button
+            return <MotionButton
               type="button"
               role="tab"
               aria-label={`${copy.day} ${day.dayNumber} · ${displayDayDate(day.date, language)} · ${dayStop?.name ?? day.title}${dayStop && subtitle ? ` · ${subtitle}` : ""}`}
@@ -1710,7 +1711,7 @@ export default function TripItineraryWorkspace({
               <span className={styles.dayMeta}><time dateTime={day.date}>{mobile ? [formatIsoDate(day.date, language, { weekday: "short" }), formatIsoDate(day.date, language, { day: "numeric" })].filter(Boolean).join(" ") || displayDate(day.date, language, true) : displayDate(day.date, language, true)}</time>{day.type !== "open" ? <DayIcon aria-hidden="true" /> : null}</span>
               <strong>{dayStop?.name ?? day.title}</strong>
               {dayStop && subtitle ? <small>{subtitle}</small> : null}
-            </button>;
+            </MotionButton>;
           })}
         </div>
       </nav> : null}
@@ -3135,11 +3136,11 @@ function LegacyDayRail({ days, trip, selectedIndex, setSelectedIndex, copy, lang
     <div className={legacyStyles.timeline}>
       <div className={legacyStyles.timelineHead}><strong>{copy.dayByDay}</strong><small>{days.length} {copy.days}</small></div>
       {days.map((day, index) => (
-        <button type="button" key={day.id} className={`${legacyStyles.timelineRow} ${index === selectedIndex ? legacyStyles.timelineRowOn : ""}`} onClick={() => setSelectedIndex(index)}>
+        <MotionButton type="button" key={day.id} className={`${legacyStyles.timelineRow} ${index === selectedIndex ? legacyStyles.timelineRowOn : ""}`} onClick={() => setSelectedIndex(index)}>
           <b>{pad(day.dayNumber)}</b>
           <span><em>{stopForDay(trip, day)?.name ?? "Route"}</em><strong>{day.title}</strong></span>
           <small>{displayDate(day.date, language, true)}</small>
-        </button>
+        </MotionButton>
       ))}
     </div>
   );
@@ -3159,8 +3160,8 @@ function LegacyDayContent({ day, stop, image, index, days, setSelectedIndex, cop
     <DayImage image={image} day={day} stop={stop} sourceLabel={copy.source} className={legacyStyles.dayImage} fallbackClassName={legacyStyles.dayImageFallback} />
     <ul className={legacyStyles.dayItems}>{day.notes.map((text, noteIndex) => <li key={noteIndex}>{text}</li>)}</ul>
     <div className={legacyStyles.dayNav}>
-      <button type="button" disabled={index === 0} onClick={() => setSelectedIndex(index - 1)}>← {copy.previousDay}</button>
-      <button type="button" disabled={index >= days.length - 1} onClick={() => setSelectedIndex(index + 1)}>{copy.nextDay} →</button>
+      <MotionButton type="button" disabled={index === 0} onClick={() => setSelectedIndex(index - 1)}>← {copy.previousDay}</MotionButton>
+      <MotionButton type="button" disabled={index >= days.length - 1} onClick={() => setSelectedIndex(index + 1)}>{copy.nextDay} →</MotionButton>
     </div>
   </>;
 }
