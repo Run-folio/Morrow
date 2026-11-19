@@ -159,7 +159,25 @@ for(const mode of modes)test(`delayed ${mode} route response stays pending until
 test('completed domain input does not start another provider call or write on retry',{timeout:15000},async()=>{
  const h=await harness('indexeddb-input');
  try{
-  await accepted(h);await h.run();assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
+  await accepted(h);await h.run();
+  // An arbitrary number of event-loop turns does not establish that the first
+  // projection has committed to IndexedDB. Observe its real terminal state
+  // before recording the baseline which explicit retry must preserve exactly.
+  await new Promise((resolve,reject)=>{
+   let unsubscribe=()=>{};
+   const timeout=setTimeout(()=>{unsubscribe();reject(Error('Initial route projection did not settle'));},8000);
+   const check=()=>{const state=h.session.getSnapshot();
+    if(!state.pendingUnits.some(unit=>unit.kind!=='recommendation')){
+     clearTimeout(timeout);unsubscribe();resolve();
+    }
+   };
+   unsubscribe=h.session.subscribe(check);check();
+  });
+  await h.session.waitForDeviceWrites();
+  const settled=h.session.getSnapshot();assert.equal(Boolean(settled.routeWorkBlocked),false);
+  assert.equal(settled.conflictUnits.length,0);
+  assert.ok(h.trace.writes.some(write=>write.projection), 'initial projection must be written before retry');
+  assert.equal(h.trace.reconcileCalls,1,'the original projection must be complete before explicit retry');
   const completed=copies(h);await h.session.resumeNecessaryWork();await h.session.waitForDeviceWrites();
   const view=assessment(h.session,source);await turn();
   assert.deepEqual(view.state(),{settled:true,returnedTrip:true});assert.equal(h.trace.reconcileCalls,1);await retained(h,completed);
