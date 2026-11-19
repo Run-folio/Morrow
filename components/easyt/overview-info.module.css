@@ -1,0 +1,33 @@
+.trigger.trigger {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: -10px -8px -10px 0;
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-muted);
+  vertical-align: middle;
+}
+.trigger.trigger > svg { width: 16px; height: 16px; }
+.trigger.trigger:hover, .trigger.trigger[aria-expanded="true"] { color: var(--morrovia-action); }
+.tooltip {
+  position: fixed;
+  z-index: 110;
+  width: min(288px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 10px 12px;
+  overflow: auto;
+  color: var(--morrovia-ink);
+  background: var(--morrovia-paper);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  box-shadow: var(--morrovia-shadow-overlay);
+  font: var(--morrovia-type-supporting-body);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tooltip:not([data-positioned]) { visibility: hidden; }
+.tooltip p { margin: 0; }

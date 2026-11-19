@@ -25,6 +25,7 @@ import type { OverviewPracticalTask, OverviewPrepKind, TripPrepTask, TripPrepTas
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
 import { affiliateDisclosureForProvider, MorroviaAffiliateLink } from "./affiliate-link";
+import { OverviewInfo } from "./overview-info";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
 import styles from "./trip-preparation.module.css";
 
@@ -261,13 +262,22 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
           ? "Recibimos una comisión cuando obtienes una cotización de World Nomads mediante este enlace. No representamos a World Nomads. Esto no es una recomendación de contratar un seguro de viaje."
           : "Enlace de socio · Morrovia puede recibir una comisión sin coste adicional para ti. La reserva, el pago y las condiciones del proveedor se aplican en su sitio."
         : affiliateDisclosureForProvider(action?.provider ?? "");
+      const isInsuranceAd = task.id === "insurance" && Boolean(action?.affiliate && action.href);
+      const genericDetail = genericOverviewDetail(task.id, task.detail);
+      const infoDetail = isInsuranceAd ? disclosure : (task.id === "passport" || task.id === "activity") && genericDetail ? task.detail : null;
       return <article key={task.id} className={styles.overviewPrepCard} data-prep-kind={task.id} data-prep-state={task.status}>
         <span className={styles.overviewPrepIcon}><Icon aria-hidden="true" /></span>
         <div className={styles.overviewPrepCopy}>
-          <h3>{task.title}</h3>
-          {genericOverviewDetail(task.id, task.detail) ? null : <p>{task.detail}</p>}
-          {action?.affiliate ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
-          <div className={styles.overviewPrepAction}>
+          <div className={styles.overviewPrepHeading}>
+            <h3>{task.title}</h3>
+            {infoDetail ? <OverviewInfo label={isInsuranceAd
+              ? (language === "es" ? "Información sobre este anuncio de seguro" : "About this insurance ad")
+              : (language === "es" ? `Más información: ${task.title}` : `More information: ${task.title}`)}>{infoDetail}</OverviewInfo> : null}
+          </div>
+          {genericDetail ? null : <p>{task.detail}</p>}
+          {action?.affiliate && !isInsuranceAd ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
+          <div className={`${styles.overviewPrepAction} ${isInsuranceAd ? styles.overviewPrepAdAction : ""}`}>
+            {isInsuranceAd ? <small className={styles.overviewPrepAdLabel}>{language === "es" ? "Publicidad" : "Ad"}</small> : null}
             {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
               : action?.href && action.affiliate && (action.provider === "world-nomads" || action.provider === "saily") ? <MorroviaAffiliateLink
                 action={{ provider: action.provider, category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity", href: action.href, cta: action.label, affiliate: true }}

@@ -49,6 +49,7 @@ import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { deriveOverviewPracticalTasks, setOverviewPrepChoice } from "@/lib/easyt/trip-prep";
 import { languageFromStorage, EASYT_LANGUAGE_CHANGE_EVENT } from "@/lib/easyt/i18n";
+import { OverviewInfo } from "./overview-info";
 import { presentOverviewIssues, presentOverviewRouteInsight } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
@@ -413,7 +414,13 @@ export default function TripOverviewWorkspace({
               <Sparkles aria-hidden="true" />
               <div>
                 {routeInsight.label && routeInsight.label !== "Transfer details" ? <p>{routeInsight.label}</p> : null}
-                <strong id="overview-route-rationale-title">{routeInsight.title ?? routeInsight.detail}</strong>
+                <div className={styles.routeInsightSummary}>
+                  <strong id="overview-route-rationale-title">{routeInsight.title ?? routeInsight.detail}</strong>
+                  {routeInsight.context === "stop-timing" ? <OverviewInfo label={language === "es" ? "Información sobre el tiempo en la parada" : "About stop timing"}>
+                    <b>{language === "es" ? "Tiempo en la parada" : "Stop timing"}</b><br />
+                    {language === "es" ? "El tiempo en esta parada puede ser limitado" : "Time at this stop may be limited"}
+                  </OverviewInfo> : null}
+                </div>
                 {routeInsight.title ? <span>{routeInsight.detail}</span> : null}
               </div>
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadTripRecovery, subscribeToTripStorage } from "@/lib/easyt/storage";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
@@ -483,8 +483,17 @@ export const PracticalPrep: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("heading", { name: /passport.*traveller/i })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "Activities" })).toBeVisible();
-    await expect(canvas.queryByText(/^Add nationality and residence for more useful entry guidance\.$/)).not.toBeInTheDocument();
-    await expect(canvas.queryByText(/^Check key activities, opening days and cancellation terms before booking\.$/)).not.toBeInTheDocument();
+    const surface = within(canvasElement.ownerDocument.body);
+    const passportInfo = canvas.getByRole("button", { name: /^More information: Passport/i });
+    await userEvent.hover(passportInfo);
+    await expect(await surface.findByRole("tooltip")).toHaveTextContent("Add nationality and residence for more useful entry guidance.");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
+    const activityInfo = canvas.getByRole("button", { name: "More information: Activities" });
+    await userEvent.hover(activityInfo);
+    await expect(await surface.findByRole("tooltip")).toHaveTextContent("Check key activities, opening days and cancellation terms before booking.");
+    await userEvent.unhover(activityInfo);
+    await waitFor(() => expect(surface.queryByRole("tooltip")).not.toBeInTheDocument());
   },
 };
 
