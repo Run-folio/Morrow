@@ -142,6 +142,12 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
   };
 
   const start = (event: PointerEvent<HTMLElement>) => {
+    // A second fingertip belongs to the browser's zoom gesture, never a save.
+    if (!event.isPrimary && event.pointerType === "touch") {
+      gesture.current = null;
+      if (!lock.current) { setOffset(0); setMotion("idle"); }
+      return;
+    }
     if (!event.isPrimary || event.button !== 0 || lock.current || gesture.current ||
       (event.target instanceof Element && event.target.closest("button, a, input, select, textarea"))) return;
     gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, width: event.currentTarget.clientWidth, axis: "pending" };
@@ -211,7 +217,12 @@ function ActivityFace({ card, location, index, total, articleRef, titleRef, styl
   const loaded = useCallback((visible: boolean) => setHasPhoto(visible), []);
   return <article ref={articleRef} className={styles.card} data-deck-card data-photo={hasPhoto} data-motion={motion} data-direction={direction} style={style}
     onPointerDown={start} onPointerMove={move} onPointerUp={event => end(event, false)}
-    onPointerCancel={event => end(event, true)} onLostPointerCapture={event => end(event, true)}
+    onPointerCancel={event => end(event, true)}
+    onLostPointerCapture={event => {
+      // Touch implicitly captures the tapped heading/span. Moving capture to the
+      // article bubbles its child's loss here; only loss FROM the article cancels.
+      if (event.target === event.currentTarget) end(event, true);
+    }}
     onPointerLeave={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) end(event, true); }}
     onAnimationEnd={event => { if (event.target === event.currentTarget) animationDone(); }}>
     <ResilientImage className={styles.photo} src={card.image} alt="" draggable={false} fallback={<span className={styles.noPhoto} aria-hidden="true"><MapPin /></span>} onDisplayState={loaded} />

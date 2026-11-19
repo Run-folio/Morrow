@@ -35,7 +35,7 @@
 .schedule:focus-visible { outline: 2px solid currentColor; outline-offset: 0; }
 .actions { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; }
 .actions > button { min-height:44px; }
-.actions > button:last-child:not(:disabled) { color: var(--morrovia-action); background: var(--morrovia-lilac); border-color: var(--morrovia-line); }
+.actions > button:last-child:not(:disabled):not([aria-disabled="true"]) { color: var(--morrovia-action); background: var(--morrovia-lilac); border-color: var(--morrovia-line); }
 .resolution { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; color:var(--morrovia-ink-soft); font:var(--morrovia-type-fine-print); }
 .resolution > span { overflow-wrap:anywhere; }
 .resolution > button, .partner a { min-height:44px; }
