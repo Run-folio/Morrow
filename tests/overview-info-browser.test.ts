@@ -40,7 +40,9 @@ test("Overview info supports keyboard focus, Escape without reopening, hover tra
     await tooltip.hover();
     await page.waitForTimeout(200);
     assert.equal(await tooltip.isVisible(), true, "pointer may move onto the tooltip");
-    await page.getByText("Outside content").click();
+    // The portal can cover the paragraph below this artificial 400px-wide fixture.
+    // This viewport corner is outside both the trigger and the 8px-inset portal.
+    await page.mouse.click(2, 2);
     await tooltip.waitFor({ state: "detached" });
     assert.equal(await second.getAttribute("aria-expanded"), "false");
   } finally { await view.close(); }
