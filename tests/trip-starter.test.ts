@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { defaultTripIntent, type EasyTTrip, type ItineraryIdea } from "../lib/easyt/trip.ts";
 import { saveTripRecoveryToStorage, loadTripRecoveryFromStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 import { canonicalTripForOwner, duplicateTripDocument } from "../lib/easyt/trip-promotion.ts";
 import { prepareTripDocumentForWrite } from "../lib/easyt/trip-document.ts";
-import { markTripStarterBuild, tripStarterEligible, finishTripStarter, shortlistStay, removeShortlistedStay, shortlistedStays, stayShortlistDestinationKey } from "../lib/easyt/trip-starter.ts";
+import { markTripStarterBuild, tripStarterEligible, finishTripStarter, shortlistStay, removeShortlistedStay, shortlistedStays, stayShortlistDestinationKey, starterActivityScope, saveStarterDeckActivity, undoStarterDeckActivity } from "../lib/easyt/trip-starter.ts";
 function trip(): EasyTTrip {
   const intent = defaultTripIntent({ stopIds: ["kyoto"], durationDays: 2 });
   return {
@@ -82,4 +82,61 @@ test("replacing a stop location hides old hotel choices while date edits and Und
  assert.equal(shortlistStay(moved,"kyoto",place,stayShortlistDestinationKey(base.stops[0]!)),moved);
  assert.equal(shortlistedStays({...saved,stops:saved.stops.map(stop=>({...stop,arrivalDate:"2026-10-02"}))}).length,1);
  assert.equal(shortlistedStays({...moved,stops:base.stops}).length,1);
+});
+
+const starterActivity = (overrides: Partial<ItineraryIdea> = {}): ItineraryIdea => ({
+ id:"idea-kyoto-viator-a", stopId:"kyoto", placeId:"viator:a", title:"Kyoto temple walk", category:"activity",
+ source:"live-provider-inventory", reasons:[], provider:"viator", providerProductId:"a", ...overrides,
+});
+const activityScope = (trip: EasyTTrip) => starterActivityScope(trip,trip.stops[0]!);
+
+test("deck does not issue Undo for an existing save or planned copy, including a matching product with an older ID",()=>{
+ const base=trip(); const idea=starterActivity();
+ for (const copy of [idea,{...idea,dayId:"day-1"},{...idea,id:"durable-older-id"}]) {
+  const current={...base,brief:{...base.brief,itineraryIdeas:[copy]}};
+  const result=saveStarterDeckActivity(current,activityScope(base),idea);
+  assert.equal(result.status,"existing");
+  assert.equal(result.trip,current);
+  assert.ok(!("receipt" in result));
+ }
+ const collision={...base,brief:{...base.brief,itineraryIdeas:[{...idea,providerProductId:"different-product"}]}};
+ assert.equal(saveStarterDeckActivity(collision,activityScope(base),idea).status,"stale");
+});
+
+test("deck Undo drops only its exact new, unscheduled save, preserving unrelated ideas and plan",()=>{
+ const base=trip(); const idea=starterActivity({providerMetadata:{provenance:{kind:"live_provider_search",provider:"viator",checkedAt:"2026-11-10T00:00:00Z"}}});
+ base.stops.push({...base.stops[0]!,id:"kyoto-return",order:1});
+ base.brief.itineraryIdeas=[starterActivity({id:"other-stop",stopId:"kyoto-return",dayId:"day-return"})];
+ const added=saveStarterDeckActivity(base,activityScope(base),idea);
+ assert.equal(added.status,"added");
+ if(added.status!=="added") return;
+ assert.equal(added.trip.planItems,base.planItems);
+ const reordered={...added.trip,brief:{...added.trip.brief,itineraryIdeas:[base.brief.itineraryIdeas[0]!,{...Object.fromEntries(Object.entries(idea).reverse())} as ItineraryIdea]}};
+ const canonical=prepareTripDocumentForWrite(JSON.parse(JSON.stringify(reordered)));
+ const undone=undoStarterDeckActivity(canonical,added.receipt);
+ assert.deepEqual(undone.brief.itineraryIdeas,base.brief.itineraryIdeas);
+ assert.deepEqual(undone.planItems,base.planItems);
+ assert.equal(undoStarterDeckActivity(undone,added.receipt),undone);
+});
+
+test("deck refuses edits or Undo outside the matching owner, trip, destination and stop scope or against edited data",()=>{
+ const base={...trip(),ownerId:"owner-a"};
+ const idea=starterActivity();
+ assert.equal(saveStarterDeckActivity(base,activityScope(base),starterActivity({stopId:"another-stop"})).status,"stale");
+ assert.equal(saveStarterDeckActivity(base,activityScope(base),starterActivity({dayId:"day-1"})).status,"stale");
+ const added=saveStarterDeckActivity(base,activityScope(base),idea);
+ assert.equal(added.status,"added");
+ if(added.status!=="added") return;
+ const foreignOwner={...added.trip,ownerId:"owner-b"};
+ const foreignTrip={...added.trip,id:"other-trip"};
+ const replacedStop={...added.trip,stops:[{...base.stops[0]!,canonicalPlaceId:"osaka"}]};
+ const missingStop={...added.trip,stops:[]};
+ for(const stale of [foreignOwner,foreignTrip,replacedStop,missingStop]){
+  assert.equal(saveStarterDeckActivity(stale,activityScope(base),idea).status,"stale");
+  assert.equal(undoStarterDeckActivity(stale,added.receipt),stale);
+ }
+ for (const changed of [{...idea,title:"Traveller edit"},{...idea,dayId:"day-1"},{...idea,dayPart:"afternoon" as const},{...idea,startsAt:"17:00"}]) {
+  const edited:EasyTTrip={...added.trip,brief:{...added.trip.brief,itineraryIdeas:[changed]}};
+  assert.equal(undoStarterDeckActivity(edited,added.receipt),edited);
+ }
 });

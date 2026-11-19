@@ -1,0 +1,48 @@
+/* Page-owned mobile gesture. Native controls continue to own focus/press,
+   and the existing starter owns scrolling, lane tabs and its pinned footer. */
+.deck.deck { display: grid; gap: 12px; min-width: 0; }
+.viewport { position: relative; display: grid; align-items: stretch; isolation: isolate; overflow: hidden; min-width: 0; }
+.card, .peek {
+  box-sizing: border-box; overflow: hidden; border-radius: var(--morrovia-radius);
+  background: var(--morrovia-lilac); color: var(--morrovia-ink);
+}
+.card {
+  position: relative; z-index: 1; display: flex; align-items: flex-end;
+  min-width: 0; width: calc(100% - 32px); min-height: clamp(206px, 65vw, 275px);
+  touch-action: pan-y pinch-zoom; user-select: none;
+  transform: translateX(var(--deck-x, 0px)) rotate(var(--deck-tilt, 0deg)); transform-origin: center 75%;
+  transition: transform 180ms cubic-bezier(.2,.8,.24,1);
+}
+.card:only-child { width: 100%; }
+.card[data-motion="dragging"] { transition: none; }
+.card[data-motion="exiting"] { animation: throwCard 180ms cubic-bezier(.4,0,.8,.55) both; pointer-events: none; }
+.card[data-direction="left"] { --deck-throw: -112%; --deck-turn: -7deg; }
+.card[data-direction="right"] { --deck-throw: 112%; --deck-turn: 7deg; }
+.card[data-motion="entering"] { animation: settleCard 210ms cubic-bezier(.16,.85,.28,1) both; }
+@keyframes throwCard { to { transform: translateX(var(--deck-throw)) rotate(var(--deck-turn)); opacity: 0; } }
+@keyframes settleCard { from { transform: translateX(24px) scale(.975); opacity: .86; } to { transform: translateX(0) scale(1); opacity: 1; } }
+.peek { position: absolute; inset: 8px auto 8px calc(100% - 22px); width: calc(100% - 32px); pointer-events: none; }
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.card[data-photo="true"] { color: var(--morrovia-control-surface); }
+.card[data-photo="true"]::after { content:""; position:absolute; inset:0; pointer-events:none; background: linear-gradient(180deg, transparent 18%,color-mix(in srgb, var(--morrovia-photo-ink) 12%, transparent) 36%,color-mix(in srgb, var(--morrovia-photo-ink) 85%, transparent) 100%); }
+.count { z-index: 2; position: absolute; top: 12px; left: 12px; padding: 4px 9px; border-radius: var(--morrovia-radius); background: var(--morrovia-control-surface); color: var(--morrovia-ink); font: var(--morrovia-type-fine-print); font-weight: 650; }
+.overlay { position: relative; z-index: 2; width: 100%; box-sizing: border-box; padding: 56px 14px 7px; }
+.title { margin: 0; color: inherit; font: 600 clamp(21px, 6.2vw, 26px)/1.08 var(--morrovia-display); letter-spacing: -.025em; overflow-wrap: anywhere; }
+.details { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 0 8px; font:var(--morrovia-type-fine-print); }
+.location { min-width:0; overflow-wrap:anywhere; }
+.schedule.schedule { flex:none; padding:0 2px; min-height:44px; color:inherit; font-size:12px; }
+.card[data-photo="true"] .schedule:hover { background:color-mix(in srgb, var(--morrovia-photo-ink) 55%, transparent); color:var(--morrovia-control-surface); }
+.schedule:focus-visible { outline: 2px solid currentColor; outline-offset: 0; }
+.actions { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; }
+.actions > button { min-height:44px; }
+.actions > button:last-child:not(:disabled) { color: var(--morrovia-action); background: var(--morrovia-lilac); border-color: var(--morrovia-line); }
+.resolution { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; color:var(--morrovia-ink-soft); font:var(--morrovia-type-fine-print); }
+.resolution > span { overflow-wrap:anywhere; }
+.resolution > button, .partner a { min-height:44px; }
+.partner { min-width: 0; }
+.srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+@media(prefers-reduced-motion: reduce) { .card, .card[data-motion] { animation:none; transition:none; transform:none; } }
+.resolution:empty { display: none; }
+.noPhoto { position:absolute; inset:20px 16px auto auto; color:var(--morrovia-muted); }
+.noPhoto svg { width:24px; height:24px; }
+.card:has(.noPhoto) { min-height: 174px; }

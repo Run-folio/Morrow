@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { useState } from "react";
+import { starterKyotoCards, starterKyotoFixture } from "./storybook/starter-kyoto.fixture";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripShell from "./trip-shell";
 import TripOverviewWorkspace from "./trip-overview-workspace";
@@ -44,9 +45,33 @@ export const ChooseActivityDayMobile:Story={...Mobile,play:async({canvasElement}
  await userEvent.click(content.getByRole("button",{name:"Choose day"}));
  await expect(content.getByRole("combobox",{name:"Day"})).toHaveValue("");
  await expect(content.getByRole("button",{name:"Add to day"})).toBeDisabled();
+ await expect(content.getByRole("combobox",{name:"Day"})).toHaveFocus();
+ await expect(dialog.querySelector("[inert]")).not.toBeNull();
+ await userEvent.click(content.getByRole("button",{name:"Cancel"}));
+ await expect(content.getByRole("button",{name:"Choose day"})).toHaveFocus();
 }};
 export const Empty:Story={args:{initialStayState:{corePlaces:[],accommodationInventoryStatus:"empty"},initialActivities:[]}};
 export const LoadingStays:Story={args:{initialStayState:{corePlaces:[],coreLoading:true,accommodationInventoryStatus:"loading"},initialActivities:activities}};
 export const UnavailableStays:Story={args:{initialStayState:{corePlaces:[],coreUnavailable:true,accommodationInventoryStatus:"unavailable"},initialActivities:[]}};
 export const Shortlist:Story={render:()=> <TripShell trip={{...fixture,brief:{...fixture.brief,stayShortlist:[{stopId:fixture.stops[0]!.id,destinationKey:stayShortlistDestinationKey(fixture.stops[0]!),placeId:"osm-fixture-hotel",provider:"openstreetmap",name:"Example hotel"},{stopId:fixture.stops[1]!.id,destinationKey:stayShortlistDestinationKey(fixture.stops[1]!),placeId:"osm-fixture-two",provider:"openstreetmap",name:"Example guesthouse"}]}}} cacheTrip={false}><ShortlistContent/></TripShell>};
 function ShortlistContent(){const {trip}=useTripShellMutation();return <TripStayShortlist trip={trip}/>;}
+
+
+// These are all the existing starter and shell components, not an alternate entry.
+export const KyotoSwipeMobile:Story={...Mobile,
+  render:()=> <TripShell trip={starterKyotoFixture} cacheTrip={false}><Content initialStayState={{corePlaces:[],accommodationInventoryStatus:"empty"}} initialActivities={starterKyotoCards}/></TripShell>,
+  play:async({canvasElement})=>{
+    const content=within(within(canvasElement.ownerDocument.body).getByRole("dialog",{name:"Trip starter"}));
+    await userEvent.click(content.getByRole("button",{name:"Things to do"}));
+    await expect(await content.findByRole("heading",{name:"Fushimi Inari Taisha"})).toBeVisible();
+  },
+};
+export const KyotoSwipeUndoMobile:Story={...KyotoSwipeMobile,play:async(ctx)=>{
+  await KyotoSwipeMobile.play?.(ctx);
+  const content=within(within(ctx.canvasElement.ownerDocument.body).getByRole("dialog",{name:"Trip starter"}));
+  await userEvent.click(content.getByRole("button",{name:/^Skip$/}));
+  await expect(await content.findByRole("heading",{name:"Arashiyama Bamboo Grove"})).toBeVisible();
+  await expect(content.getByText("0 stays shortlisted · 0 ideas saved")).toBeVisible();
+  await userEvent.click(content.getByRole("button",{name:"Undo"}));
+  await expect(await content.findByRole("heading",{name:"Fushimi Inari Taisha"})).toBeVisible();
+}};

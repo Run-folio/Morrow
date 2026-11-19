@@ -2,7 +2,7 @@
 
 import { ArrowRight, BedDouble, MapPin, Tickets, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { finishTripStarter, shortlistedStays, tripStarterEligible, stayShortlistDestinationKey } from "@/lib/easyt/trip-starter";
+import { finishTripStarter, shortlistedStays, tripStarterEligible, stayShortlistDestinationKey, starterActivityScope, saveStarterDeckActivity, undoStarterDeckActivity, type StarterDeckSaveReceipt } from "@/lib/easyt/trip-starter";
 import { saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import { isGooglePlaceReferenceIdea, type EasyTTrip, type ItineraryIdea, type TripStop } from "@/lib/easyt/trip";
 import type { JourneyLocalFinderInitialState } from "@/lib/easyt/local-place";
@@ -42,6 +42,12 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
  const [idea,setIdea]=useState<ItineraryIdea|null>(null);
  const [dayId,setDayId]=useState("");
  const scheduleScope=useRef(0);
+ const scheduleEditor=useRef<HTMLElement>(null);
+ const recommendationRegion=useRef<HTMLDivElement>(null);
+ const scheduleTrigger=useRef<HTMLElement | null>(null);
+ const returnScheduleFocus=useRef(false);
+ const deckScope=useRef(0);
+ const deckReceipt=useRef<StarterDeckSaveReceipt | null>(null);
  const days=trip.planItems.filter(day=>day.stopId===stop?.id);
  const saving=mutation.hasPendingSaves();
  const destinationKey=stop ? stayShortlistDestinationKey(stop) : "";
@@ -55,16 +61,77 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
    if(isGooglePlaceReferenceIdea(value)) return false;
    return mutation.mutateTrip(current=>stopIsCurrent(current) ? saveItineraryIdea(current,value) : current,`starter-save-${value.id}`);
  };
+ const saveDeckIdea=async (value:ItineraryIdea):Promise<"added"|"existing"|false> => {
+   if (!stop || !mutation.mutationReady) return false;
+   const generation=deckScope.current;
+   const scope=starterActivityScope(trip,stop);
+   const result:{receipt?:StarterDeckSaveReceipt;existing?:boolean}={};
+   const accepted=await mutation.mutateTrip(current=>{
+     if (deckScope.current!==generation) return current;
+     const operation=saveStarterDeckActivity(current,scope,value);
+     if (operation.status==="added") result.receipt=operation.receipt;
+     if (operation.status==="existing") result.existing=true;
+     return operation.trip;
+   },`starter-save-${value.id}`);
+   if (deckScope.current!==generation) return false;
+   if (accepted && result.receipt) {
+     deckReceipt.current=result.receipt;
+     return "added";
+   }
+   // The mutation owner treats unchanged candidates as false. Distinguish a
+   // verified pre-existing idea from denied/stale mutations without issuing Undo.
+   if (result.existing) {
+     deckReceipt.current=null;
+     return "existing";
+   }
+   return false;
+ };
+ const undoDeckIdea=async (value:ItineraryIdea):Promise<boolean> => {
+   const receipt=deckReceipt.current;
+   const generation=deckScope.current;
+   if (!receipt || receipt.ideaId!==value.id || receipt.scope.stopId!==value.stopId || !mutation.mutationReady) return false;
+   const accepted=await mutation.mutateTrip(current=>deckScope.current===generation && deckReceipt.current===receipt
+     ? undoStarterDeckActivity(current,receipt) : current,`starter-undo-save-${value.id}`);
+   if (accepted && deckReceipt.current===receipt) deckReceipt.current=null;
+   return accepted && deckScope.current===generation;
+ };
+ useEffect(()=>{
+   if (idea) {
+     scheduleEditor.current?.querySelector<HTMLSelectElement>("select")?.focus();
+   } else if (returnScheduleFocus.current) {
+     returnScheduleFocus.current=false;
+     const trigger=scheduleTrigger.current;
+     const heading=recommendationRegion.current?.querySelector<HTMLElement>("[data-deck-card] h3");
+     if (trigger && recommendationRegion.current?.contains(trigger) && trigger.getClientRects().length) trigger.focus();
+     else if (heading?.getClientRects().length) heading.focus();
+     scheduleTrigger.current=null;
+   }
+ },[idea]);
+ const clearSchedule=(restoreFocus=false)=>{
+   scheduleScope.current+=1;
+   returnScheduleFocus.current=restoreFocus;
+   if (!restoreFocus) scheduleTrigger.current=null;
+   setIdea(null);
+   setDayId("");
+ };
+ const openSchedule=(value:ItineraryIdea)=>{
+   scheduleScope.current+=1;
+   const focused=document.activeElement;
+   scheduleTrigger.current=focused instanceof HTMLElement && recommendationRegion.current?.contains(focused) ? focused : null;
+   setIdea(value);
+   setDayId("");
+   return false;
+ };
  const schedule=async () => {
    if(!idea || isGooglePlaceReferenceIdea(idea) || !dayId) return;
    const scope=scheduleScope.current;
    const accepted=await mutation.mutateTrip(current=>stopIsCurrent(current) ? scheduleItineraryIdea(current,idea,dayId) : current,`starter-schedule-${idea.id}`);
-   if(accepted && scheduleScope.current === scope) {setIdea(null);setDayId("");}
+   if(accepted && scheduleScope.current === scope) clearSchedule(true);
  };
  return <div className={styles.content}>
    <header className={styles.header}><h2>Your trip is ready.</h2><EasyTButton iconOnly icon={X} variant="quiet" onClick={onClose}>Close trip starter</EasyTButton></header>
-   {stop ? <div className={styles.location}><MapPin aria-hidden="true" /><EasyTSelect label="Location" labelClassName={styles.locationLabel} className={styles.locationSelect} value={stop.id} onChange={event=>{scheduleScope.current+=1;setStopId(event.target.value);setIdea(null);setDayId("");}}>{stops.map(item=><option key={item.id} value={item.id}>{locationLabel(trip,item)}</option>)}</EasyTSelect></div> : null}
-   <div className={styles.mobileChoices} data-lane={lane}><span className={styles.choiceIcons} aria-hidden="true"><span><BedDouble /></span><span><Tickets /></span></span><EasyTSegmentedControl ariaLabel="Trip starter options" value={lane} onChange={setLane} options={[{value:"stays",label:"Shortlist stays"},{value:"activities",label:"Things to do"}]} /></div>
+   {stop ? <div className={styles.location}><MapPin aria-hidden="true" /><EasyTSelect label="Location" labelClassName={styles.locationLabel} className={styles.locationSelect} value={stop.id} onChange={event=>{deckScope.current+=1;deckReceipt.current=null;clearSchedule();setStopId(event.target.value);}}>{stops.map(item=><option key={item.id} value={item.id}>{locationLabel(trip,item)}</option>)}</EasyTSelect></div> : null}
+   <div className={styles.mobileChoices} data-lane={lane}><span className={styles.choiceIcons} aria-hidden="true"><span><BedDouble /></span><span><Tickets /></span></span><EasyTSegmentedControl ariaLabel="Trip starter options" value={lane} onChange={value=>{if(value!==lane) clearSchedule();setLane(value);}} options={[{value:"stays",label:"Shortlist stays"},{value:"activities",label:"Things to do"}]} /></div>
    {stop ? <div className={styles.columns}>
      <section className={styles.lane} data-mobile-hidden={lane!=="stays"} aria-label="Shortlist stays">
        <div className={styles.laneHeading}><h3>Shortlist stays</h3><EasyTLinkButton className={styles.desktopMore} variant="quiet" size="small" onClick={onClose} href={stayWorkspaceHref(trip.id,stop.id)}>View more stays <ArrowRight aria-hidden="true" /></EasyTLinkButton></div>
@@ -73,12 +140,12 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
      </section>
      <section className={styles.lane} data-mobile-hidden={lane!=="activities"} aria-label="Things to do">
        <div className={styles.laneHeading}><h3>Add things to do</h3><EasyTLinkButton className={styles.desktopMore} variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>View more activities <ArrowRight aria-hidden="true" /></EasyTLinkButton></div>
-       {idea ? <section className={styles.schedule} aria-label={`Choose a day for ${isGooglePlaceReferenceIdea(idea) ? "activity" : idea.title}`}>
+       {idea ? <section ref={scheduleEditor} className={styles.schedule} aria-label={`Choose a day for ${isGooglePlaceReferenceIdea(idea) ? "activity" : idea.title}`}>
          <strong>{isGooglePlaceReferenceIdea(idea) ? "Activity" : idea.title}</strong>
          <EasyTSelect label="Day" value={dayId} onChange={event=>{scheduleScope.current+=1;setDayId(event.target.value);}}><option value="">Choose a day</option>{days.map(day=><option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}</EasyTSelect>
-         <div><EasyTButton size="small" disabled={!dayId || saving || !mutation.mutationReady} onClick={()=>{void schedule();}}>Add to day</EasyTButton><EasyTButton size="small" variant="quiet" onClick={()=>{scheduleScope.current+=1;setIdea(null);}}>Cancel</EasyTButton></div>
+         <div><EasyTButton size="small" disabled={!dayId || saving || !mutation.mutationReady} onClick={()=>{void schedule();}}>Add to day</EasyTButton><EasyTButton size="small" variant="quiet" onClick={()=>clearSchedule(true)}>Cancel</EasyTButton></div>
        </section> : null}
-       <div className={styles.recommendations}>{days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onSchedule={value=>{scheduleScope.current+=1;setIdea(value);setDayId("");return false;}} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}</div>
+       <div ref={recommendationRegion} className={styles.recommendations} inert={idea ? true : undefined}>{days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onDeckSave={saveDeckIdea} onUndoDeckSave={undoDeckIdea} onSchedule={openSchedule} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}</div>
        <EasyTLinkButton className={styles.mobileMore} variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>Saved ideas in Itinerary <ArrowRight aria-hidden="true" /></EasyTLinkButton>
      </section>
    </div> : <MorroviaSectionStatus title="No stops to explore" />}

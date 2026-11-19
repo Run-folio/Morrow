@@ -6,6 +6,7 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
+import StarterActivityDeck, { type StarterActivityCard } from "./starter-activity-deck";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, viatorProductAction, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
@@ -32,6 +33,8 @@ type LiveActivityInventoryProps = {
   onRemove?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   isPending?: (idea: ItineraryIdea) => boolean;
   initialItems?: ActivityInventoryItem[];
+  onDeckSave?: (idea: ItineraryIdea) => Promise<"added" | "existing" | false>;
+  onUndoDeckSave?: (idea: ItineraryIdea) => Promise<boolean>;
   discoveryCategory?: Exclude<DiscoveryCategory, "food">;
 };
 
@@ -45,7 +48,18 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, scheduleLabel, workspace, fallback = null, emptyLabel, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, scheduleLabel, workspace, fallback = null, emptyLabel, onSave, onDeckSave, onUndoDeckSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
+  // Render one interaction only: no duplicate desktop/mobile links, focus targets or cards.
+  const starterEnabled = placement === "trip_starter" && Boolean(onDeckSave && onUndoDeckSave);
+  const [compactStarter, setCompactStarter] = useState(false);
+  useEffect(() => {
+    if (!starterEnabled) return;
+    const media = window.matchMedia("(max-width: 700px)");
+    const update = () => setCompactStarter(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [starterEnabled]);
   const actionScope = JSON.stringify([trip.ownerId, trip.id, stop.id, day.id]);
   const mountedRef = useRef(true);
   const pendingActionKeysRef = useRef(new Set<string>());
@@ -147,6 +161,25 @@ export default function LiveActivityInventory({ trip, stop, day, placement, sche
     onRetry={status === "error" && assessment?.retryable !== false || status === "incomplete" && assessment?.retryable === true ? () => setRetryVersion(current => current + 1) : undefined} />
 </> : null;
   if (!ranked.length) return <>{feedback}{status === "ready" && emptyLabel ? <MorroviaSectionStatus title={emptyLabel} /> : null}{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
+
+  if (starterEnabled && compactStarter && onDeckSave && onUndoDeckSave) {
+    const cards: StarterActivityCard[] = visible.map(item => {
+      const id = activityInventoryIdentity(item);
+      const state = ideaStateForPlace(trip, stop.id, id);
+      const action = viatorProductAction(item.provider, item.productUrl);
+      const duration = durationLabel(item.duration);
+      const price = priceLabel(item.price);
+      const details = [item.rating === undefined ? null : `★ ${item.rating.toFixed(1)}${item.reviewCount === undefined ? "" : ` (${item.reviewCount})`}`, duration, price].filter(Boolean).join(" · ");
+      return { id, title: item.title, image: item.image, idea: itineraryIdeaForActivityInventory(stop.id, item, interests),
+        state: state.state, stateLabel: state.state === "planned" ? `Day ${state.day.dayNumber}${state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}` : undefined,
+        meta: details || undefined, affiliate: action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : undefined };
+    });
+    return <section className={styles.group} aria-label="Live experiences">
+      {feedback}
+      <StarterActivityDeck key={actionScope} cards={cards} location={stop.name} onDeckSave={onDeckSave} onUndoDeckSave={onUndoDeckSave} onSchedule={onSchedule} isPending={isPending} />
+      {cards.some(card => card.affiliate) && <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small>}
+    </section>;
+  }
 
   return <section className={styles.group} aria-label="Live experiences">
     {feedback}

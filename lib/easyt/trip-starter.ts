@@ -1,4 +1,6 @@
-import type { EasyTTrip, TripStop } from "./trip.ts";
+import { isGooglePlaceReferenceIdea, type EasyTTrip, type ItineraryIdea, type TripStop } from "./trip.ts";
+import { removeItineraryIdea, saveItineraryIdea } from "./itinerary-ideas.ts";
+import { authoredContentKey } from "./trip-retained-authored-content.ts";
 import type { JourneyLocalPlace } from "./local-place.ts";
 
 export function markTripStarterBuild(trip: EasyTTrip): EasyTTrip {
@@ -37,4 +39,41 @@ export function removeShortlistedStay(trip: EasyTTrip, stopId: string, placeId: 
   const entries = trip.brief.stayShortlist ?? [];
   const next = entries.filter(item => item.stopId !== stopId || item.placeId !== placeId);
   return next.length === entries.length ? trip : { ...trip, brief: { ...trip.brief, stayShortlist: next } };
+}
+
+type StarterActivityScope = Pick<EasyTTrip,"id"|"ownerId"> & {stopId:string;destinationKey:string};
+export type StarterDeckSaveReceipt = {scope:StarterActivityScope;ideaId:string;authoredKey:string};
+type StarterDeckSave = {trip:EasyTTrip;status:"stale"|"existing"} | {trip:EasyTTrip;status:"added";receipt:StarterDeckSaveReceipt};
+
+export function starterActivityScope(trip: EasyTTrip, stop: TripStop): StarterActivityScope {
+  return {id:trip.id,ownerId:trip.ownerId,stopId:stop.id,destinationKey:stayShortlistDestinationKey(stop)};
+}
+
+function starterActivityScopeIsCurrent(trip: EasyTTrip, scope: StarterActivityScope) {
+  return trip.id === scope.id && trip.ownerId === scope.ownerId && trip.stops.some(stop =>
+    stop.id === scope.stopId && stayShortlistDestinationKey(stop) === scope.destinationKey
+  );
+}
+
+/** A receipt exists only when the canonical save actually adds an unscheduled activity. */
+export function saveStarterDeckActivity(trip: EasyTTrip, scope: StarterActivityScope, idea: ItineraryIdea): StarterDeckSave {
+  if (!starterActivityScopeIsCurrent(trip,scope) || idea.stopId !== scope.stopId || isGooglePlaceReferenceIdea(idea)
+      || idea.category !== "activity" || idea.source !== "live-provider-inventory" || !idea.provider || !idea.providerProductId
+      || idea.dayId || idea.dayPart || idea.startsAt) return {trip,status:"stale"};
+  const next = saveItineraryIdea(trip,idea);
+  if (next !== trip) return {trip:next,status:"added",receipt:{scope,ideaId:idea.id,authoredKey:authoredContentKey(idea)}};
+  // A sanitized legacy ID can collide; don't mark a different product saved.
+  const sameProduct = (trip.brief.itineraryIdeas ?? []).some(item => !isGooglePlaceReferenceIdea(item)
+    && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId);
+  return {trip,status:sameProduct ? "existing" : "stale"};
+}
+
+/** Refuse to remove an idea once another workflow has edited or scheduled it. */
+export function undoStarterDeckActivity(trip: EasyTTrip, receipt: StarterDeckSaveReceipt): EasyTTrip {
+  if (!starterActivityScopeIsCurrent(trip,receipt.scope)) return trip;
+  const matches = (trip.brief.itineraryIdeas ?? []).filter(idea => idea.id === receipt.ideaId);
+  const idea = matches[0];
+  if (matches.length !== 1 || !idea || isGooglePlaceReferenceIdea(idea) || idea.stopId !== receipt.scope.stopId
+      || idea.dayId || idea.dayPart || idea.startsAt || authoredContentKey(idea) !== receipt.authoredKey) return trip;
+  return removeItineraryIdea(trip,idea.id);
 }

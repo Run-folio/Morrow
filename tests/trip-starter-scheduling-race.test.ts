@@ -47,3 +47,23 @@ test("accepted Day A scheduling does not dismiss a newer Day B choice", async ()
   assert.equal(visibleIdea, originalIdea, "a newly edited choice remains open");
   assert.equal(visibleDay, "day-b");
 });
+
+test("accepted scheduling restores card focus only when its picker still owns that submission", async () => {
+  const callbacks = actualCallbacks();
+  const cleared: boolean[] = [];
+  const scope = { current: 0 };
+  const context = {
+    idea: { id: "activity" }, dayId: "day-a", scheduleScope: scope,
+    isGooglePlaceReferenceIdea: () => false, stopIsCurrent: () => true,
+    scheduleItineraryIdea: (trip: object) => trip,
+    mutation: { mutateTrip: async (update: (trip: object) => object) => { update({}); return true; } },
+    clearSchedule: (returnFocus: boolean) => { cleared.push(returnFocus); },
+  };
+  const schedule = runInNewContext(`(${callbacks.schedule})`, context) as () => Promise<void>;
+  await schedule();
+  assert.deepEqual(cleared, [true]);
+  const pending = schedule();
+  scope.current++;
+  await pending;
+  assert.deepEqual(cleared, [true], "new tab/location scope must not receive old completion focus");
+});
