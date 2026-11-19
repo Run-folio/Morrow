@@ -125,6 +125,13 @@
   .overviewPrepCopy h3 { font-size: 22px; }
 }
 
+/* The heading and info target must never extend into the adjacent review target. */
+@media (max-width: 380px) {
+  .overviewPrepHeading { flex-wrap: wrap; column-gap: 2px; row-gap: 0; }
+  .overviewPrepHeading h3 { min-width: 0; max-width: 100%; }
+  .overviewPrepHeading > button { margin: 0; }
+}
+
 @media (max-width: 760px) {
   .taskRow { grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; min-height: 0; padding: 8px 10px; }
   .taskAction,

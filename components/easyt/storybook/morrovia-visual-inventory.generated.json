@@ -5450,7 +5450,7 @@
       },
       {
         "value": "2px",
-        "count": 161,
+        "count": 162,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7831,6 +7831,15 @@
         ]
       },
       {
+        "value": "max-width: 380px",
+        "count": 3,
+        "examples": [
+          "components/easyt/easyt-product-tour-mobile.module.css",
+          "components/easyt/trip-preparation.module.css",
+          "components/easyt/trip-today-workspace.module.css"
+        ]
+      },
+      {
         "value": "max-width: 640px",
         "count": 3,
         "examples": [
@@ -7886,14 +7895,6 @@
         "examples": [
           "components/easyt/trip-explore-workspace.module.css",
           "components/easyt/trip-stay-workspace.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 380px",
-        "count": 2,
-        "examples": [
-          "components/easyt/easyt-product-tour-mobile.module.css",
-          "components/easyt/trip-today-workspace.module.css"
         ]
       },
       {
