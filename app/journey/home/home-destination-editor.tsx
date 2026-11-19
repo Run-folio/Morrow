@@ -82,7 +82,8 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
     {entries.map((entry,index)=><MorroviaDestinationTag key={entry.id} id={entry.id} homepage
       ref={node=>{if(node)nodes.current.set(entry.id,node);else nodes.current.delete(entry.id)}}
       label={label(entry)} disabled={disabled}
-      hideRemove={entries.length === 1 && entry.id === "destination-1" && !entry.selection && !entry.text.trim()}
+      hideRemove={(entries.length === 1 && !entry.selection && !entry.text.trim())
+        || (editingId === entry.id && Boolean(entry.text.trim()))}
       trailingAction={editingId === entry.id ? addAction : undefined}
       editLabel={`${es ? "Editar" : "Edit"} ${label(entry)}`}
       removeLabel={`${es ? "Eliminar" : "Remove"} ${label(entry)}`}

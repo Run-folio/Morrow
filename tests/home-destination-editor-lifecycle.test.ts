@@ -39,7 +39,10 @@ test('deliberate Edit, Add, typing, selection and Escape survive ordinary update
 test('external focus deliberately opens a selected chip and removal returns focus to the remaining chip',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture([selectedEntry('destination-1','Tokyo'),selectedEntry('destination-2','Kyoto')]);try{
   await h.replace({focusEntryId:'destination-2'});const input=h.page.getByRole('combobox',{name:'Destination',exact:true});assert.match(await input.inputValue(),/^Kyoto/);assert.equal(await input.evaluate(el=>el===document.activeElement),true);
-  await h.page.getByRole('button',{name:/^Remove Kyoto/}).click();assert.equal(await input.count(),0);assert.equal((await h.read()).entries.length,1);assert.equal(await h.page.getByRole('button',{name:/^Edit Tokyo/}).evaluate(el=>el===document.activeElement),true);
+  assert.equal(await h.page.getByRole('button',{name:/^Remove Kyoto/}).count(),0);
+  await h.page.getByRole('button',{name:'Clear Destination',exact:true}).click();
+  assert.equal(await h.page.getByRole('button',{name:'Search',exact:true}).count(),0);
+  await h.page.getByRole('button',{name:'Remove Destination',exact:true}).click();assert.equal(await input.count(),0);assert.equal((await h.read()).entries.length,1);assert.equal(await h.page.getByRole('button',{name:/^Edit Tokyo/}).evaluate(el=>el===document.activeElement),true);
  }finally{await h.close()}
 });
 

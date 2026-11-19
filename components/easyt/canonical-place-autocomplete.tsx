@@ -376,7 +376,7 @@ export function CanonicalPlaceAutocomplete({
 
   const canClear = Boolean(onClear && (homepageInlineSearch ? value.trim() : value));
 
-  return <div ref={rootRef} className={`${styles.root} ${canClear ? styles.hasClear : ""} ${homepageInlineSearch ? styles.homepageInlineSearch : ""}`}
+  return <div ref={rootRef} data-home-destination-input={homepageInlineSearch || undefined} className={`${styles.root} ${canClear ? styles.hasClear : ""} ${homepageInlineSearch ? styles.homepageInlineSearch : ""}`}
     onBlur={(event) => {
       if (event.currentTarget.contains(event.relatedTarget)) return;
       completionVisibleRef.current = false;
@@ -433,8 +433,8 @@ export function CanonicalPlaceAutocomplete({
       onPointerDown={(event) => event.preventDefault()}
       onClick={() => { completedSearchRef.current.sequence += 1; completedSearchRef.current.controller?.abort(); completionVisibleRef.current = false; onClear(); setOpen(false); setActiveIndex(-1); inputRef.current?.focus(); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
-    {showSearchAction && onFreeTextSearch ? <EasyTButton
-      className={`${styles.searchAction} ${homepageInlineSearch && !value.trim() ? styles.mobileEmptySearch : ""}`}
+    {showSearchAction && onFreeTextSearch && (!homepageInlineSearch || value.trim().length > 0) ? <EasyTButton
+      className={styles.searchAction}
       variant="secondary"
       size="small"
       disabled={disabled || !value.trim()}

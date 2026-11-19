@@ -25,10 +25,10 @@ for(const status of [200,503])test(`Home Search preserves ${status===200?'empty'
  const search=ui.actions().find((item:any)=>item.label==='Search');assert.ok(search);search.click();await ui.settle();assert.equal(calls,1);assert.equal(h.entries[0].selection,null);assert.equal(ui.actions().some((item:any)=>/public place/.test(item.label)),false);
  const retry=ui.actions().find((item:any)=>item.label==='Retry');assert.equal(Boolean(retry),status===503);if(retry){retry.click();await ui.settle();assert.equal(calls,2);}ui.close();
 });
-test('shared Search affordance is opt in and disables blank or disabled Home input',()=>{
+test('homepage Search is absent until real text; disabled input cannot run it',()=>{
  const ui=autocompleteRender('unfinished');assert.equal(ui.actions().some((item:any)=>item.label==='Search'),false);ui.close();
  const h=home();h.setDisabled(true);const props=h.render();assert.equal(props.disabled,true);assert.equal(props.showSearchAction,true);
- const disabled=autocompleteRender(props.value);disabled.render(props);const action=disabled.actions().find((item:any)=>item.label==='Search');assert.ok(action);assert.equal(action.disabled,true);disabled.render({disabled:false,value:'   '});const blankAction=disabled.actions().find((item:any)=>item.label==='Search');assert.ok(blankAction);assert.equal(blankAction.disabled,true);disabled.close();
+ const disabled=autocompleteRender(props.value);disabled.render(props);const action=disabled.actions().find((item:any)=>item.label==='Search');assert.ok(action);assert.equal(action.disabled,true);disabled.render({disabled:false,value:'   '});const blankAction=disabled.actions().find((item:any)=>item.label==='Search');assert.equal(blankAction,undefined);disabled.render({value:'ts'});assert.equal(disabled.actions().find((item:any)=>item.label==='Search')?.disabled,false);disabled.render({value:''});assert.equal(disabled.actions().some((item:any)=>item.label==='Search'),false);disabled.close();
 });
 
 test('Home Enter chooses the active autocomplete option without running completed search',async()=>{
