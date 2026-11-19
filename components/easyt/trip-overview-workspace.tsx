@@ -411,7 +411,11 @@ export default function TripOverviewWorkspace({
               </> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
             {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
               <Sparkles aria-hidden="true" />
-              <div>{routeInsight.label !== "Transfer details" ? <p>{routeInsight.label}</p> : null}<strong id="overview-route-rationale-title">{routeInsight.title}</strong><span>{routeInsight.detail}</span></div>
+              <div>
+                {routeInsight.label && routeInsight.label !== "Transfer details" ? <p>{routeInsight.label}</p> : null}
+                <strong id="overview-route-rationale-title">{routeInsight.title ?? routeInsight.detail}</strong>
+                {routeInsight.title ? <span>{routeInsight.detail}</span> : null}
+              </div>
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : routeRationale && !routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
               <Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div>

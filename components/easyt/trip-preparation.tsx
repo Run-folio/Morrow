@@ -251,7 +251,9 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
       const action = task.action;
       const genericOverviewDetail = (kind: string, detail: string) =>
         (kind === "insurance" && ["Consider whether you need cover for your trip.", "Valora si necesitas cobertura para tu viaje."].includes(detail))
-        || (kind === "connectivity" && ["Compare eSIM coverage, data amounts and validity.", "Compara cobertura eSIM, datos y periodos de validez."].includes(detail));
+        || (kind === "connectivity" && ["Compare eSIM coverage, data amounts and validity.", "Compara cobertura eSIM, datos y periodos de validez."].includes(detail))
+        || (kind === "passport" && ["Add nationality and residence for more useful entry guidance.", "Añade nacionalidad y residencia para una orientación de entrada más útil."].includes(detail))
+        || (kind === "activity" && ["Check key activities, opening days and cancellation terms before booking.", "Consulta las actividades clave, los días de apertura y las condiciones de cancelación antes de reservar."].includes(detail));
       const reviewed = task.status === "sorted" || task.status === "not-needed";
       const legacyTask: TripPrepTask = { ...task, kind: task.id, category: "good", status: "to-do" };
       const disclosure = language === "es"

@@ -124,7 +124,7 @@ export function presentOverviewIssues(
   return [...critical, ...others];
 }
 
-export type OverviewRouteInsight = { label: string; title: string; detail: string };
+export type OverviewRouteInsight = { label?: string; title?: string; detail: string };
 
 /** One display-only insight; OverviewIssue order already places critical material first. */
 export function presentOverviewRouteInsight(issues: readonly OverviewIssue[]): OverviewRouteInsight | null {
@@ -136,7 +136,7 @@ export function presentOverviewRouteInsight(issues: readonly OverviewIssue[]): O
     return { label: "Travel day", title: "A long road day may need a closer look", detail };
   }
   if (["travel-day-impact", "short-stop-heavy-transfer", "transit-to-time-ratio", "stop-density"].includes(rule)) {
-    return { label: "Stop timing", title: "Time at this stop may be limited", detail };
+    return { detail };
   }
   if (["route-integrity", "missing-logistics", "connection-confidence", "missing-transport-decision"].includes(rule)) {
     return { label: "Transfer details", title: "A transfer still needs checking", detail: "Confirm its route and timing before booking." };

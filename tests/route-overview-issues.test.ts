@@ -102,8 +102,6 @@ test("Overview chooses the highest-priority insight deterministically without sh
   const overview = api.presentOverviewIssues(trip, recommendations, []);
   const insight = api.presentOverviewRouteInsight(overview);
   assert.deepEqual(insight, {
-    label: "Stop timing",
-    title: "Time at this stop may be limited",
     detail: "Travel leaves less than a day in Kyoto.",
   });
   assert.deepEqual(api.presentOverviewRouteInsight(overview), insight);

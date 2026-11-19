@@ -36,3 +36,12 @@ test('B16 Dashboard closing marketing gone; Stamps/recovery unchanged',()=>{asse
 test('D1 Workspace tour opt-in in both entry defaults; existing launcher/content intact',()=>{assert.match(read('components/easyt/trip-shell.tsx'),/orientationAutoStart = false/);const w=read('components/easyt/workspace-orientation.tsx');assert.match(w,/autoStart = false/);assert.match(w,/Show me around/);assert.match(w,/Save keeps an idea/)});
 test('D2 First-trip guide ephemeral collapsed help; current step and Continue remain',()=>{const g=read('app/journey/dashboard/first-trip-guide.tsx');assert.match(g,/expanded, setExpanded\] = useState\(false\)/);assert.doesNotMatch(g,/localStorage.setItem|activeIndex \+ 1/);assert.match(g,/aria-current/);assert.match(g,/text.action/)});
 test('D3 How-it-works retained behind semantic toggle, no persistent dismissal',()=>{const h=read('app/journey/home/immersive/homepage-how-it-works.tsx');assert.match(h,/aria-expanded=\{expanded\}/);assert.match(h,/hidden=\{!expanded\}/);assert.doesNotMatch(h,/PRODUCT_TOUR_OPEN_EVENT|localStorage/);assert.match(h,/Get a suggested route to review/)});
+
+test('Overview suppresses only redundant passport and activities helper copy in both locales', () => {
+  const source = prep();
+  const cards = source.slice(source.indexOf('export function TripPreparationCards'));
+  assert.match(cards, /kind === "passport".*Add nationality and residence.*Añade nacionalidad y residencia/);
+  assert.match(cards, /kind === "activity".*Check key activities.*Consulta las actividades clave/);
+  assert.match(cards, /genericOverviewDetail\(task.id, task.detail\) \? null : <p>\{task.detail\}<\/p>/);
+  assert.match(cards, /action\?\.affiliate \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
+});

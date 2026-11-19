@@ -478,7 +478,15 @@ export const AllPreparationIncomplete: Story = {
 
 export const InsuranceQuoteHandoff: Story = {};
 
-export const PracticalPrep: Story = {};
+export const PracticalPrep: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("heading", { name: /passport.*traveller/i })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Activities" })).toBeVisible();
+    await expect(canvas.queryByText(/^Add nationality and residence for more useful entry guidance\.$/)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/^Check key activities, opening days and cancellation terms before booking\.$/)).not.toBeInTheDocument();
+  },
+};
 
 export const PracticalPrepWithProviderOptions: Story = {
   args: { initialGoodTasksOpen: true },
