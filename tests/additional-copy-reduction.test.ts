@@ -23,8 +23,8 @@ test('B3 Mapped column success silent, ambiguous and skipped explicit',()=>{asse
 test('B4 Ambiguous stop question/options remain without general repetition',()=>{assert.doesNotMatch(imp(),/Morrovia needs a safe place match to build the route/);assert.match(imp(),/Which \{stop.name\} do you mean/)});
 test('B5 No-arrival detail omitted only for first stop with no leg',()=>{assert.match(builder(),/!leg && index === 0/);assert.match(builder(),/Starts here/)});
 test('B6 Checking detail deduplicated, paused/terminal reasons remain',()=>{assert.doesNotMatch(builder(),/This connection is being assessed/);assert.match(builder(),/Transport checks paused/);assert.match(builder(),/transportEvidenceMessage/)});
-test('B7 Insurance keeps provider-specific disclosure and text that identifies the ad',()=>{assert.match(prep(),/task.id === "insurance" && isSponsoredLink/);assert.match(prep(),/No representamos a World Nomads/);assert.match(prep(),/Información sobre este anuncio de seguro/)});
-test('B8 Sponsored Connectivity keeps original criteria and partner consequences in one information panel',()=>{assert.match(prep(),/isSponsoredLink \? <><p>\{task.detail\}<\/p><p>\{disclosure\}<\/p><\/>/);assert.match(prep(),/affiliateDisclosureForProvider/)});
+test('B7 Insurance keeps provider-specific disclosure visible next to an active quote action',()=>{assert.match(prep(),/!previewProvider && isSponsoredLink/);assert.match(prep(),/No representamos a World Nomads/);assert.match(prep(),/affiliateDisclosureForProvider/)})
+test('B8 Connectivity keeps its guide in info and partner consequences visible for active links',()=>{assert.match(prep(),/previewProvider === "saily".*: task.detail/);assert.match(prep(),/!previewProvider && isSponsoredLink/);assert.match(prep(),/affiliateDisclosureForProvider/)})
 test('B9 Home no decorative labels, arrow remains accessible',()=>{assert.doesNotMatch(read('app/journey/home/immersive/homepage-route-inspiration.tsx'),/Trip inspiration/);const h=read('app/journey/home/immersive/immersive-home.tsx');assert.doesNotMatch(h,/From an idea to a journey/);assert.match(h,/aria-label=.*routes/i)});
 test('B10 Sign-up no benefit/name echo, labels and legal remain',()=>{assert.doesNotMatch(auth(),/Save your first plan and keep every trip in one place|placeholder="Your name"/);assert.match(auth(),/label="Your name"/);assert.match(auth(),/Terms of Use/)});
 test('B11 Add-plan loading title without generic detail',()=>{assert.doesNotMatch(itinerary(),/Using this destination and your trip interests/);assert.match(itinerary(),/Finding ideas/)});
@@ -39,11 +39,12 @@ test('D3 How-it-works retained behind semantic toggle, no persistent dismissal',
 
 test('All four compact Overview cards keep details inside their information trigger and preserve action and state', () => {
   const cards = prep().slice(prep().indexOf('export function TripPreparationCards'));
-  assert.match(cards, /const infoDetail = isInsuranceAd\s*\? disclosure\s*:\s*isSponsoredLink.*: task.detail/);
-  assert.match(cards, /<OverviewInfo label=\{isInsuranceAd[\s\S]*?\}>\{infoDetail\}<\/OverviewInfo>/);
+  assert.match(cards, /const infoDetail = isPreviewInsurance\s*\? disclosure\s*:\s*previewProvider === "saily".*: task.detail/);
+  assert.match(cards, /<OverviewInfo label=\{isPreviewInsurance[\s\S]*?\}>\{infoDetail\}<\/OverviewInfo>/);
   assert.doesNotMatch(cards, /overviewPrepAdLabel/);
   const article = cards.slice(cards.indexOf('return <article'));
-  assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>|overviewPrepDisclosure/);
+  assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>/);
+  assert.match(article, /!previewProvider && isSponsoredLink \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
   assert.match(article, /action\?\.opensTravellerDetails[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
   assert.match(article, /role="checkbox"[\s\S]*aria-checked=\{reviewed\}/);
 });

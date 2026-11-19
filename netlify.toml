@@ -1,4 +1,10 @@
+"$schema" = "https://open-api.netlify.com/netlify.schema.json"
+
 # Scope the TypeScript build heap to the staging branch. Build variables do not
 # change the production site's runtime environment or skip any validation.
 [context.staging.environment]
+  NODE_OPTIONS = "--max-old-space-size=4096"
+
+# Match the verified staging build heap for production builds only.
+[context.production.environment]
   NODE_OPTIONS = "--max-old-space-size=4096"

@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
+import { inertOverviewPaidPreview } from "@/lib/easyt/overview-paid-preview";
 import type { OverviewPracticalTask, OverviewPrepKind, TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
@@ -252,32 +253,38 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
       const action = task.action;
       const reviewed = task.status === "sorted" || task.status === "not-needed";
       const legacyTask: TripPrepTask = { ...task, kind: task.id, category: "good", status: "to-do" };
+      const isSponsoredLink = Boolean(action?.affiliate && action.href);
+      const previewProvider = inertOverviewPaidPreview && action?.href
+        ? task.id === "insurance" ? "world-nomads" : task.id === "connectivity" ? "saily" : null
+        : null;
+      const disclosureProvider = previewProvider ?? action?.provider ?? "";
       const disclosure = language === "es"
-        ? action?.provider === "world-nomads"
+        ? disclosureProvider === "world-nomads"
           ? "Recibimos una comisión cuando obtienes una cotización de World Nomads mediante este enlace. No representamos a World Nomads. Esto no es una recomendación de contratar un seguro de viaje."
           : "Enlace de socio · Morrovia puede recibir una comisión sin coste adicional para ti. La reserva, el pago y las condiciones del proveedor se aplican en su sitio."
-        : affiliateDisclosureForProvider(action?.provider ?? "");
-      const isSponsoredLink = Boolean(action?.affiliate && action.href);
-      const isInsuranceAd = task.id === "insurance" && isSponsoredLink;
-      const infoDetail = isInsuranceAd
+        : affiliateDisclosureForProvider(disclosureProvider);
+      const isPreviewInsurance = previewProvider === "world-nomads";
+      const infoDetail = isPreviewInsurance
         ? disclosure
-        : isSponsoredLink ? <><p>{task.detail}</p><p>{disclosure}</p></> : task.detail;
+        : previewProvider === "saily" ? <><p>{task.detail}</p><p>{disclosure}</p></> : task.detail;
       return <article key={task.id} className={styles.overviewPrepCard} data-prep-kind={task.id} data-prep-state={task.status}>
         <span className={styles.overviewPrepIcon}><Icon aria-hidden="true" /></span>
         <div className={styles.overviewPrepCopy}>
           <div className={styles.overviewPrepHeading}>
             <h3>{task.title}</h3>
-            {infoDetail ? <OverviewInfo label={isInsuranceAd
+            {infoDetail ? <OverviewInfo label={isPreviewInsurance
               ? (language === "es" ? "Información sobre este anuncio de seguro" : "About this insurance ad")
               : (language === "es" ? `Más información: ${task.title}` : `More information: ${task.title}`)}>{infoDetail}</OverviewInfo> : null}
           </div>
-          <div className={`${styles.overviewPrepAction} ${isSponsoredLink ? styles.overviewPrepAdAction : ""}`}>
-            {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
+          <div className={styles.overviewPrepAction}>
+            {previewProvider ? <EasyTButton className={styles.overviewPrepInertAction} variant="quiet" size="small" icon={ExternalLink} disabled>{action?.label}</EasyTButton>
+              : action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
               : action?.href && action.affiliate && (action.provider === "world-nomads" || action.provider === "saily") ? <MorroviaAffiliateLink
                 action={{ provider: action.provider, category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity", href: action.href, cta: action.label, affiliate: true }}
                 context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }} variant="quiet"
               /> : action?.href ? <EasyTLinkButton href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer" : undefined} variant="quiet" size="small" onClick={taskActionClick(legacyTask, tripId)}>{action.label}{action.external ? <ExternalLink aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}</EasyTLinkButton>
               : <span className={styles.overviewPrepUnavailable}>{language === "es" ? "Opciones no disponibles por ahora" : "Options currently unavailable"}</span>}
+            {!previewProvider && isSponsoredLink ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
           </div>
         </div>
         <EasyTButton

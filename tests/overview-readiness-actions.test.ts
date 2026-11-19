@@ -47,10 +47,10 @@ test("legacy shared task rows retain their Omio promotion outside the new Overvi
   assert.match(stories, /initialPrepActions: \[\.\.\.prepActions, \.\.\.omioPrepActions\]/);
 });
 
-test("Insurance and connectivity retain canonical state-neutral affiliate boundaries and access to their disclosures", () => {
+test("Insurance and connectivity retain canonical state-neutral affiliate boundaries and visible disclosure for active links", () => {
   assert.match(preparation, /action\.provider === "world-nomads" \|\| action\.provider === "saily"/);
   assert.match(preparation, /category: action\.provider === "world-nomads" \? "travel_insurance" : "connectivity"/);
-  assert.match(preparation, /affiliateDisclosureForProvider\(action\?\.provider/);
+  assert.match(preparation, /affiliateDisclosureForProvider\(disclosureProvider\)/);
   assert.doesNotMatch(preparation, /overviewPrepAdLabel/);
   assert.doesNotMatch(overview.match(/function ArrangeItem[\s\S]*$/)?.[0] ?? "", /setProfile|complete: true|saveTrip|mutate/);
 });

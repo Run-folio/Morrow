@@ -8,6 +8,7 @@ import { privateContextScope, travelReadinessStorageKey } from "@/lib/easyt/priv
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { deriveTripPrepTasks } from "@/lib/easyt/trip-prep";
+import { overviewPaidPreviewSurface, redactOverviewBookingLinks, redactOverviewReadinessLinks } from "@/lib/easyt/overview-paid-preview";
 import { parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import {
   defaultTravelReadinessProfile,
@@ -45,8 +46,8 @@ export function useTripPrepReadiness({
   const profileScope = privateContextScope(trip.ownerId);
   const [profile, setProfile] = useState<TravelReadinessProfile>(initialProfile ?? defaultTravelReadinessProfile);
   const [hydratedProfileScope, setHydratedProfileScope] = useState<string | null>(initialProfile ? profileScope : null);
-  const [actions, setActions] = useState<BookingReadinessAction[]>(initialActions ?? []);
-  const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(initialReadinessCards ?? []);
+  const [actions, setActions] = useState<BookingReadinessAction[]>(() => redactOverviewBookingLinks(initialActions ?? [], overviewPaidPreviewSurface));
+  const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(() => redactOverviewReadinessLinks(initialReadinessCards ?? [], overviewPaidPreviewSurface));
   const [actionsStatus, setActionsStatus] = useState<TripPrepProviderStatus>(initialProviderStatus ?? (initialActions !== undefined ? "available" : "loading"));
   const [readinessStatus, setReadinessStatus] = useState<TripPrepProviderStatus>(initialProviderStatus ?? (initialReadinessCards !== undefined || !trip.stops.length ? "available" : "loading"));
   const [providerRetryVersion, setProviderRetryVersion] = useState(0);
@@ -79,14 +80,14 @@ export function useTripPrepReadiness({
         const response = await fetch("/api/journey-booking-readiness", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ trip }),
+          body: JSON.stringify({ trip, surface: overviewPaidPreviewSurface }),
           signal: scope.signal,
         });
         if (!response.ok) throw new Error("Booking readiness unavailable");
         const payload = await response.json() as { actions?: BookingReadinessAction[] };
         if (!Array.isArray(payload.actions)) throw new Error("Booking readiness response was incomplete");
         scope.commit(() => {
-          setActions(payload.actions ?? []);
+          setActions(redactOverviewBookingLinks(payload.actions ?? [], overviewPaidPreviewSurface));
           setActionsStatus("available");
         });
       } catch (error) {
@@ -112,14 +113,14 @@ export function useTripPrepReadiness({
         const response = await fetch("/api/journey-readiness", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, avoidDriving, profile, language }),
+          body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, avoidDriving, profile, language, surface: overviewPaidPreviewSurface }),
           signal: scope.signal,
         });
         if (!response.ok) throw new Error("Travel readiness unavailable");
         const payload = await response.json() as { cards?: ReadinessCard[] };
         if (!Array.isArray(payload.cards)) throw new Error("Travel readiness response was incomplete");
         scope.commit(() => {
-          setReadinessCards(payload.cards ?? []);
+          setReadinessCards(redactOverviewReadinessLinks(payload.cards ?? [], overviewPaidPreviewSurface));
           setReadinessStatus("available");
         });
       } catch (error) {

@@ -488,9 +488,13 @@ export const PracticalPrep: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole("heading", { name: "Practical prep" });
     const surface = within(canvasElement.ownerDocument.body);
+    const paidCopy = {
+      insurance: "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.",
+      connectivity: "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.",
+    };
     for (const [kind, infoLabel, guide, action] of [
       ["passport", /^More information: Passport/i, "Add nationality and residence for more useful entry guidance.", /Review traveller details/i],
-      ["insurance", /^About this insurance ad$/, "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.", /Get a travel insurance quote/i],
+      ["insurance", /^More information: Insurance$/, "Consider whether you need cover for your trip.", /Get a travel insurance quote/i],
       ["connectivity", /^More information: Connectivity$/, "Compare eSIM coverage, data amounts and validity.", /Check eSIM coverage/i],
       ["activity", /^More information: Activities$/, "Check key activities, opening days and cancellation terms before booking.", /Browse activities/i],
     ] as const) {
@@ -508,12 +512,16 @@ export const PracticalPrep: Story = {
         await expect(controls.queryByText(/^(Ad|Publicidad)$/)).not.toBeInTheDocument();
         await expect(primary).toHaveAttribute("target", "_blank");
         await expect(primary).toHaveAttribute("rel", "sponsored noopener noreferrer");
+        const disclosure = controls.getByText(paidCopy[kind], { exact: true });
+        await expect(disclosure).toBeVisible();
+        await expect(disclosure.parentElement).toBe(primary.parentElement);
       }
       await userEvent.hover(info);
       const tooltip = await surface.findByRole("tooltip");
       await expect(tooltip).toHaveTextContent(guide);
-      if (kind === "connectivity") {
-        await expect(tooltip).toHaveTextContent("Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.");
+      if (kind === "insurance" || kind === "connectivity") {
+        await expect(tooltip).not.toHaveTextContent(paidCopy[kind]);
+        await expect(controls.getByText(paidCopy[kind], { exact: true })).toBeVisible();
       }
       await userEvent.keyboard("{Escape}");
       await userEvent.unhover(info);

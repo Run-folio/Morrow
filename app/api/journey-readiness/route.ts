@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveOptionalAffiliateConfiguration, warnOptionalAffiliateConfiguration } from "@/lib/easyt/affiliate-configuration";
+import { redactOverviewReadinessLinks } from "@/lib/easyt/overview-paid-preview";
 import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { buildTripReadiness, defaultTravelReadinessProfile, isTravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 
@@ -12,10 +13,10 @@ const worldNomadsAction = getCurrentPartnerAction("travel_insurance");
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { countries?: unknown; startDate?: unknown; avoidDriving?: unknown; profile?: unknown; language?: unknown };
+    const body = (await request.json()) as { countries?: unknown; startDate?: unknown; avoidDriving?: unknown; profile?: unknown; language?: unknown; surface?: unknown };
     const countries = Array.isArray(body.countries) ? body.countries.filter((country): country is string => typeof country === "string").slice(0, 20) : [];
     const profile = isTravelReadinessProfile(body.profile) ? body.profile : defaultTravelReadinessProfile;
-    return NextResponse.json({ cards: buildTripReadiness({
+    return NextResponse.json({ cards: redactOverviewReadinessLinks(buildTripReadiness({
       countries,
       startDate: typeof body.startDate === "string" ? body.startDate : undefined,
       avoidDriving: body.avoidDriving === true,
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       sailyHref: optionalAffiliateConfiguration.urls.sailyUrl,
       insuranceAction: worldNomadsAction,
       language: body.language === "es" ? "es" : "en",
-    }) });
+    }), body.surface) });
   } catch {
     return NextResponse.json({ error: "Unable to prepare this trip." }, { status: 400 });
   }

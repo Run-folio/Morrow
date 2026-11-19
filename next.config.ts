@@ -19,6 +19,11 @@ const qaPersistenceDiagnostics = process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS
   && /^[a-f0-9]{40}$/i.test(buildCommit)
   && process.env.MORROVIA_QA_EXPECTED_COMMIT === buildCommit;
 
+// Netlify's dedicated staging site can itself deploy in a production context.
+const inertOverviewPaidPreview = process.env.NETLIFY === "true"
+  && process.env.SITE_ID === "854ed510-cdd4-48cb-abb3-31b53ad9999f"
+  && process.env.BRANCH === "staging";
+
 const nextConfig: NextConfig = {
   distDir,
   outputFileTracingIncludes: Object.fromEntries(referenceDataRoutes.map(route => [route, referenceDataFiles])),
@@ -28,6 +33,7 @@ const nextConfig: NextConfig = {
   env: {
     MORROVIA_BUILD_COMMIT: buildCommit,
     MORROVIA_BUILD_CONTEXT: buildContext,
+    MORROVIA_INERT_OVERVIEW_PAID_PREVIEW: inertOverviewPaidPreview ? "1" : "0",
     MORROVIA_QA_PERSISTENCE_DIAGNOSTICS: qaPersistenceDiagnostics ? "1" : "0",
   },
   ...(staticExport ? { output: "export" as const } : {}),
