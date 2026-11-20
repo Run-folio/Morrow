@@ -6,11 +6,13 @@ import test from 'node:test';
 const ts=createRequire(import.meta.url)('typescript');
 const text=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
 const source=ts.createSourceFile('builder.tsx',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-const declarations=new Map<string,string>();let doneCode='',confirmCode='';
+const declarations=new Map<string,string>();let doneCode='',confirmCode='',parentConstraintCode='';
 function visit(node:any) {
   if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.initializer)declarations.set(node.name.text,node.initializer.getText(source));
   if(ts.isJsxAttribute(node)&&node.name.getText(source)==='onDone'&&node.initializer?.expression?.getText(source).includes('completePlanningArea'))doneCode=node.initializer.expression.getText(source);
   if(ts.isJsxAttribute(node)&&node.name.getText(source)==='onConfirm'&&node.initializer?.expression?.getText(source).includes('commitDiscoveryReview'))confirmCode=node.initializer.expression.getText(source);
+  if(ts.isPropertyAssignment(node)&&node.name.getText(source)==='parentConstraint'
+    &&ts.isConditionalExpression(node.parent.parent)&&ts.isJsxExpression(node.parent.parent.parent)&&ts.isJsxAttribute(node.parent.parent.parent.parent)&&node.parent.parent.parent.parent.name.getText(source)==='search') parentConstraintCode=node.initializer.getText(source);
   ts.forEachChild(node,visit);
 }visit(source);
 const evaluate=(code:string,context:any)=>runInNewContext(ts.transpileModule(`(${code})`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,context);
@@ -134,4 +136,75 @@ test(`${action} releases only its captured editor on ${result}`,async()=>{
   assert.equal(ui.view.automaticHeld,false);assert.equal(ui.view.releases,result==='null-editor'?0:1);
   assert.equal(replacementHeld,false);assert.equal(ui.context.discoveryCommitRef.current,false);
   if(result==='new-raw')assert.equal(ui.view.raw,'Newest bytes');
+});
+
+test('resume starts at the first unresolved area; targeted reopen preserves pending order',()=>{
+  const ui=fixture();
+  const pending=['bulgaria','romania','georgia','albania'];
+  const active=[...pending,'spain'];
+  Object.assign(ui.context,{
+    pendingClarificationIds:pending,
+    activePlaceMentions:active.map(mentionId=>({mentionId})),
+    builderEditSessionRef:{current:{getSnapshot:()=>({trip:{brief:{intent:{route:{
+      destinations:active.map(id=>({id,kind:'planning_area'})),
+    }}}}})}},
+  });
+  const open=evaluate(declarations.get('openClarificationSession')!,ui.context);
+  ui.view.index=2;
+  open();
+  assert.deepEqual(Array.from(ui.view.ids),pending);
+  assert.equal(ui.view.index,0);
+  assert.equal(ui.view.open,true);
+  open('georgia');
+  assert.deepEqual(Array.from(ui.view.ids),pending);
+  assert.equal(ui.view.index,2);
+  open('spain');
+  assert.deepEqual(Array.from(ui.view.ids),['spain',...pending]);
+  assert.equal(ui.view.index,0);
+});
+
+
+test('legacy clarification bounds normal areas but leaves nearby and ambiguous identity searches open',()=>{
+  const parent={name:'Canonical parent'};
+  const context={
+    activeClarificationMention:{placeType:'country'},
+    planningParentForMention:(mention:object)=>{
+      assert.equal(mention,context.activeClarificationMention);
+      return parent;
+    },
+    clarificationUsesNearbyBases:false,
+    clarificationIsAmbiguity:false,
+    clarificationIsCityIdentity:false,
+  };
+  assert.ok(parentConstraintCode,'extract the mounted clarification search constraint');
+  const constraint=()=>evaluate(parentConstraintCode,context);
+  assert.equal(constraint(),parent);
+  context.clarificationIsAmbiguity=true;
+  assert.equal(constraint(),parent,'known non-city ambiguity still has a parent');
+  context.activeClarificationMention={placeType:'unknown'};
+  assert.equal(constraint(),undefined);
+  context.activeClarificationMention={placeType:'city'};
+  context.clarificationIsCityIdentity=true;
+  assert.equal(constraint(),undefined);
+  context.clarificationIsAmbiguity=false;
+  assert.equal(constraint(),parent,'known city outside an identity ambiguity still has a parent');
+  context.clarificationUsesNearbyBases=true;
+  assert.equal(constraint(),undefined);
+});
+
+for(const accepted of [false,true])test(`reopen changes completed state and reveals its area only after ACK: ${accepted}`,async()=>{
+  const ui=fixture();
+  ui.view.ids=['other-area'];
+  ui.view.completed=['mention-a','completed-sibling'];
+  ui.view.open=false;
+  ui.render();
+  const work=ui.reopen();
+  assert.equal(ui.calls,1);
+  assert.deepEqual(ui.view.ids,['other-area']);
+  assert.equal(ui.view.open,false);
+  ui.resolve(accepted);
+  assert.equal(await work,accepted);
+  assert.deepEqual(Array.from(ui.view.completed),accepted?['completed-sibling']:['mention-a','completed-sibling']);
+  assert.deepEqual(Array.from(ui.view.ids),accepted?['mention-a']:['other-area']);
+  assert.equal(ui.view.open,accepted);
 });
