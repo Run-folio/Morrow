@@ -194,7 +194,7 @@ export function TripPreparationCards({ tasks, tripId, language, onStatusChange, 
   onStatusChange: (kind: OverviewPrepKind, choice: "to-review" | "sorted") => void;
   isPending: (kind: OverviewPrepKind) => boolean;
 }) {
-  return <div className={styles.overviewPrepGrid}>
+  return <>
     {tasks.map((task) => {
       const Icon = iconByKind[task.id];
       const action = task.action;
@@ -230,7 +230,6 @@ export function TripPreparationCards({ tasks, tripId, language, onStatusChange, 
                 context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }} variant="quiet"
               /> : action?.href ? <EasyTLinkButton href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer" : undefined} variant="quiet" size="small" onClick={taskActionClick(legacyTask, tripId)}>{action.label}{action.external ? <ExternalLink aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}</EasyTLinkButton>
               : <span className={styles.overviewPrepUnavailable}>{language === "es" ? "Opciones no disponibles por ahora" : "Options currently unavailable"}</span>}
-            {!previewProvider && isSponsoredLink ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
           </div>
         </div>
         <EasyTButton
@@ -244,7 +243,8 @@ export function TripPreparationCards({ tasks, tripId, language, onStatusChange, 
           disabled={isPending(task.id)}
           onClick={() => onStatusChange(task.id, reviewed ? "to-review" : "sorted")}
         ><span className={styles.overviewPrepReviewMark}><Check aria-hidden="true" /></span></EasyTButton>
+        {isPreviewInsurance || (!previewProvider && isSponsoredLink) ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
       </article>;
     })}
-  </div>;
+  </>;
 }

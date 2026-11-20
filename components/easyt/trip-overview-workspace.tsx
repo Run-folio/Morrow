@@ -14,9 +14,10 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { tripWithEffectiveTransportChoices } from '@/lib/easyt/transport-mode-choice';
 import { transferTimingLabel } from '@/lib/easyt/transfer-timing-label';
@@ -34,7 +35,6 @@ import {
   tripWorkspaceHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
-import workspaceHeading from "./trip-workspace-heading.module.css";
 import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
@@ -117,10 +117,10 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
     : `${duration} transfer`;
 }
 
-export function OverviewEndpointSummary({ label, href, transfer }: { label: string; href: string; transfer: string | null }) {
+export function OverviewEndpointSummary({ label, href, transfer, warning }: { label: string; href: string; transfer: string | null; warning?: ReactNode }) {
   return <div className={styles.endpointSummary} data-overview-endpoint="">
     <Link href={href}><MapPin aria-hidden="true" /><span>{label}</span></Link>
-    {transfer ? <span className={styles.endpointTransfer}><ArrowRight aria-hidden="true" />{transfer}</span> : null}
+    {transfer ? <span className={styles.endpointTransfer}><ArrowRight aria-hidden="true" />{transfer}{warning}</span> : null}
   </div>;
 }
 
@@ -174,10 +174,12 @@ export default function TripOverviewWorkspace({
   const progressOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-progress");
   useWorkspaceOrientationReady("overview", Boolean(trip.stops.length && trip.planItems.length));
   const unresolvedPlaceIntents = useMemo(() => unresolvedPlaceIntentsForTrip(trip), [trip]);
+  const recommendations = openHealthIssues(trip).filter((issue) => !recommendationIsRepresentedByUnresolvedPlaceIntent(issue, unresolvedPlaceIntents));
+  const integrity = canonicalLegIntegrityIssues(trip);
   const visibleIssues = presentOverviewIssues(
     trip,
-    openHealthIssues(trip).filter((issue) => !recommendationIsRepresentedByUnresolvedPlaceIntent(issue, unresolvedPlaceIntents)),
-    canonicalLegIntegrityIssues(trip),
+    recommendations,
+    integrity,
   );
   const accommodation = accommodationProgress(trip);
   const prepProviderStatus = prepReadiness.providerUnavailable
@@ -194,7 +196,8 @@ export default function TripOverviewWorkspace({
   const practicalTasks = deriveOverviewPracticalTasks({ trip: mutation.trip, tasks: prepReadiness.tasks, language });
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
   const criticalRouteIssue = visibleIssues.find((issue) => issue.severity === "critical");
-  const routeInsight = presentOverviewRouteInsight(visibleIssues);
+  const transferIssue = visibleIssues.find(issue => issue.actionLabel === "Review transfers");
+  const routeInsight = presentOverviewRouteInsight(visibleIssues.filter(issue => issue !== transferIssue));
   const routeAssessment = trip.brief.routeAssessment?.route;
   const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
   const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
@@ -202,6 +205,21 @@ export default function TripOverviewWorkspace({
   const departureStep = routeSteps.find(step => step.kind === "origin");
   const returnStep = routeSteps.find(step => step.kind === "end");
   const staySteps = routeSteps.filter(step => step.kind === "stay");
+  const displayedLegs = new Set(routeSteps.map(step => step.leg?.id).filter(Boolean));
+  const unplacedTransfer = transferIssue && (!transferIssue.reviewLegIds.length || transferIssue.reviewLegIds.some(id => !displayedLegs.has(id)));
+  const warningLabel = language === "es" ? "Comprobar el traslado" : "Check transfer timing";
+  function transferWarning(leg: EasyTTrip["legs"][number] | null) {
+    if (!leg || !transferIssue?.reviewLegIds.includes(leg.id)) return null;
+    const name = [leg.fromEndpoint?.name, leg.toEndpoint?.name].filter(Boolean).join(" → ");
+    const details = [...new Set([
+      ...integrity.filter(finding => finding.legId === leg.id).map(finding => finding.message),
+      ...recommendations.filter(issue => issue.proposedChange?.legId === leg.id).map(issue => issue.message),
+    ])];
+    return <OverviewInfo icon={TriangleAlert} label={name ? `${warningLabel}: ${name}` : warningLabel}>
+      {name && <><b>{name}</b><br /></>}
+      {details.length ? details.join(" ") : language === "es" ? "Confirma la ruta y el horario antes de reservar." : "Confirm this transfer’s route and timing before booking."}
+    </OverviewInfo>;
+  }
   const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
   const lastRouteStop = orderedStops.at(-1);
   const journeyEndIsLastStop = Boolean(journeyEnd && lastRouteStop && sameJourneyPlace({
@@ -374,7 +392,6 @@ export default function TripOverviewWorkspace({
       label: language === "es" ? "Ver alojamientos" : "View stays",
     };
     if (category.id === "transport") {
-      const transferIssue = visibleIssues.find((issue) => issue.actionLabel === "Review transfers");
       return transferIssue
         ? { href: transferIssue.href, label: language === "es" ? "Revisar traslados" : "Review transfers" }
         : { href: transportWorkspaceHref(trip.id), label: language === "es" ? "Revisar transporte" : "Review transport" };
@@ -389,22 +406,22 @@ export default function TripOverviewWorkspace({
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
               <EntryReveal ready={staySteps.length > 0} selector="[data-overview-route-stop]" />
-              <div className={styles.routeIntro}>
-                <div>
-                  <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
-                </div>
-              </div>
+              <h2 id="overview-route-title" className="sr-only">{language === "es" ? "Tu ruta" : "Your route"}</h2>
               {orderedStops.length ? <>
-                {departureStep ? <OverviewEndpointSummary label={departureStep.label!} href={routeIssueHref(trip.id)} transfer={conciseTransferLabel(departureStep.leg)} /> : null}
+                {departureStep ? <OverviewEndpointSummary label={departureStep.label!} href={routeIssueHref(trip.id)} transfer={conciseTransferLabel(departureStep.leg)} warning={transferWarning(departureStep.leg)} /> : null}
                 <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                   {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep} data-overview-route-stop>
                     <OverviewStepMedia image={initialPlaceImages[step.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[step.id]]} name={step.name} country={step.country} meta={`${formatTripNights(step.stop!.nights)}${step.isJourneyEnd ? " · Journey end" : ""}`} number={step.number} href={itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, step.id))} onImageError={(src) => recoverImage(step.id, src)} />
-                    {step.leg ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{conciseTransferLabel(step.leg)}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
+                    {step.leg ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{conciseTransferLabel(step.leg)}</span>{transferWarning(step.leg)}</div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                     {index < staySteps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                   </li>)}
                 </ol>
                 {returnStep ? <OverviewEndpointSummary label={returnStep.label!} href={routeIssueHref(trip.id)} transfer={null} /> : null}
               </> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination.</p></div>}
+            {transferIssue && (unplacedTransfer || transferIssue.severity === "critical") ? <div className={styles.transferNotice}>
+              {unplacedTransfer ? <OverviewInfo icon={TriangleAlert} label={warningLabel}>{transferIssue.insight?.message ?? transferIssue.title}</OverviewInfo> : null}
+              <Link href={transferIssue.href}>{language === "es" ? "Revisar traslados" : "Review transfers"}{transferIssue.severity === "critical" ? (language === "es" ? " antes de reservar" : " before booking") : ""}</Link>
+            </div> : null}
             {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
               <Sparkles aria-hidden="true" />
               <div>
@@ -419,13 +436,13 @@ export default function TripOverviewWorkspace({
                 {routeInsight.title ? <span>{routeInsight.detail}</span> : null}
               </div>
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">{language === "es" ? "Ver itinerario" : "View itinerary"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
-            </aside> : routeRationale && !routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
+            </aside> : routeRationale && !routeInsight && !transferIssue ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
               <Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div>
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">{language === "es" ? "Ver itinerario" : "View itinerary"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <MorroviaMapPreview className={styles.routeMapPreview} title="Journey map" size="large" wholePreviewLink href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))}>
-              <DeferredJourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
+              <DeferredJourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} alwaysShowCredits cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
             </MorroviaMapPreview> : null}
           </div>
           {unresolvedPlaceIntents.length ? <div className={styles.unresolvedIntentList} aria-label="Places not included in this route">
@@ -459,35 +476,27 @@ export default function TripOverviewWorkspace({
           </div> : null}
         </section>
 
-        <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">
-          <div className={styles.sectionHeading}>
-            <div><h2 id="overview-progress-title">{language === "es" ? "Próximos pasos" : "Next steps"}</h2></div>
-          </div>
+        <section ref={progressOrientationTarget} id="before-you-go" className={styles.planningSection} aria-labelledby="overview-progress-title">
+          <h2 id="overview-progress-title" className="sr-only">{language === "es" ? "Próximos pasos" : "Next steps"}</h2>
           <div className={styles.arrangeGrid}>
             {planningCategories.map((category) => {
               const text = overviewPlanningCardText(trip, category, language);
               return <ArrangeItem key={category.id} icon={progressIconByCategory[category.id]} label={text.label} detail={text.detail} status={category.status} percent={category.percent} language={language} action={progressAction(category)} />;
             })}
-          </div>
-        </section>
-
-        <TripExplicitPlans trip={trip} variant="overview" />
-        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
-
-        <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
-          <div className={styles.sectionHeading}>
-            <div><h2 id="overview-before-go-title">{language === "es" ? "Preparativos prácticos" : "Practical prep"}</h2></div>
+            <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language}
+              isPending={(kind) => mutation.isPending(`overview-prep-${kind}`)}
+              onStatusChange={(kind, choice) => mutation.mutateTrip((current) => setOverviewPrepChoice(current, kind, choice), `overview-prep-${kind}`)}
+            />
           </div>
           {prepProviderStatus !== "available" ? <div className={prepProviderStatus === "loading" ? "sr-only" : styles.beforeGoStatus}>
             {prepProviderStatus === "unavailable"
               ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a comprobar la información antes de usarla." : "Your saved trip hasn’t changed. Check again before using this guidance."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
               : <MorroviaSectionStatus title={language === "es" ? "Consultando los preparativos" : "Checking practical tasks"} detail={language === "es" ? "Las tareas guardadas siguen visibles mientras se carga la información actual." : "Your saved trip tasks remain visible while current guidance loads."} />}
           </div> : null}
-          <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language}
-            isPending={(kind) => mutation.isPending(`overview-prep-${kind}`)}
-            onStatusChange={(kind, choice) => mutation.mutateTrip((current) => setOverviewPrepChoice(current, kind, choice), `overview-prep-${kind}`)}
-          />
         </section>
+
+        <TripExplicitPlans trip={trip} variant="overview" />
+        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
       </div>
     </section>
   );

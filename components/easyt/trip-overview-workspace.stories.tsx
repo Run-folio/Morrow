@@ -484,7 +484,10 @@ export const PracticalPrep: Story = {
   }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Practical prep" });
+    const planning = await canvas.findByRole("region", { name: "Next steps" });
+    const cards = planning.querySelector('[class*="arrangeGrid"]')!;
+    await expect(cards.children).toHaveLength(6);
+    await expect(Array.from(cards.children, card => card.querySelector("h3")?.textContent)).toEqual(["Days", "Stays", "Transport", "Insurance", "Connectivity", "Activities"]);
     const surface = within(canvasElement.ownerDocument.body);
     const paidCopy = {
       insurance: "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.",
@@ -511,7 +514,7 @@ export const PracticalPrep: Story = {
         await expect(primary).toHaveAttribute("rel", "sponsored noopener noreferrer");
         const disclosure = controls.getByText(paidCopy[kind], { exact: true });
         await expect(disclosure).toBeVisible();
-        await expect(disclosure.parentElement).toBe(primary.parentElement);
+        await expect(disclosure.closest("article")).toBe(primary.closest("article"));
       }
       await userEvent.hover(info);
       const tooltip = await surface.findByRole("tooltip");
@@ -698,7 +701,7 @@ export const OtherWorkspaceRouteContext: Story = { ...LibraryActionsOwner, param
 
 const checkRouteMapFraming: Story["play"] = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
-  const heading = canvas.getByRole("heading", { name: "Your route" });
+  await expect(canvas.getByRole("region", { name: "Your route" })).toBeInTheDocument();
   const preview = canvas.getByRole("region", { name: "Journey map" });
   const journey = canvasElement.querySelector<HTMLElement>('[class*="routeJourney"]');
   const frame = preview.querySelector<HTMLElement>('[class*="frame"]');
@@ -706,22 +709,21 @@ const checkRouteMapFraming: Story["play"] = async ({ canvasElement }) => {
   const previewRect = preview.getBoundingClientRect();
   const contentBottom = journey.lastElementChild.getBoundingClientRect().bottom;
   if (window.innerWidth > 980) {
-    await expect(Math.abs(previewRect.top - heading.getBoundingClientRect().top)).toBeLessThan(1);
+    await expect(Math.abs(previewRect.top - journey.getBoundingClientRect().top)).toBeLessThan(1);
     await expect(previewRect.bottom - contentBottom).toBeGreaterThanOrEqual(-1);
     await expect(previewRect.bottom - contentBottom).toBeLessThan(44);
   } else {
     await expect(previewRect.top).toBeGreaterThanOrEqual(contentBottom);
   }
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
-  await expect(previewRect.height - frame.getBoundingClientRect().height).toBeGreaterThanOrEqual(60);
+  await expect(previewRect.height - frame.getBoundingClientRect().height).toBeGreaterThanOrEqual(32);
   await expect(within(preview).getByRole("link", { name: "View map" })).toBeVisible();
-  const transferTitle = canvas.queryByText("A transfer still needs checking", { exact: true });
-  if (transferTitle) {
-    const insight = transferTitle.closest("aside");
-    if (!insight) throw new Error("The transfer warning must retain its accessible region");
-    await expect(within(insight).queryByText("Transfer details", { exact: true })).toBeNull();
-    await expect(within(insight).getByText("Confirm its route and timing before booking.", { exact: true })).toBeVisible();
-    await expect(within(insight).getByRole("link", { name: "View detailed itinerary" })).toBeVisible();
+  for (const warning of canvas.queryAllByRole("button", { name: /^Check transfer timing/ })) {
+    await userEvent.hover(warning);
+    const tooltip = await within(canvasElement.ownerDocument.body).findByRole("tooltip");
+    await expect(tooltip).not.toBeEmptyDOMElement();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.unhover(warning);
   }
 };
 

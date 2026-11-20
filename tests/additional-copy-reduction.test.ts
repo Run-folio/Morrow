@@ -15,7 +15,7 @@ test('C2 Import no routine success reassurance',()=>assert.doesNotMatch(imp(),/E
 test('C3 Import source filename not redundant caption',()=>{assert.doesNotMatch(imp(),/Spreadsheet ready to review/);assert.match(imp(),/proposal.sourceName/)});
 test('C4 Auth removes generic introductions, retains exact-trip purpose',()=>{assert.doesNotMatch(auth(),/Morrovia account|Open your saved plans and pick up where you left off/);assert.match(auth(),/Keep this exact trip and continue planning on another device/)});
 test('C5 Returning password guidance removed only in sign-in',()=>{assert.match(auth(),/placeholder=\{mode === "sign-up" \? "At least 8 characters" : undefined\}/);assert.match(auth(),/minLength=\{8\}/)});
-test('C6 Practical prep has one heading, no general intro',()=>{assert.doesNotMatch(overview(),/Before you go|A few useful details to sort before your trip/);assert.match(overview(),/Practical prep/)});
+test('C6 Combined planning cards have an accessible heading, no general intro',()=>{assert.doesNotMatch(overview(),/Before you go|A few useful details to sort before your trip/);assert.match(overview(),/id="overview-progress-title" className="sr-only"/)});
 test('C7 Initial settings uses useful label and current values',()=>{assert.doesNotMatch(capture(),/MorroviaPlannerFieldContent label=\{text.personalize\}/);assert.match(capture(),/value=\{personalizationSummary \|\| text.personalizeSummary\}/);assert.match(capture(),/aria-label=\{personalizationSummary \? `\$\{text.personalizeSummary\}: \$\{personalizationSummary\}` : text.personalizeSummary\}/)});
 test('B1 Import no duplicate global totals, category counts remain',()=>{assert.doesNotMatch(imp(),/className=\{styles.summaryLine\}/);assert.match(imp(),/stays.length/);assert.match(imp(),/activities.length/)});
 test('B2 Import numbered order without generic source reassurance',()=>{assert.doesNotMatch(imp(),/In the same order as your spreadsheet/);assert.match(imp(),/index \+ 1/)});
@@ -37,14 +37,14 @@ test('D1 Workspace tour opt-in in both entry defaults; existing launcher/content
 test('D2 First-trip guide ephemeral collapsed help; current step and Continue remain',()=>{const g=read('app/journey/dashboard/first-trip-guide.tsx');assert.match(g,/expanded, setExpanded\] = useState\(false\)/);assert.doesNotMatch(g,/localStorage.setItem|activeIndex \+ 1/);assert.match(g,/aria-current/);assert.match(g,/text.action/)});
 test('D3 How-it-works retained behind semantic toggle, no persistent dismissal',()=>{const h=read('app/journey/home/immersive/homepage-how-it-works.tsx');assert.match(h,/aria-expanded=\{expanded\}/);assert.match(h,/hidden=\{!expanded\}/);assert.doesNotMatch(h,/PRODUCT_TOUR_OPEN_EVENT|localStorage/);assert.match(h,/Get a suggested route to review/)});
 
-test('All four compact Overview cards keep details inside their information trigger and preserve action and state', () => {
+test('All three practical Overview cards keep details inside their information trigger and preserve action and state', () => {
   const cards = prep().slice(prep().indexOf('export function TripPreparationCards'));
   assert.match(cards, /const infoDetail = isPreviewInsurance\s*\? disclosure\s*:\s*previewProvider === "saily".*: task.detail/);
   assert.match(cards, /<OverviewInfo label=\{isPreviewInsurance[\s\S]*?\}>\{infoDetail\}<\/OverviewInfo>/);
   assert.doesNotMatch(cards, /overviewPrepAdLabel/);
   const article = cards.slice(cards.indexOf('return <article'));
   assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>/);
-  assert.match(article, /!previewProvider && isSponsoredLink \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
-  assert.match(article, /action\?\.opensTravellerDetails[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
+  assert.match(article, /isPreviewInsurance \|\| \(!previewProvider && isSponsoredLink\) \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
+  assert.match(article, /previewProvider \? <EasyTButton[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
   assert.match(article, /role="checkbox"[\s\S]*aria-checked=\{reviewed\}/);
 });

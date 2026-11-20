@@ -66,6 +66,7 @@ type JourneyPlannerMapProps = {
   overviewMode?: boolean;
   /** Accessible name for a scoped preview; the whole-route label remains the default. */
   previewLabel?: string;
+  alwaysShowCredits?: boolean;
   cameraSafeEdge?: number;
   cameraOcclusions?: Partial<MorroviaMapInsets>;
   /** Keep a traveller-adjusted camera when the TripShell map changes size. */
@@ -155,6 +156,7 @@ export function JourneyPlannerMap({
   pinPlacementMode,
   overviewMode = false,
   previewLabel,
+  alwaysShowCredits = false,
   cameraSafeEdge = 48,
   cameraOcclusions,
   preserveCameraOnResize = false,
@@ -294,6 +296,7 @@ export function JourneyPlannerMap({
     const renderer = createMapRenderer(containerRef.current, mapPresentation.canvas, (container) => new maplibregl.Map({
       container,
       ...morroviaMapOptions(surface, "compact"),
+      ...(alwaysShowCredits ? { attributionControl: { compact: false } } : {}),
       center: firstStop,
       zoom: (presentationOnly || surface.variant === "embedded") && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
     }));

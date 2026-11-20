@@ -6,11 +6,12 @@ import { renderBuilder } from "./helpers/builder-render.ts";
 const enabled = process.env.MORROVIA_OVERVIEW_INFO_BROWSER_TESTS === "1";
 const sourceOverrides = new Map([[fileURLToPath(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url)), `
   import { OverviewInfo } from "@/components/easyt/overview-info";
+  import { TriangleAlert } from "lucide-react";
   export default function Fixture() {
     return <main id="start-building" style={{width: "min(100%, 400px)", padding: 16}}>
       <div style={{display: "flex", justifyContent: "end", marginTop: 80, overflow: "hidden", paddingBlock: 12}}>
         <OverviewInfo label="About First">First pieces of information that explain the displayed fact.</OverviewInfo>
-        <OverviewInfo label="About Second">Second pieces of information, presented without losing the anchor.</OverviewInfo>
+        <OverviewInfo icon={TriangleAlert} label="Check transfer timing: Giza to Cairo">Second pieces of information, presented without losing the anchor.</OverviewInfo>
       </div>
       <p>Outside content</p>
     </main>;
@@ -23,7 +24,7 @@ test("Overview info supports keyboard focus, Escape without reopening, hover tra
     const { page } = view;
     await page.setViewportSize({ width: 1440, height: 900 });
     const first = page.getByRole("button", { name: "About First", exact: true });
-    const second = page.getByRole("button", { name: "About Second", exact: true });
+    const second = page.getByRole("button", { name: "Check transfer timing: Giza to Cairo", exact: true });
     const tooltip = page.getByRole("tooltip");
     await page.keyboard.press("Tab");
     assert.equal(await first.evaluate((node: HTMLElement) => node === document.activeElement), true);
@@ -56,7 +57,7 @@ test("touch toggles one portal safely inside a 320px viewport", { skip: !enabled
     try {
       const page = await context.newPage();
       await page.goto(view.page.url());
-      const second = page.getByRole("button", { name: "About Second", exact: true });
+      const second = page.getByRole("button", { name: "Check transfer timing: Giza to Cairo", exact: true });
       await second.tap();
       const tooltip = page.getByRole("tooltip");
       const b = await tooltip.boundingBox();
