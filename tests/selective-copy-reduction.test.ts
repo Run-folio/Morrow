@@ -25,7 +25,10 @@ test("routine progress labels/visible percentages go while review and numeric ac
 });
 test("Transport suppresses only duplicated uncertainty and keeps booking facts",()=>{
  const src=source("components/easyt/trip-transport-workspace.tsx");
- assert.match(src,/showStatus = !\(status === copy.planningEstimate && showsEstimatedTiming\)/);
+ assert.match(src,/showStatus = status !== copy.planningEstimate;/);
+ assert.match(src,/showsEstimatedTiming \? language === "es" \? "Estimado · " : "Estimated · " : ""/);
+ assert.match(src,/status === copy.planningEstimate && !showsEstimatedTiming \?[\s\S]*?\{copy.planningEstimate\}/);
+ assert.match(src,/\{showStatus \? <span className=\{styles.status\}[\s\S]*?<span>\{status\}<\/span>/);
  assert.match(src,/status === copy.needsCheckingStatus && leg.mode === "unknown" && durationMinutes === null/);
  assert.match(src,/notBooked: "Not booked"/);assert.match(src,/booked: "Booked"/);
  assert.match(src,/TransportAffiliateAction/);assert.match(src,/Journey details/);

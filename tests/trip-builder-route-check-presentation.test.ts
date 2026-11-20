@@ -30,7 +30,7 @@ test("Route Check keeps canonical rows and markers while presenting a comparison
 test("Builder labels a routed road estimate separately from an unresolved transport mode", () => {
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /transferJourneyModeLabel\(leg\)/);
-  assert.match(workspace, /formatMapDuration\(transferMinutes\)/);
+  assert.match(workspace, /leg\.provenance === "planning_estimate" && leg\.mode !== "unknown" && transferTimingLabel\(leg\) !== "Timing to confirm" \? "Estimated · " : ""\}\$\{transferTimingLabel\(leg\)\}/);
   assert.match(workspace, /leg\?\.mode === "unknown" && leg\.roadEstimate[\s\S]*formatRoadEstimateReference\(leg\.roadEstimate\)/);
 });
 
@@ -70,5 +70,13 @@ test("Route Check projects country continuity through the existing reason and pr
   assert.match(builder, /keeps stops in the same country together, reducing avoidable re-entry/i);
   assert.match(builder, /applyRouteCheckProposal[\s\S]*scheduleLocks\.stopIds\.length[\s\S]*scheduleLocks\.arrivalDates[\s\S]*structuredRouteConstraints\.fixedCommitments/);
   assert.match(builder, /applyScoredRouteCandidate[\s\S]*scheduleLocks\.stopIds\.length[\s\S]*scheduleLocks\.arrivalDates[\s\S]*structuredRouteConstraints\.fixedCommitments/);
-  assert.match(builder, /validateBuilderStopOrder\(stops, proposedIds,[\s\S]*lockedStopIds: scheduleLocks\.stopIds,[\s\S]*fixedOrder: Boolean\(structuredRouteConstraints\.fixedCommitments\?\.length\)/);
+  const commitOrder = builder.slice(builder.indexOf("const commitStopOrder ="), builder.indexOf("}, [routeIntelligence.route.recommendedStopIds, protectedBuilderStopIds"));
+  assert.match(commitOrder, /currentStops = builderEditSessionRef.current\?\.getSnapshot\(\)\.trip\.stops \?\? stops/);
+  assert.match(commitOrder, /validateBuilderStopOrder<Stop>\(currentStops, proposedIds, \{\s*lockedStopIds: protectedBuilderStopIds,\s*fixedOrder: fixedBuilderChronology,\s*\}\);\s*if \(!result.ok\) return false/);
+  assert.match(commitOrder, /await dispatchAcceptedBuilderEdit\(\{ kind: "order", stopIds: result.ids, source \}\);\s*if \(accepted\) \{ setRoutePreviewStopIds\(null\)/);
+  const locks = builder.slice(builder.indexOf("const protectedBuilderStopIds"), builder.indexOf("const effectiveStructuredBrief"));
+  assert.match(locks, /scheduleLocks.stopIds, \.\.\.Object.keys\(scheduleLocks.arrivalDates\)/);
+  assert.match(locks, /projectedFixedCommitments.flatMap\(item => \(item.date \|\| item.commitmentType === 'booking'\) && item.stopId/);
+  assert.match(locks, /builderBookingStopIds/);
+  assert.match(locks, /projectedFixedCommitments.some\(item => \(item.date \|\| item.commitmentType === 'booking'\) && !item.stopId\)/);
 });

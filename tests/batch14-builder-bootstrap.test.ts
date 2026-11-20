@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import {builderClosure} from './helpers/qa-persistence-source-fixture.ts';
+import {createBuilderEntrySession} from '../lib/easyt/trip-builder-entry-session.ts';
+import {durableBuilderRecoveryUrl} from '../lib/easyt/builder-durable-url.ts';
 import * as storageApi from '../lib/easyt/storage.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {createBuilderEditSession} from '../lib/easyt/trip-builder-edit-session.ts';
@@ -10,18 +13,39 @@ import {tripSyncRecoveryPath,tripSyncSignInPath} from '../lib/easyt/trip-continu
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/batch14-guest-bootstrap.json',import.meta.url),'utf8'));
 class Memory {values=new Map<string,string>();get length(){return this.values.size;}key(i:number){return [...this.values.keys()][i]??null;}getItem(k:string){return this.values.get(k)??null;}setItem(k:string,v:string){this.values.set(k,v);}removeItem(k:string){this.values.delete(k);}}
 const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
-const at=source.indexOf('    const start=async()=>{'),end=source.indexOf('\n    void start();',at);assert(at>0&&end>at);
-const script=ts.transpileModule(source.slice(at,end)+'\nreturn start;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+const ast=ts.createSourceFile('builder.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+function actualArrow(name:string,scope:Record<string,unknown>){
+ let expression:string|undefined;
+ const visit=(node:ts.Node)=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)===name)expression=node.initializer?.getText(ast);ts.forEachChild(node,visit);};
+ visit(ast);assert.ok(expression,name);
+ const js=ts.transpileModule(`const callback = ${expression};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ return new Function('scope',`with(scope){${js}return callback;}`)(scope);
+}
 async function bootstrap(options:{prior?:any;candidate?:any;owner?:string|null;source?:boolean;loaded?:(record:any,storage:Memory)=>any}={}){
  const memory=new Memory(),prior=options.prior??structuredClone(fixture.trip),candidate=options.candidate??{...structuredClone(fixture.trip),updatedAt:fixture.renderedUpdatedAt},owner=options.owner??null;
  storageApi.saveTripRecoveryToStorage(memory,prior,{ownerId:prior.ownerId,writeId:'original-write'});
  const state={seed:null as any,blocked:false,error:'',stored:null as any};
- const scope={active:true,activeBrowserOwnerId:owner,activeTripDocument:candidate,hydratedCanonicalTripRef:{current:options.source?candidate:null},recoveryHandleRef:{current:options.source?storageApi.loadTripRecoveryFromStorage(memory,prior.id,prior.ownerId):null},receiptAcknowledgementRef:{current:Promise.resolve(true)},builderSearchParams:new URLSearchParams(),requireReadableTripDocument,
-  sameRecoveryDocument:(storageApi as any).sameRecoveryDocument,
-  persistDeviceRecovery:(trip:any)=>{state.stored=storageApi.saveTripRecoveryToStorage(memory,trip,{ownerId:owner});return state.stored;},
-  loadTripRecovery:(id:string,scopeOwner:string|null)=>{const record=storageApi.loadTripRecoveryFromStorage(memory,id,scopeOwner);return options.loaded?options.loaded(record,memory):record;},
-  setDeviceRecoveryBlocked:(blocked:boolean)=>state.blocked=blocked,setDeviceStorageBlocked:()=>{},setSaveState:()=>{},setCloudSaveError:(message:string)=>state.error=message,setBuilderSeed:(seed:any)=>state.seed=seed};
- await new Function('scope',`with(scope){${script}}`)(scope)();return {memory,state,candidate};
+ const scope:Record<string,unknown>={useCallback:(cb:unknown)=>cb,hydrated:true,builderSeed:null,pendingInterpretation:false,tripUnavailable:false,origin:candidate.brief.intent.route.origin.name,tripBrief:'',activePlaceMentions:[],stops:candidate.stops,language:'en',
+  activeBrowserOwnerId:owner,activeBrowserOwnerIdRef:{current:owner},hydratedOwnerScopeRef:{current:owner},activeTripDocument:candidate,builderCurrentDocumentRef:{current:candidate},builderMountedRef:{current:true},
+  builderCreationTokenRef:{current:null},builderCreationReplayScopeRef:{current:null},entryKind:'explicit-trip',builderEditSessionRef:{current:null},
+  builderEntrySessionRef:{current:null},builderEntryInputRevisionRef:{current:0},builderEntryHydrationRevisionRef:{current:0},builderEntrySequenceRef:{current:0},builderEntryFeedbackRef:{current:null},
+  builderEntrySourceReceiptRef:{current:null},pendingNewTripReceiptRef:{current:null},builderSeedPendingRef:{current:false},builderInitialOverflowRef:{current:false},handoffLookupSessionRef:{current:null},
+  hydratedCanonicalTripRef:{current:options.source?candidate:null},recoveryHandleRef:{current:options.source?storageApi.loadTripRecoveryFromStorage(memory,prior.id,prior.ownerId):null},
+  builderSearchParams:new URLSearchParams(),requireReadableTripDocument,createBuilderEntrySession,durableBuilderRecoveryUrl,
+  window:{location:{href:'https://synthetic.test/journey/new'},history:{replaceState(){}}},
+  canUseHydratedTripScope:storageApi.canUseHydratedTripScope,sameRecoveryDocument:storageApi.sameRecoveryDocument,
+  saveTripRecovery:async(trip:any,options:Parameters<typeof storageApi.saveTripRecoveryToStorage>[2])=>{state.stored=storageApi.saveTripRecoveryToStorage(memory,trip,options);return state.stored;},
+  loadTripRecovery:async(id:string,scopeOwner:string|null)=>{const record=storageApi.loadTripRecoveryFromStorage(memory,id,scopeOwner);return options.loaded?options.loaded(record,memory):record;},
+  reportQaPersistenceBoundary(){},reportPersistenceOutcome(){},recoveryPersistenceOutcome:()=> 'unknown',recoveryFailureMessage:()=> 'Recovery refused',
+  setDevicePersistenceOutcome(){},setDeviceRecoveryDurable(){},setDeviceRecoveryBlocked:(blocked:boolean)=>state.blocked=blocked,setDeviceStorageBlocked:()=>{},setSaveState:()=>{},setCloudSaveError:(message:string)=>state.error=message,setBuilderSeed:(seed:any)=>state.seed=seed};
+ scope.ensureBuilderEntry=actualArrow('ensureBuilderEntry',scope);
+ scope.persistDeviceRecovery=(...args:unknown[])=>builderClosure('persistDeviceRecovery')(scope,args);
+ let effect:string|undefined;
+ const select=(node:ts.Node)=>{if(ts.isCallExpression(node)&&node.expression.getText(ast)==='useEffect'&&node.arguments[0]?.getText(ast).includes('const start=async()=>{')){assert.equal(effect,undefined);effect=node.arguments[0].getText(ast);}ts.forEachChild(node,select);};
+ select(ast);assert.ok(effect?.includes('void start();'));
+ const js=ts.transpileModule(`const run = ${effect!.replace('void start();','return start();')};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ await new Function('scope',`with(scope){${js}return run();}`)(scope);
+ return {memory,state,candidate};
 }
 test('timestamp-only guest reconstruction seeds the acknowledged document and exact original handle',async()=>{
  const h=await bootstrap();assert.equal(h.state.blocked,false);assert(h.state.seed,'The accepted durable document must mount');assert.equal(h.state.seed.initialTrip.updatedAt,fixture.trip.updatedAt);assert.equal(h.state.seed.initialRecovery.writeId,'original-write');assert.equal(h.state.stored.handle.writeId,'original-write');assert.equal(h.state.seed.allowRecoverySync,true);
@@ -47,9 +71,8 @@ for(const foreign of ['owner','trip','missing','later-write'] as const)test(`boo
   const later={...record,writeId:'later-write',savedAt:new Date(Date.parse(record.savedAt)+1).toISOString()};memory.setItem(`easyt:trip-recovery:v2:guest:${record.tripId}:later-write`,JSON.stringify(later));return storageApi.loadTripRecoveryFromStorage(memory,record.tripId,null);
  }});assert.equal(h.state.seed,null);assert.equal(h.state.blocked,true);
 });
-test('Builder device recovery keeps the same draft and owner context in its editable surface',()=>{
- const body=source.match(/const recoverFromSaveError = \(\) => \{([\s\S]*?)\n  \};/)![1];assert(body);
- for(const mounted of [false,true]){let target='';new Function('scope',`with(scope){${body}}`)({builderEditSessionRef:{current:mounted?{}:null},mountedBuilder:{snapshot:{historicalRecovery:false}},syncAction:'open-device',activeTripDocument:fixture.trip,tripSyncRecoveryPath,window:{location:{assign:(url:string)=>target=url}}});assert.equal(target,`/journey/new?trip=${fixture.trip.id}&recover=1`);}
+test('Builder device recovery keeps the same draft and owner context in its editable surface',async()=>{
+ for(const mounted of [false,true]){let target='';await actualArrow('recoverFromSaveError',{builderEditSessionRef:{current:mounted?{}:null},mountedBuilder:{snapshot:{historicalRecovery:false}},syncAction:'open-device',activeTripDocument:fixture.trip,tripSyncRecoveryPath,window:{location:{assign:(url:string)=>target=url}}})();assert.equal(target,`/journey/new?trip=${fixture.trip.id}&recover=1`);}
 });
 test('completed planner recovery and sign-in retain their existing protected routing',()=>{
  const id='completed trip';assert.equal(tripSyncRecoveryPath(id),'/journey/new?trip=completed%20trip&recover=1');assert.equal(tripSyncSignInPath(id),`/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(id))}`);

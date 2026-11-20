@@ -7,7 +7,11 @@ const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.
 test("the Home and Builder choice labels use the same terminology", () => {
   const home = source("app/journey/home/home-trip-starter.tsx");
   const builder = source("app/journey/new/trip-builder-top-controls.tsx");
-  assert.match(home, /"Ida y vuelta" : "Return"/);
+  const sharedRoute = source("app/journey/home/shared-planner-route.tsx");
+  assert.match(home, /useSharedPlannerRoute\(/);
+  assert.match(sharedRoute, /"Ida y vuelta" : "Return"/);
+  assert.match(sharedRoute, /"Solo ida" : "One way"/);
+  assert.match(builder, /'Solo ida':'One way'/);
   assert.match(builder, /'Ida y vuelta':'Return'/);
   assert.match(builder, /'Destinos':'Destinations'/);
   assert.match(builder, /Check stop order/);
@@ -24,9 +28,11 @@ test("build without an unconfirmed place names its consequence and both choices"
 
 test("Home names choice and removes filler while keeping attribution", () => {
   const home = source("app/journey/home/home-trip-starter.tsx");
-  assert.match(home, /Keep current plan/);
-  assert.match(home, /Use return trip/);
-  assert.match(home, /Use one-way trip/);
+  assert.match(home, /\{confirmation\}/);
+  const sharedRoute = source("app/journey/home/shared-planner-route.tsx");
+  assert.match(sharedRoute, /Keep current plan/);
+  assert.match(sharedRoute, /Use return trip/);
+  assert.match(sharedRoute, /Use one-way trip/);
   const closing = source("app/journey/home/immersive/closing-chapter.tsx");
   assert.doesNotMatch(closing, /The best part is still ahead|Go somewhere/);
   assert.match(closing, /Image credits/);

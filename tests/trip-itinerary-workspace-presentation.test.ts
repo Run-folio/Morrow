@@ -90,15 +90,16 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /const mutation = shellMutation \?\? localMutation/);
 });
 
-test("day header keeps only canonical day context and navigation", () => {
+test("day header and adjacent date strip keep only canonical day context and navigation", () => {
   const headerStart = itinerary.indexOf("className={styles.dayHeader}");
   const headerEnd = itinerary.indexOf("</header>", headerStart);
   const header = itinerary.slice(headerStart, headerEnd);
   assert.ok(headerStart > -1 && headerEnd > headerStart);
-  assert.match(header, /\{copy\.day\} \{pad\(active\.dayNumber\)\}/);
-  assert.match(header, /displayDayDate\(active\.date, language\)/);
+  const dateStrip = itinerary.slice(headerEnd, itinerary.indexOf("{mutation.saveState", headerEnd));
+  assert.match(dateStrip, /<time dateTime=\{active\.date\}>\{formatIsoDate\(active\.date, language,/);
+  assert.match(dateStrip, /\{copy\.day\} \{active\.dayNumber\}/);
   assert.match(header, /stop\?\.name \?\? active\.title/);
-  assert.match(header, /className=\{styles\.dayRole\}>\{active\.title\}/);
+  assert.match(header, /itineraryDaySubtitle\(active\.title, stop\?\.name\)[\s\S]*className=\{styles\.dayRole\}>\{active\.title\}/);
   assert.doesNotMatch(header, /active\.reason|dayCount|copy\.items/);
   assert.doesNotMatch(itinerary, /className=\{styles\.dayActionRegion\}|copy\.findIdeas|noteComposerOpen/);
   assert.doesNotMatch(itinerary, /<EasyTTripCopilot|copy\.aiPlanning|copilotOpen/);
@@ -377,13 +378,16 @@ test("activity, restaurant, and accommodation detail stay truthful and omit abse
   assert.match(itinerary, /itineraryStayPresentation\(composition\.tonight\)/);
 });
 
+const identityStyles = readFileSync(new URL("../components/easyt/itinerary-activity-identity.module.css", import.meta.url), "utf8");
+
 test("long canonical and provider content stays inside the timeline and planning rail", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(styles, /grid-template-columns: minmax\(190px, 230px\) minmax\(0, 1fr\) minmax\(260px, 300px\)/);
   assert.match(styles, /\.rowSelect \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.savedIdeaSelect \{[\s\S]*white-space: normal/);
-  assert.match(styles, /\.discoveryCopy > strong \{[\s\S]*-webkit-line-clamp: 2/);
-  assert.match(styles, /\.discoveryCopy > p \{[\s\S]*-webkit-line-clamp: 2/);
+  assert.match(identityStyles, /\.copy\s*\{[^}]*min-width: 0;[^}]*white-space: normal/);
+  assert.match(identityStyles, /\.copy strong\s*\{[^}]*overflow-wrap: anywhere/);
+  assert.match(identityStyles, /\.copy small\s*\{[^}]*overflow-wrap: anywhere/);
   assert.match(styles, /\.discoveryActions button \{ min-height: 40px/);
   assert.match(stories, /Taipei 101 \(Chinese: 台北101; pinyin: Táiběi Yīlíngyī/);
   for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentMobile430", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680", "DetailRailLongProviderTitle", "SelectedPlannedItemDesktop"]) {
@@ -412,7 +416,7 @@ test("saved ideas have one shared stop-scoped unscheduled owner in the planning 
 
 test("Notes is the only note-entry owner and stays inside the Day-by-day context body", () => {
   const bodyIndex = itinerary.indexOf("className={styles.contextRailBody}");
-  const notesIndex = itinerary.indexOf(`<summary><span>{copy.notes}</span>`, bodyIndex);
+  const notesIndex = itinerary.indexOf(`<summary><span><BookOpenText aria-hidden="true" />{copy.notes}</span>`, bodyIndex);
   const bodyCloseIndex = itinerary.indexOf("</div> : null}", notesIndex);
   assert.ok(bodyIndex < notesIndex && notesIndex < bodyCloseIndex);
   assert.equal((itinerary.match(/submitRailNote\(\)/g) ?? []).length, 1, "the Notes form is the only day-note submit owner");
@@ -449,9 +453,10 @@ test("recommendation cards use canonical day scoring, an accessible itinerary me
   assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
   assert.match(itinerary, /placeItineraryActivity\(current, active\.id/);
   assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
-  assert.match(itinerary, />\{pending \? "Saving…" : "Save"\}<\/EasyTButton>/);
-  assert.match(styles, /\.discoveryMedia \{[\s\S]*height: 112px/);
-  assert.match(styles, /\.discoveryMedia > img,[\s\S]*object-fit: cover/);
+  assert.match(itinerary, /disabled=\{pending\} onClick=\{onSave\}>\{pending \? labels\.saving : labels\.save\}<\/EasyTButton>/);
+  assert.match(itinerary, /<ItineraryActivityIdentity[^>]*format="rail"/);
+  assert.match(identityStyles, /\.rail \.media\s*\{[^}]*height: var\(--morrovia-activity-rail-photo-height, 112px\)/);
+  assert.match(identityStyles, /\.media img\s*\{[^}]*object-fit: cover/);
   assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.dayPickerPanel \{[\s\S]*position: fixed/);
   assert.match(itinerary, /Choose day and part of day for/);
   assert.doesNotMatch(itinerary, /<p>\{place\.description\}<\/p>/);
@@ -542,9 +547,11 @@ test("Planner focus handoff keeps its orientation ref stable across registry ren
 test("commercial activity actions cannot consume the title column in the desktop Add dialog", () => {
   const base = styles.slice(styles.indexOf(".contextualAddResults {"), styles.indexOf("@media", styles.indexOf(".contextualAddResults {")));
   const rule = (name: string) => base.split(name + " {")[1]?.split("}")[0] ?? "";
-  assert.match(rule(".contextualAddResult"), /grid-template-columns: 72px minmax\(0, 1fr\);/);
-  assert.match(rule(".contextualAddResultNoMedia"), /grid-template-columns: minmax\(0, 1fr\);/);
-  assert.match(rule(".contextualAddResultActions"), /grid-column: 1 \/ -1/);
+  assert.match(rule(".contextualAddResult"), /display: grid;[^}]*min-width: 0;/);
+  assert.doesNotMatch(rule(".contextualAddResult"), /grid-template-columns/);
+  assert.match(identityStyles, /\.recommendation\s*\{[^}]*minmax\(0, 1fr\)/);
+  assert.match(itinerary, /<ItineraryActivityIdentity[^>]*format="recommendation"\s*\/>\s*<div className=\{styles.contextualAddResultActions\}>/);
+  assert.match(rule(".contextualAddResultActions"), /flex-wrap: wrap/);
   assert.match(rule(".contextualAddResultDisclosure"), /flex-basis: 100%/);
   assert.match(itinerary, /<MorroviaAffiliateDisclosure className=\{styles.contextualAddResultDisclosure\} provider="viator"/);
 });

@@ -37,7 +37,7 @@ const renderHomeDraft = (destination: string, originName = 'Madrid', options: Om
 
 test('Discovery completion restores the standard Builder stop editing state', () => {
   const builder = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
-  assert.match(builder, /completePlanningArea\(mention, true\);\s*setShowStopEditor\(true\);/,
+  assert.match(builder, /if \(await completePlanningArea\(mention, true, confirmIsCurrent\) !== true \|\| !confirmIsCurrent\(\)\) return;\s*setCloudSaveError\(""\);[\s\S]*?setShowStopEditor\(true\);\s*advanceClarificationSession\(\);/,
     'successful Discovery must restore the existing Builder stop editor after its canonical commit');
 });
 

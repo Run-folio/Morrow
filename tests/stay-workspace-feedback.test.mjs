@@ -13,7 +13,7 @@ const bundle = await build({
     name: "stay-workspace-render-boundaries",
     setup(builder) {
       const stubs = {
-        "next/navigation": "export const useRouter = () => ({});",
+        "next/navigation": "export const useRouter = () => ({}); export const usePathname = () => '/journey/japan-trip/stay';",
         "@/components/journey-local-finder": "export const JourneyLocalFinder = ({render}) => render(globalThis.stayFixture.finder);",
         "@/components/journey-planner-map": "export const JourneyPlannerMap = () => null;",
         "@/components/journey-planner-strip": "export const JourneyRouteStopTrack = () => null;",
