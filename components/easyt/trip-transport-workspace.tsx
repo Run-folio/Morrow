@@ -51,7 +51,7 @@ const copyFor = (language: Language) => language === "es" ? {
   modeAndTimeUnknown: "El modo y la duración aún necesitan confirmación.", modeUnknown: "El modo de transporte aún necesita confirmación.",
   timeUnknown: "La duración aún necesita confirmación.", bestOptionNeedsChecking: "La mejor opción de transporte aún necesita comprobarse.",
   roadEstimateNote: "Reserva tiempo adicional para las paradas y las condiciones de la carretera.", scheduledEstimateNote: "Comprueba el horario actual antes de reservar.", serviceEstimateNote: "Confirma el servicio actual antes de reservar.",
-  moreActions: "Más acciones", markBooked: "Marcar como reservado", unmarkBooked: "Deshacer marca de reserva", undoClarification: "Solo quita la marca de Morrovia; no cancela una reserva externa.", editBookingDetails: "Editar detalles", saveBookingDetails: "Guardar detalles", cancelEdit: "Cancelar edición", confirmation: "Referencia de reserva", bookingLink: "Enlace de reserva", bookingNote: "Nota", optionalDetails: "Detalles opcionales", markedByYou: "Reservado · marcado por ti", notMarkedByYou: "No reservado", routeMismatch: "La ruta o el modo cambió. Los detalles de esta reserva se conservaron para que los revises.", missingLegMismatch: "Una reserva de transporte guardada ya no coincide con un trayecto de la ruta. Sus datos se conservaron.", existingBooking: "Se conservó la reserva de transporte existente.",
+  markBooked: "Marcar como reservado", unmarkBooked: "Deshacer marca de reserva", undoClarification: "Solo quita la marca de Morrovia; no cancela una reserva externa.", editBookingDetails: "Editar detalles", saveBookingDetails: "Guardar detalles", cancelEdit: "Cancelar edición", confirmation: "Referencia de reserva", bookingLink: "Enlace de reserva", bookingNote: "Nota", optionalDetails: "Detalles opcionales", markedByYou: "Reservado · marcado por ti", notMarkedByYou: "No reservado", routeMismatch: "La ruta o el modo cambió. Los detalles de esta reserva se conservaron para que los revises.", missingLegMismatch: "Una reserva de transporte guardada ya no coincide con un trayecto de la ruta. Sus datos se conservaron.", existingBooking: "Se conservó la reserva de transporte existente.",
   openBooking: "Abrir reserva", compareCarHire: "Comparar alquiler de coche", generalOmioSearch: "Abrir búsqueda general de Omio", omioFlightSearch: "Abrir búsqueda de vuelos en Omio", omioTrainSearch: "Abrir búsqueda de trenes en Omio",
   omioDetailsNotCarried: "Abre una búsqueda general de Omio. No se transfieren la ruta, la fecha ni el número de viajeros.",
   omioFlightDetailsCarried: "Abre una búsqueda de vuelos con esta ruta y fecha. No se transfiere el número de viajeros; la disponibilidad puede variar.",
@@ -68,7 +68,7 @@ const copyFor = (language: Language) => language === "es" ? {
   modeAndTimeUnknown: "Mode and journey time still need checking.", modeUnknown: "Transport mode still needs checking.",
   timeUnknown: "Journey time still needs checking.", bestOptionNeedsChecking: "The best transport option still needs checking.",
   roadEstimateNote: "Allow extra time for stops and road conditions.", scheduledEstimateNote: "Check the current timetable before booking.", serviceEstimateNote: "Check the current service before booking.",
-  moreActions: "More actions", markBooked: "Mark as booked", unmarkBooked: "Undo booked mark", undoClarification: "Removes only the Morrovia mark; it does not cancel an external booking.", editBookingDetails: "Edit details", saveBookingDetails: "Save details", cancelEdit: "Cancel edit", confirmation: "Booking reference", bookingLink: "Booking link", bookingNote: "Note", optionalDetails: "Optional details", markedByYou: "Booked · marked by you", notMarkedByYou: "Not booked", routeMismatch: "The route or mode changed. These booking details were kept for you to review.", missingLegMismatch: "A saved transport booking no longer matches a journey on this route. Its details were kept.", existingBooking: "Existing transport booking preserved.",
+  markBooked: "Mark as booked", unmarkBooked: "Undo booked mark", undoClarification: "Removes only the Morrovia mark; it does not cancel an external booking.", editBookingDetails: "Edit details", saveBookingDetails: "Save details", cancelEdit: "Cancel edit", confirmation: "Booking reference", bookingLink: "Booking link", bookingNote: "Note", optionalDetails: "Optional details", markedByYou: "Booked · marked by you", notMarkedByYou: "Not booked", routeMismatch: "The route or mode changed. These booking details were kept for you to review.", missingLegMismatch: "A saved transport booking no longer matches a journey on this route. Its details were kept.", existingBooking: "Existing transport booking preserved.",
   openBooking: "Open booking", compareCarHire: "Compare car hire", generalOmioSearch: "Open general Omio search", omioFlightSearch: "Open Omio flight search", omioTrainSearch: "Open Omio train search",
   omioDetailsNotCarried: "Opens a general Omio search. Your route, date and traveller count aren't carried over.",
   omioFlightDetailsCarried: "Opens a flight search with this route and date. Traveller count isn't carried over; availability can vary.",
@@ -209,7 +209,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   useEffect(() => {
     if(!restoredLegId||!items.some(item=>item.leg.id===restoredLegId))return;
     selectJourney(restoredLegId);
-    document.querySelector<HTMLButtonElement>(`[data-transport-leg-id="${CSS.escape(restoredLegId)}"] [data-transport-summary] button`)?.focus();
+    document.querySelector<HTMLButtonElement>(`[data-transport-leg-id="${CSS.escape(restoredLegId)}"] [data-transport-details-toggle]`)?.focus();
     setRestoredLegId(null);
   },[items,restoredLegId]);
 
@@ -275,15 +275,37 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   </section>;
 }
 
+function bookingRouteScope(trip: EasyTTrip, item: ItineraryTransportAgendaLeg) {
+  return JSON.stringify([trip.ownerId, trip.id, item.leg.id, item.leg.mode, item.from.id, item.to.id, item.from.name, item.to.name]);
+}
+
 function TransportCard({ trip, item, language, copy, selected, forReview, onSelect }: {
   trip: EasyTTrip; item: ItineraryTransportAgendaLeg; language: Language; copy: ReturnType<typeof copyFor>; selected: boolean; forReview: boolean; onSelect: () => void;
 }) {
+  const mutation = useTripShellMutation();
   const { leg } = item;
+  const bookingKey = `transport-booking-${leg.id}`;
+  const pendingBooking = mutation.isPending(bookingKey);
+  const routeScope = bookingRouteScope(trip, item);
+  const acknowledgedBooking = useRef<{ scope: string; marked: boolean } | null>(null);
+  const markedOnDocument = transportBookingMarkedByTraveller(item.manualBooking);
+  const documentSettled = !trip.ownerId || mutation.isAccountCopySettled();
+  useEffect(() => {
+    if (documentSettled && !pendingBooking && !item.bookingMismatch) {
+      acknowledgedBooking.current = { scope: routeScope, marked: markedOnDocument };
+    }
+  }, [documentSettled, pendingBooking, item.bookingMismatch, markedOnDocument, routeScope]);
+  const bookingMarked = !item.bookingMismatch && (documentSettled && !pendingBooking ? markedOnDocument
+    : acknowledgedBooking.current?.scope === routeScope && acknowledgedBooking.current.marked);
+  const importedBooking = item.booking && (!item.manualBooking || item.booking.id !== item.manualBooking.id) ? item.booking : null;
+  const canToggleBooking = !item.bookingMismatch && !importedBooking && (Boolean(item.manualBooking) || isPassengerServiceLeg(leg));
+  const bookingDisabled = !mutation.canMutate || pendingBooking
+    || (Boolean(trip.ownerId) && !documentSettled);
   const Icon = iconForLeg(leg.mode);
   const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
-  const state = transportPresentationState(leg, item.booking?.type === "transport");
-  const isNotBooked = !item.booking && isPassengerServiceLeg(leg);
-  const status = isNotBooked ? copy.notBooked : presentationLabel(state, leg, copy, transportBookingMarkedByTraveller(item.manualBooking));
+  const state = transportPresentationState(leg, bookingMarked || importedBooking?.type === "transport");
+  const isNotBooked = state !== "booked" && isPassengerServiceLeg(leg);
+  const status = isNotBooked ? copy.notBooked : presentationLabel(state, leg, copy, bookingMarked);
   const showsEstimatedTiming = durationMinutes !== null && leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm";
   const showStatus = status !== copy.planningEstimate;
   const statusTone = state === "booked" ? "booked" : isNotBooked ? "not-booked" : "attention";
@@ -300,12 +322,28 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
       </div>
       <div className={styles.cardEnd}>
         {forReview ? <span className={styles.status} data-tone="attention"><AlertTriangle aria-hidden="true" focusable="false" /><span>{language === "es" ? "Revisar ruta" : "Route check"}</span></span> : null}
-        {showStatus ? <span className={styles.status} data-tone={statusTone}><StatusIcon aria-hidden="true" focusable="false" /><span>{status}</span></span> : null}
+        {canToggleBooking ? <EasyTButton type="button" variant="quiet" size="small" className={styles.bookingToggle} data-transport-booking-toggle
+          aria-label={`${copy.booked}: ${item.from.name} ${language === "es" ? "a" : "to"} ${item.to.name}`}
+          aria-pressed={bookingMarked} aria-disabled={bookingDisabled || undefined}
+          aria-description={bookingMarked ? copy.undoClarification : undefined}
+          title={bookingMarked ? copy.unmarkBooked : copy.markBooked}
+          onClick={() => {
+            if (bookingDisabled) return;
+            void mutation.mutateTrip((current) => {
+              const candidate = itineraryTransportAgenda(current).find((entry) => entry.leg.id === leg.id);
+              if (!candidate || candidate.bookingMismatch || bookingRouteScope(current, candidate) !== routeScope) return current;
+              if (bookingMarked) return candidate.manualBooking?.id && candidate.manualBooking.id === item.manualBooking?.id
+                ? unmarkTransportBooking(current, candidate.manualBooking.id) : current;
+              if (candidate.booking) return current;
+              return markTransportLegBooked(current, leg.id);
+            }, bookingKey);
+          }}><span className={styles.bookingCircle} aria-hidden="true">{bookingMarked ? <Check focusable="false" /> : null}</span>{copy.booked}</EasyTButton>
+          : showStatus ? <span className={styles.status} data-tone={statusTone}><StatusIcon aria-hidden="true" focusable="false" /><span>{status}</span></span> : null}
         <span className={styles.chevron} aria-hidden="true"><Chevron /></span>
       </div>
       <EasyTButton className={styles.summaryToggle} size="small" variant="quiet" iconOnly aria-expanded={selected}
         aria-label={`${selected ? copy.hideDetails : copy.viewDetails}: ${item.from.name} ${language === "es" ? "a" : "to"} ${item.to.name}`}
-        aria-controls={`transport-detail-${leg.id}`} onClick={onSelect}>{selected ? copy.hideDetails : copy.viewDetails}</EasyTButton>
+        data-transport-details-toggle aria-controls={`transport-detail-${leg.id}`} onClick={onSelect}>{selected ? copy.hideDetails : copy.viewDetails}</EasyTButton>
     </div>
     <div className={styles.detailWrap} id={`transport-detail-${leg.id}`} hidden={!selected}>
       {selected ? <SelectedJourneyDetail trip={trip} item={item} language={language} copy={copy} /> : null}
@@ -321,7 +359,6 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const canChange = hasTransportChoiceAction(trip, recommendedLeg);
   const comparisonInput = !item.bookingMismatch && !item.booking ? transportComparisonInput(trip, leg.id) : null;
   const canCheck = Boolean(comparisonInput && transportComparisonRequestBody(comparisonInput));
-  const canMark = !item.bookingMismatch && (item.manualBooking ? !transportBookingMarkedByTraveller(item.manualBooking) : !item.booking && isPassengerServiceLeg(leg));
   const journeyParts = transportJourneyParts(leg);
   const pendingKey = `transport-choice-${leg.id}`;
   const action = item.booking || item.bookingMismatch || !isFutureDate(item.date) ? null : transportAffiliateActionForLeg(trip, leg, new Date(), item.date);
@@ -338,11 +375,7 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
       {(!item.bookingMismatch && !item.manualBooking && item.booking?.url) ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton> : null}
-      {canMark || canChange || canCheck ? <details className={styles.moreActions} data-transport-more-actions>
-        <summary>{copy.moreActions}</summary>
-        <div className={styles.moreActionsList}>
-          {canMark ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
-          <TripTransportChoiceControl onAdoptComparison={!canCheck ? undefined : (comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
+      {canChange || canCheck ? <TripTransportChoiceControl onAdoptComparison={!canCheck ? undefined : (comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
             if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
             const next=adoptTransportComparison(current,comparison,candidateId);
             if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
@@ -351,12 +384,10 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
             onChange={(identity) => mutation.mutateTrip((current) => identity
               ? selectTripLegTransportChoice(current, leg.id, identity)
               : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
-        </div>
-      </details> : null}
+        : null}
     </div>
     {!item.bookingMismatch && item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
         pending={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)}
-        onUnmark={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.manualBooking!.id), `transport-booking-${leg.id}`)}
         onSave={(details) => mutation.mutateTrip((current) => updateTravellerTransportBookingDetails(current, leg.id, details), `transport-booking-${leg.id}`)} /> : null}
     {item.bookingMismatch ? <div className={styles.bookingMismatch} role="alert"><p>{copy.routeMismatch}</p>
       <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${item.bookingMismatch.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.bookingMismatch!.id), `transport-unmark-${item.bookingMismatch!.id}`)}>{copy.unmarkBooked}</EasyTButton>
@@ -372,9 +403,9 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   </section>;
 }
 
-function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, onUnmark, onSave }: {
+function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, onSave }: {
   booking: NonNullable<ItineraryTransportAgendaLeg["manualBooking"]>; isMarked: boolean; leg: TripLeg; copy: ReturnType<typeof copyFor>; pending: boolean;
-  onUnmark: () => Promise<boolean>; onSave: (details: { confirmation: string; url: string; note: string }) => Promise<boolean>;
+  onSave: (details: { confirmation: string; url: string; note: string }) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmation, setConfirmation] = useState(booking.confirmation ?? "");
@@ -385,8 +416,6 @@ function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, o
   return <div className={styles.manualBooking} data-booked-by-traveller={isMarked ? "true" : "false"} data-booking-leg-id={leg.id}>
     {!editing ? <div className={styles.bookingActions}>
       {booking.url ? <EasyTLinkButton href={booking.url} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="primary" size="small">{copy.openBooking}</EasyTLinkButton> : null}
-      {isMarked ? <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={pending} onClick={() => void onUnmark()}>{copy.unmarkBooked}</EasyTButton>
-        : null}
       <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { resetDraft(); setEditing(true); }}>{copy.editBookingDetails}</EasyTButton>
     </div> : null}
     {!editing && (booking.confirmation || booking.notes?.length) ? <div className={styles.bookingSummary}>

@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import test from "node:test";
@@ -108,7 +107,7 @@ test("manual booking marks and optional details survive guest save, reload, edit
     await view.page.locator(`[data-transport-leg-id="${leg.id}"]`).waitFor();
     const card = view.page.locator(`[data-transport-leg-id="${leg.id}"]`);
     await card.getByRole("button", { name: /View details/ }).click();
-    await openTransportMoreActions(view.page); await view.page.getByRole("button", { name: "Mark as booked" }).click();
+    await view.page.locator(`[data-transport-leg-id="${leg.id}"] [data-transport-booking-toggle]`).click();
     await view.page.locator(`[data-booked-by-traveller="true"][data-booking-leg-id="${leg.id}"]`).waitFor();
     assert.equal(await view.page.getByText("This reflects your confirmation; Morrovia does not verify or change external bookings.", { exact: true }).count(), 0);
 
@@ -140,7 +139,7 @@ test("manual booking marks and optional details survive guest save, reload, edit
     assert.equal(await view.page.getByText("Booking reference: SYNTHETIC-42", { exact: true }).count(), 1);
     assert.equal(await view.page.getByText("Test fixture only", { exact: true }).count(), 1);
 
-    await view.page.getByRole("button", { name: "Undo booked mark" }).click();
+    await view.page.locator(`[data-transport-leg-id="${leg.id}"] [data-transport-booking-toggle]`).click();
     await view.page.locator(`[data-booked-by-traveller="false"][data-booking-leg-id="${leg.id}"]`).waitFor();
     assert.equal(await view.page.getByText("Booking reference: SYNTHETIC-42", { exact: true }).count(), 1, "undo keeps optional details");
     await view.page.reload();
@@ -197,7 +196,7 @@ test("routed road evidence stays a separate reference across Builder and Transpo
       assert.equal(await transport.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
     assert.match(await transport.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').innerText(), /no passenger service/i);
-    await openTransportMoreActions(transport.page); await transport.page.getByRole("button", { name: "Check for alternatives" }).first().click();
+    await transport.page.getByRole("button", { name: "Check for alternatives" }).first().click();
     assert.equal(await transport.page.getByRole("button", { name: /Road · ~6h 30m/ }).count(), 0);
     assert.equal(await transport.page.getByText("Check whether another option is available for this route.", { exact: true }).count(), 1);
     assert.deepEqual(transport.errors, []);
@@ -403,7 +402,7 @@ test("applying a different mode keeps a traveller booking as a visible mismatch 
   try {
     const card = view.page.locator(`[data-transport-leg-id="${trip.legs[0].id}"]`);
     await card.getByRole("button", { name: /View details:/ }).click();
-    await openTransportMoreActions(view.page); await view.page.getByRole("button", { name: "Change transport mode" }).click();
+    await view.page.getByRole("button", { name: "Change transport mode" }).click();
     const dialog = view.page.getByRole("dialog", { name: "Change transport", exact: true });
     await dialog.getByRole("radio", { name: /Road/ }).click();
     await dialog.getByRole("button", { name: "Use road", exact: true }).click();

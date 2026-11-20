@@ -133,7 +133,7 @@ function TransportModeDialog({ checkOnly, trip, leg, onChange, onAdoptComparison
   const basis = (provenance: TripLeg["provenance"]) => provenance === "routing_engine" ? (isSpanish ? "Estimación de la ruta" : "Route estimate") : provenance === "canonical_schedule" ? (isSpanish ? "Estimación del horario" : "Schedule estimate") : provenance === "planning_estimate" ? (isSpanish ? "Estimación de planificación" : "Planning estimate") : provenance === "provider" ? (isSpanish ? "Estimación del proveedor" : "Provider estimate") : null;
   const close = () => { if (!pending) {refresh.cancel(); setOpen(false);} };
   const apply = async () => {
-    if (draft === currentIdentity || pending || !refresh.allowed) return;
+    if (draft === currentIdentity || pending || !refresh.allowed || (checkOnly && applyFailed)) return;
     const freshChoice = supported.find(option => option.identity === draft && comparison?.candidates.some(candidate => candidate.id === option.candidateId) && !savedCandidates.some(saved => saved.id === option.candidateId));
     setApplyFailed(false);
     try {
@@ -141,24 +141,39 @@ function TransportModeDialog({ checkOnly, trip, leg, onChange, onAdoptComparison
       if (saved !== false) {refresh.cancel(); setOpen(false);} else setApplyFailed(true);
     } catch {setApplyFailed(true);}
   };
+  const status = refresh.state.status;
+  const retrieval = comparison?.assessment.retrieval;
+  const empty = checkOnly && status === 'ready' && !canChoose && retrieval !== 'unavailable' && retrieval !== 'blocked';
+  const showRetry = checkOnly && (status === 'error' || applyFailed);
+  const runCheck = () => {
+    setDraft(currentIdentity);
+    setApplyFailed(false);
+    void refresh.refresh();
+  };
   return <>
-    <EasyTButton size="small" variant="quiet" aria-label={checkOnly ? checkLabel : "Change transport mode"} aria-haspopup="dialog" onClick={() => { setDraft(currentIdentity); setDetailsOpen(false); setApplyFailed(false); setOpen(true); }}>{dialogLabel}</EasyTButton>
+    <EasyTButton className={styles.dialogTrigger} variant="secondary" disabled={checkOnly && (pending || !refresh.allowed)}
+      aria-label={checkOnly ? checkLabel : "Change transport mode"} aria-haspopup="dialog"
+      onClick={() => { setDraft(currentIdentity); setDetailsOpen(false); setApplyFailed(false); setOpen(true); if (checkOnly) void refresh.refresh(); }}>{dialogLabel}</EasyTButton>
     <MorroviaContentDialog open={open} onClose={close} className={styles.modeDialog} ariaLabel={dialogLabel} autoFocusSelector='[data-mode-initial="true"]'>
       <div className={styles.dialogContent}>
         <header className={styles.dialogHeader}>
           <div>{departureDate ? <p className={styles.dialogDate}>{formatIsoDate(departureDate, language, { month: "short", day: "numeric", year: "numeric" })}</p> : null}<h2>{from?.name} <span aria-hidden="true">→</span> {to?.name}</h2></div>
           <EasyTButton icon={X} iconOnly size="small" variant="quiet" onClick={close} aria-label={isSpanish ? "Cerrar" : "Close"} data-mode-initial={!canChoose ? "true" : undefined}>Close</EasyTButton>
         </header>
-        {!canChoose ? <p className={styles.prompt}>{checkOnly && refresh.state.status === 'idle'
-          ? (isSpanish ? "Comprueba si hay otra opción para este trayecto." : "Check whether another option is available for this route.")
-          : isSpanish ? "No pudimos confirmar otra forma de viajar en este trayecto." : "We couldn’t confirm another way to travel this route."}</p> : null}
-        {onAdoptComparison ? <div>
-          <EasyTButton size="small" variant="secondary" disabled={pending || !refresh.allowed || refresh.state.status === 'checking'} loading={refresh.state.status === 'checking'} onClick={() => void refresh.refresh()}>{isSpanish ? 'Actualizar opciones' : 'Refresh options'}</EasyTButton>
-          <p role="status" data-transport-comparison-status={refresh.state.status}>{refresh.state.status === 'checking' ? (isSpanish ? 'Comprobando…' : 'Checking…')
-            : refresh.state.status === 'error' ? (isSpanish ? 'No se pudo completar la comprobación. Inténtalo de nuevo.' : refresh.state.error === 'timeout' ? 'The check timed out. Try again.' : 'Could not check this connection. Try again.')
-            : comparison?.assessment.retrieval === 'unavailable' ? (isSpanish ? 'Algunas opciones no se pudieron comprobar.' : 'Some options could not be checked.')
-            : comparison?.assessment.retrieval === 'blocked' ? (isSpanish ? 'Confirma los lugares de este traslado.' : 'Confirm the places for this connection.')
-            : refresh.state.status === 'ready' ? (isSpanish ? 'Comprobación terminada. Confirma los horarios antes de reservar.' : 'Check complete. Confirm schedules before booking.') : ''}</p>
+        {!checkOnly && !canChoose ? <p className={styles.prompt}>{isSpanish ? "No pudimos confirmar otra forma de viajar en este trayecto." : "We couldn’t confirm another way to travel this route."}</p> : null}
+        {onAdoptComparison ? <div className={styles.comparisonFeedback}>
+          {!checkOnly || showRetry ? <EasyTButton size="small" variant="secondary"
+            disabled={pending || !refresh.allowed || status === 'checking'}
+            loading={!checkOnly && status === 'checking'} onClick={checkOnly ? runCheck : () => void refresh.refresh()}>
+            {checkOnly ? (isSpanish ? 'Volver a comprobar' : 'Check again') : (isSpanish ? 'Actualizar opciones' : 'Refresh options')}
+          </EasyTButton> : null}
+          <p role="status" data-transport-comparison-status={status}>{status === 'checking' ? (isSpanish ? 'Comprobando alternativas…' : 'Checking alternatives…')
+            : status === 'error' ? (isSpanish ? 'No se pudo completar la comprobación. Inténtalo de nuevo.' : refresh.state.error === 'timeout' ? 'The check timed out. Try again.' : 'Could not check this connection. Try again.')
+            : retrieval === 'unavailable' ? (isSpanish ? 'Algunas opciones no se pudieron comprobar.' : 'Some options could not be checked.')
+            : retrieval === 'blocked' ? (isSpanish ? 'Confirma los lugares de este traslado.' : 'Confirm the places for this connection.')
+            : empty ? <><strong>{isSpanish ? 'No se confirmaron otras opciones' : 'No other options confirmed'}</strong><span>{isSpanish ? 'Tu plan actual no ha cambiado.' : 'Your current plan is unchanged.'}</span></>
+            : status === 'ready' ? (isSpanish ? 'Comprobación terminada. Confirma los horarios antes de reservar.' : 'Check complete. Confirm schedules before booking.')
+            : checkOnly ? (isSpanish ? 'El trayecto cambió. Cierra y vuelve a comprobarlo.' : 'This connection changed. Close and check again.') : ''}</p>
         </div> : null}
         {routeGuidance.length ? <div className={styles.estimateDetails} data-reviewed-route-guidance>
           {routeGuidance.map(item=><p key={item.id}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.label}</a> — {item.limitation}</p>)}
@@ -183,8 +198,8 @@ function TransportModeDialog({ checkOnly, trip, leg, onChange, onAdoptComparison
         <p className={styles.planNote}>{isSpanish ? "Esto cambia tu plan, no una reserva." : "This changes your plan, not a booking."}</p>
         <EasyTButton size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`${id}-estimates`} onClick={() => setDetailsOpen((value) => !value)}>{isSpanish ? "Detalles y estimaciones" : "Journey details and estimates"}</EasyTButton>
         <div id={`${id}-estimates`} hidden={!detailsOpen} className={styles.estimateDetails}><EntryReveal active={detailsOpen} />{choice.provider ? <p>{choice.provider}</p> : null}{choice.details.map((detail, index) => <p key={index}>{detail}</p>)}</div>
-        {applyFailed ? <p role="alert">{isSpanish ? 'No se pudo aplicar esta opción. Actualiza las opciones antes de volver a intentarlo.' : 'Could not apply this option. Refresh options before trying again.'}</p> : null}
-        <footer className={styles.dialogFooter}><EasyTButton variant="secondary" onClick={close} disabled={pending}>{isSpanish ? "Cancelar" : "Cancel"}</EasyTButton>{canChoose ? <EasyTButton variant="primary" disabled={pending || !refresh.allowed || !options.some(option => option.identity === draft) || draft === currentIdentity} loading={pending} onClick={() => void apply()}>{isSpanish ? "Usar" : "Use"} {label(choice.mode).toLocaleLowerCase()}</EasyTButton> : null}</footer>
+        {applyFailed ? <p role="alert">{isSpanish ? 'No se pudo aplicar esta opción. Actualiza las opciones antes de volver a intentarlo.' : 'Could not apply this option. Check again before trying to use it.'}</p> : null}
+        <footer className={styles.dialogFooter}><EasyTButton variant="secondary" onClick={close} disabled={pending}>{checkOnly && !canChoose && status !== "checking" ? (isSpanish ? "Listo" : "Done") : (isSpanish ? "Cancelar" : "Cancel")}</EasyTButton>{canChoose ? <EasyTButton variant="primary" disabled={pending || !refresh.allowed || (checkOnly && applyFailed) || !options.some(option => option.identity === draft) || draft === currentIdentity} loading={pending} onClick={() => void apply()}>{isSpanish ? "Usar" : "Use"} {label(choice.mode).toLocaleLowerCase()}</EasyTButton> : null}</footer>
       </div>
     </MorroviaContentDialog>
   </>;

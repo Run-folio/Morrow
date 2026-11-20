@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';import test from 'node:test';import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {renderBuilder,builderBrowserTestsEnabled} from './helpers/builder-render.ts';
 import {japanTrip} from './fixtures/transport-choice.ts';import {explicit} from './helpers/transport-revision-server.ts';
@@ -13,7 +12,7 @@ for(const browserName of ['chromium','webkit']as const)for(const ownerId of [nul
  transferRequest:async({legs})=>{requests++;return{status:200,body:await explicit(legs[0]as TripLeg)}},
  accountRequest:async({method,trip:payload})=>{if(method==='GET')return{status:200,body:{trip:cloud}};assert.equal(method,'PUT');const submitted=requireReadableTripDocument(payload);assert.equal(submitted.updatedAt,cloud.updatedAt,'exact CAS revision required');writes++;observed.push({phase,before:JSON.parse(JSON.stringify(cloud)),submitted:JSON.parse(JSON.stringify(submitted))});cloud=canonicalTripForOwner(ownerId!,submitted,nextTripUpdatedAt(cloud.updatedAt));return{status:200,body:{trip:cloud}}}});
  try{
-  const card=view.page.locator('[data-transport-leg-id]').first();await card.getByRole('button',{name:/View details:/}).click();await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
+  const card=view.page.locator('[data-transport-leg-id]').first();await card.getByRole('button',{name:/View details:/}).click();await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
   const records=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort()))),before=await records();
   await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
   assert.equal(requests,1);assert.equal(writes,0);assert.equal(await records(),before);assert.match(await dialog.innerText(),/6h 30m/);assert.match(await dialog.innerText(),/8h/);
