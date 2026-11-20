@@ -25,7 +25,6 @@ export type TripStarterContentProps = {
  onClose: () => void;
  initialStayState?: JourneyLocalFinderInitialState;
  initialActivities?: ActivityInventoryItem[];
- enableSwipeDeck?: boolean;
 };
 
 function locationLabel(trip: EasyTTrip, stop: TripStop) {
@@ -34,7 +33,7 @@ function locationLabel(trip: EasyTTrip, stop: TripStop) {
 }
 
 /** Page-specific composition of existing shared controls and recommendation lanes. */
-export function TripStarterContent({trip,onClose,initialStayState,initialActivities,enableSwipeDeck=process.env.NEXT_PUBLIC_MORROVIA_STARTER_SWIPE_PILOT==="true"}:TripStarterContentProps) {
+export function TripStarterContent({trip,onClose,initialStayState,initialActivities}:TripStarterContentProps) {
  const mutation=useTripShellMutation();
  const stops=[...trip.stops].sort((a,b)=>a.order-b.order);
  const [stopId,setStopId]=useState((stops.find(stop=>(stop.nights ?? 0)>0) ?? stops[0])?.id ?? "");
@@ -146,7 +145,7 @@ export function TripStarterContent({trip,onClose,initialStayState,initialActivit
          <EasyTSelect label="Day" value={dayId} onChange={event=>{scheduleScope.current+=1;setDayId(event.target.value);}}><option value="">Choose a day</option>{days.map(day=><option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}</EasyTSelect>
          <div><EasyTButton size="small" disabled={!dayId || saving || !mutation.mutationReady} onClick={()=>{void schedule();}}>Add to day</EasyTButton><EasyTButton size="small" variant="quiet" onClick={()=>clearSchedule(true)}>Cancel</EasyTButton></div>
        </section> : null}
-       <div ref={recommendationRegion} className={styles.recommendations} inert={idea ? true : undefined}>{days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onDeckSave={enableSwipeDeck?saveDeckIdea:undefined} onUndoDeckSave={enableSwipeDeck?undoDeckIdea:undefined} onSchedule={openSchedule} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}</div>
+       <div ref={recommendationRegion} className={styles.recommendations} inert={idea ? true : undefined}>{days[0] ? <LiveActivityInventory key={JSON.stringify([stop.id,destinationKey])} trip={trip} stop={stop} day={days[0]} scheduleLabel="Choose day" placement="trip_starter" workspace="itinerary" initialItems={initialActivities} emptyLabel="No experiences found" onSave={saveIdea} onDeckSave={saveDeckIdea} onUndoDeckSave={undoDeckIdea} onSchedule={openSchedule} isPending={()=>saving || !mutation.mutationReady}/> : <MorroviaSectionStatus title="No days available for this stop" />}</div>
        <EasyTLinkButton className={styles.mobileMore} variant="quiet" size="small" onClick={onClose} href={itineraryWorkspaceHref(trip.id)}>Saved ideas in Itinerary <ArrowRight aria-hidden="true" /></EasyTLinkButton>
      </section>
    </div> : <MorroviaSectionStatus title="No stops to explore" />}
