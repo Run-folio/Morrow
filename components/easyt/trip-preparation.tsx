@@ -243,7 +243,7 @@ export function TripPreparationCards({ tasks, tripId, language, onStatusChange, 
           disabled={isPending(task.id)}
           onClick={() => onStatusChange(task.id, reviewed ? "to-review" : "sorted")}
         ><span className={styles.overviewPrepReviewMark}><Check aria-hidden="true" /></span></EasyTButton>
-        {isPreviewInsurance || (!previewProvider && isSponsoredLink) ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
+        {!previewProvider && isSponsoredLink ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
       </article>;
     })}
   </>;

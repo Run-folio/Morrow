@@ -13,5 +13,5 @@ test('transfer controls match leg IDs, support keyboard, and never substitute a 
  assert.match(view,/transferWarning\(step.leg\)/);assert.match(view,/transferWarning\(departureStep.leg\)/);
  assert.match(view,/reviewLegIds.includes\(leg.id\)/);assert.match(view,/unplacedTransfer/);
  const info=read('overview-info.tsx');for(const event of ['onFocus','Escape','onClick','onPointerEnter','aria-describedby'])assert.ok(info.includes(event));
- assert.match(prep,/isPreviewInsurance \|\| \(!previewProvider && isSponsoredLink\)/);
+ assert.match(prep,/\{!previewProvider && isSponsoredLink/);
 });

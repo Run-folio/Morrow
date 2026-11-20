@@ -44,7 +44,7 @@ test('All three practical Overview cards keep details inside their information t
   assert.doesNotMatch(cards, /overviewPrepAdLabel/);
   const article = cards.slice(cards.indexOf('return <article'));
   assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>/);
-  assert.match(article, /isPreviewInsurance \|\| \(!previewProvider && isSponsoredLink\) \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
+  assert.match(article, /\{!previewProvider && isSponsoredLink \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
   assert.match(article, /previewProvider \? <EasyTButton[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
   assert.match(article, /role="checkbox"[\s\S]*aria-checked=\{reviewed\}/);
 });
