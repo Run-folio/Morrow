@@ -554,11 +554,14 @@ test("saved Bali intake issues are superseded only by the same current verified 
     (t: EasyTTrip) => {t.brief.structuredBrief!.removedPlaceMentionIds = [mentionId];},
     (t: EasyTTrip) => {t.brief.intent!.route!.destinations[0]!.id = "another-occurrence";},
   ]) {
-    const invalid = structuredClone(trip); invalidate(invalid); assert.equal(remaining(invalid).length, 2);
+    const invalid = structuredClone(trip); invalidate(invalid); assert.ok(remaining(invalid).some(rule => rule.includes("region-requires-base")));
   }
-  trip.brief.structuredBrief!.placeIssues!.push(...areaIssues("second-bali"));
-  assert.equal(remaining(trip).length, 2);
-  assert.ok(remaining(trip).every(rule => rule.endsWith("second-bali")));
+  const withoutBase = structuredClone(trip);
+  withoutBase.stops = [];
+  assert.ok(remaining(withoutBase).some(rule => rule.includes("missing-routable-destination")));
+  // The generic intake issue is trip-wide, even when tagged to the unresolved first area.
+  trip.brief.structuredBrief!.placeIssues = [...areaIssues("first-unresolved-area"), areaIssues(mentionId)[0]!];
+  assert.deepEqual(remaining(trip), ["place-intelligence-region-requires-base-first-unresolved-area"]);
   const unrelated = placeIssue({code:"unresolved_place",severity:"error",blocksRoute:true,mentionId:"another",sourceText:"Unknown",reason:"Confirm another destination."});
   trip.brief.structuredBrief!.placeIssues!.push(unrelated);
   const unrelatedId = (t: EasyTTrip) => reviewTrip(t).find(i=>i.rule.endsWith("unresolved-place-another"))!.id;

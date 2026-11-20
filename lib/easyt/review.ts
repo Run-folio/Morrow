@@ -35,15 +35,13 @@ function stablePlaceIssueToken(value: string) {
 
 /** Intake facts are immutable. A resolved area requires a current, exact occurrence link. */
 function currentPlaceIssue(trip: EasyTTrip, issue: PlaceIssue): boolean {
-  if (issue.code !== "region_requires_base" && issue.code !== "missing_routable_destination") return true;
-  const brief = trip.brief.structuredBrief;
-  const route = trip.brief.intent?.route;
-  const area = route?.destinations.find(intent => intent.kind === "planning_area" && intent.id === issue.mentionId);
-  const areaScoped = area || brief?.placeIssues?.some(other => other.code === "region_requires_base" && other.mentionId === issue.mentionId);
-  if (!areaScoped && issue.code === "missing_routable_destination") {
-    // A legacy trip-wide absence is not a demand for a base for any particular area.
+  if (issue.code === "missing_routable_destination") {
+    // Trip-wide intake absence; its first mention ID is not an area-specific requirement.
     return !trip.stops.some(stop => isCurrentVerifiedRouteBase(trip, stop));
   }
+  if (issue.code !== "region_requires_base") return true;
+  const brief = trip.brief.structuredBrief;
+  const area = trip.brief.intent?.route?.destinations.find(intent => intent.kind === "planning_area" && intent.id === issue.mentionId);
   if (!area || area.resolution !== "resolved" || !issue.canonicalPlaceId
     || area.selectedPlace?.canonicalPlaceId !== issue.canonicalPlaceId
     || brief?.removedPlaceMentionIds?.includes(issue.mentionId)) return true;
@@ -629,9 +627,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       proposedChange: null,
     }, results.length));
   });
-  const hasCurrentVerifiedBase = trip.stops.some(stop => isCurrentVerifiedRouteBase(trip,stop));
   let historicalIndex = results.length;
   [...(trip.brief.structuredBrief?.placeIssues ?? [])]
+    .filter(issue => issue.code !== "missing_routable_destination" || currentPlaceIssue(trip, issue))
     .sort((left, right) => {
       const leftKey = `${left.code}:${left.mentionId}`;
       const rightKey = `${right.code}:${right.mentionId}`;
@@ -639,10 +637,8 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     })
     .forEach((issue) => {
       // Keep other saved recommendation IDs stable when an intake warning disappears.
-      const historicallyVisible = issue.code !== "missing_routable_destination" || !hasCurrentVerifiedBase;
-      const index = historicalIndex;
-      if (historicallyVisible) historicalIndex++;
-      if (!currentPlaceIssue(trip, issue)) return;
+      const index = historicalIndex++;
+      if (issue.code === "region_requires_base" && !currentPlaceIssue(trip, issue)) return;
       const canonicalPlaceId = issue.canonicalPlaceId;
       const affectedStopIds = canonicalPlaceId
         ? new Set(trip.stops.filter((stop) => stop.id === canonicalPlaceId || stop.canonicalPlaceId === canonicalPlaceId || stop.providerId === canonicalPlaceId).map((stop) => stop.id))
