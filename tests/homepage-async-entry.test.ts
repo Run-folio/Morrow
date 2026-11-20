@@ -6,7 +6,7 @@ import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
 import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
 import {homepageSnapshotForStopSubmission,commitHomepageHandoff,homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint,homepagePreflightIssues,
  projectHomepageInput,homepageReceiptForProjection,homepageHandoffMatchesTrip,reusableHomepageReceipt,reservePendingDescribeHandoff,pendingHomepageSubmissionForOwner,pendingIntakeReceiptForOwner,pendingHomepageHandoffForOwner,createPendingIntakeReceipt,HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
-import {createDurableHomepagePersistence,prepareIntakeAcknowledgement} from '../lib/easyt/homepage-persistence.ts';
+import {createDurableHomepagePersistence,prepareIntakeAcknowledgement,readDurableHomepageState} from '../lib/easyt/homepage-persistence.ts';
 import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
 import {prepareTripDocumentForWrite} from '../lib/easyt/trip-document.ts';
 import {homepageInputStorageKey} from '../lib/easyt/private-browser-context.ts';
@@ -266,4 +266,59 @@ test('explicit pending continuation uses the actual resume callback without clea
  actualCallback('resumePendingSubmission',scope)();await tick();
  if(mode==='match'){assert.deepEqual(seen.hrefs,[`/journey/new?homeDraft=1&handoff=${receipt.handoffId}&resumePending=1`]);assert.equal(reads,1);}else{assert.deepEqual(seen.hrefs,[]);if(mode==='edited-memory')assert.equal(reads,0);}
  }
+});
+
+test('Home preserves unapplied typed dates when a denied submit is explicitly retried under the same owner',async()=>{
+ const touched:string[]=[];
+ const deniedWin={addEventListener:()=>{},get localStorage(){touched.push('localStorage getter');throw new DOMException('disposable denied fixture','SecurityError')},get indexedDB(){touched.push('indexedDB getter');throw new DOMException('disposable denied fixture','SecurityError')}};
+ const original=Object.getOwnPropertyDescriptor(globalThis,'window');Object.defineProperty(globalThis,'window',{configurable:true,value:deniedWin});
+ try{
+ const {scope:submission,seen:submitted}=resumeScope('owner-a');
+ const {scope,seen,initial}=hydrationScope(readDurableHomepageState);scope.homepageEditedRef.current=true;
+ const raw={current:{start:'2027-03-06'} as Record<string,string>};let attempt=0;
+ const bindings={...submission,...scope,window:deniedWin,updateDateTypedDraft:(value:Record<string,string>)=>{raw.current=value},dateTypedDraftRef:raw,
+  setRecoveryReadAttempt:(f:(i:number)=>number)=>{attempt=f(attempt)},setLoading:()=>{},updateSnapshot:()=>{},recoveryBlocked:false};
+ await actualCallback('submit',bindings)();assert.deepEqual(touched,['localStorage getter']);assert.equal(scope.homepageReadyRef.current,false);assert.deepEqual(submitted.hrefs,[]);assert.match(seen.errors.at(-1)!,/Keep this tab open and try again/);assert.equal(scope.snapshotRef.current,initial);assert.equal(raw.current.start,'2027-03-06');
+ actualCallback('retryRecoveryRead',bindings)();assert.equal(attempt,1);
+ const cleanup=actualCallback('hydrate',bindings)() as ()=>void;await tick();assert.deepEqual(touched,['localStorage getter','localStorage getter']);assert.equal(scope.snapshotRef.current,initial);assert.equal(scope.homepageReadyRef.current,false);cleanup();
+ assert.equal(raw.current.start,'2027-03-06','retry must preserve a same-owner unapplied date');
+ }finally{if(original)Object.defineProperty(globalThis,'window',original);else Reflect.deleteProperty(globalThis,'window')}
+});
+test('opaque native storage with denied IndexedDB remains unavailable on repeated recovery attempts',async()=>{
+ const log:string[]=[];
+ const denied=()=>{log.push('native operation');throw new DOMException('synthetic','SecurityError')};
+ const native={get length(){return denied()},key:denied,getItem:denied,setItem:denied,removeItem:denied};
+ const win={addEventListener:()=>{},get localStorage(){log.push('native getter');return native},get indexedDB(){log.push('IDB getter');throw new DOMException('synthetic','SecurityError')}};
+ const original=Object.getOwnPropertyDescriptor(globalThis,'window');Object.defineProperty(globalThis,'window',{configurable:true,value:win});
+ try{for(let i=0;i<2;i++)assert.deepEqual(await readDurableHomepageState('owner-a'),{kind:'unavailable',reason:'storage-access'});assert.deepEqual(log,['native getter','IDB getter','native getter','IDB getter']);}
+ finally{if(original)Object.defineProperty(globalThis,'window',original);else Reflect.deleteProperty(globalThis,'window')}
+});
+
+test('Home retains a newer raw date across same-owner hydration but never carries it into another owner or guest',async()=>{
+ const old=deferred<unknown>();
+ const {scope,initial}=hydrationScope(()=>old.promise);
+ const raw={current:{end:'2027-03-08'} as Record<string,string>};
+ const props={...scope,updateDateTypedDraft:(v:Record<string,string>)=>{raw.current=v}};
+ const cleanup=actualCallback('hydrate',props)() as ()=>void;
+ raw.current={end:'2027-03-12'};
+ const durable={...initial,prompt:'normal recovered trip'};
+ old.resolve({kind:'ready',storedInput:{snapshot:durable}});await tick();cleanup();
+ assert.equal(props.snapshotRef.current,durable,'normal stored input still replaces unedited snapshot');
+ assert.deepEqual(raw.current,{end:'2027-03-12'});
+ for(const ownerId of ['owner-b',null]){
+  props.snapshotRef.current=initial;raw.current={start:'2027-03-10'};
+  const current={...props,ownerId,ownerIdRef:{current:ownerId},readDurableHomepageState:async()=>({kind:'unavailable'})};
+  const end=actualCallback('hydrate',current)() as ()=>void;await tick();
+  assert.deepEqual(raw.current,{});assert.equal(current.snapshotRef.current.ownerId,ownerId);assert.equal(current.snapshotRef.current.prompt,'');end();
+ }
+});
+
+test('Home masks the controlled picker draft during owner transitions without falling back to internal text',()=>{
+ let draft:ts.Expression|undefined;
+ const walk=(node:ts.Node)=>{if(ts.isPropertyAssignment(node)&&node.name.getText(ast)==='dateTypedDraft')draft=node.initializer;ts.forEachChild(node,walk)};walk(ast);
+ assert.ok(draft);
+ const value=new Function('sessionPending','snapshot','ownerId','dateTypedDraft','return ('+draft.getText(ast)+')');
+ const typed={start:'2027-03-06'},snapshot={ownerId:'owner-a'};
+ assert.deepEqual(value(false,snapshot,'owner-a',typed),{start:typed.start,end:''});
+ for(const [pending,ownerId] of [[true,'owner-a'],[false,'owner-b'],[false,null]])assert.deepEqual(value(pending,snapshot,ownerId,typed),{start:'',end:''});
 });

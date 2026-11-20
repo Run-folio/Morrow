@@ -165,12 +165,12 @@ export default function HomeTripStarter() {
     homepageReadyRef.current = false;
     setRecoveryBlocked(true);
     setPendingSubmission(null);
-    updateDateTypedDraft({});
     if (sessionPending) return () => { active = false; };
     cancelSubmission();
     setCaptureError("");
     // Do not show another owner's input while that scope is being inspected.
     if (snapshotRef.current.ownerId !== ownerId) {
+      updateDateTypedDraft({});
       const scoped = emptySnapshot(ownerId);
       snapshotRef.current = scoped;
       storedInputRef.current = { snapshot: scoped };
@@ -495,7 +495,8 @@ export default function HomeTripStarter() {
       budget: snapshot.budget.state === "selected" ? snapshot.budget.value : null,
       onBudgetChange: (budget) => updateSnapshot((current) => ({ ...current, budget: budget ? { state: "selected", value: budget } : { state: "cleared" } })),
       datesChosen: snapshot.dates.state === "selected",
-      dateTypedDraft,
+      // Keep this picker controlled, including while the next owner is being checked.
+      dateTypedDraft: { start: "", end: "", ...(!sessionPending && snapshot.ownerId === ownerId ? dateTypedDraft : {}) },
       onDateTypedDraftChange: (boundary, raw) => {
         cancelSubmission();
         updateDateTypedDraft({ ...dateTypedDraftRef.current, [boundary]: raw });
