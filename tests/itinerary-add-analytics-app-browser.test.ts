@@ -74,7 +74,7 @@ test("real app counts accepted manual, suggestion, Viator fixture and Food adds 
     // Consent off: the canonical item persists, with no deferred analytics to replay.
     await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
     let dialog = page.getByRole("dialog", { name: "Add to Morning on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own" }).fill("Private morning plan");
+    await dialog.getByRole("textbox", { name: "Activity name" }).fill("Private morning plan");
     await dialog.getByRole("button", { name: "Add to Morning" }).click();
     await planner.getByText("Private morning plan", { exact: true }).waitFor();
     assert.equal((await addedCalls(page)).length, 0);
@@ -83,7 +83,7 @@ test("real app counts accepted manual, suggestion, Viator fixture and Food adds 
     // A failed recovery write leaves the draft retryable and emits nothing.
     await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
     dialog = page.getByRole("dialog", { name: "Add to Morning on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own" }).fill("Private retry plan");
+    await dialog.getByRole("textbox", { name: "Activity name" }).fill("Private retry plan");
     await page.evaluate(() => { (window as typeof window & { __failNextRecovery?: boolean }).__failNextRecovery = true; });
     await dialog.getByRole("button", { name: "Add to Morning" }).click();
     assert.equal((await addedCalls(page)).length, 0);
@@ -96,7 +96,7 @@ test("real app counts accepted manual, suggestion, Viator fixture and Food adds 
     // The same manual title is a canonical no-op, including after a repeated click.
     await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
     dialog = page.getByRole("dialog", { name: "Add to Morning on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own" }).fill("Private retry plan");
+    await dialog.getByRole("textbox", { name: "Activity name" }).fill("Private retry plan");
     await dialog.getByRole("button", { name: "Add to Morning" }).click();
     assert.equal((await addedCalls(page)).length, 1);
     await dialog.getByRole("button", { name: "Close Add panel" }).click();
@@ -141,7 +141,7 @@ test("real app counts accepted manual, suggestion, Viator fixture and Food adds 
     await page.evaluate(() => { (window as typeof window & { gtag?: (...args: unknown[]) => void }).gtag = () => { throw new Error("Fixture analytics failure"); }; });
     await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
     dialog = page.getByRole("dialog", { name: "Add to Morning on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own" }).fill("No telemetry plan");
+    await dialog.getByRole("textbox", { name: "Activity name" }).fill("No telemetry plan");
     await dialog.getByRole("button", { name: "Add to Morning" }).click();
     await planner.getByText("No telemetry plan", { exact: true }).waitFor();
     assert.equal((await addedCalls(page)).length, 5, "analytics failure cannot undo canonical persistence");

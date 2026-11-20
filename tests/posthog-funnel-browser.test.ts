@@ -64,7 +64,7 @@ test("direct itinerary slot additions emit once after acceptance and only with a
       await page.goto(`${base}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-itinerary--default&viewMode=story`);
       await page.getByRole("button", { name: /Add plan to .* morning/i }).click();
       const dialog = page.getByRole("dialog", { name: /Add to morning on Day 1/i });
-      await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Private morning plan");
+      await dialog.getByRole("textbox", { name: "Activity name", exact: true }).fill("Private morning plan");
       await dialog.getByRole("button", { name: "Add to Morning" }).click();
       await page.getByText("Private morning plan", { exact: true }).first().waitFor();
       const calls = await page.evaluate(() => (window as typeof window & { __analyticsCalls?: unknown[][] }).__analyticsCalls ?? []) as unknown[][];

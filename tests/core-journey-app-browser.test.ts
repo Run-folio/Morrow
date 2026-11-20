@@ -594,7 +594,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await planner.waitFor();
   await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
   const dialog = page.getByRole("dialog", { name: /Add to morning on Day 1/i });
-  await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Morning walk fixture");
+  await dialog.getByRole("textbox", { name: "Activity name", exact: true }).fill("Morning walk fixture");
   await dialog.getByRole("button", { name: "Add to Morning" }).click();
   await planner.locator('[data-day-part="morning"]').getByText("Morning walk fixture", { exact: true }).waitFor();
   await page.getByRole("textbox", { name: "Add day note" }).fill("Remember train tickets fixture");

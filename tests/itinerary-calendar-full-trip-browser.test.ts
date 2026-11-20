@@ -44,9 +44,9 @@ async function openMorningAdd(page: any, sheet: any) {
   if (await direct.count()) await direct.first().click();
   else {
     await sheet.getByRole('button', { name: 'Add plan', exact: true }).click();
-    const chooser = page.getByRole('dialog', { name: 'Add a plan', exact: true });
+    const chooser = page.getByRole('dialog', { name: 'Choose a time of day', exact: true });
     await chooser.getByRole('button', { name: 'Morning', exact: true }).click();
-    await chooser.getByRole('button', { name: 'New plan', exact: true }).click();
+    await chooser.getByRole('button', { name: 'Find or add an activity', exact: true }).click();
   }
 }
 
@@ -284,10 +284,10 @@ test("Mobile day sheet preserves Add drafts through child-modal resize and commi
     const before = await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
     await openMorningAdd(page, sheet);
     const add = page.locator('dialog[class*="contextualAddDialog"]');
-    await add.getByLabel('Add your own', { exact: true }).fill('Preserved mobile draft');
+    await add.getByLabel('Activity name', { exact: true }).fill('Preserved mobile draft');
     for (const width of [899, 900, 901, 1099, 1100, 1101, 390]) {
       await page.setViewportSize({ width, height: 844 });
-      assert.equal(await add.getByLabel('Add your own', { exact: true }).inputValue(), 'Preserved mobile draft');
+      assert.equal(await add.getByLabel('Activity name', { exact: true }).inputValue(), 'Preserved mobile draft');
       assert.equal(await add.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
       await page.waitForFunction(() => document.querySelector('dialog[class*="contextualAddDialog"]')?.contains(document.activeElement));
       assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
@@ -297,7 +297,7 @@ test("Mobile day sheet preserves Add drafts through child-modal resize and commi
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true, 'child Escape must keep day sheet open');
     assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), before);
     await openMorningAdd(page, sheet);
-    await add.getByLabel('Add your own', { exact: true }).fill('Confirmed mobile plan');
+    await add.getByLabel('Activity name', { exact: true }).fill('Confirmed mobile plan');
     await add.getByRole('button', { name: 'Add to Morning', exact: true }).click();
     await sheet.getByRole('button', { name: 'Confirmed mobile plan', exact: true }).waitFor();
     assert.equal(await page.locator('[data-itinerary-activity-id]').count(), before.length + 1);

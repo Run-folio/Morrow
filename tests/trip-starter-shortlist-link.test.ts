@@ -12,25 +12,27 @@ import type { EasyTTrip, TripStop } from "../lib/easyt/trip.ts";
 const source=ts.createSourceFile("trip-starter.tsx",readFileSync(new URL("../components/easyt/trip-starter.tsx",import.meta.url),"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const selectors=new Map<string,string>();
 let footerHref="";
+let footerCondition="";
 function visit(node:ts.Node) {
  if(ts.isVariableDeclaration(node) && node.initializer && ["stops","savedStays","shortlistStop"].includes(node.name.getText(source))) selectors.set(node.name.getText(source),node.initializer.getText(source));
- if(ts.isJsxElement(node) && node.openingElement.tagName.getText(source)==="EasyTLinkButton" && node.children.some(child=>ts.isJsxText(child) && child.text.includes("View shortlist"))) {
+ if(ts.isJsxElement(node) && node.openingElement.tagName.getText(source)==="EasyTLinkButton" && node.children.some(child=>ts.isJsxText(child) && child.text.includes("View stay shortlist"))) {
   const href=node.openingElement.attributes.properties.find(attr=>ts.isJsxAttribute(attr) && attr.name.getText(source)==="href") as ts.JsxAttribute;
   if(href?.initializer && ts.isJsxExpression(href.initializer) && href.initializer.expression) footerHref=href.initializer.expression.getText(source);
+  if(ts.isConditionalExpression(node.parent)) footerCondition=node.parent.condition.getText(source);
  }
  ts.forEachChild(node,visit);
 }
 visit(source);
 function href(trip:EasyTTrip,selectedStopId:string) {
- assert.equal(selectors.size,3);assert.ok(footerHref);
+ assert.equal(selectors.size,3);assert.ok(footerHref);assert.ok(footerCondition);
  const declarations=[...selectors].map(([name,value])=>`const ${name}=${value};`).join("\n");
- return runInNewContext(`${declarations}\n${footerHref}`,{trip,stop:trip.stops.find(stop=>stop.id===selectedStopId),shortlistedStays,stayWorkspaceHref}) as string;
+ return runInNewContext(`${declarations}\n${footerCondition} ? (${footerHref}) : null`,{trip,stop:trip.stops.find(stop=>stop.id===selectedStopId),shortlistedStays,stayWorkspaceHref}) as string | null;
 }
 const stop=(id:string,order:number,canonicalPlaceId=id):TripStop=>({id,order,name:canonicalPlaceId,country:"Japan",canonicalPlaceId,nights:2,latitude:35,longitude:135,arrivalDate:"2026-11-10",departureDate:"2026-11-12"});
 function fixture(stops:TripStop[],savedStopIds:string[]) {
  return {id:"trip-starter-links",stops,brief:{stayShortlist:savedStopIds.map(stopId=>({stopId,destinationKey:stayShortlistDestinationKey(stops.find(stop=>stop.id===stopId)!),placeId:`hotel-${stopId}`,provider:"openstreetmap",name:"Example hotel"}))}} as EasyTTrip;
 }
-const target=(link:string)=>{const url=new URL(link,"https://morrovia.invalid");assert.equal(url.hash,"#stay-shortlist");return url.searchParams.get("stop");};
+const target=(link:string|null)=>{assert.ok(link);const url=new URL(link,"https://morrovia.invalid");assert.equal(url.hash,"#stay-shortlist");return url.searchParams.get("stop");};
 
 test("Starter shortlist link reaches a later saved stop from the first location",()=>{
  const trip=fixture([stop("tokyo",0),stop("kyoto",1)],["kyoto"]);
@@ -51,7 +53,7 @@ test("Starter shortlist link ignores removed stops and stale destination binding
  trip.stops[0]={...trip.stops[0]!,canonicalPlaceId:"replacement"};
  assert.equal(target(href(trip,"first")),"later");
 });
-test("Starter empty shortlist keeps a safe Stay destination and anchor",()=>{
+test("Starter empty shortlist does not offer a link to absent saved stays",()=>{
  const trip=fixture([stop("first",0)],[]);
- assert.equal(href(trip,"first"),"/journey/trip-starter-links/stay#stay-shortlist");
+ assert.equal(href(trip,"first"),null);
 });

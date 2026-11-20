@@ -519,7 +519,7 @@ export function MorroviaFormDialog({
     onClick={(event) => { if (event.target === event.currentTarget) onCancel(); }}
   >
     <form className={styles.dialogForm} onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
-      <p className={styles.formEyebrow}>{eyebrow}</p>
+      {eyebrow ? <p className={styles.formEyebrow}>{eyebrow}</p> : null}
       <h2 id={titleId}>{title}</h2>
       <p id={detailId} className={styles.dialogDetail}>{detail}</p>
       <div className={styles.dialogFields}>{children}</div>

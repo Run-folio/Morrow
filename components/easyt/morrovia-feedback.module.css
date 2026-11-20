@@ -241,3 +241,5 @@
 @media (prefers-reduced-motion: reduce) {
   .saveStatus[data-state="saving"] svg { animation: none; }
 }
+
+.inlineHint { margin: 4px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }

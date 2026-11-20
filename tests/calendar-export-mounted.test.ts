@@ -23,7 +23,7 @@ async function view(name: 'chromium' | 'webkit', connected = true, mobile = fals
         page.setDefaultTimeout(8000);
         page.on('pageerror', e => errors.push(e.message));
         await page.goto(fixture.origin + '/journey/calendar-trip/itinerary');
-        await page.getByRole('button', { name: 'Add to calendar', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Add to Google Calendar', exact: true }).waitFor();
         return { fixture, page, external, errors, async close() { try {
                 writeFileSync(`output/playwright/${name}-${fixture.schema}.json`, JSON.stringify({ url: page.url(), body: await page.locator('body').innerText(), errors, external }, null, 2));
                 await page.screenshot({ path: `output/playwright/${name}-${fixture.schema}.png`, fullPage: true });
@@ -36,7 +36,7 @@ async function view(name: 'chromium' | 'webkit', connected = true, mobile = fals
         throw e;
     }
 }
-async function open(page: Page) { await page.getByRole('button', { name: /^(Add to calendar|Send changes)$/ }).click(); await page.getByRole('dialog').waitFor(); await page.getByRole('button', { name: 'Preview events', exact: true }).waitFor(); await page.getByRole('button', { name: 'Preview events', exact: true }).isEnabled(); await page.waitForFunction(() => !document.querySelector('[role="status"]')?.textContent?.includes('Checking calendar')); }
+async function open(page: Page) { await page.getByRole('button', { name: /^(Add to Google Calendar|Send changes)$/ }).click(); await page.getByRole('dialog').waitFor(); await page.getByRole('button', { name: 'Preview events', exact: true }).waitFor(); await page.getByRole('button', { name: 'Preview events', exact: true }).isEnabled(); await page.waitForFunction(() => !document.querySelector('[role="status"]')?.textContent?.includes('Checking calendar')); }
 async function preview(page: Page) { await page.getByRole('button', { name: 'Preview events', exact: true }).click(); await page.getByRole('heading', { name: 'Date only — times not set' }).waitFor(); }
 async function send(page: Page, name = 'Add events') { await page.getByRole('dialog').getByRole('button', { name, exact: true }).click(); await page.getByRole('status').filter({ hasText: /changes confirmed/ }).waitFor(); }
 async function changed(page: Page, fixture: any) { fixture.changeRevision(); await page.evaluate((revision: string) => (window as any).__calendarMount.setRevision(revision), fixture.trip.updatedAt); await page.getByRole('button', { name: 'Preview events', exact: true }).waitFor(); }
@@ -165,11 +165,11 @@ for (const name of ['chromium', 'webkit'] as const) {
     });
 
     test(`mounted connect cancellation/reconnect sends nothing (${name})`, { skip: !enabled, timeout: 30000 }, async () => { const v = await view(name, false); try {
-        await v.page.getByRole('button', { name: 'Add to calendar', exact: true }).click();
+        await v.page.getByRole('button', { name: 'Add to Google Calendar', exact: true }).click();
         await v.page.getByRole('button', { name: 'Connect Google', exact: true }).click();
         await v.page.getByRole('heading', { name: 'Synthetic Google permission screen' }).waitFor();
         await v.page.getByRole('link', { name: 'Cancel Google' }).click();
-        await v.page.getByRole('button', { name: 'Add to calendar', exact: true }).click();
+        await v.page.getByRole('button', { name: 'Add to Google Calendar', exact: true }).click();
         await v.page.getByRole('button', { name: 'Connect Google', exact: true }).click();
         await v.page.getByRole('link', { name: 'Continue synthetic Google' }).click();
         await v.page.getByRole('button', { name: 'Preview events', exact: true }).waitFor();
@@ -276,7 +276,7 @@ for (const name of ['chromium', 'webkit'] as const) {
         await v.close();
     } });
     test(`mounted new trip calendar and later app-created-only update (${name})`, { skip: !enabled, timeout: 30000 }, async () => { const v = await view(name, false); try {
-        await v.page.getByRole('button', { name: 'Add to calendar', exact: true }).click();
+        await v.page.getByRole('button', { name: 'Add to Google Calendar', exact: true }).click();
         await v.page.getByRole('button', { name: 'Connect for a new trip calendar', exact: true }).click();
         await v.page.getByRole('link', { name: 'Continue synthetic Google' }).click();
         await v.page.getByRole('combobox', { name: /^Calendar$/i }).selectOption('__new__');

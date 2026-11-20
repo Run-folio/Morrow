@@ -95,12 +95,12 @@ test('Add editor preserves text through viewport interruption then saves to chos
   await p.getByLabel('Add day note',{exact:true}).fill('Day note remains');
   await p.getByRole('button',{name:'Add plan',exact:true}).click();await oneModal(p);
   await p.getByRole('button',{name:'Afternoon',exact:true}).click();
-  await p.getByRole('button',{name:'New plan',exact:true}).click();
-  await p.getByLabel('Add your own',{exact:true}).fill('Synthetic afternoon walk');await oneModal(p);
+  await p.getByRole('button',{name:'Find or add an activity',exact:true}).click();
+  await p.getByLabel('Activity name',{exact:true}).fill('Synthetic afternoon walk');await oneModal(p);
   await p.setViewportSize({width:768,height:844});
-  assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'Synthetic afternoon walk');await oneModal(p);
+  assert.equal(await p.getByLabel('Activity name',{exact:true}).inputValue(),'Synthetic afternoon walk');await oneModal(p);
   await p.setViewportSize({width:390,height:844});
-  assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'Synthetic afternoon walk');
+  assert.equal(await p.getByLabel('Activity name',{exact:true}).inputValue(),'Synthetic afternoon walk');
   await p.getByRole('button',{name:'Add to Afternoon',exact:true}).click();
   await p.getByRole('button',{name:/^Synthetic afternoon walk/}).waitFor();await oneModal(p);
   assert.equal(await p.getByLabel('Add day note',{exact:true}).inputValue(),'Day note remains');
@@ -138,10 +138,10 @@ for(const width of [768,1440]) test(`Calendar details and editor return at ${wid
 test('desktop Add editor survives shrinking to mobile without an underlying open day sheet',{skip:!enabled},async()=>{
  await fixture(async p=>{
   await p.getByRole('button',{name:/Add plan to.*morning/i}).click();
-  await p.getByLabel('Add your own',{exact:true}).fill('Resize draft');
+  await p.getByLabel('Activity name',{exact:true}).fill('Resize draft');
   await p.setViewportSize({width:390,height:844});await oneModal(p);
   assert.equal(await p.locator('dialog[data-dialog-presentation="modal"][open]').count(),1,'suspended day must be closed, not merely nonmodal');
-  assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'Resize draft');
+  assert.equal(await p.getByLabel('Activity name',{exact:true}).inputValue(),'Resize draft');
   await p.getByRole('button',{name:'Close Add panel',exact:true}).click();
   await p.getByRole('heading',{name:'Tokyo',exact:true}).waitFor();await oneModal(p);
  },{width:1440});
@@ -150,17 +150,17 @@ test('desktop Add editor survives shrinking to mobile without an underlying open
 test('same-day browser Back/Forward preserves an active Add draft and never stacks surfaces',{skip:!enabled},async()=>{
  await fixture(async p=>{
   await p.getByRole('button',{name:'Add plan',exact:true}).click();
-  await p.getByRole('button',{name:'New plan',exact:true}).click();
-  await p.getByLabel('Add your own',{exact:true}).fill('History draft');
+  await p.getByRole('button',{name:'Find or add an activity',exact:true}).click();
+  await p.getByLabel('Activity name',{exact:true}).fill('History draft');
   // Seed the same day in the shell's real URL restoration boundary. Otherwise
   // this fixture starts on Day 1 and Back changes days rather than views.
   await p.evaluate(()=>history.back());
   await p.waitForFunction(()=>new URL(location.href).searchParams.get('itineraryView')!=='calendar');
   assert.equal(new URL(p.url()).searchParams.get('day'),'2');
-  assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'History draft');await oneModal(p);
+  assert.equal(await p.getByLabel('Activity name',{exact:true}).inputValue(),'History draft');await oneModal(p);
   await p.evaluate(()=>history.forward());
   await p.waitForFunction(()=>new URL(location.href).searchParams.get('itineraryView')==='calendar');
-  assert.equal(await p.getByLabel('Add your own',{exact:true}).inputValue(),'History draft');await oneModal(p);
+  assert.equal(await p.getByLabel('Activity name',{exact:true}).inputValue(),'History draft');await oneModal(p);
   assert.equal(new URL(p.url()).searchParams.get('day'),'2');
   await p.getByRole('button',{name:'Close Add panel',exact:true}).click();
   await p.getByRole('heading',{name:'Tokyo',exact:true}).waitFor();
@@ -170,8 +170,8 @@ test('same-day browser Back/Forward preserves an active Add draft and never stac
 test('authored activity removal suspends details, cancel returns, confirm and Undo retain action parity',{skip:!enabled},async()=>{
  await fixture(async p=>{
   await p.getByRole('button',{name:'Add plan',exact:true}).click();
-  await p.getByRole('button',{name:'New plan',exact:true}).click();
-  await p.getByLabel('Add your own',{exact:true}).fill('Synthetic removable walk');
+  await p.getByRole('button',{name:'Find or add an activity',exact:true}).click();
+  await p.getByLabel('Activity name',{exact:true}).fill('Synthetic removable walk');
   await p.getByRole('button',{name:'Add to Morning',exact:true}).click();
   await p.getByRole('button',{name:/^Synthetic removable walk/}).click();
   await p.getByRole('button',{name:'Remove',exact:true}).click();await oneModal(p);

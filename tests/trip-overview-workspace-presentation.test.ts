@@ -79,7 +79,7 @@ test("Overview presents one calm route insight with a detailed-itinerary handoff
   assert.match(source, /data-route-insight=""/);
   assert.match(source, /routeInsight\.title/);
   assert.match(source, /routeInsight\.detail/);
-  assert.match(source, />View detailed itinerary<ChevronRight aria-hidden="true" \/><\/EasyTLinkButton>/);
+  assert.match(source, /"View itinerary"\}<ChevronRight aria-hidden="true" \/><\/EasyTLinkButton>/);
   assert.doesNotMatch(source, /Route check|things to review|routeCheck\.visible|routeCheck\.remaining|routeCheck\.actions/);
   assert.match(styles, /\.routeRationale \{/);
   assert.match(styles, /\.routeRationale span[^}]*white-space: normal/);
@@ -157,7 +157,7 @@ test("the Overview map uses the shared non-interactive preview surface policy", 
 test("healthy route rationale reuses the single-insight card pattern", () => {
   assert.match(source, /routeRationale && !routeInsight/);
   assert.match(source, /Why this order/);
-  assert.match(source, /View detailed itinerary/);
+  assert.match(source, /View itinerary/);
   assert.match(styles, /\.routeRationale\s*\{/);
   assert.match(source, /className=\{styles\.routeList\}/);
 });

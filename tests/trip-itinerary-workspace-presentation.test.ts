@@ -121,7 +121,7 @@ test("Explore remains the canonical discovery handoff without a second header ac
   assert.match(itinerary, /id=\{`\$\{tabIdPrefix\}-ideas`\}/);
   assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);
   assert.match(itinerary, /exploreWorkspaceHref\(workingTrip\.id, active\.stopId, active\.dayNumber\)/);
-  assert.match(itinerary, />See more ideas in Explore<\/EasyTLinkButton>/);
+  assert.match(itinerary, /"Explore more ideas"\}<\/EasyTLinkButton>/);
   assert.doesNotMatch(itinerary, /copy\.findIdeas|ideasPanelOpen|ideasSectionFocused/);
 });
 
