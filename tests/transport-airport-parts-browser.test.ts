@@ -154,7 +154,14 @@ for(const width of [1440,320])test(`Tokyo airport options support keyboard, inde
   const card=page.locator(`[data-transport-leg-id="${leg.id}"]`);
   await card.getByRole('button',{name:/View details/}).click();
   const edit=card.getByRole('button',{name:'Edit airports'});
+  const action=card.getByRole('link',{name:/Find flights/});
+  const disclosure=card.getByText('Morrovia may earn a commission.',{exact:true});
+  const more=card.locator('[data-transport-more-actions] > summary');
+  await action.waitFor();await disclosure.waitFor();await more.waitFor();
+  assert.equal(await card.getByRole('button',{name:'About the Omio search'}).isVisible(),true);
   await edit.press('Enter');
+  assert.equal(await more.isVisible(),false);
+  assert.equal(await disclosure.isVisible(),false);
   const departure=card.getByRole('group',{name:/Departure airport · Tokyo/});
   const arrival=card.getByRole('group',{name:/Arrival airport · Beijing/});
   assert.equal(await departure.getByRole('radio',{name:/Narita/}).count(),1);
@@ -166,5 +173,7 @@ for(const width of [1440,320])test(`Tokyo airport options support keyboard, inde
   await card.getByRole('button',{name:'Use these airports'}).press('Enter');
   await card.getByText('Haneda (HND) → Beijing',{exact:true}).waitFor();
   assert.equal(await edit.evaluate((el: Element)=>el===document.activeElement),true);
+  assert.equal(await more.isVisible(),true);
+  assert.equal(await disclosure.isVisible(),true);
  }finally{await view.close();}
 });

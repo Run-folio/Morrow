@@ -59,7 +59,7 @@ function ShortlistContent(){const {trip}=useTripShellMutation();return <TripStay
 
 // These are all the existing starter and shell components, not an alternate entry.
 export const KyotoSwipeMobile:Story={...Mobile,
-  render:()=> <TripShell trip={starterKyotoFixture} cacheTrip={false}><Content initialStayState={{corePlaces:[],accommodationInventoryStatus:"empty"}} initialActivities={starterKyotoCards}/></TripShell>,
+  render:()=> <TripShell trip={starterKyotoFixture} cacheTrip={false}><Content initialStayState={{corePlaces:[],accommodationInventoryStatus:"empty"}} initialActivities={starterKyotoCards} enableSwipeDeck/></TripShell>,
   play:async({canvasElement})=>{
     const content=within(within(canvasElement.ownerDocument.body).getByRole("dialog",{name:"Trip starter"}));
     await userEvent.click(content.getByRole("button",{name:"Things to do"}));
