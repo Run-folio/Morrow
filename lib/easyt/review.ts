@@ -33,6 +33,26 @@ function stablePlaceIssueToken(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+/** Intake facts are immutable. A resolved area requires a current, exact occurrence link. */
+function currentPlaceIssue(trip: EasyTTrip, issue: PlaceIssue): boolean {
+  if (issue.code !== "region_requires_base" && issue.code !== "missing_routable_destination") return true;
+  const brief = trip.brief.structuredBrief;
+  const route = trip.brief.intent?.route;
+  const area = route?.destinations.find(intent => intent.kind === "planning_area" && intent.id === issue.mentionId);
+  const areaScoped = area || brief?.placeIssues?.some(other => other.code === "region_requires_base" && other.mentionId === issue.mentionId);
+  if (!areaScoped && issue.code === "missing_routable_destination") {
+    // A legacy trip-wide absence is not a demand for a base for any particular area.
+    return !trip.stops.some(stop => isCurrentVerifiedRouteBase(trip, stop));
+  }
+  if (!area || area.resolution !== "resolved" || !issue.canonicalPlaceId
+    || area.selectedPlace?.canonicalPlaceId !== issue.canonicalPlaceId
+    || brief?.removedPlaceMentionIds?.includes(issue.mentionId)) return true;
+  return !brief?.placeSelections?.some(selection => selection.kind === "base" && selection.mentionId === area.id
+    && selection.routeStopId && area.stopIds.includes(selection.routeStopId)
+    && trip.stops.some(stop => stop.id === selection.routeStopId && !!stop.canonicalPlaceId
+      && stop.canonicalPlaceId === selection.selectedCanonicalPlaceId && isCurrentVerifiedRouteBase(trip, stop)));
+}
+
 function placeIssueMessage(issue: PlaceIssue) {
   const suppliedMessage = "message" in issue && typeof issue.message === "string" ? issue.message.trim() : "";
   const suppliedReason = "reason" in issue && typeof issue.reason === "string" ? issue.reason.trim() : "";
@@ -610,14 +630,19 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   });
   const hasCurrentVerifiedBase = trip.stops.some(stop => isCurrentVerifiedRouteBase(trip,stop));
+  let historicalIndex = results.length;
   [...(trip.brief.structuredBrief?.placeIssues ?? [])]
-    .filter(issue => issue.code !== "missing_routable_destination" || !hasCurrentVerifiedBase)
     .sort((left, right) => {
       const leftKey = `${left.code}:${left.mentionId}`;
       const rightKey = `${right.code}:${right.mentionId}`;
       return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
     })
     .forEach((issue) => {
+      // Keep other saved recommendation IDs stable when an intake warning disappears.
+      const historicallyVisible = issue.code !== "missing_routable_destination" || !hasCurrentVerifiedBase;
+      const index = historicalIndex;
+      if (historicallyVisible) historicalIndex++;
+      if (!currentPlaceIssue(trip, issue)) return;
       const canonicalPlaceId = issue.canonicalPlaceId;
       const affectedStopIds = canonicalPlaceId
         ? new Set(trip.stops.filter((stop) => stop.id === canonicalPlaceId || stop.canonicalPlaceId === canonicalPlaceId || stop.providerId === canonicalPlaceId).map((stop) => stop.id))
@@ -634,7 +659,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
         proposedChange: placeIssueRepresentsUnresolvedIntent(issue)
           ? { action: "resolve-place-intent", mentionId: issue.mentionId }
           : null,
-      }, results.length));
+      }, index));
     });
   return results;
 }
@@ -656,7 +681,7 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "route-integrity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
   const hasUnknownStayDuration = openIssues.some((item) => item.rule === "stay-duration-confidence");
   const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute
-    && !(issue.code === "missing_routable_destination" && trip.stops.some(stop => isCurrentVerifiedRouteBase(trip,stop))));
+    && currentPlaceIssue(trip, issue));
   const hasCompleteItinerary = deriveItineraryCoverage(trip).state === "complete";
   const hasValidDates = deriveTripDateFacts(trip).state === "valid";
   const isReady = blockingCount === 0 && !hasUnresolvedTransport && !hasUnknownStayDuration && !hasUnresolvedPlaceIntent && hasCompleteItinerary && hasValidDates;

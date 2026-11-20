@@ -519,3 +519,50 @@ test("current verified canonical base supersedes intake missing-base issue in do
  canonical.brief.intent!.route!.orderedStopIds=[canonical.stops[0]!.id];canonical.brief.intent!.route!.destinations=[{id:'base',sourceText:'Madrid',kind:'overnight_place',resolution:'resolved',selectedPlace:{name:'Madrid',country:'Spain',canonicalPlaceId:'madrid'},requestedNights:2,routeMembership:'required',stopIds:[canonical.stops[0]!.id]}];
  assert.equal(reviewTrip(canonical).some(r=>r.rule.includes('missing-routable-destination')),false);
 });
+
+import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+
+test("saved Bali intake issues are superseded only by the same current verified Ubud base occurrence", () => {
+  const mentionId = "homepage-entry:destination-1";
+  const areaIssues = (id: string) => (["region_requires_base", "missing_routable_destination"] as const).map(code => ({
+    ...placeIssue({code, severity: "error", blocksRoute: true, mentionId: id, sourceText: "Bali", reason: "Choose a base."}),
+    canonicalPlaceId: "bali",
+  }));
+  const trip = retainPlaceIssues(baseTrip(), areaIssues(mentionId));
+  const ubud = { name: "Ubud", country: "Indonesia", canonicalPlaceId: "reference:geonames:1622846" };
+  const providerId = "reference:geonames:1622846@699b595afdba9be6994e:ID:town:115.2654:-8.5098";
+  const point = acceptedGeographicPlace(ubud, {...ubud, providerId, coordinates: [115.2654,-8.5098], placeType: "town", routability: "direct_destination", referenceSnapshotId: "699b595afdba9be6994e"})!;
+  assert.ok(point);
+  const stop = { ...trip.stops[0]!, ...ubud, providerId, geographicBinding: point.geographicBinding, longitude: 115.2654, latitude: -8.5098 };
+  trip.stops[0] = stop;
+  trip.brief.intent!.route = { version: 1, origin: null, tripType: "one_way", journeyEnd: {mode:"unknown"}, orderAuthority:"manual", explicitIntentIds:null, orderedStopIds:[stop.id], projectionInputKey:null, destinations:[
+    {id:mentionId, sourceText:"Bali", kind:"planning_area", selectedPlace:{name:"Bali",canonicalPlaceId:"bali"}, resolution:"resolved", requestedNights:null, routeMembership:"required", stopIds:[stop.id]}]};
+  trip.brief.structuredBrief!.placeSelections = [{mentionId, kind:"base", selectedCanonicalPlaceId:ubud.canonicalPlaceId, selectedName:"Ubud", selectedPlaceType:"town", routeStopId:stop.id,
+    provenance:{id:providerId, kind:"provider", label:"GeoNames", supports:"Reviewed island membership"}}];
+  const remaining = (input: EasyTTrip) => tripHealth(input).issues.filter(i=>i.rule.startsWith("place-intelligence-")).map(i=>i.rule);
+  const before = structuredClone(trip);
+  assert.deepEqual(remaining(trip), []);
+  assert.deepEqual(trip, before);
+  for (const invalidate of [
+    (t: EasyTTrip) => {t.brief.structuredBrief!.placeSelections = [];},
+    (t: EasyTTrip) => {t.brief.structuredBrief!.placeSelections![0]!.routeStopId = "removed";},
+    (t: EasyTTrip) => {t.brief.structuredBrief!.placeSelections![0]!.selectedCanonicalPlaceId = "another-town";},
+    (t: EasyTTrip) => {t.stops[0]!.longitude = 112;},
+    (t: EasyTTrip) => {t.stops[0]!.geographicBinding = undefined;},
+    (t: EasyTTrip) => {t.brief.intent!.route!.destinations[0]!.selectedPlace!.canonicalPlaceId = "different-island";},
+    (t: EasyTTrip) => {t.brief.intent!.route!.orderedStopIds = [];},
+    (t: EasyTTrip) => {t.brief.structuredBrief!.removedPlaceMentionIds = [mentionId];},
+    (t: EasyTTrip) => {t.brief.intent!.route!.destinations[0]!.id = "another-occurrence";},
+  ]) {
+    const invalid = structuredClone(trip); invalidate(invalid); assert.equal(remaining(invalid).length, 2);
+  }
+  trip.brief.structuredBrief!.placeIssues!.push(...areaIssues("second-bali"));
+  assert.equal(remaining(trip).length, 2);
+  assert.ok(remaining(trip).every(rule => rule.endsWith("second-bali")));
+  const unrelated = placeIssue({code:"unresolved_place",severity:"error",blocksRoute:true,mentionId:"another",sourceText:"Unknown",reason:"Confirm another destination."});
+  trip.brief.structuredBrief!.placeIssues!.push(unrelated);
+  const unrelatedId = (t: EasyTTrip) => reviewTrip(t).find(i=>i.rule.endsWith("unresolved-place-another"))!.id;
+  const unresolved = structuredClone(trip);
+  unresolved.brief.structuredBrief!.placeSelections = [];
+  assert.equal(unrelatedId(trip), unrelatedId(unresolved), "other saved recommendation statuses retain their ID");
+});
