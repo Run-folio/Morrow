@@ -3,6 +3,7 @@
 import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MotionLink } from "@/components/easyt/app-motion";
 import { Bot, ChevronLeft, Cookie, Database, ExternalLink, Mail, MapPin, Mic, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { EASYT_LANGUAGE_CHANGE_EVENT, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -133,7 +134,7 @@ export default function PrivacyNotice() {
       <section id="analytics-settings" className={`${styles.card} ${styles.analytics}`} aria-labelledby="analytics-title"><div><p className={styles.kicker}>COOKIES AND ANALYTICS</p><h2 id="analytics-title">{t.cookies}</h2><p>{t.cookiesText}</p><p>{t.analyticsText}</p><p>{t.withdrawalText}</p></div><div className={styles.choiceButtons}><EasyTLinkButton href="/journey/cookies#cookie-settings">{t.cookieSettings}</EasyTLinkButton></div></section>
       <section id="providers-and-transfers" className={styles.section} aria-labelledby="providers-title"><p className={styles.kicker}>RECIPIENTS AND TRANSFERS</p><h2 id="providers-title">{t.providers}</h2><p>{t.providersText}</p><ul className={styles.factList}>{t.providerItems.map((item) => <li key={item}>{item}</li>)}</ul><h3>{t.transfers}</h3><p>{t.transfersText}</p></section>
       <section id="retention" className={styles.section} aria-labelledby="retention-title"><p className={styles.kicker}>RETENTION</p><h2 id="retention-title">{t.retention}</h2><p>{t.retentionText}</p><p>{t.retentionDetail}</p></section>
-      <section id="your-rights" className={`${styles.card} ${styles.rights}`} aria-labelledby="rights-title"><div><p className={styles.kicker}>YOUR RIGHTS</p><h2 id="rights-title">{t.rights}</h2><p>{t.rightsText}</p><ol className={styles.factList}>{t.rightsSteps.map((item) => <li key={item}>{item}</li>)}</ol><p>{t.correction}</p><p>{t.complaint}</p></div><div className={styles.rightsActions}><Link className={styles.primaryAction} href="/journey/contact?topic=privacy">{t.rightsContact} <Mail aria-hidden="true" /></Link><a href={icoComplaintUrl} target="_blank" rel="noopener noreferrer">{t.complaintAction} <ExternalLink aria-hidden="true" /></a></div></section>
+      <section id="your-rights" className={`${styles.card} ${styles.rights}`} aria-labelledby="rights-title"><div><p className={styles.kicker}>YOUR RIGHTS</p><h2 id="rights-title">{t.rights}</h2><p>{t.rightsText}</p><ol className={styles.factList}>{t.rightsSteps.map((item) => <li key={item}>{item}</li>)}</ol><p>{t.correction}</p><p>{t.complaint}</p></div><div className={styles.rightsActions}><MotionLink className={styles.primaryAction} href="/journey/contact?topic=privacy">{t.rightsContact} <Mail aria-hidden="true" /></MotionLink><a href={icoComplaintUrl} target="_blank" rel="noopener noreferrer">{t.complaintAction} <ExternalLink aria-hidden="true" /></a></div></section>
       <article className={`${styles.card} ${styles.unresolved}`}><Cookie aria-hidden="true" /><h2>{t.unresolved}</h2><p>{t.unresolvedText}</p></article>
       <Link className={styles.back} href="/"><ChevronLeft aria-hidden="true" />{t.back}</Link>
     </section>

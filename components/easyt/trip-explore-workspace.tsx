@@ -1,5 +1,7 @@
 "use client";
 
+import { EntryReveal } from "./app-motion";
+
 import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";
 
 import {
@@ -703,7 +705,8 @@ export default function TripExploreWorkspace({
       </section> : null}
       {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
-      {visibleResults.length ? <div className={styles.grid} id="explore-results">
+      <div className={styles.grid} id="explore-results" hidden={!visibleResults.length}>
+        <EntryReveal ready={resultsPresentation === "results"} selector="[data-explore-card]" />
         {visibleResults.map((result) => {
           const state = exploreResultState(workingTrip, result);
           const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
@@ -769,7 +772,7 @@ export default function TripExploreWorkspace({
             </div>
           </article>;
         })}
-      </div> : null}
+      </div>
       {savedGoogleReferences.length ? <section className={styles.referenceSection} aria-label="Saved Google places">
         <strong>Saved from Google Maps</strong>
         <p>Open the Google map to check current place details. These are saved ideas, not bookings.</p>

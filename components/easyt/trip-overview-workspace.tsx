@@ -1,5 +1,7 @@
 "use client";
 
+import { EntryReveal } from "./app-motion";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -394,6 +396,7 @@ export default function TripOverviewWorkspace({
         <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
+              <EntryReveal ready={staySteps.length > 0} selector="[data-overview-route-stop]" />
               <div className={styles.routeIntro}>
                 <div>
                   <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
@@ -402,7 +405,7 @@ export default function TripOverviewWorkspace({
               {orderedStops.length ? <>
                 {departureStep ? <OverviewEndpointSummary label={departureStep.label!} href={routeIssueHref(trip.id)} transfer={conciseTransferLabel(departureStep.leg)} /> : null}
                 <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
-                  {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep}>
+                  {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep} data-overview-route-stop>
                     <OverviewStepMedia image={initialPlaceImages[step.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[step.id]]} name={step.name} country={step.country} meta={`${formatTripNights(step.stop!.nights)}${step.isJourneyEnd ? " · Journey end" : ""}`} number={step.number} href={itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, step.id))} onImageError={(src) => recoverImage(step.id, src)} />
                     {step.leg ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{conciseTransferLabel(step.leg)}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                     {index < staySteps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
