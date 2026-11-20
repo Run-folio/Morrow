@@ -148,14 +148,23 @@ test("occurrence enrichment targets the supplied homepage occurrence instead of 
   const mentions = draft.locationMentions!;
   const seeds = draft.destinations!;
   const secondTokyo = mentions[2]!;
-  const enriched = mergeHandoffLocationChoice(seeds, secondTokyo, {
+  const evidence = {
     name: "Tokyo",
     country: "Japan",
     providerId: "provider-return",
-    coordinates: [139.7, 35.6],
+    coordinates: [139.7, 35.6] as [number, number],
+  };
+  assert.equal(mergeHandoffLocationChoice(seeds, secondTokyo, evidence, "c"), seeds,
+    "untyped location evidence must not bind a routable stop");
+  const enriched = mergeHandoffLocationChoice(seeds, secondTokyo, {
+    ...evidence,
+    placeType: "city",
+    routability: "direct_destination",
   }, "c");
-  assert.equal(enriched[0]?.providerId, undefined);
+  assert.equal(enriched[0], seeds[0], "the first Tokyo visit is untouched");
+  assert.equal(enriched[1], seeds[1], "Kyoto is untouched");
   assert.equal(enriched[2]?.providerId, "provider-return");
+  assert.equal(enriched[2]?.geographicBinding?.source, "provider");
   assert.deepEqual(enriched.map((stop) => stop.id), ["a", "b", "c"]);
 });
 
