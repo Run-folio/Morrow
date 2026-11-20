@@ -2202,6 +2202,8 @@ export default function TripItineraryWorkspace({
         open={Boolean(removeTarget)}
         title={removeTarget ? copy.removeFromDay(removeTarget.title, removeTarget.dayNumber) : copy.removeActivity}
         detail={copy.removeDetail}
+        eyebrow=""
+        consequences={[]}
         cancelLabel={copy.keepActivity}
         confirmLabel={copy.removeActivity}
         error={removeError || undefined}
