@@ -35,9 +35,9 @@ test("homepage inspiration reuses reviewed route photos with resilient fallback 
 test("homepage how it works uses the approved three steps and opens its inline disclosure", () => {
   const source = read("app/journey/home/immersive/homepage-how-it-works.tsx");
 
-  assert.match(source, /Tell us where\./);
-  assert.match(source, /We build your plan\./);
-  assert.match(source, /Make it yours\./);
+  assert.match(source, /Start your trip/);
+  assert.match(source, /Plan your route/);
+  assert.match(source, /Open Overview/);
   const englishSteps = source.match(/en:\s*\[([\s\S]*?)\],\s*es:/)?.[1] ?? "";
   assert.equal((englishSteps.match(/title:/g) ?? []).length, 3);
   assert.match(source, /aria-expanded=\{expanded\}/);
