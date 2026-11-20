@@ -51,7 +51,8 @@ for(const surface of ['Builder','Overview','Map','Itinerary','Transport','Choice
  assert.match(html,/~4h/);
  assert.doesNotMatch(html,/(?<!~)4h by air/);
  if(surface==='Map')assert.match(html,/Road estimate driving time<\/dt><dd>~13h 45m/);
- if(['Builder','Overview'].includes(surface))assert.match(html,/~4h total/);
+ if(surface==='Builder')assert.match(html,/~4h total/);
+ if(surface==='Overview')assert.match(html,/~4h door to door/);
 });
 test('Map keeps unknown airborne time when no separate road reference exists',()=>{
  const value=structuredClone(trip);delete value.legs[0]!.roadEstimate;
