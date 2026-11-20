@@ -38,14 +38,14 @@ test("one concise disclosure owns warnings and Route Check results", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
   assert.match(builder, /const showRouteStatus = Boolean\(showTimingWarning \|\| routeRecommendationVisible \|\| routeCoverageNotice \|\| transportReviewNotice\)/);
-  assert.match(builder, /Very fast pace|Ritmo muy intenso/,
+  assert.match(builder, /stops have one night or less/,
     "compressed routes should have a glanceable status headline");
   assert.match(builder, /: tripTimingNotice[\s\S]*: routeRecommendationVisible/,
     "timing warnings must retain priority over a simultaneous route recommendation");
   assert.doesNotMatch(builder, /<small>\{timingWarningSummary\}<\/small>/,
     "the collapsed status must not repeat a long subtitle");
-  assert.match(builder, /What this means|Qué significa/,
-    "factual detail should remain available on expansion");
+  assert.doesNotMatch(builder, /What this means|Qué significa/);
+  assert.match(builder, /usable time may be lower/, "transfer caveats remain available on expansion");
   assert.doesNotMatch(builder, /Review route|Revisar ruta/,
     "a generic route action must not redirect to Add stop");
   assert.doesNotMatch(builder, /primaryRouteCheckSummary/,

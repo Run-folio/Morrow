@@ -31,7 +31,7 @@ test("Homepage start-only dates remain an unconfirmed suggestion through Builder
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe" }).click();
-    await page.getByRole("textbox", { name: "Start your plan" }).fill("Tokyo and Kyoto");
+    await page.getByRole("textbox", { name: "Describe your trip" }).fill("Tokyo and Kyoto");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return",exact:true}).click();
     await page.getByRole("tab", { name: "Plan" }).click();
@@ -93,7 +93,7 @@ test("Homepage start plus a stated two-week duration derives the exact end", { s
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe" }).click();
-    await page.getByRole("textbox", { name: "Start your plan" }).fill("Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks");
+    await page.getByRole("textbox", { name: "Describe your trip" }).fill("Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return",exact:true}).click();
     await page.getByRole("tab", { name: "Plan" }).click();
@@ -137,7 +137,7 @@ test("Homepage complete dates stay authoritative through Builder reload", { skip
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe" }).click();
-    await page.getByRole("textbox", { name: "Start your plan" }).fill("Tokyo and Kyoto for two weeks");
+    await page.getByRole("textbox", { name: "Describe your trip" }).fill("Tokyo and Kyoto for two weeks");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return",exact:true}).click();
     await page.getByRole("tab", { name: "Plan" }).click();

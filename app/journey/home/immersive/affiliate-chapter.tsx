@@ -45,7 +45,7 @@ export default function AffiliateChapter({ routeKey }: { routeKey: string }) {
     return () => clearTimeout(timer);
   }, [routeKey, active, visible]);
   return <section id="booking-support" ref={container} className={styles.booking}>
-    <header className={styles.chapterHeading}><div><span className={styles.eyebrow}>{es ? "Cuando tu viaje toma forma" : "When your trip takes shape"}</span><h2>{es ? "Planifícalo aquí." : "Plan it here."}<em>{es ? "Reserva cuando quieras." : "Book when you’re ready."}</em></h2></div></header>
+    <header className={styles.chapterHeading}><div><h2>{es ? "Reserva con nuestros socios" : "Book with our partners"}</h2></div></header>
     <div className={styles.bookingComposition}><figure className={styles.bookingImage}>
       {visible && visual ? <ResilientImage key={"file" in visual ? visual.file : visual.key} src={visual.variants[1].src} srcSet={visual.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width:840px) 90vw, 44vw" width={768} height={511} alt={visual.alt} loading="lazy" decoding="async" fallback={<div className={styles.imageFallback} aria-label={es ? "Imagen no disponible" : "Image unavailable"} />} /> : null}
       <figcaption><span>{visualLabel} · {es ? needs[active].es : needs[active].label}</span><em>{es ? "Una parte más de tu viaje." : visualContext}</em></figcaption>

@@ -151,11 +151,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
       <div><EasyTButton size="small" onClick={outsideChoice.onAdd}>{language === "es" ? "Añadir al viaje" : "Add to trip"}</EasyTButton>
         <EasyTButton size="small" variant="secondary" onClick={outsideChoice.onCancel}>{language === "es" ? "Cancelar" : "Cancel"}</EasyTButton></div>
     </div> : null}
-    {baseChoice ? <section ref={baseChoiceRef} tabIndex={-1} className={styles.baseChoice} aria-label={rootBaseChoice ? baseTitle : language === "es" ? `Elige una base en ${baseChoice.area.name}` : `Choose a base in ${baseChoice.area.name}`}>
-      {!rootBaseChoice ? <><h3>{language === "es" ? `Elige una base en ${baseChoice.area.name}` : `Choose a base in ${baseChoice.area.name}`}</h3>
+    {baseChoice ? <section ref={baseChoiceRef} tabIndex={-1} className={styles.baseChoice} aria-label={baseTitle}>
+      {!rootBaseChoice ? <><h3>{baseTitle}</h3>
       <p>{language === "es"
-        ? `${baseChoice.area.name} necesita una ciudad o población donde alojarte. Elige una; solo ese lugar se añadirá como parada.`
-        : `${baseChoice.area.name} needs a city or town to stay in. Choose one; only that place will be added as a stop.`}</p></> : null}
+        ? "Solo se añadirá como parada la ciudad o población que elijas."
+        : "Only the town or city you choose becomes a stop."}</p></> : null}
       {baseChoice.status === "loading" ? <p role="status">{language === "es" ? "Buscando bases cercanas…" : "Finding nearby bases…"}</p> : null}
       {baseChoice.candidates.length ? <div className={styles.baseCandidates}>
         {baseChoice.candidates.map(candidate => <EasyTButton key={candidate.canonicalPlaceId} size="small" variant="secondary" disabled={loading}

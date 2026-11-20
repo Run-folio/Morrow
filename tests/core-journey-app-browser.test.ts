@@ -366,7 +366,7 @@ test('selected nonseed origin survives Describe submit, Build and reload', {skip
  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId==='reference:geonames:3175687');
  const selected=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null').snapshot.origin.value);
  assert.equal(selected.canonicalPlaceId,'reference:geonames:3175687');assert.equal(geographicallyReady(selected,'endpoint'),true);
- await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
+ await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Describe your trip'}).fill('Visit Madrid and Lisbon for 10 days');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=await durableBuilderTripId(page);
@@ -384,7 +384,7 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('button',{name:'One way',exact:true}).click();
  await page.getByRole('tab',{name:'Describe',exact:true}).click();
- await page.getByRole('textbox',{name:'Start your plan'}).fill('Tenerife 7 nights.');
+ await page.getByRole('textbox',{name:'Describe your trip'}).fill('Tenerife 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=await durableBuilderTripId(page);
@@ -431,7 +431,7 @@ test('Canary archipelago search accepts a physically verified member base withou
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('button',{name:'One way',exact:true}).click();
  await page.getByRole('tab',{name:'Describe',exact:true}).click();
- await page.getByRole('textbox',{name:'Start your plan'}).fill('Canary Islands 7 nights.');
+ await page.getByRole('textbox',{name:'Describe your trip'}).fill('Canary Islands 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=await durableBuilderTripId(page);
@@ -455,7 +455,7 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
  await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('tab',{name:'Describe',exact:true}).click();
- await page.getByRole('textbox',{name:'Start your plan'}).fill('12 nights: Lima 2, Arequipa 3, Cusco 5, Ollantaytambo 2.');
+ await page.getByRole('textbox',{name:'Describe your trip'}).fill('12 nights: Lima 2, Arequipa 3, Cusco 5, Ollantaytambo 2.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=await durableBuilderTripId(page);
@@ -497,7 +497,7 @@ test('recorded source town choices remain reachable with empty autocomplete and 
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates})});
  });
  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
- await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe',exact:true}).click();await page.getByRole('textbox',{name:'Describe your trip'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));const id=await durableBuilderTripId(page);await page.locator('[data-builder-route-workspace]').waitFor();
  const before=(await recoveryTrip(page,id))!;const sourceIds=before.brief.intent!.route!.destinations.filter(i=>towns.some(t=>i.sourceText===t.name)).map(i=>[i.id,i.requestedNights]);
  for(const town of towns){let dialog=page.getByRole('dialog').last();const choice=dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')});if(!await choice.isVisible().catch(()=>false)){const later=dialog.getByRole('button',{name:'Finish later',exact:true});if(await later.isVisible().catch(()=>false))await later.click();await page.getByRole('button',{name:'Choose place '+town.name,exact:true}).first().click();dialog=page.getByRole('dialog').last();}await dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')}).first().click();}
@@ -663,7 +663,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
 test("Tier 1 Discovery resolves a landmark as a visit with a canonical overnight base", { skip: !enabled, timeout: 90_000 }, async () => withEvidence("guest-discovery", async (page) => {
   await page.goto(`${base}/journey/new`, { waitUntil: "domcontentloaded" });
   await page.getByRole("tab", { name: "Describe" }).click();
-  await page.getByPlaceholder("Where would you like to go, for how long?").fill("Taj Mahal");
+  await page.getByPlaceholder("Two weeks in Japan, starting in Tokyo.").fill("Taj Mahal");
   await page.getByRole("button", { name: /Plan my trip/ }).click();
   await page.getByRole("button", { name: "Continue shaping your route" }).waitFor({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue shaping your route" }).click();
@@ -776,10 +776,10 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  assert.equal(trip.brief.intent!.route!.tripType,type);assert.deepEqual(trip.brief.structuredBrief!.completedPlanningAreaMentionIds,before.brief.structuredBrief!.completedPlanningAreaMentionIds);
  await durableBuilderTripId(page);
  const editDetails=page.getByRole('button',{name:'Edit trip details',exact:true});if(await editDetails.isVisible())await editDetails.click();
- await page.getByRole('button',{name:type==='one_way'?'Return to start':'One way',exact:true}).click();
+ await page.getByRole('button',{name:type==='one_way'?'Return':'One way',exact:true}).click();
  const switchedType=type==='one_way'?'return_to_start':'one_way';
  await page.waitForFunction(label=>[...document.querySelectorAll('[data-builder-top-controls] button')]
-  .find(button=>button.textContent?.trim()===label)?.getAttribute('aria-pressed')==='true',switchedType==='one_way'?'One way':'Return to start');
+  .find(button=>button.textContent?.trim()===label)?.getAttribute('aria-pressed')==='true',switchedType==='one_way'?'One way':'Return');
  await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
  assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,switchedType,'the exact accepted type must be durable before reload');
  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();

@@ -64,14 +64,14 @@ test("populated Builder directly exposes explicit, Same as start and unknown jou
       const top=view.page.locator('[data-builder-top-controls]');await top.waitFor();
       const type=top.getByRole("group",{name:"Trip type",exact:true});
       if(journeyEnd.mode==="explicit") assert.equal(await top.getByText("Busan",{exact:true}).count()>0,true);
-      if(journeyEnd.mode==="same_as_start") assert.equal(await type.getByRole("button",{name:"Return to start",exact:true}).getAttribute("aria-pressed"),"true");
+      if(journeyEnd.mode==="same_as_start") assert.equal(await type.getByRole("button",{name:"Return",exact:true}).getAttribute("aria-pressed"),"true");
       if(journeyEnd.mode==="unknown") {
-        assert.equal(await type.getByRole("button",{name:"Return to start",exact:true}).getAttribute("aria-pressed"),"false");
+        assert.equal(await type.getByRole("button",{name:"Return",exact:true}).getAttribute("aria-pressed"),"false");
         assert.equal(await type.getByRole("button",{name:"One way",exact:true}).getAttribute("aria-pressed"),"false");
       }
       assert.equal(await top.getByRole("button",{name:"Edit trip",exact:true}).count(),0);
       assert.equal(await view.page.locator('[data-builder-route-workspace]').count(),1);
-      assert.equal(await view.page.getByRole("textbox",{name:"Start your plan",exact:true}).count(),0);
+      assert.equal(await view.page.getByRole("textbox",{name:"Describe your trip",exact:true}).count(),0);
       assert.deepEqual(view.errors,[]);
     } finally {await view.close();}
   }
@@ -121,10 +121,10 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
     assert.equal(explicit.brief.journeyEnd?.mode==="explicit"&&explicit.brief.journeyEnd.place.canonicalPlaceId,"busan");
     assert.deepEqual(explicit.stops.map(stop=>stop.id),stopIds);
     assert.equal(explicit.stops.find(stop=>stop.canonicalPlaceId==="busan")?.nights,before.stops.find(stop=>stop.canonicalPlaceId==="busan")?.nights);
-    await top.getByRole("button",{name:"Return to start",exact:true}).click();
+    await top.getByRole("button",{name:"Return",exact:true}).click();
     await dialog.getByRole("button",{name:"Keep finish",exact:true}).click();
     assert.deepEqual(await storedTrip(),explicit,"cancelling replacement retains the exact accepted recovery");
-    await top.getByRole("button",{name:"Return to start",exact:true}).click();await dialog.getByRole("button",{name:"Return to start",exact:true}).click();
+    await top.getByRole("button",{name:"Return",exact:true}).click();await dialog.getByRole("button",{name:"Return to start",exact:true}).click();
     await waitMode("same_as_start");
     const roundTrip=await settledTrip();assert.deepEqual(roundTrip.stops.map(stop=>stop.id),stopIds);
     assert.equal(roundTrip.legs.at(-1)?.classification,"departure");assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId,"london");assert.equal(roundTrip.stops.some(stop=>stop.canonicalPlaceId==="london"),false);
@@ -522,13 +522,13 @@ test("Build requires explicit continuation without adding unresolved intent and 
         ?.some((issue: { mentionId: string }) => issue.mentionId === "place-kruger-national-park")));
 
     await build.click();
-    await view.page.getByRole("heading", { name: "Build this trip before adding Kruger National Park?" }).waitFor();
-    await view.page.getByRole("button", { name: "Go back and fix it", exact: true }).click();
+    await view.page.getByRole("heading", { name: "Build without Kruger National Park?" }).waitFor();
+    await view.page.getByRole("button", { name: "Review Kruger National Park", exact: true }).click();
     await view.page.getByRole("dialog").getByText("Kruger National Park", { exact: true }).first().waitFor();
     await view.page.getByRole("button", { name: "Finish later", exact: true }).click();
 
     await build.click();
-    await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).click();
+    await view.page.getByRole("button", { name: "Build without Kruger National Park", exact: true }).click();
     await view.page.waitForFunction(() => location.pathname !== "/journey/new", undefined, { timeout: 10_000 });
     const unresolvedRow = view.page.getByLabel("Places not included in this route");
     await unresolvedRow.getByText("Not included yet", { exact: true }).waitFor();
@@ -588,7 +588,7 @@ test("post-Build Kruger recovery preserves the unresolved reminder until canonic
   try {
     await view.page.getByRole("button", { name: "Finish later", exact: true }).click();
     await view.page.getByRole("button", { name: /Build trip/ }).click();
-    await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).click();
+    await view.page.getByRole("button", { name: "Build without Kruger National Park", exact: true }).click();
     const recoveryLink = view.page.getByRole("link", { name: "Choose a nearby base", exact: true });
     await recoveryLink.waitFor({ timeout: 10_000 });
     await recoveryLink.click();
@@ -639,7 +639,7 @@ test("a provider-backed nearby place cannot bypass Kruger's missing canonical id
     assert.equal(await dialog.getByRole("combobox", { name: /Search for somewhere specific: Kruger National Park/ }).count(), 1);
     await dialog.getByRole("button", { name: "Finish later", exact: true }).click();
     await view.page.getByRole("button", { name: /Build trip/ }).click();
-    assert.equal(await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).count(), 1);
+    assert.equal(await view.page.getByRole("button", { name: "Build without Kruger National Park", exact: true }).count(), 1);
     const documents = await view.page.evaluate(() => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
       .map((key) => JSON.parse(localStorage.getItem(key)!)));
@@ -660,7 +660,7 @@ test("provider unavailability never makes an unverified model base actionable", 
     const build = view.page.getByRole("button", { name: /Build trip/ });
     assert.equal(await build.isDisabled(), false);
     await build.click();
-    assert.equal(await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).count(), 1);
+    assert.equal(await view.page.getByRole("button", { name: "Build without Kruger National Park", exact: true }).count(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

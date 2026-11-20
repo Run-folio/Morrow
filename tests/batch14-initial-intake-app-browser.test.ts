@@ -39,7 +39,7 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
   await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   const start=f.case==='A15'?'San José':'City of London';await page.getByRole('combobox',{name:'Start from',exact:true}).fill(start);await page.getByRole('option').filter({hasText:start}).first().click();
-  await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan',exact:true}).fill(f.prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
+  await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Describe your trip',exact:true}).fill(f.prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
   await page.waitForURL(/\/journey\/new\?.*\btrip=/,{waitUntil:'domcontentloaded'});id=new URL(page.url()).searchParams.get('trip')!;assert(id);
   await page.locator('[data-builder-root][data-builder-save-state="local"]').waitFor();
   states.initial=await until(t=>t.brief.intent.route.destinations.length>0);assert.equal(originalCaptureRequests,1,'Exactly one original literal capture is submitted');

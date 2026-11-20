@@ -18,7 +18,7 @@ export function TripBuilderRouteProposal({current,proposal,assessment,language,s
   <h3><strong>{es?'Orden actual':'Current order'}</strong></h3>{stops(current)}
   {route?<><h3><strong>{es?'Orden propuesto':'Proposed order'}</strong></h3>{stops(route)}</>:null}
   {assessment?.currentTransferMinutes!==null&&assessment?.currentTransferMinutes!==undefined&&assessment.recommendedTransferMinutes!==null?<p>{es?'Tiempo de viaje estimado':'Estimated travel time'}: {minutes(assessment.currentTransferMinutes)} → {minutes(assessment.recommendedTransferMinutes)}</p>:null}
-  {stale?<p role="alert">{es?'El viaje ha cambiado. Mantén este orden y vuelve a actualizar la ruta.':'The trip changed. Keep this order and run Update route again.'}</p>:error?<p role="alert">{error}</p>:null}
+  {stale?<p role="alert">{es?'El viaje cambió. Mantén el orden actual y vuelve a comprobarlo.':'Your trip changed. Keep the current order, then check again.'}</p>:error?<p role="alert">{error}</p>:null}
   <div className={styles.routeStatusActions}><EasyTButton data-keep-route variant="secondary" onClick={onKeep}>{es?'Mantener orden actual':'Keep current order'}</EasyTButton><EasyTButton disabled={stale} onClick={onAccept}>{es?'Aplicar orden':'Apply order'}</EasyTButton></div>
  </MorroviaContentDialog>;
 }

@@ -120,7 +120,7 @@ test("clarification search resolves each original stop occurrence in prompt orde
   page.setDefaultTimeout(5000);
   try {
     await page.getByRole("tab", { name: "Describe my trip" }).click();
-    await page.getByRole("textbox", { name: "Start your plan" }).fill("10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.");
+    await page.getByRole("textbox", { name: "Describe your trip" }).fill("10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.");
     await page.getByRole("button", { name: "Plan my trip", exact: true }).click();
     await page.locator("[data-builder-stop-index]").nth(1).waitFor({ timeout: 15_000 });
 

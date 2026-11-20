@@ -196,8 +196,8 @@ test('Crete base selection adds only an explicitly chosen overnight town before 
     const search = dialog.getByRole('combobox', { name: /Search for somewhere specific/ });
     await search.fill('Crete');
     await dialog.getByRole('option', { name: /Crete.*Greece/ }).click();
-    await dialog.getByRole('heading', { name: 'Choose a base in Crete' }).waitFor();
-    await view.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choose a base in Crete');
+    await dialog.getByRole('heading', { name: 'Where will you stay in Crete?' }).waitFor();
+    await view.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Where will you stay in Crete?');
     assert.equal(await dialog.getByText('Athens', { exact: true }).count() > 0, true);
     assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
     assert.equal(await dialog.getByRole('button', { name: 'Add Athens as a base' }).count(), 0);

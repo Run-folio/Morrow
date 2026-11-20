@@ -11,7 +11,7 @@ function Proposal({stale=false,es=false,repeated=false}:{stale?:boolean;es?:bool
  const [open,setOpen]=useState(false);const trip=requireReadableTripDocument(canonicalRouteFixture());trip.brief.bookings=[];
  if(repeated){Object.assign(trip.stops[2]!,{name:'Tokyo',canonicalPlaceId:trip.stops[0]!.canonicalPlaceId,longitude:trip.stops[0]!.longitude,latitude:trip.stops[0]!.latitude});Object.assign(trip.brief.intent.route.destinations[2]!,{sourceText:'Tokyo',selectedPlace:structuredClone(trip.brief.intent.route.destinations[0]!.selectedPlace)})}
  const result=createBuilderOptimizationProposal(trip,{ownerId:trip.ownerId,tripId:trip.id,inputRevision:0},['tokyo','hiroshima','kyoto'],'story');
- return <main className="morrovia-editorial-page"><EasyTButton onClick={()=>setOpen(true)}>{es?'Actualizar ruta':'Update route'}</EasyTButton><TripBuilderRouteProposal current={trip} proposal={open&&result.kind==='proposal'?result.proposal:null} language={es?'es':'en'} stale={stale} onKeep={()=>setOpen(false)} onAccept={()=>setOpen(false)}/></main>;
+ return <main className="morrovia-editorial-page"><EasyTButton onClick={()=>setOpen(true)}>{es?'Comprobar orden':'Check stop order'}</EasyTButton><TripBuilderRouteProposal current={trip} proposal={open&&result.kind==='proposal'?result.proposal:null} language={es?'es':'en'} stale={stale} onKeep={()=>setOpen(false)} onAccept={()=>setOpen(false)}/></main>;
 }
 export const ProposedOrder:Story={render:()=> <Proposal/>};
 export const NewerEdit:Story={render:()=> <Proposal stale/>};

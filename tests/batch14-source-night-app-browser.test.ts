@@ -27,7 +27,7 @@ for(const fixture of fixtures)test(`${fixture.case} actual source clarification 
   await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   const origin=page.getByRole('combobox',{name:'Start from',exact:true});await origin.fill('City of London');await page.getByRole('option').filter({hasText:'City of London'}).first().click();
-  await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan',exact:true}).fill(prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
+  await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('textbox',{name:'Describe your trip',exact:true}).fill(prompt);await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
   await page.waitForURL(/\/journey\/new\?.*\btrip=/,{waitUntil:'domcontentloaded'});const id=new URL(page.url()).searchParams.get('trip')!;assert(id);await page.locator('[data-builder-route-workspace]').waitFor();
   if(await page.getByText('SKIP WORKSPACE GUIDE',{exact:true}).isVisible().catch(()=>false))await page.getByText('SKIP WORKSPACE GUIDE',{exact:true}).click();
   const read=()=>page.evaluate(id=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:v2:guest:')).map(k=>JSON.parse(localStorage.getItem(k)!)).filter(v=>v.tripId===id).sort((a,b)=>b.savedAt.localeCompare(a.savedAt))[0]?.trip,id);

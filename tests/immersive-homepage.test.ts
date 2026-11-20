@@ -71,8 +71,8 @@ test("homepage trip capture progressively discloses canonical details without ch
   const homepage = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const stories = readFileSync(new URL("../components/easyt/morrovia-trip-capture.stories.tsx", import.meta.url), "utf8");
-  assert.match(capture, /homepageLabel: "Start your plan"/);
-  assert.match(capture, /homepagePlaceholder: "Where would you like to go, for how long\?"/);
+  assert.match(capture, /homepageLabel: "Describe your trip"/);
+  assert.match(capture, /homepagePlaceholder: "Two weeks in Japan, starting in Tokyo\."/);
   assert.match(capture, /showDetails: "Add trip details"/);
   assert.match(capture, /aria-expanded=\{detailsOpen\}/);
   assert.match(capture, /\(!progressiveDetails \|\| detailsOpen\)/);

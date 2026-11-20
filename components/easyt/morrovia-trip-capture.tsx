@@ -21,8 +21,8 @@ const copy = {
   en: {
     briefLabel: "Tell us about your trip",
     briefPlaceholder: "Where would you like to go and for how long?\nAny must see places to base the trip around?",
-    homepageLabel: "Start your plan",
-    homepagePlaceholder: "Where would you like to go, for how long?",
+    homepageLabel: "Describe your trip",
+    homepagePlaceholder: "Two weeks in Japan, starting in Tokyo.",
     showDetails: "Add trip details",
     hideDetails: "Hide trip details",
     continue: "Plan my trip",
@@ -59,8 +59,8 @@ const copy = {
   es: {
     briefLabel: "CUÉNTANOS SOBRE TU VIAJE",
     briefPlaceholder: "¿Adónde te gustaría ir y durante cuánto tiempo?\n¿Hay algún lugar imprescindible alrededor del que organizar el viaje?",
-    homepageLabel: "Empieza tu plan",
-    homepagePlaceholder: "¿Adónde te gustaría ir y por cuánto tiempo?",
+    homepageLabel: "Describe tu viaje",
+    homepagePlaceholder: "Dos semanas en Japón, empezando en Tokio.",
     showDetails: "Añadir detalles del viaje",
     hideDetails: "Ocultar detalles del viaje",
     continue: "Planificar mi viaje",

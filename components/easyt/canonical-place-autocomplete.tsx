@@ -113,7 +113,7 @@ export function CanonicalPlaceAutocomplete({
   /** Builder origin uses a compact attribution disclosure below actual suggestions. */
   compactBuilderOrigin?: boolean;
 }) {
-  const resolvedEmptyMessage = emptyMessage ?? (language === "es" ? "No encontramos lugares coincidentes. Prueba el lugar con su país." : "No matching places found. Try the place with its country.");
+  const resolvedEmptyMessage = emptyMessage ?? (language === "es" ? "No hay coincidencias. Prueba a añadir el país." : "No matches. Try adding the country.");
   const resolvedFailureMessage = failureMessage ?? (language === "es" ? "La búsqueda de lugares no está disponible temporalmente." : "Place search is temporarily unavailable.");
   const listId = useId();
   const deferredValue = useDeferredValue(value);

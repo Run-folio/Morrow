@@ -347,10 +347,10 @@ export function MorroviaConfirmationDialog({
       onClick={(event) => { if (event.target === event.currentTarget) onCancel(); }}
     >
       <div className={styles.dialogMark}><AlertCircle aria-hidden="true" /></div>
-      <p className={styles.eyebrow}>{eyebrow}</p>
+      {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
       <h2 id={titleId}>{title}</h2>
       <p id={detailId} className={styles.dialogDetail}>{detail}</p>
-      <ul>{consequences.map((consequence) => <li key={consequence}>{consequence}</li>)}</ul>
+      {consequences.length ? <ul>{consequences.map((consequence) => <li key={consequence}>{consequence}</li>)}</ul> : null}
       {error ? <p className={styles.dialogError} role="alert">{error}</p> : null}
       <div className={styles.dialogActions}>
         <EasyTButton ref={cancelRef} variant="secondary" disabled={confirming} onClick={onCancel}>{cancelLabel}</EasyTButton>

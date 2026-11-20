@@ -487,6 +487,11 @@ export default function HomeTripStarter() {
     setProposedType(null);
   };
   const choice = homepageRouteChoice(snapshot, evidenceFor(snapshot));
+  const proposedEnd = proposedType?.evidence.journeyEnd;
+  const currentEnd = proposedType?.snapshot.journeyEnd;
+  const namedFinish = proposedEnd?.mode === "explicit" ? proposedEnd.place.name
+    : currentEnd?.state === "selected" && currentEnd.value.mode === "explicit" ? currentEnd.value.place.name : null;
+  const returning = proposedType?.type === "return_to_start";
   const originInput = snapshot.originInput ?? (snapshot.origin.state === "selected" ? snapshot.origin.value.name : "");
   const interests = snapshot.interests.state === "selected" ? snapshot.interests.value
     : snapshot.interests.state === "cleared" ? [] : tripInterestsWithProfileDefaults([], travelProfile, false);
@@ -496,9 +501,9 @@ export default function HomeTripStarter() {
   {recoveryBlocked && captureError ? <MorroviaRecoveryFeedback title={captureError}
     safety={language === "es" ? "Conserva esta pestaña abierta mientras revisamos tu entrada guardada." : "Keep this tab open while we check your saved input."}
     onRetry={retryRecoveryRead} retryLabel={language === "es" ? "Reintentar recuperación" : "Try recovery again"} /> : null}
-  {pendingSubmission ? <MorroviaRecoveryFeedback title={language === "es" ? "Tienes un envío de viaje pendiente" : "Your saved submission is waiting"}
-    safety={language === "es" ? "Reanúdalo antes de empezar otro viaje." : "Resume it before starting another trip."}
-    onRetry={loading ? undefined : resumePendingSubmission} retryLabel={language === "es" ? "Reanudar envío guardado" : "Resume saved submission"} /> : null}
+  {pendingSubmission ? <MorroviaRecoveryFeedback title={language === "es" ? "Tienes un viaje sin terminar" : "You have an unfinished trip"}
+    safety={language === "es" ? "Continúa este viaje antes de empezar otro." : "Continue this trip before starting another."}
+    onRetry={loading ? undefined : resumePendingSubmission} retryLabel={language === "es" ? "Continuar viaje" : "Continue trip"} /> : null}
   <MorroviaTripCapture
     formId="start-building" progressiveDetails disabled={sessionPending || inputBlocked} language={language} value={snapshot.prompt}
     onValueChange={(prompt) => {
@@ -556,9 +561,15 @@ export default function HomeTripStarter() {
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={recoveryBlocked ? "" : captureError}
   />
   <MorroviaConfirmationDialog open={Boolean(proposedType)} onCancel={() => setProposedType(null)} onConfirm={acceptTripType}
-    title={language === "es" ? "¿Confirmar el tipo de viaje?" : "Confirm trip type?"}
-    detail={language === "es" ? "Tu idea incluye un final diferente. Confirma cómo quieres terminar el viaje." : "Your trip idea includes a different ending. Confirm how you want to finish."}
-    consequences={[proposedType?.type === "return_to_start" ? (language === "es" ? "El viaje volverá al inicio." : "The journey will return to its start.") : (language === "es" ? "El viaje será de solo ida." : "The journey will be one way.")]}
-    confirmLabel={language === "es" ? "Confirmar" : "Confirm"} cancelLabel={language === "es" ? "Cancelar" : "Cancel"} />
+    eyebrow=""
+    title={returning ? (language === "es" ? "¿Volver al punto de salida?" : "Return to your starting point?") : (language === "es" ? "¿Hacer un viaje de solo ida?" : "Make this a one-way trip?")}
+    detail={namedFinish
+      ? returning
+        ? (language === "es" ? `El viaje ya no terminará en ${namedFinish}.` : `Your trip will no longer end in ${namedFinish}.`)
+        : (language === "es" ? `El viaje terminará en ${namedFinish}.` : `Your trip will end in ${namedFinish}.`)
+      : language === "es" ? "Tu plan indica un final diferente." : "Your plan gives a different ending."}
+    consequences={[]}
+    confirmLabel={returning ? (language === "es" ? "Elegir ida y vuelta" : "Use return trip") : (language === "es" ? "Elegir solo ida" : "Use one-way trip")}
+    cancelLabel={language === "es" ? "Conservar plan actual" : "Keep current plan"} />
   </>;
 }
