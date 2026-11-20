@@ -168,6 +168,13 @@ export function supportedTransportChoicesForLeg(trip: EasyTTrip, leg: TripLeg): 
   });
 }
 
+/** The recommendation itself is not an alternative; a saved override can be reset. */
+export function hasTransportChoiceAction(trip: EasyTTrip, leg: TripLeg): boolean {
+  const recommendationId = record(leg.routeMetadata.multimodalResolution)?.selectedCandidateId;
+  return Boolean(selectedTransportChoiceForLeg(trip, leg)) ||
+    supportedTransportChoicesForLeg(trip, leg).some(option => option.candidateId !== recommendationId);
+}
+
 export function selectedTransportChoiceForLeg(trip: EasyTTrip, leg: TripLeg) {
   const selections = trip.brief.decisionSelections?.transportByLeg ?? {};
   const direct = selections[leg.id];

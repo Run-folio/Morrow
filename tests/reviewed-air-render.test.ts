@@ -43,7 +43,7 @@ function render(name:string,value:EasyTTrip,extra:Record<string,unknown>={}) {
  (globalThis as any).__airRenderTrip=value;
  const calendar=name==='CalendarItem'?itineraryCalendarDays(value)[0]:undefined;
  const calendarTransfer=calendar?.items.find(item=>item.kind==='transfer');
- const props=name==='CalendarItem'?{item:calendarTransfer,day:calendar,copy:module.exports.calendarCopy('en'),language:'en',draggable:false,dragging:false,onDragStart:noop,onDragEnd:noop,onSelect:noop}:name==='Builder'?{canonicalTrip:value,previewStopIds:null,selectedStopId:null,lockedStopIds:[],fixedOrder:false,routeCheckProposalStopIds:null,nightStatus:{complete:true,total:3,allocated:3,language:'en'},onSelectStop:noop,onPreviewOrder:noop,onCommitOrder:()=>false,onEditNights:noop,onRemoveStop:noop,onTransportChoiceChange:noop}:name==='Overview'?{trip:value,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'}:name==='Choice'?{trip:value,leg:value.legs[0],onChange:noop,showUnavailable:true}:{trip:value};
+ const props=name==='CalendarItem'?{item:calendarTransfer,day:calendar,copy:module.exports.calendarCopy('en'),language:'en',draggable:false,dragging:false,onDragStart:noop,onDragEnd:noop,onSelect:noop}:name==='Builder'?{canonicalTrip:value,previewStopIds:null,selectedStopId:null,lockedStopIds:[],fixedOrder:false,routeCheckProposalStopIds:null,nightStatus:{complete:true,total:3,allocated:3,language:'en'},onSelectStop:noop,onPreviewOrder:noop,onCommitOrder:()=>false,onEditNights:noop,onRemoveStop:noop,onTransportChoiceChange:noop}:name==='Overview'?{trip:value,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'}:name==='Choice'?{trip:value,leg:value.legs[0],onChange:noop}:{trip:value};
  return renderToStaticMarkup(createElement(module.exports[name],{...props,...extra}));
 }
 for(const surface of ['Builder','Overview','Map','Itinerary','Transport','Choice','CalendarItem'])test(`${surface} renders reviewed timing as an approximate total, not airborne duration`,()=>{
@@ -113,7 +113,8 @@ test('accepted two-stop Quito–Bogotá–Cartagena journey survives model, reco
  assert.deepEqual(restored.planItems.map(day=>day.notes),value.planItems.map(day=>day.notes));
  for(const surface of ['Builder','Overview','Map','Itinerary','Transport','Choice','CalendarItem']){
   const extra=surface==='Map'?{storyState:{mapMode:'detail',selectedRouteLegId:restored.legs[0]!.id}}:{};
-  assert.match(render(surface,restored,extra),/~4h/,surface);
+  if(surface==='Choice') assert.equal(render(surface,restored,extra),'','a single recommended option has no edit control');
+  else assert.match(render(surface,restored,extra),/~4h/,surface);
  }
  assert.equal(JSON.stringify(restored),before);
 });
@@ -142,4 +143,21 @@ test('Map detail does not call explicit unknown totals known because stale minut
  assert.match(html,/Door to door<\/dt><dd>Timing to confirm/);
  assert.doesNotMatch(html,/Plan around Timing to confirm/);
  assert.deepEqual(value,before);
+});
+
+test('expanded Transport offers change only for real choices and omits empty More actions',()=>{
+ const value=structuredClone(trip),leg=value.legs[0];
+ (globalThis as any).__airRenderQuery='leg='+encodeURIComponent(leg.id);
+ try{
+  assert.match(render('Transport',value),/aria-label="Change transport mode"/);
+  const diagnostic=leg.routeMetadata.multimodalResolution as {selectedCandidateId:string;candidates:{id:string}[]};
+  diagnostic.candidates=diagnostic.candidates.filter(c=>c.id===diagnostic.selectedCandidateId);
+  const single=render('Transport',value);
+  assert.doesNotMatch(single,/Change transport mode/);
+  assert.match(single,/Check for alternatives/);
+  // No eligible request can fit, and a road estimate is not a bookable passenger service.
+  leg.mode='road';leg.segments=[];leg.routeMetadata.syntheticPayload='x'.repeat(101000);
+  const inert=render('Transport',value);
+  assert.doesNotMatch(inert,/Change transport mode|Check for alternatives|data-transport-more-actions/);
+ } finally {delete (globalThis as any).__airRenderQuery;}
 });

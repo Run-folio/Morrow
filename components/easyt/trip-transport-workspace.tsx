@@ -8,7 +8,8 @@ import {missingReturnJourney} from '@/lib/easyt/missing-return-journey';
 import {prepareMissingReturnJourneyRepair} from '@/lib/easyt/trip-builder-handler-contract';
 import {builderDocumentFingerprint} from '@/lib/easyt/trip-builder-document-commit';
 import {requireReadableTripDocument} from '@/lib/easyt/trip-document';
-import {adoptTransportComparison} from "@/lib/easyt/transport-comparison";
+import {transportComparisonRequestBody} from "@/lib/easyt/transport-comparison-request";
+import {adoptTransportComparison, transportComparisonInput} from "@/lib/easyt/transport-comparison";
 import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptions';
 import {transportJourneyParts, journeyPartGapLabel} from '@/lib/easyt/transport-journey-parts';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
@@ -30,7 +31,7 @@ import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
 import { parseTransportWorkspaceTarget,tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripLeg } from "@/lib/easyt/trip";
-import { clearTripLegTransportChoice, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
+import { hasTransportChoiceAction, clearTripLegTransportChoice, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import { useTripShellMutation } from "./trip-shell-client";
 import TripTransportChoiceControl from "./trip-transport-choice-control";
 import { isPassengerServiceLeg, markTransportLegBooked, transportBookingMarkedByTraveller, unmarkTransportBooking, updateTravellerTransportBookingDetails } from "@/lib/easyt/transport-booking.ts";
@@ -317,6 +318,10 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { leg } = item;
   const recommendedLeg = trip.legs.find((candidate) => candidate.id === leg.id) ?? leg;
+  const canChange = hasTransportChoiceAction(trip, recommendedLeg);
+  const comparisonInput = !item.bookingMismatch && !item.booking ? transportComparisonInput(trip, leg.id) : null;
+  const canCheck = Boolean(comparisonInput && transportComparisonRequestBody(comparisonInput));
+  const canMark = !item.bookingMismatch && (item.manualBooking ? !transportBookingMarkedByTraveller(item.manualBooking) : !item.booking && isPassengerServiceLeg(leg));
   const journeyParts = transportJourneyParts(leg);
   const pendingKey = `transport-choice-${leg.id}`;
   const action = item.booking || item.bookingMismatch || !isFutureDate(item.date) ? null : transportAffiliateActionForLeg(trip, leg, new Date(), item.date);
@@ -333,21 +338,21 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
       {(!item.bookingMismatch && !item.manualBooking && item.booking?.url) ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton> : null}
-      <details className={styles.moreActions} data-transport-more-actions>
+      {canMark || canChange || canCheck ? <details className={styles.moreActions} data-transport-more-actions>
         <summary>{copy.moreActions}</summary>
         <div className={styles.moreActionsList}>
-          {!item.bookingMismatch && (item.manualBooking ? !transportBookingMarkedByTraveller(item.manualBooking) : !item.booking && isPassengerServiceLeg(leg)) ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
-          <TripTransportChoiceControl onAdoptComparison={(comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
+          {canMark ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
+          <TripTransportChoiceControl onAdoptComparison={!canCheck ? undefined : (comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
             if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
             const next=adoptTransportComparison(current,comparison,candidateId);
             if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
             return next;
-          },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={!mutation.canMutate || mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
+          },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={!mutation.canMutate || mutation.isPending(pendingKey)} checkOnly={!canChange && canCheck} showCurrentDuration={false}
             onChange={(identity) => mutation.mutateTrip((current) => identity
               ? selectTripLegTransportChoice(current, leg.id, identity)
               : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
         </div>
-      </details>
+      </details> : null}
     </div>
     {!item.bookingMismatch && item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
         pending={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)}
