@@ -1636,7 +1636,7 @@ export default function TripItineraryWorkspace({
         <div className={styles.dateNavigation}>
           {workspaceView === "calendar" && todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
           <EasyTButton icon={ChevronLeft} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex <= 0 : index === 0} onClick={() => navigatePeriod(-1)}>{workspaceView === "calendar" ? copy.previousWeek : copy.previousDay}</EasyTButton>
-          {mobile ? <EasyTButton className={styles.mobileDayPicker} variant="secondary" aria-label={language === "es" ? "Elegir día" : "Choose a day"} aria-describedby={`${tabIdPrefix}-selected-day`} aria-haspopup="dialog" aria-expanded={dayPickerOpen} onClick={() => setDayPickerOpen(true)}><span id={`${tabIdPrefix}-selected-day`}>{displayDayDate(active.date, language)} · {copy.day} {active.dayNumber} · {stop?.name ?? active.title}</span><ChevronDown aria-hidden="true" /></EasyTButton> : <EasyTSelect label={copy.jumpToDateDestination} labelClassName="sr-only" value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
+          {mobile ? <EasyTButton className={styles.mobileDayPicker} data-accepted-cue={acceptedCueValue(cue,active.id)} variant="secondary" aria-label={language === "es" ? "Elegir día" : "Choose a day"} aria-describedby={`${tabIdPrefix}-selected-day`} aria-haspopup="dialog" aria-expanded={dayPickerOpen} onClick={() => setDayPickerOpen(true)}><span id={`${tabIdPrefix}-selected-day`}>{displayDayDate(active.date, language)} · {copy.day} {active.dayNumber} · {stop?.name ?? active.title}</span><ChevronDown aria-hidden="true" /></EasyTButton> : <EasyTSelect label={copy.jumpToDateDestination} labelClassName="sr-only" value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
             {days.map((day) => <option key={day.id} value={day.id}>{displayDayDate(day.date, language)} · {copy.day} {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
           </EasyTSelect>}
           <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
@@ -1720,6 +1720,7 @@ export default function TripItineraryWorkspace({
       </nav> : null}
       {workspaceView === "calendar" ? <ItineraryCalendar
         tripId={workingTrip.id}
+        cueForDay={id=>acceptedCueValue(cue,id)}
         stopImages={presentationImages.stopById}
         onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); focusCalendarDayDetails(day.id); }}
         weeks={calendarWeeks}
@@ -2348,8 +2349,9 @@ function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "act
   return copy.flexible;
 }
 
-function ItineraryCalendar({ tripId, stopImages, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
+function ItineraryCalendar({ tripId, cueForDay, stopImages, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
   tripId: string;
+  cueForDay: (id:string)=>string|undefined;
   stopImages: Readonly<Record<string, OverviewPlaceImage | null>>;
   onOpenDay: (day: ItineraryCalendarDay) => void;
   weeks: ItineraryCalendarWeek[];
@@ -2377,6 +2379,7 @@ function ItineraryCalendar({ tripId, stopImages, onOpenDay, weeks, selectedDayId
           const previewItems = day?.items.filter(item => item.kind !== "accommodation") ?? [];
           return day ? <article
           className={styles.calendarDay}
+          data-accepted-cue={cueForDay(day.id)}
           data-selected={selectedDayId === day.id || undefined}
           data-drop-eligible={Boolean(dragItem && (dragItem.kind === "suggestion" ? dragItem.idea.stopId : dragItem.sourceStopId) === day.day.stopId) || undefined}
           key={day.id}
