@@ -1,6 +1,7 @@
 import {SPREADSHEET_IMPORT_PARSER_VERSION} from "./spreadsheet-import.ts";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg, TripStop } from "./trip.ts";
 import { effectiveTripLeg } from "./transport-mode-choice.ts";
+import { parseIsoDate } from "./trip-lifecycle.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 
 export type TravellerTransportDetails = { confirmation?: string; url?: string; note?: string };
@@ -147,17 +148,43 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pic
         || booking.id === `transport-${leg.id}`
         || (typeof importedBookingId === "string" && booking.id === importedBookingId)));
   }
+  const unbound = (trip.brief.bookings ?? []).filter(booking => booking.type === "transport" && !booking.transportLegBinding);
+  const explicitlyBound = (booking: TripBooking, candidate: TripLeg) => booking.id === candidate.id || booking.id === `transport-${candidate.id}`;
+  const exact = unbound.find(booking => explicitlyBound(booking, leg));
+  if (exact) return exact;
+
   const fromName = normalise(from?.name ?? "");
   const toName = normalise(to?.name ?? "");
-  return (trip.brief.bookings ?? []).find((booking) => {
-    if (booking.type !== "transport" || booking.transportLegBinding) return false;
-    if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
+  if (!fromName || !toName || fromName === toName) return undefined;
+  const matchesLabels = (booking: TripBooking, origin: string, destination: string) => {
+    if (!origin || !destination || origin === destination) return false;
     const explicitFrom = normalise(booking.transportDetails?.from ?? "");
     const explicitTo = normalise(booking.transportDetails?.to ?? "");
-    if (explicitFrom || explicitTo) return explicitFrom === fromName && explicitTo === toName;
+    if (explicitFrom || explicitTo) return explicitFrom === origin && explicitTo === destination;
     const title = normalise(booking.title);
-    const fromIndex = title.indexOf(fromName);
-    const toIndex = title.indexOf(toName, fromIndex + fromName.length);
-    return Boolean(fromName && toName && fromName !== toName && fromIndex >= 0 && toIndex > fromIndex);
+    const fromIndex = title.indexOf(origin);
+    return fromIndex >= 0 && title.indexOf(destination, fromIndex + origin.length) > fromIndex;
+  };
+  const possibleBookings = unbound.filter(booking => matchesLabels(booking, fromName, toName)
+    && !trip.legs.some(candidate => explicitlyBound(booking, candidate)));
+  if (!possibleBookings.length) return undefined;
+  // Legacy names are not occurrence IDs. Only project a uniquely supported match;
+  // never rewrite a booking to fit the new route. Overnight tickets use departure.
+  const occurrences = trip.legs.map(candidate => {
+    const departure = routeEndpointForLeg(trip, candidate, "from");
+    const arrival = routeEndpointForLeg(trip, candidate, "to");
+    return { id: candidate.id, origin: normalise(departure?.name ?? ""), destination: normalise(arrival?.name ?? ""),
+      date: departure?.kind === "origin" ? trip.startDate : trip.stops.find(stop => stop.id === candidate.fromStopId)?.departureDate };
   });
+  const matches = possibleBookings.filter(booking => {
+    const candidates = occurrences.filter(row => matchesLabels(booking, row.origin, row.destination));
+    if (booking.date == null) {
+      if ([fromName, toName].some(name => trip.stops.filter(stop => normalise(stop.name) === name).length > 1)) return false;
+      return candidates.length === 1 && candidates[0].id === leg.id;
+    }
+    if (!parseIsoDate(booking.date) || candidates.some(row => !parseIsoDate(row.date))) return false;
+    const dated = candidates.filter(row => row.date === booking.date);
+    return dated.length === 1 && dated[0].id === leg.id;
+  });
+  return matches.length === 1 ? matches[0] : undefined;
 }
