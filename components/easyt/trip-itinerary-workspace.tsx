@@ -1,4 +1,6 @@
 "use client";
+import { useAcceptedMotionCue, acceptedCueValue } from "@/components/easyt/app-motion";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import { EntryReveal } from "@/components/easyt/app-motion";
 import {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';
@@ -705,6 +707,7 @@ export default function TripItineraryWorkspace({
   const dayListRef = useRef<HTMLDivElement>(null);
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
+  const {cue,markAccepted}=useAcceptedMotionCue(JSON.stringify([workingTrip.ownerId,workingTrip.id]));
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
   const captureActionScope = useItineraryActionScope(JSON.stringify([
     workingTrip.ownerId, workingTrip.id, activeDayId, workspaceView,
@@ -815,8 +818,8 @@ export default function TripItineraryWorkspace({
       if (!rail || !selected) return;
       const railBox = rail.getBoundingClientRect();
       const selectedBox = selected.getBoundingClientRect();
-      if (selectedBox.left < railBox.left) rail.scrollTo({ left: rail.scrollLeft + selectedBox.left - railBox.left, behavior: "smooth" });
-      else if (selectedBox.right > railBox.right) rail.scrollTo({ left: rail.scrollLeft + selectedBox.right - railBox.right, behavior: "smooth" });
+      if (selectedBox.left < railBox.left) rail.scrollTo({ left: rail.scrollLeft + selectedBox.left - railBox.left, behavior: motionScrollBehavior() });
+      else if (selectedBox.right > railBox.right) rail.scrollTo({ left: rail.scrollLeft + selectedBox.right - railBox.right, behavior: motionScrollBehavior() });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeDayId, selectedIndex, tabIdPrefix]);
@@ -1156,6 +1159,7 @@ export default function TripItineraryWorkspace({
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
     }
+    if (addFlow.kind === "activity" && receipt) { const target=days.find(day=>day.dayNumber===addFlow.dayNumber); if(target)markAccepted(target.id); }
     if (addFlow.kind === "activity") trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: active.stopId, source: "manual", item_kind: "activity" });
     setNotice(addFlow.kind === "activity" ? addedToDayNotice(language, addFlow.dayNumber, addFlow.dayPart) : copy.noteAdded);
     setUndoReceipt(receipt);
@@ -1210,6 +1214,7 @@ export default function TripItineraryWorkspace({
     const target = workingTrip.planItems.find((day) => day.id === dayId);
     setNotice(target ? addedToDayNotice(language, target.dayNumber, scheduledPart) : copy.suggestionAdded);
     if (newItem) {
+      markAccepted(dayId);
       trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: idea.stopId, source: itineraryAddSourceForIdea(idea), item_kind: idea.category });
       trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
     }
@@ -1260,6 +1265,7 @@ export default function TripItineraryWorkspace({
           ? addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.idea.providerMetadata?.duration))
           : addedToDayNotice(language, active.dayNumber, dayPart));
         if (newItem) {
+          markAccepted(active.id);
           trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: dragged.idea.stopId, source: itineraryAddSourceForIdea(dragged.idea), item_kind: dragged.idea.category });
           trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" });
         }
@@ -1684,6 +1690,7 @@ export default function TripItineraryWorkspace({
             return <MotionButton
               type="button"
               role="tab"
+              data-accepted-cue={acceptedCueValue(cue,day.id)}
               aria-label={`${copy.day} ${day.dayNumber} · ${displayDayDate(day.date, language)} · ${dayStop?.name ?? day.title}${dayStop && subtitle ? ` · ${subtitle}` : ""}`}
               aria-selected={dayIndex === index}
               aria-controls={`${tabIdPrefix}-days-panel`}
@@ -2088,7 +2095,7 @@ export default function TripItineraryWorkspace({
             const key = `explicit-visit-${mentionId}`;
             const changed = await mutateCurrentTrip((current) => scheduleExplicitVisitIntent(current, mentionId, dayId), key);
             if (!isCurrent()) return false;
-            if (changed) setNotice("Requested visit added to the itinerary");
+            if (changed) { markAccepted(dayId); setNotice("Requested visit added to the itinerary"); }
             return changed;
           }}
           onRemoveVisit={async (mentionId) => {

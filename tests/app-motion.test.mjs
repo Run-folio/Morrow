@@ -31,3 +31,18 @@ test('StrictMode transient setup does not consume the first painted reveal',asyn
  assert.equal(plays,1,'immediate input cancels pre-paint reveal');
  gate(false,false); setup(); flush(); assert.equal(plays,2,'next opening reveals');
 });
+
+test('press animation follows the native key of links vs buttons',async()=>{
+ const {isMotionActivationKey}=await import('../lib/easyt/app-motion.ts');
+ assert.equal(isMotionActivationKey('Enter','link'),true);
+ assert.equal(isMotionActivationKey(' ','link'),false,'Space only scrolls on a link');
+ assert.equal(isMotionActivationKey(' ','button'),true);
+ assert.equal(isMotionActivationKey('Enter','button',true),false);
+ assert.equal(isMotionActivationKey('Escape','button'),false);
+});
+
+test('explicit JS scroll cannot inherit smooth CSS scrolling under reduced motion',async()=>{
+ const {motionScrollBehavior}=await import('../lib/easyt/app-motion.ts');
+ assert.equal(motionScrollBehavior(true),'instant');
+ assert.equal(motionScrollBehavior(false),'smooth');
+});

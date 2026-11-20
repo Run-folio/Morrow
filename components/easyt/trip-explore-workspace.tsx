@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 
 import { EntryReveal } from "./app-motion";
 
@@ -851,7 +852,7 @@ export default function TripExploreWorkspace({
             retireActionIntent({ destinationId: opportunity.stop.id, category: "for-you" });
             setDestinationId(opportunity.stop.id);
             setCategory("for-you");
-            document.getElementById("explore-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.getElementById("explore-results")?.scrollIntoView({ behavior: motionScrollBehavior(), block: "start" });
           }}>Find ideas for this time</EasyTButton>
         </section> : null}
       </>}

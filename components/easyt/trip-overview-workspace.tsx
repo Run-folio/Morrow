@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 
 import { EntryReveal } from "./app-motion";
 
@@ -375,7 +376,7 @@ export default function TripOverviewWorkspace({
 
   const openTravellerDetails = () => {
     setTravellerDetailsOpen(true);
-    window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: motionScrollBehavior(), block: "nearest" }));
   };
 
   const progressAction = (category: OverviewReadinessCategory): ReadinessTileAction | null => {

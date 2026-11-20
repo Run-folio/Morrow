@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import { EntryReveal } from "@/components/easyt/app-motion";
 
@@ -2669,7 +2670,7 @@ function TripBuilderDocument() {
     if (target === "stops") setShowStopEditor(true);
     if (target === "constraints") setShowTripDetails(true);
     setSummaryFocus(target);
-    window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: motionScrollBehavior(), block: "center" }), 80);
   };
 
   const routeIntelligenceInput: Parameters<typeof assessRouteIntelligence>[0] = {

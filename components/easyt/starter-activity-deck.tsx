@@ -43,6 +43,7 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
   const [offset, setOffset] = useState(0);
   const [direction, setDirection] = useState<Direction>("right");
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [error, setError] = useState("");
   const gesture = useRef<Gesture | null>(null);
@@ -90,26 +91,31 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
     setError("");
     setDirection(kind === "save" ? "right" : "left");
     let result: Operation["kind"] = "skipped";
-    if (kind === "save") {
+    if (kind === "save" && card.state === "available") {
+      setSaving(true);
+      setAnnouncement("Saving idea…");
       try {
-        const saved = card.state === "available" ? await onDeckSave(card.idea) : "existing";
+        const saved = await onDeckSave(card.idea);
         if (!saved) throw new Error("Save was not accepted");
         result = saved === "added" ? "saved" : "existing";
       } catch {
         if (mounted.current) {
-          lock.current = false; setBusy(false); setOffset(0); setMotion("idle");
+          lock.current = false; setBusy(false); setSaving(false); setAnnouncement(""); setOffset(0); setMotion("idle");
           setError("Couldn’t save this idea. Try again.");
         }
         return;
       }
+    } else if (kind === "save") {
+      result = "existing";
     }
     if (!mounted.current) return;
+    setSaving(false);
+    setLast({ card, kind: result });
+    setAnnouncement(result === "saved" ? "Idea saved." : result === "existing" ? (card.state === "planned" ? "Already planned." : "Already saved.") : "Idea skipped.");
     exitAction.current = () => {
       const focused = document.activeElement;
       focusNext.current = Boolean(active.current?.contains(focused) || (!next && region.current?.contains(focused)));
       setResolved(previous => new Set(previous).add(card.id));
-      setLast({ card, kind: result });
-      setAnnouncement(result === "saved" ? "Idea saved." : result === "existing" ? (card.state === "planned" ? "Already planned." : "Already saved.") : "Idea skipped.");
       setOffset(0);
       setMotion(reducedMotion() || !next ? "idle" : "entering");
       lock.current = false; setBusy(false);
@@ -180,7 +186,11 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
   };
 
   const style = { "--deck-x": `${offset}px`, "--deck-tilt": `${Math.max(-9, Math.min(9, offset / 14))}deg` } as CSSProperties;
-  const displayIndex = card ? cards.findIndex(item => item.id === card.id) + 1 : 0;
+  const cardPosition = (item: StarterActivityCard) => cards.findIndex(candidate => candidate.id === item.id) + 1;
+  const displayIndex = card ? cardPosition(card) : 0;
+  // The same status describes the next card before and after the visual exit.
+  // Completing the animation never triggers a second success announcement.
+  const announcedCard = motion === "exiting" ? next : card;
   const pending = Boolean(card && isPending?.(card.idea));
   return <div className={styles.deck} ref={region}>
     {card ? <>
@@ -196,7 +206,7 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
       </div>
       <div className={styles.actions}>
         <EasyTButton variant="secondary" icon={ArrowLeft} aria-disabled={busy} onClick={() => { if (!lock.current) void advance("skip"); }}>Skip</EasyTButton>
-        <EasyTButton variant="secondary" icon={card.state === "available" ? Bookmark : Check} aria-disabled={busy || pending || card.state !== "available"} onClick={() => { if (!lock.current && !pending && card.state === "available") void advance("save"); }}>{card.state === "available" ? activityLabels.save : card.state === "planned" ? "Planned" : activityLabels.saved}</EasyTButton>
+        <EasyTButton variant="secondary" icon={card.state === "available" ? Bookmark : Check} aria-disabled={busy || pending || card.state !== "available"} onClick={() => { if (!lock.current && !pending && card.state === "available") void advance("save"); }}>{saving ? "Saving…" : card.state === "available" ? activityLabels.save : card.state === "planned" ? "Planned" : activityLabels.saved}</EasyTButton>
       </div>
       {card.affiliate ? <div className={styles.partner}>{card.affiliate}</div> : null}
     </> : <MorroviaSectionStatus title="No more ideas for this stop" />}
@@ -204,7 +214,7 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
       {last ? <><span>{last.kind === "saved" ? "Idea saved" : last.kind === "existing" ? (last.card.state === "planned" ? "Already planned" : "Already saved") : "Idea skipped"}</span><EasyTButton variant="quiet" size="small" icon={RotateCcw} aria-disabled={busy} onClick={() => { void undo(); }}>Undo</EasyTButton></> : null}
       {error ? <p role="alert">{error}</p> : null}
     </div>
-    <span className={styles.srOnly} role="status">{announcement}{card ? ` ${card.title}, ${displayIndex} of ${cards.length}.` : " No more ideas for this stop."}</span>
+    <span className={styles.srOnly} role="status">{announcement}{announcedCard ? ` ${announcedCard.title}, ${cardPosition(announcedCard)} of ${cards.length}.` : " No more ideas for this stop."}</span>
   </div>;
 }
 

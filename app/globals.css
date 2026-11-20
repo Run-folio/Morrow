@@ -52,3 +52,12 @@ body {
 .editorial-card {
   @apply border border-hairline bg-white shadow-none dark:border-white/10 dark:bg-[#151514];
 }
+
+/* Feedback never displaces the native focus indicator or intercepts input. */
+[data-accepted-cue] { box-shadow: inset 0 0 0 2px currentColor; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-accepted-cue="a"] { animation: acceptedCueA 750ms ease-out both; }
+  [data-accepted-cue="b"] { animation: acceptedCueB 750ms ease-out both; }
+  @keyframes acceptedCueA { to { box-shadow: inset 0 0 0 2px transparent; } }
+  @keyframes acceptedCueB { to { box-shadow: inset 0 0 0 2px transparent; } }
+}

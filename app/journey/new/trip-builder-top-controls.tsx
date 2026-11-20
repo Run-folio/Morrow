@@ -1,4 +1,5 @@
 "use client";
+import { useAcceptedMotionCue, acceptedCueValue } from "@/components/easyt/app-motion";
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, GripVertical, Pencil, Plus, SlidersHorizontal } from 'lucide-react';
 import { EasyTButton, EasyTSelect, EasyTSegmentedControl } from '@/components/easyt/easyt-controls';
@@ -62,8 +63,9 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  const chipOccurrences=builderChipOccurrenceOrder(route,route.destinations.map(intent=>intent.id));
  const canReorder=Boolean(chipOccurrences&&onReorder&&!disabled&&!fixedOrder&&!editingId);
  const sourceIds=chipOccurrences?route.orderedStopIds:[];
- const reorderLocks=lockedStopIds??[...(trip.brief.scheduleLocks?.stopIds??[]),...Object.keys(trip.brief.scheduleLocks?.arrivalDates??{})];
- const reorder=useBuilderStopReorder({scopeKey:identity,stopIds:sourceIds,stopLabels:Object.fromEntries(trip.stops.map(stop=>[stop.id,stop.name])),lockedStopIds:reorderLocks,fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>onReorder?.(ids)??false,targetAttribute:'data-builder-chip-index'});
+ const {cue,markAccepted}=useAcceptedMotionCue(identity);
+  const reorderLocks=lockedStopIds??[...(trip.brief.scheduleLocks?.stopIds??[]),...Object.keys(trip.brief.scheduleLocks?.arrivalDates??{})];
+ const reorder=useBuilderStopReorder({onAcceptedMove:markAccepted,scopeKey:identity,stopIds:sourceIds,stopLabels:Object.fromEntries(trip.stops.map(stop=>[stop.id,stop.name])),lockedStopIds:reorderLocks,fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>onReorder?.(ids)??false,targetAttribute:'data-builder-chip-index'});
  // Stable drop targets avoid moving the native drag source under the pointer.
  const displayedIntents=chipOccurrences?sourceIds.map(id=>route.destinations.find(intent=>intent.stopIds[0]===id)!):route.destinations;
  useEffect(()=>{if(mountedRef.current&&scopeRef.current===renderScope&&focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip,renderScope]);
@@ -112,7 +114,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
       return <MorroviaDestinationTag key={intent.id} id={intent.id} ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}
         label={label} containedActions disabled={disabled||isIntentPending(intent.id)} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
         reorderGrip={canReorder?<EasyTButton variant="quiet" icon={GripVertical} iconOnly className={`${styles.grip} ${reorder.previewIds?.[index]===reorder.draggingId?styles.dropTarget:''}`} disabled={reorderLocks.includes(intent.stopIds[0])} aria-label={reorderLabel} {...reorder.gripProps(intent.stopIds[0])}>{reorderLabel}</EasyTButton>:undefined}
-        reorderProps={canReorder?{'data-builder-chip-index':index,onDragOver:event=>{event.preventDefault();reorder.previewActiveAt(index)},onDrop:event=>{event.preventDefault();reorder.drop()}}:undefined}
+        reorderProps={canReorder?{'data-builder-chip-index':index,'data-accepted-cue':acceptedCueValue(cue,intent.stopIds[0]),onDragOver:event=>{event.preventDefault();reorder.previewActiveAt(index)},onDrop:event=>{event.preventDefault();reorder.drop()}}:undefined}
         editLabel={`${es?'Editar':'Edit'} ${label}`} removeLabel={`${es?'Quitar':'Remove'} ${label}`}
         onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveIntent(intent)}
         editor={editingId===intent.id?<div onKeyDown={event=>{if(event.key==='Escape'&&scopeIsCurrent()&&editingIdRef.current===intent.id&&editorTokenRef.current===renderEditorToken){event.preventDefault();focusId.current=intent.id;changeEditor(null)}}}>

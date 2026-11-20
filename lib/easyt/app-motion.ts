@@ -17,3 +17,14 @@ export function scheduleReveal(gate: (open: boolean, ready: boolean) => boolean,
   const frame = request(() => { if (gate(true,true)) play(); });
   return () => cancel(frame);
 }
+
+export function isMotionActivationKey(key: string, control: "button" | "link", repeat = false) {
+  return !repeat && (key === "Enter" || (key === " " && control === "button"));
+}
+
+/** "auto" can inherit scroll-behavior:smooth; "instant" cannot. */
+export function motionScrollBehavior(
+  reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+): ScrollBehavior {
+  return reduced ? "instant" : "smooth";
+}
