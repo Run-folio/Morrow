@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import {
   ensureEasyTUser,
@@ -8,6 +7,7 @@ import {
   listTripsForOwner,
 } from "@/lib/easyt/repository";
 import EasyTNavigation from "../easyt-navigation";
+import GuestTrips from "./guest-trips";
 import DashboardClient from "./dashboard-client";
 import styles from "../account.module.css";
 import dashboardStyles from "./dashboard.module.css";
@@ -17,12 +17,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Trips" };
 
 export default async function EasyTDashboardPage() {
-  if (!isEasyTAuthConfigured()) {
-    redirect("/journey/login?setup=required");
-  }
-
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  if (!session?.user) redirect("/journey/login?next=/journey/dashboard");
+  const accountAvailable = isEasyTAuthConfigured();
+  const session = accountAvailable ? await getAuth().api.getSession({ headers: await headers() }) : null;
+  if (!session?.user) return <GuestTrips accountAvailable={accountAvailable} />;
   await ensureEasyTUser(session.user.id, session.user.email, session.user.name);
   const [trips, preferences, stamps] = await Promise.all([
     listTripsForOwner(session.user.id),

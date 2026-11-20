@@ -6,9 +6,13 @@ test("Omio handoff explicitly asks to check party size without inventing passeng
  assert.equal(typeof booking.affiliateHandoffDetail,"function");
  const href=buildOmioRouteSearchLink({mode:"train",originName:"Tokyo",originCountry:"Japan",destinationName:"Kanazawa",destinationCountry:"Japan",departureDate:"2026-11-06",now:new Date("2026-11-03T12:00:00Z")})!;
  const a={provider:"omio",category:"transport" as const,href,cta:"Compare transport",affiliate:true as const};
- assert.match(booking.affiliateHandoffDetail(a)!,/traveller count.*not.*carried.*check.*Omio/i);
+ const handoff = booking.affiliateHandoffDetail(a)!;
+ assert.match(handoff, /Omio gets your route and dates, not your traveller count/);
+ assert.match(handoff, /Set the count and check the transport mode before booking/);
  assert.match(booking.affiliateHandoffDetail({...a,href:booking.affiliatePartners.omio.transportUrl})!,/general.*route.*date.*traveller/i);
- assert.match(booking.affiliateHandoffDetail(a,"es")!,/viajeros.*Omio/i);
+ const spanish = booking.affiliateHandoffDetail(a,"es")!;
+ assert.match(spanish,/Omio recibe tu ruta y las fechas, pero no el número de viajeros/);
+ assert.match(spanish,/Indica cuántas personas viajan y comprueba el medio de transporte antes de reservar/);
  assert.deepEqual([...new URL(new URL(href).searchParams.get("u")!).searchParams.keys()],["departurePosTerm","arrivalPosTerm","departureDate","travelMode","locale"]);
 });
 test("only the approved generic accommodation link claims generic handoff",()=>{

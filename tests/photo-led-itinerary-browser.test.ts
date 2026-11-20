@@ -82,7 +82,7 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
       await view.page.screenshot({path:`output/playwright/photo-agenda-${width}.png`,fullPage:true});
     }
     await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
-    await view.page.getByRole('dialog',{name:'Add a plan',exact:true}).waitFor();
+    await view.page.getByRole('dialog',{name:'Choose a time of day',exact:true}).waitFor();
     await view.page.keyboard.press('Escape');
     await view.page.route('**/journey/immersive/*.webp',(route: Route)=>route.abort());
     const failedPhoto=view.page.waitForEvent('requestfailed',{predicate:(r:Request)=>r.url().includes('/journey/immersive/')});
@@ -90,7 +90,7 @@ test('photo-led calendar and mobile agenda retain navigation, details and resili
     await view.page.locator('[data-itinerary-photo="day"]').waitFor({state:'detached'});
     assert.equal(await view.page.getByText('No day photo',{exact:true}).count(),0);
     await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
-    await view.page.getByRole('dialog',{name:'Add a plan',exact:true}).waitFor();
+    await view.page.getByRole('dialog',{name:'Choose a time of day',exact:true}).waitFor();
     await view.page.keyboard.press('Escape');
     await view.page.unroute('**/journey/immersive/*.webp');
     await view.page.route('**/journey/immersive/*.webp',(route:Route)=>route.fulfill({contentType:'image/webp',body:readFileSync(`public${new URL(route.request().url()).pathname}`)}));
@@ -157,11 +157,11 @@ test('mobile Add plan retains its chosen day and period after a durable save and
   try {
     await view.page.setViewportSize({width:390,height:844});
     await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
-    const chooser=view.page.getByRole('dialog',{name:'Add a plan',exact:true});
+    const chooser=view.page.getByRole('dialog',{name:'Choose a time of day',exact:true});
     await chooser.getByRole('button',{name:'Evening',exact:true}).click();
-    await chooser.getByRole('button',{name:'New plan',exact:true}).click();
+    await chooser.getByRole('button',{name:'Find or add an activity',exact:true}).click();
     const add=view.page.getByRole('dialog',{name:'Add to Evening on Day 4',exact:true});
-    await add.getByRole('textbox',{name:'Add your own',exact:true}).fill('Evening market visit');
+    await add.getByRole('textbox',{name:'Activity name',exact:true}).fill('Evening market visit');
     await add.getByRole('button',{name:'Add to Evening',exact:true}).click();
     const planner=view.page.locator('section[aria-label="Day 4 planner"]');
     await planner.locator('[data-day-part="evening"]').getByText('Evening market visit',{exact:true}).waitFor();
@@ -242,15 +242,15 @@ test('mobile photo calendar keeps one modal and retains drafts across detail and
     await view.page.getByRole('button',{name:'Back to day',exact:true}).click();
     assert.equal(await note.inputValue(),'Unsubmitted day note remains available');
     await view.page.getByRole('button',{name:'Add plan',exact:true}).click();
-    const chooser=view.page.getByRole('dialog',{name:'Add a plan',exact:true});
+    const chooser=view.page.getByRole('dialog',{name:'Choose a time of day',exact:true});
     await chooser.waitFor();
     assert.equal(await view.page.locator('dialog:modal').count(),1);
-    await chooser.getByRole('button',{name:'New plan',exact:true}).click();
+    await chooser.getByRole('button',{name:'Find or add an activity',exact:true}).click();
     const add=view.page.getByRole('dialog',{name:'Add to Morning on Day 4',exact:true});
-    await add.getByRole('textbox',{name:'Add your own',exact:true}).fill('Unsaved photo calendar draft');
+    await add.getByRole('textbox',{name:'Activity name',exact:true}).fill('Unsaved photo calendar draft');
     await view.page.setViewportSize({width:1440,height:1000});
     await view.page.setViewportSize({width:390,height:844});
-    assert.equal(await add.getByRole('textbox',{name:'Add your own',exact:true}).inputValue(),'Unsaved photo calendar draft');
+    assert.equal(await add.getByRole('textbox',{name:'Activity name',exact:true}).inputValue(),'Unsaved photo calendar draft');
     assert.equal(await view.page.locator('dialog:modal').count(),1);
     await add.getByRole('button',{name:'Close Add panel',exact:true}).click();
     await view.page.getByRole('button',{name:'Close day details',exact:true}).click();

@@ -155,7 +155,7 @@ export default function MapPlanNext() {
   const selectedItems = useMemo(() => trip?.planItems.filter((item) => item.stopId === selectedStop?.id).sort((a, b) => a.dayNumber - b.dayNumber) ?? [], [selectedStop?.id, trip?.planItems]);
   const selectedLeg = trip?.legs.find((leg) => leg.toStopId === selectedStop?.id);
   const health = useMemo(() => trip ? tripHealth(trip) : null, [trip]);
-  const currentHref = `/journey/plan${trip ? `?trip=${encodeURIComponent(trip.id)}` : ""}`;
+  const currentHref = trip ? `/journey/${encodeURIComponent(trip.id)}` : "/journey/new";
   const onSelect = useCallback((id: string) => setSelectedStopId(id), []);
   const noopPin = useCallback((_pin: PlannerMapPin) => undefined, []);
   const noopDrop = useCallback((_coordinates: [number, number]) => undefined, []);

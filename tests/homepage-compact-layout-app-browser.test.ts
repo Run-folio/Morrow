@@ -23,10 +23,10 @@ for(const width of [1440,390])test(`compact homepage tabs preserve origin, endpo
   const before=await h.stored(),form=h.page.locator('#start-building');
   await h.page.getByRole('tab',{name:'Describe'}).click();
   assert.equal(await form.getByRole('combobox',{name:'Start from',exact:true}).count(),0);
-  await h.page.getByRole('textbox',{name:'Start your plan'}).fill('Madrid then Lisbon, keep this exact order, 2 weeks');
-  await h.page.reload();await h.page.getByRole('textbox',{name:'Start your plan'}).waitFor();
+  await h.page.getByRole('textbox',{name:'Describe your trip'}).fill('Madrid then Lisbon, keep this exact order, 2 weeks');
+  await h.page.reload();await h.page.getByRole('textbox',{name:'Describe your trip'}).waitFor();
   assert.equal(await form.getByRole('combobox',{name:'Start from',exact:true}).count(),0);
-  assert.equal(await h.page.getByRole('textbox',{name:'Start your plan'}).inputValue(),'Madrid then Lisbon, keep this exact order, 2 weeks');
+  assert.equal(await h.page.getByRole('textbox',{name:'Describe your trip'}).inputValue(),'Madrid then Lisbon, keep this exact order, 2 weeks');
   const described=await h.stored();for(const field of ['origin','originInput','entries','dates','tripType','journeyEnd','budget','travellers','interests'])assert.deepEqual(described[field],before[field],field);
   if(width===1440){const tabs=await form.getByRole('tablist').boundingBox(),type=await form.getByRole('group',{name:'Trip type',exact:true}).boundingBox();assert.ok(tabs&&type);assert.ok(type.x>=tabs.x+tabs.width);assert.ok(Math.abs(type.y-tabs.y)<15);const panel=await form.locator('[data-home-route-fields]').boundingBox(),prompt=await form.getByRole('tabpanel').boundingBox();assert.ok(panel&&prompt);assert.ok(prompt.width>=panel.width-3)}
   await h.page.getByRole('tab',{name:'Plan'}).click();
@@ -40,7 +40,7 @@ test('hidden partial origin reveals the existing editor, preserves the prompt an
  const h=await fixture(390);try{
   await h.page.getByRole('combobox',{name:'Start from',exact:true}).fill('Lon partial');
   await h.page.getByRole('tab',{name:'Describe'}).click();
-  await h.page.getByRole('textbox',{name:'Start your plan'}).fill('Madrid and Lisbon, two weeks');
+  await h.page.getByRole('textbox',{name:'Describe your trip'}).fill('Madrid and Lisbon, two weeks');
   await h.page.locator('#start-building').getByRole('button',{name:'Plan my trip',exact:true}).click();
   const origin=h.page.getByRole('combobox',{name:'Start from',exact:true});await origin.waitFor();await h.page.waitForFunction(()=>document.querySelector('[data-homepage-origin] input')===document.activeElement);
   assert.equal(await h.page.getByRole('tab',{name:'Plan'}).getAttribute('aria-selected'),'true');

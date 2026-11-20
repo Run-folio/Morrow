@@ -1,3 +1,4 @@
+import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import type {TripLeg} from '../lib/easyt/trip.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -19,7 +20,7 @@ for(const browserName of ['chromium','webkit'] as const){
   }});
   view.page.setDefaultTimeout(6000);
   try{
-   await view.page.locator('[data-transport-leg-id]').last().getByRole('button',{name:/View details:/}).click();await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
+   await view.page.locator('[data-transport-leg-id]').last().getByRole('button',{name:/View details:/}).click();await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
    await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();await dialog.getByRole('radio',{name:/Train/}).click();await dialog.getByRole('button',{name:'Use train',exact:true}).click();await dialog.waitFor({state:'hidden'});
    await view.page.reload();await view.page.locator('[data-transport-leg-id]').last().getByText(/Rail/).first().waitFor();
    const docs=await view.page.evaluate((id:string)=>Object.entries(localStorage).filter(([k])=>k.startsWith('easyt:trip-recovery:v2:')&&k.includes(id)).map(([,v])=>JSON.parse(v).trip),trip.id);

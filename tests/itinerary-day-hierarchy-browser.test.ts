@@ -35,7 +35,7 @@ test("populated day keeps saved content and adds directly to the chosen part", {
     await planner.getByRole("button", { name: /Add plan to .* afternoon/i }).click();
     assert.equal(await planner.getByRole("combobox", { name: "Part of day" }).count(), 0);
     const dialog = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Meiji Shrine");
+    await dialog.getByRole("textbox", { name: "Activity name", exact: true }).fill("Meiji Shrine");
     await dialog.getByRole("button", { name: "Add to Afternoon" }).click();
     assert.match(await planner.innerText(), /Afternoon[\s\S]*Meiji Shrine/);
     assert.equal(await planner.getByText("Meiji Shrine", { exact: true }).count(), 1);
@@ -144,7 +144,7 @@ test("Evening direct Add keeps the active day and chosen slot", { skip: !base },
     const planner = page.locator('section[aria-label="Day 2 planner"]');
     await planner.getByRole("button", { name: /Add plan to .* evening/i }).click();
     const dialog = page.getByRole("dialog", { name: "Add to Evening on Day 2" });
-    await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Seoul night walk");
+    await dialog.getByRole("textbox", { name: "Activity name", exact: true }).fill("Seoul night walk");
     await dialog.getByRole("button", { name: "Add to Evening" }).click();
     assert.equal(await planner.locator('section[data-day-part="evening"]').getByText("Seoul night walk", { exact: true }).count(), 1);
   } finally { await browser.close(); }

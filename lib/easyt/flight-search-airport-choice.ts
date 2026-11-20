@@ -1,6 +1,6 @@
 import identities from '../../data/place-reference/scheduled-airport-identities.json' with {type:'json'};
 import {acceptedGeographicPlace,transferEndpointGeographicallyReady} from './geographic-binding.ts';
-import {REFERENCE_SNAPSHOT_ID,referenceGeographicAcceptanceMatches} from './place-reference.ts';
+import {REFERENCE_SNAPSHOT_ID,referenceGeographicAcceptanceMatches,referenceRecordKey} from './place-reference.ts';
 import {countryCodeFor} from './country-registry.ts';
 import {flightPlanningAirports} from './flight-airport-assumptions.ts';
 import {routeEndpointForLeg} from './trip-legs.ts';
@@ -36,6 +36,29 @@ export function airportChoiceFromSuggestion(value:unknown):FlightSearchAirport|n
  const choice:FlightSearchAirport={endpoint:{...place,id:`flight-search:${s.canonicalPlaceId}`,kind:'gateway',coordinates:place.coordinates!},referenceSnapshotId:s.referenceSnapshotId,scheduledService:true};
  return validAirport(choice)?choice:null;
 }
+// Reviewed metro associations; a municipality is not evidence that it serves these cities.
+const major = {
+ 'reference:geonames:1850147': { country:'JP', city:'Tokyo', airports:[['5627','HND','Haneda'],['5531','NRT','Narita']] },
+ 'reference:geonames:1816670': { country:'CN', city:'Beijing', airports:[['27188','PEK','Beijing Capital'],['330820','PKX','Beijing Daxing']] },
+} as const;
+export function majorAirportsForCity(endpoint: Pick<CanonicalRouteEndpoint,'canonicalPlaceId'|'country'|'name'>) {
+ const entry=major[endpoint.canonicalPlaceId as keyof typeof major];
+ if(!entry||entry.country!==countryCodeFor(endpoint.country)||entry.city.toLowerCase()!==endpoint.name.trim().toLowerCase())return [];
+ return entry.airports.flatMap(([id,code,label])=>{
+  const row=trustedAirports.get(id);if(!row||row[2]!==entry.country)return [];
+  const [,name,country,x,y]=row,coordinates:[number,number]=[x,y];
+  const placeType='transport_gateway',providerId=referenceRecordKey({source:'ourairports',sourceId:id,placeType,countryCode:country,coordinates},REFERENCE_SNAPSHOT_ID);
+  const choice=airportChoiceFromSuggestion({canonicalPlaceId:'reference:ourairports:'+id,name,country,coordinates,placeType,scheduledService:true,referenceSnapshotId:REFERENCE_SNAPSHOT_ID,provenance:[{id:providerId}]});
+  return choice?[{code,label,choice}]:[];
+ });
+}
+function pinnedAirport(endpoint:CanonicalRouteEndpoint) { return endpoint.canonicalPlaceId?.startsWith("reference:ourairports:")||endpoint.geographicBinding?.placeType==="transport_gateway"; }
+function searchableEndpoint(endpoint:CanonicalRouteEndpoint) {
+ return endpoint.canonicalPlaceId?.startsWith('reference:ourairports:') || transferEndpointGeographicallyReady(endpoint);
+}
+function validSearchPair(a:CanonicalRouteEndpoint,b:CanonicalRouteEndpoint) {
+ return searchableEndpoint(a)&&searchableEndpoint(b)&&!sameJourneyPlace({...a,coordinates:a.coordinates??undefined},{...b,coordinates:b.coordinates??undefined});
+}
 export function flightSearchAirportBasis(trip:EasyTTrip,leg:TripLeg):string|null {
  const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to');
  if(!from||!to)return null;
@@ -53,11 +76,12 @@ function localFlightSearchAirportPlan(trip:EasyTTrip,leg:TripLeg,returnDefault:F
  const stored=trip.brief.flightSearchAirportsByLeg?.[leg.id],basis=flightSearchAirportBasis(trip,leg);
  let current=!hasExplicitSavedFlightAirports(leg)&&stored&&stored.version===1&&stored.basis===basis
   &&(stored.from===null||validAirport(stored.from))&&(stored.to===null||validAirport(stored.to))
+  &&(!stored.from||!pinnedAirport(from))&&(!stored.to||!pinnedAirport(to))
   &&(!stored.from||countryCodeFor(stored.from.endpoint.country)===countryCodeFor(from.country))
   &&(!stored.to||countryCodeFor(stored.to.endpoint.country)===countryCodeFor(to.country))?stored:null;
  if(current&&(current.from||current.to)){
   const a=current.from?.endpoint??baseline.from.endpoint,b=current.to?.endpoint??returnDefault?.endpoint??baseline.to.endpoint;
-  if(!a.canonicalPlaceId?.startsWith('reference:ourairports:')||!b.canonicalPlaceId?.startsWith('reference:ourairports:')||a.canonicalPlaceId===b.canonicalPlaceId)current=null;
+  if(!validSearchPair(a,b))current=null;
  }
  const inherited=returnDefault&&!current?.to&&(!stored||current)?returnDefault:null;
  const fromEndpoint=current?.from?.endpoint??baseline.from.endpoint,toEndpoint=current?.to?.endpoint??inherited?.endpoint??baseline.to.endpoint;
@@ -70,7 +94,7 @@ function originalOutboundSearchAirport(trip:EasyTTrip,leg:TripLeg):FlightSearchA
  if(trip.brief.intent?.route?.journeyEnd.mode!=='same_as_start'||leg.mode!=='flight'
   ||trip.legs.at(-1)?.id!==leg.id||hasExplicitSavedFlightAirports(leg))return null;
  const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to'),first=trip.legs[0];
- if(!from||!to||to.kind!=='end'||!first||first.id===leg.id||!transferEndpointGeographicallyReady(to)
+ if(!from||!to||pinnedAirport(to)||to.kind!=='end'||!first||first.id===leg.id||!transferEndpointGeographicallyReady(to)
   ||transportBookingForLeg(trip,leg,from,to)||travellerTransportBookingMismatchForLeg(trip,leg))return null;
  if(!validAirport(trip.brief.flightSearchAirportsByLeg?.[first.id]?.from))return null;
  const outbound=effectiveTripLeg(trip,first),origin=routeEndpointForLeg(trip,outbound,'from');
@@ -92,8 +116,9 @@ export function applyFlightSearchAirports(trip:EasyTTrip,leg:TripLeg,value:{from
   if((value.from!==null&&!validAirport(value.from))||(value.to!==null&&!validAirport(value.to)))return trip;
   const baseline=flightPlanningAirports({...leg,fromEndpoint:routeEndpointForLeg(trip,leg,'from')!,toEndpoint:routeEndpointForLeg(trip,leg,'to')!})!;
   const from=value.from?.endpoint??baseline.from.endpoint,to=value.to?.endpoint??originalOutboundSearchAirport(trip,leg)?.endpoint??baseline.to.endpoint;
-  if(!from.canonicalPlaceId?.startsWith('reference:ourairports:')||!to.canonicalPlaceId?.startsWith('reference:ourairports:')||from.canonicalPlaceId===to.canonicalPlaceId)return trip;
+  if(!validSearchPair(from,to))return trip;
   const outerFrom=routeEndpointForLeg(trip,leg,'from')!,outerTo=routeEndpointForLeg(trip,leg,'to')!;
+  if((value.from&&pinnedAirport(outerFrom))||(value.to&&pinnedAirport(outerTo)))return trip;
   if(countryCodeFor(from.country)!==countryCodeFor(outerFrom.country)||countryCodeFor(to.country)!==countryCodeFor(outerTo.country))return trip;
   preferences[leg.id]={version:1,basis,from:value.from,to:value.to};
  }

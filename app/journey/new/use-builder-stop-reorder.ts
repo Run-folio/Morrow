@@ -26,9 +26,10 @@ export function useBuilderStopReorder(options: {
   scopeKey?: string;
   onPreview: (ids: readonly string[] | null) => void;
   onCommit: (ids: readonly string[], source: ReorderSource) => boolean | Promise<boolean>;
+  onAcceptedMove?: (movedId: string) => void;
   targetAttribute?: 'data-builder-stop-index' | 'data-builder-chip-index';
 }) {
-  const { stopIds, lockedStopIds, fixedOrder, onPreview, onCommit, targetAttribute = 'data-builder-stop-index' } = options;
+  const { stopIds, lockedStopIds, fixedOrder, onPreview, onCommit, onAcceptedMove, targetAttribute = 'data-builder-stop-index' } = options;
   const scopeRef = useRef(options.scopeKey);
   scopeRef.current = options.scopeKey;
   const [notice, setNotice] = useState<{ scope: string | undefined; text: string }>({ scope: options.scopeKey, text: "" });
@@ -97,12 +98,13 @@ export function useBuilderStopReorder(options: {
       setAnnouncement(accepted
         ? `${options.stopLabels?.[movedId] ?? movedId} moved to position ${ids.indexOf(movedId) + 1} of ${ids.length}.`
         : "Move not applied. Review the current route.");
+      if (accepted) onAcceptedMove?.(movedId);
       return accepted;
     } catch {
       if (scopeRef.current === scope) setAnnouncement("Move not applied. Review the current route.");
       return false;
     } finally { pendingRef.current = false; }
-  }, [onCommit, options.stopLabels]);
+  }, [onCommit, onAcceptedMove, options.stopLabels]);
 
   const drop = useCallback(() => {
     const gesture = gestureRef.current;

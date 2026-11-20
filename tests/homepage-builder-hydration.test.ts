@@ -387,7 +387,7 @@ test("direct New Trip domain Edit stays in Builder and restores exact intake", {
       }
     });
     await view.page.getByRole("button", { name: "Edit trip idea", exact: true }).click();
-    const prompt = view.page.getByRole("textbox", { name: "Start your plan", exact: true });
+    const prompt = view.page.getByRole("textbox", { name: "Describe your trip", exact: true });
     await prompt.waitFor();
     assert.equal(await prompt.inputValue(), snapshot.prompt);
     assert.equal(new URL(view.page.url()).pathname, "/journey/new");

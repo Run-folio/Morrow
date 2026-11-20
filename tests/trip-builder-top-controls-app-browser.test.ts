@@ -70,7 +70,7 @@ test('late saved finish lookup cannot restore an endpoint after dismissal and ac
  await h.view.page.route('**/api/journey-geocode?*',async (route:{fulfill:(response:{status:number;contentType:string;body:string})=>Promise<void>})=>{requested=true;await held;await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates:[{name:'Osaka',country:'Japan',coordinates:[135.5023,34.6937]}]})}).catch(()=>{})});
  await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();await until(h,()=>requested);
  await h.view.page.getByRole('dialog').getByRole('button',{name:'Finish later',exact:true}).click();
- await h.view.page.getByRole('button',{name:'Return to start',exact:true}).click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Return to start',exact:true}).click();
+ await h.view.page.getByRole('button',{name:'Return',exact:true}).click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Return to start',exact:true}).click();
  await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');const accepted=structuredClone(h.cloud());
  release();await h.view.page.waitForTimeout(200);assert.deepEqual(h.cloud(),accepted);assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.view.errors,[]);
  }finally{release();await h.view.close()}
@@ -103,7 +103,7 @@ test('top controls have two type choices, unordered chips, one add owner and no 
  assert.equal(await top.locator('[data-destination-intent-id]').count(),3);assert.equal(await top.locator('[draggable="true"]').count(),3);
  assert.equal(await top.getByText('Personalize',{exact:true}).count(),0);assert.equal(await top.getByRole('combobox',{name:'Pace',exact:true}).count(),0);assert.equal(await top.getByRole('button',{name:'Avoid driving',exact:true}).count(),0);
  assert.equal(await top.getByText('MUST KEEP',{exact:true}).count(),0);assert.equal(await top.getByText('MUST-SEE STOPS',{exact:true}).count(),0);
- assert.equal(await top.getByRole('button',{name:'Update route',exact:true}).isDisabled(),false,'optional proposal action is available');assert.deepEqual(h.view.errors,[]);
+ assert.equal(await top.getByRole('button',{name:'Check stop order',exact:true}).isDisabled(),false,'optional proposal action is available');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 test('partial origin and exact intent replacement input survive budget save and reload without changing canonical places',{skip:!enabled,timeout:30000},async()=>{
@@ -124,9 +124,9 @@ test('single Add opens existing flow and its partial input survives reload indep
 });
 test('legacy finish is visible and explicit replacement requires acceptance without removing its stay',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(true);try{
- const before=structuredClone(h.cloud().stops);await h.view.page.locator('[data-builder-top-controls]').getByText('Saved finish:',{exact:false}).waitFor();await h.view.page.getByRole('button',{name:'Return to start',exact:true}).click();
+ const before=structuredClone(h.cloud().stops);await h.view.page.locator('[data-builder-top-controls]').getByText('Saved finish:',{exact:false}).waitFor();await h.view.page.getByRole('button',{name:'Return',exact:true}).click();
  const dialog=h.view.page.getByRole('dialog');await dialog.getByRole('button',{name:'Keep finish',exact:true}).click();assert.equal(h.cloud().brief.intent.route.journeyEnd.mode,'explicit');
- await h.view.page.getByRole('button',{name:'Return to start',exact:true}).click();await dialog.getByRole('button',{name:'Return to start',exact:true}).click();await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');assert.deepEqual(h.cloud().stops,before);assert.deepEqual(h.view.errors,[]);
+ await h.view.page.getByRole('button',{name:'Return',exact:true}).click();await dialog.getByRole('button',{name:'Return to start',exact:true}).click();await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');assert.deepEqual(h.cloud().stops,before);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 test('accepted stop removal retains every authored day through reload without a general review interface',{skip:!enabled,timeout:30000},async()=>{
@@ -180,7 +180,7 @@ test('resolved planning areas expose individual stay removal and Undo restores e
 
 test('unknown legacy ending keeps both type options unselected until a deliberate choice',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(false,trip=>{trip.brief.intent.route.tripType='unknown_legacy'});try{
- const top=h.view.page.locator('[data-builder-top-controls]');assert.equal(await top.getByRole('button',{name:'Return to start',exact:true}).getAttribute('aria-pressed'),'false');assert.equal(await top.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'false');await top.getByText('This saved trip’s ending is unconfirmed.',{exact:true}).waitFor();
+ const top=h.view.page.locator('[data-builder-top-controls]');assert.equal(await top.getByRole('button',{name:'Return',exact:true}).getAttribute('aria-pressed'),'false');assert.equal(await top.getByRole('button',{name:'One way',exact:true}).getAttribute('aria-pressed'),'false');await top.getByText('This saved trip’s ending is unconfirmed.',{exact:true}).waitFor();
  await top.getByRole('button',{name:'One way',exact:true}).click();await until(h,()=>h.cloud().brief.intent.route.tripType==='one_way');assert.equal(h.cloud().brief.intent.route.journeyEnd.mode,'unknown');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
@@ -339,11 +339,11 @@ test('genuine planning-area children are individual occurrence chips, with guard
  }finally{await h.view.close()}
 });
 
-test('individually added cities have no inferred country group and Update route remains secondary',{skip:!enabled,timeout:30000},async()=>{
+test('individually added cities have no inferred country group and Check stop order remains secondary',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{
   const top=h.view.page.locator('[data-builder-top-controls]');
   assert.equal(await top.locator('[data-destination-parent-group]').count(),0);
-  const action=top.getByRole('button',{name:'Update route',exact:true});
+  const action=top.getByRole('button',{name:'Check stop order',exact:true});
   assert.equal(await action.getAttribute('data-route-action'),'optional-optimization');
   const before=structuredClone(h.cloud());
   await top.getByRole('button',{name:/Increase travellers/}).click();await until(h,()=>h.cloud().travellers===before.travellers+1);

@@ -1,4 +1,5 @@
 "use client";
+import { useAcceptedMotionCue, acceptedCueValue } from "@/components/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import { EntryReveal } from "@/components/easyt/app-motion";
 
@@ -154,7 +155,9 @@ export function TripBuilderRouteWorkspace({
   const comparisonLegs = useMemo(() => routeCheckProposal?.ok ? mapRouteLegsFromTrip(guardTripRoutingGeometry(routeCheckProposal.trip)) : [], [routeCheckProposal]);
   const locked = useMemo(() => new Set(lockedStopIds), [lockedStopIds]);
   const stopIds = useMemo(() => canonicalTrip.stops.map((stop) => stop.id), [canonicalTrip.stops]);
+  const {cue,markAccepted}=useAcceptedMotionCue(scopeKey);
   const reorder = useBuilderStopReorder({
+    onAcceptedMove:markAccepted,
     stopIds,
     scopeKey: `${canonicalTrip.ownerId ?? "guest"}:${canonicalTrip.id}`,
     stopLabels: Object.fromEntries(canonicalTrip.stops.map(stop => [stop.id, stop.name])),
@@ -218,7 +221,7 @@ export function TripBuilderRouteWorkspace({
             const isDropTarget = Boolean(reorder.previewIds && reorder.draggingId === stop.id);
             return <div
               key={stop.id}
-              data-builder-stop-index={index}
+              data-builder-stop-index={index} data-accepted-cue={acceptedCueValue(cue,stop.id)}
               data-builder-stop-id={stop.id}
               ref={(node) => { if (node) rowRefs.current.set(stop.id, node); else rowRefs.current.delete(stop.id); }}
               role="row"

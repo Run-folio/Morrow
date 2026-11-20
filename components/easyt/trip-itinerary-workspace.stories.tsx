@@ -427,7 +427,7 @@ async function waitForItineraryFixtureReady(canvasElement: HTMLElement) {
   const calendarWasOpen = Boolean(canvasElement.querySelector("#itinerary-calendar"));
   if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Calendar" }));
   // This public action enables only after owner, scope and recovery classification settle.
-  await waitForItineraryUpdate(() => expect(canvas.getByRole("button", { name: "Add to calendar" })).toBeEnabled());
+  await waitForItineraryUpdate(() => expect(canvas.getByRole("button", { name: "Add to Google Calendar" })).toBeEnabled());
   if (!calendarWasOpen) await userEvent.click(canvas.getByRole("button", { name: "Day by day" }));
 }
 
@@ -717,7 +717,7 @@ export const ContextualAddPanel: Story = {
     await expect(dialog).toBeVisible();
     await expect(within(dialog).getByRole("heading", { name: "Add a plan" })).toBeVisible();
     await expect(within(dialog).getByRole("textbox", { name: "Search ideas" })).toBeVisible();
-    await expect(within(dialog).getByRole("textbox", { name: "Add your own" })).toBeVisible();
+    await expect(within(dialog).getByRole("textbox", { name: "Activity name" })).toBeVisible();
     const providerLink = within(dialog).getByRole("link", { name: /View on Viator/ });
     await expect(providerLink).toHaveAttribute("href", storyCommercialInventory[0].productUrl!);
     await expect(providerLink).toHaveAttribute("rel", "sponsored noopener noreferrer");

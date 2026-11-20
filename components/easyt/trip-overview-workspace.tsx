@@ -1,4 +1,7 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
+
+import { EntryReveal } from "./app-motion";
 
 import Link from "next/link";
 import {
@@ -111,8 +114,11 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   if (!leg) return null;
   const minutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   if (!minutes) return "Transfer to confirm";
-  const duration = transferTimingLabel(leg);
-  return leg.mode === "flight" ? `${duration} total by air` : `${duration} transfer`;
+  const duration = transferTimingLabel(leg, "total", "");
+  if (!duration) return "Transfer to confirm";
+  return leg.mode === "flight"
+    ? `Flight · ${duration} ${leg.doorToDoorMinutes != null ? "door to door" : "travel estimate"}`
+    : `${duration} transfer`;
 }
 
 export function OverviewEndpointSummary({ label, href, transfer }: { label: string; href: string; transfer: string | null }) {
@@ -370,7 +376,7 @@ export default function TripOverviewWorkspace({
 
   const openTravellerDetails = () => {
     setTravellerDetailsOpen(true);
-    window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: motionScrollBehavior(), block: "nearest" }));
   };
 
   const progressAction = (category: OverviewReadinessCategory): ReadinessTileAction | null => {
@@ -394,6 +400,7 @@ export default function TripOverviewWorkspace({
         <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
+              <EntryReveal ready={staySteps.length > 0} selector="[data-overview-route-stop]" />
               <div className={styles.routeIntro}>
                 <div>
                   <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
@@ -402,14 +409,14 @@ export default function TripOverviewWorkspace({
               {orderedStops.length ? <>
                 {departureStep ? <OverviewEndpointSummary label={departureStep.label!} href={routeIssueHref(trip.id)} transfer={conciseTransferLabel(departureStep.leg)} /> : null}
                 <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
-                  {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep}>
+                  {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep} data-overview-route-stop>
                     <OverviewStepMedia image={initialPlaceImages[step.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[step.id]]} name={step.name} country={step.country} meta={`${formatTripNights(step.stop!.nights)}${step.isJourneyEnd ? " · Journey end" : ""}`} number={step.number} href={itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, step.id))} onImageError={(src) => recoverImage(step.id, src)} />
                     {step.leg ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{conciseTransferLabel(step.leg)}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                     {index < staySteps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                   </li>)}
                 </ol>
                 {returnStep ? <OverviewEndpointSummary label={returnStep.label!} href={routeIssueHref(trip.id)} transfer={null} /> : null}
-              </> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
+              </> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination.</p></div>}
             {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
               <Sparkles aria-hidden="true" />
               <div>
@@ -423,10 +430,10 @@ export default function TripOverviewWorkspace({
                 </div>
                 {routeInsight.title ? <span>{routeInsight.detail}</span> : null}
               </div>
-              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
+              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">{language === "es" ? "Ver itinerario" : "View itinerary"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : routeRationale && !routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
               <Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div>
-              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
+              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">{language === "es" ? "Ver itinerario" : "View itinerary"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <MorroviaMapPreview className={styles.routeMapPreview} title="Journey map" size="large" wholePreviewLink href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))}>
@@ -485,7 +492,7 @@ export default function TripOverviewWorkspace({
           </div>
           {prepProviderStatus !== "available" ? <div className={prepProviderStatus === "loading" ? "sr-only" : styles.beforeGoStatus}>
             {prepProviderStatus === "unavailable"
-              ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a intentarlo antes de usar la información de los proveedores." : "Your saved trip is unchanged. Retry before relying on the provider-backed task list."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
+              ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a comprobar la información antes de usarla." : "Your saved trip hasn’t changed. Check again before using this guidance."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
               : <MorroviaSectionStatus title={language === "es" ? "Consultando los preparativos" : "Checking practical tasks"} detail={language === "es" ? "Las tareas guardadas siguen visibles mientras se carga la información actual." : "Your saved trip tasks remain visible while current guidance loads."} />}
           </div> : null}
           <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language} onOpenTravellerDetails={openTravellerDetails}
@@ -515,11 +522,11 @@ function ArrangeItem({ icon: Icon, label, detail, status, percent, language, act
   const content = <>
     <div className={styles.arrangeIcon}><Icon aria-hidden="true" /></div>
     <div className={styles.arrangeCopy}>
-      <div className={styles.arrangeTitle}><h3>{label}</h3>{status === "needs-review" ? <small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small> : null}</div>
+      <div className={styles.arrangeTitle}><h3>{label}</h3>{status === "needs-review" && percent !== null ? <small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small> : null}</div>
       <span>{detail}</span>
       {percent !== null ? <div className={styles.progressTrackRow}>
         <div className={styles.progressTrack} role="progressbar" aria-label={label} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${percent}%` }} /></div>
-      </div> : <span className={styles.progressUnknown}>{language === "es" ? "Progreso por confirmar" : "Progress to confirm"}</span>}
+      </div> : null}
     </div>
     {action ? <strong className={styles.arrangeAction}>{action.label}<ArrowRight aria-hidden="true" /></strong> : null}
   </>;

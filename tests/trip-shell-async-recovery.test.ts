@@ -585,7 +585,11 @@ test('workspace qualified retry still protects a genuinely different account con
     markTripRecoveryState:async(_handle:any,state:string)=>{marked.push(state);return true;},
     acknowledgeTripBuildSave:async()=>{acks++;return {accountAcknowledged:true,outcome:'acknowledged'};}});
   h.render();await tick();const view=h.render();
-  assert.equal(acks,0);assert.deepEqual(marked,['conflict']);assert.equal(findNode(view,h.Banner)?.props.title,'Cloud copy kept safe');assert.equal(findNode(view,h.Shell)?.props.trip.title,'Different account work');
+  assert.equal(acks,0);assert.deepEqual(marked,['conflict']);const banner=findNode(view,h.Banner);
+  assert.equal(banner?.props.title,'Both copies were kept');
+  assert.match(banner?.props.detail,/account and device have different versions/);
+  assert.equal(banner?.props.actions.props.children,'Open device copy');
+  assert.equal(findNode(view,h.Shell)?.props.trip.title,'Different account work');
 });
 
 for (const identity of [

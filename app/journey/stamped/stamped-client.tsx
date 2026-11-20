@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 
 import Link from "next/link";
@@ -366,7 +367,7 @@ export function StampedExperience({
     restoreFocusRef.current = trigger ?? null;
     setSelectedCountryId(countryId);
     if (fromExplorer && window.matchMedia("(max-width: 900px)").matches) {
-      window.setTimeout(() => mapPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+      window.setTimeout(() => mapPanelRef.current?.scrollIntoView({ behavior: motionScrollBehavior(), block: "center" }), 0);
     }
   };
 
@@ -418,7 +419,7 @@ export function StampedExperience({
     setStatusFilter("all");
     setRegion("all");
     window.setTimeout(() => {
-      searchRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      searchRef.current?.scrollIntoView({ behavior: motionScrollBehavior(), block: "center" });
       searchRef.current?.focus();
     }, 0);
   };

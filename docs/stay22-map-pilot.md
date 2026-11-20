@@ -1,0 +1,11 @@
+# Stay22 local pilot
+
+Stay only. No change to the trip map, saved stays or the existing dated partner search. The hosted map owns all inventory, property imagery and booking actions. The pilot adds no provider API, copied assets, tracking script or trip mutation.
+
+Off by default. Live evaluation requires both `NEXT_PUBLIC_MORROVIA_STAY22_PILOT=true` and `NEXT_PUBLIC_MORROVIA_STAY22_AFFILIATE_ID` set to the verified Morrovia Maps affiliate ID. Do not use someone else's ID. No configuration is included in this candidate.
+
+The iframe is only mounted when the traveller presses the labelled load button after disclosure and only if Morrovia’s current optional Affiliate Tracking preference is enabled. Loading the map never opts the traveller into tracking; scope changes and preference withdrawal unmount it. Only stop-center coordinates, that stop's canonical dates, adult count and the public affiliate ID are sent. The count starts from total trip travellers, is labelled Adults and can be corrected before loading; no ages, children count, names, account or trip IDs, notes or itinerary pins are sent. Child and room options remain provider-side. The iframe uses no referrer and no parent navigation; real provider cookie/redirect behavior must be assessed separately. No production privacy, CMP or CSP changes are included. Review whether the existing Affiliate Tracking disclosure adequately covers this new third-party embedded processor and audit the iframe’s actual cookie/storage behaviour before enabling with traveller data; if the host imposes a restrictive CSP, allow only the verified `https://www.stay22.com` frame origin. The existing Stay options are always accessible if the hosted map is blocked, offline or empty.
+
+MANUAL HOSTED VERIFICATION REQUIRED: with synthetic trips and the verified ID, check two distinct overnight stops at desktop and narrow container widths. Confirm separate dates and correct adult count, useful property details/photos before leaving, provider tab behavior, keyboard operation and dated fallback under a blocked frame. Verify the actual configured endpoint's attribution before enabling for visitors. Unit tests validate only URL scope and fail-closed behavior, not provider inventory or tracking.
+
+[Official Stay22 Maps parameters](https://dev.stay22.com/docs/maps/parameters)

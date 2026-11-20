@@ -42,7 +42,7 @@ export default function TripStayShortlist({ trip, stopId, places = [], onReview 
               <p>{place?.category ?? "Stay"} · {stop.name}</p>
               <span className={styles.status}>{status}</span>
               <div className={styles.actions}>
-                {place && onReview ? <EasyTButton size="small" aria-label={`Review ${item.name} for ${stop.name}`} onClick={() => onReview(place)}>Review stay</EasyTButton> : <EasyTLinkButton size="small" href={`${stayWorkspaceHref(trip.id,stop.id,mapResultSelectionId("stay",item.placeId,stop.id))}#stay-handoff`}>Review stay</EasyTLinkButton>}
+                {place && onReview ? <EasyTButton size="small" variant="secondary" aria-label={`Details for ${item.name} in ${stop.name}`} onClick={() => onReview(place)}>Details</EasyTButton> : <EasyTLinkButton size="small" variant="secondary" aria-label={`Details for ${item.name} in ${stop.name}`} href={`${stayWorkspaceHref(trip.id,stop.id,mapResultSelectionId("stay",item.placeId,stop.id))}#stay-handoff`}>Details</EasyTLinkButton>}
                 <EasyTButton size="small" variant="quiet" aria-label={`Remove ${item.name} from shortlist for ${stop.name}`} disabled={!mutation.mutationReady || mutation.hasPendingSaves()} onClick={() => { void mutation.mutateTrip(current => removeShortlistedStay(current,stop.id,item.placeId),`shortlist-remove-${stop.id}-${item.placeId}`); }}>Remove</EasyTButton>
               </div>
             </div>

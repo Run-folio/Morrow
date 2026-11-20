@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import { EntryReveal } from "@/components/easyt/app-motion";
 
@@ -2669,7 +2670,7 @@ function TripBuilderDocument() {
     if (target === "stops") setShowStopEditor(true);
     if (target === "constraints") setShowTripDetails(true);
     setSummaryFocus(target);
-    window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: motionScrollBehavior(), block: "center" }), 80);
   };
 
   const routeIntelligenceInput: Parameters<typeof assessRouteIntelligence>[0] = {
@@ -5080,7 +5081,7 @@ function TripBuilderDocument() {
   const timingWarningTitle = gateConflict
     ? (language === "es" ? "Revisa esto antes de crear el viaje" : "Review this before building")
     : highlyCompressedTrip
-      ? (language === "es" ? "Ritmo muy intenso" : "Very fast pace")
+      ? (language === "es" ? `${oneNightStopCount} de ${stops.length} paradas tienen una noche o menos` : `${oneNightStopCount} of ${stops.length} stops have one night or less`)
       : longJourneyIssue
       ? longJourneyIssue.consequence.reason === "less-than-day"
         ? (language === "es" ? `El viaje deja menos de un día en ${longJourneyIssue.stop.name}` : `Travel leaves less than a day in ${longJourneyIssue.stop.name}`)
@@ -5090,7 +5091,7 @@ function TripBuilderDocument() {
       : tripTimingNotice
         ? (language === "es" ? "Este viaje necesita un ritmo más ajustado" : "This trip needs a tighter pace")
       : routeRecommendationVisible
-        ? (language === "es" ? "Hay un orden de ruta mejor" : "A better route order is available")
+        ? (language === "es" ? "Compara el orden sugerido" : "Compare a suggested stop order")
         : routeCoverageNotice
           ? (language === "es" ? "Cambió la cobertura de la ruta" : "Route coverage changed")
           : transportReviewNotice
@@ -6134,7 +6135,7 @@ function TripBuilderDocument() {
         actions={<EasyTLinkButton href={tripSaveContinuationHref(guestSaveRequired.tripId)} variant="secondary">{language === "es" ? "Guardar viaje en mi cuenta" : "Save trip to my account"}</EasyTLinkButton>}
       /></div>;
     }
-    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><div className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></div></div>;
+    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><div className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This account can’t open this trip. Its original copy is still on this device."}</span></div></div>;
   }
 
   if (generated && buildInvariant.canBuildTrip) {
@@ -6756,8 +6757,8 @@ function TripBuilderDocument() {
                   <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : routeRecommendationVisible && !showTimingWarning ? (language === "es" ? "Sugerencia: " : "Suggestion: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong></span><ChevronRight aria-hidden="true" />
                 </MotionButton>
                 {timingWarningOpen && <div id="timing-warning-content" className={styles.timingWarningContent}>
-                  {gateConflict?.code !== "itinerary-stop-uncovered" && <section><strong>{language === "es" ? "Qué significa" : "What this means"}</strong><ul>
-                    {highlyCompressedTrip && <><li>{language === "es" ? `${oneNightStopCount} de ${stops.length} paradas tienen una noche o menos.` : `${oneNightStopCount} of ${stops.length} stops have one night or less.`}</li>{unknownTransferCount > 0 && <li>{language === "es" ? `${unknownTransferCount === 1 ? "Un traslado" : `${unknownTransferCount} traslados`} aún necesita comprobarse, por lo que el tiempo aprovechable puede ser menor.` : `${unknownTransferCount === 1 ? "One transfer" : `${unknownTransferCount} transfers`} still ${unknownTransferCount === 1 ? "needs" : "need"} checking, so usable time may be lower.`}</li>}{longTransferCount > 0 && <li>{language === "es" ? `${longTransferCount === 1 ? "Un traslado ocupa" : `${longTransferCount} traslados ocupan`} gran parte de un día.` : `${longTransferCount === 1 ? "One transfer uses" : `${longTransferCount} transfers use`} a large part of a day.`}</li>}</>}
+                  {gateConflict?.code !== "itinerary-stop-uncovered" && <section><ul>
+                    {highlyCompressedTrip && <><li>{language === "es" ? "Añade noches o quita una parada para tener más tiempo en cada lugar." : "Add nights or remove a stop to spend more time in each place."}</li>{unknownTransferCount > 0 && <li>{language === "es" ? `${unknownTransferCount === 1 ? "Un traslado" : `${unknownTransferCount} traslados`} aún necesita comprobarse, por lo que el tiempo aprovechable puede ser menor.` : `${unknownTransferCount === 1 ? "One transfer" : `${unknownTransferCount} transfers`} still ${unknownTransferCount === 1 ? "needs" : "need"} checking, so usable time may be lower.`}</li>}{longTransferCount > 0 && <li>{language === "es" ? `${longTransferCount === 1 ? "Un traslado ocupa" : `${longTransferCount} traslados ocupan`} gran parte de un día.` : `${longTransferCount === 1 ? "One transfer uses" : `${longTransferCount} transfers use`} a large part of a day.`}</li>}</>}
                     {!highlyCompressedTrip && longJourneyIssue && <><li>{language === "es" ? `Tendrás aproximadamente ${longJourneyIssue.usableDays} días aprovechables en ${longJourneyIssue.stop.name}.` : `You’ll have about ${longJourneyIssue.usableDays} usable days in ${longJourneyIssue.stop.name}.`}</li><li>{longJourneyIssue.duration.reason}</li></>}
                     {!gateConflict && !highlyCompressedTrip && !longJourneyIssue && tripTimingNotice && <li>{tripTimingNotice}</li>}
                     {!gateConflict && routeRecommendationVisible && <li>{routeRecommendationReason}</li>}
@@ -6765,7 +6766,7 @@ function TripBuilderDocument() {
                     {!gateConflict && transportReviewNotice && <li>{transportReviewNotice}</li>}
                   </ul></section>}
                   {!gateConflict && !routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><MotionButton type="button" onClick={async () => await applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</MotionButton></article>)}</div></section> : null}
-                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Alternativa estimada" : "Estimated alternative"}</strong><p>{language === "es" ? "Los horarios y las tarifas aún no se han verificado para tus fechas." : "Schedules and fares have not been verified for your dates."}</p>{!routeJourneyEnd && stops.at(-1)?.id !== routeIntelligence.route.recommendedStopIds.at(-1) ? <p>{language === "es" ? `Cambia el final a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} en lugar de ${stops.at(-1)?.name}.` : `Changes the finish to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} instead of ${stops.at(-1)?.name}.`}</p> : null}{!routeIntelligenceInput.origin.coordinates && stops[0]?.id !== routeIntelligence.route.recommendedStopIds[0] ? <p>{language === "es" ? `Cambia el inicio a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} en lugar de ${stops[0]?.name}.` : `Changes the start to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} instead of ${stops[0]?.name}.`}</p> : null}{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
+                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Alternativa estimada" : "Estimated alternative"}</strong><p>{language === "es" ? "Los horarios y las tarifas aún no se han verificado para tus fechas." : "Schedules and fares aren’t verified for your dates."}</p>{!routeJourneyEnd && stops.at(-1)?.id !== routeIntelligence.route.recommendedStopIds.at(-1) ? <p>{language === "es" ? `Cambia el final a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} en lugar de ${stops.at(-1)?.name}.` : `Changes the finish to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds.at(-1))?.name} instead of ${stops.at(-1)?.name}.`}</p> : null}{!routeIntelligenceInput.origin.coordinates && stops[0]?.id !== routeIntelligence.route.recommendedStopIds[0] ? <p>{language === "es" ? `Cambia el inicio a ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} en lugar de ${stops[0]?.name}.` : `Changes the start to ${stops.find(stop => stop.id === routeIntelligence.route.recommendedStopIds[0])?.name} instead of ${stops[0]?.name}.`}</p> : null}{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
                 </div>}
               </section>}
             </div>
@@ -7543,17 +7544,16 @@ function TripBuilderDocument() {
       {mountedBuilder?<TripBuilderRouteProposal current={mountedBuilder.snapshot.trip} proposal={optimizationProposal} assessment={optimizationResult?.assessment} language={language} stale={optimizationStale} error={optimizationError} onKeep={keepOptimizationOrder} onAccept={acceptRouteOptimization}/>:null}
       <MorroviaConfirmationDialog
         open={buildAttentionReviewOpen && buildAttention.length > 0}
-        eyebrow={language === "es" ? "NECESITA ATENCIÓN" : "NEEDS ATTENTION"}
-        title={language === "es" ? `¿Crear este viaje antes de añadir ${buildAttentionLabel}?` : `Build this trip before adding ${buildAttentionLabel}?`}
-        detail={language === "es"
-          ? `${buildAttentionLabel} sigue guardado en tus preferencias, pero todavía no forma parte de la ruta confirmada.`
-          : `${buildAttentionLabel} remains saved in your trip brief, but is not part of the confirmed route yet.`}
-        consequences={[
-          language === "es" ? "Morrovia creará el viaje solo con las paradas confirmadas actuales." : "Morrovia will build using only the currently confirmed stops.",
-          language === "es" ? "Puedes volver al Builder y resolver este lugar más tarde." : "You can return to the Builder and resolve this place later.",
-        ]}
-        cancelLabel={language === "es" ? "Volver y corregirlo" : "Go back and fix it"}
-        confirmLabel={language === "es" ? `Continuar sin añadir ${buildAttentionLabel}` : `Continue without adding ${buildAttentionLabel}`}
+        eyebrow=""
+        title={language === "es" ? `¿Crear el viaje sin ${buildAttentionLabel}?` : `Build without ${buildAttentionLabel}?`}
+        detail={buildAttentionNames.length > 1
+          ? (language === "es" ? `Puedes añadir estos lugares guardados a la ruta más adelante: ${buildAttentionNames.join(", ")}.` : `You can add these saved places to the route later: ${buildAttentionNames.join(", ")}.`)
+          : language === "es"
+            ? "El lugar sigue guardado. Puedes añadirlo a la ruta más adelante."
+            : "It’s saved in your trip brief. You can add it to the route later."}
+        consequences={[]}
+        cancelLabel={language === "es" ? `Revisar ${buildAttentionLabel}` : `Review ${buildAttentionLabel}`}
+        confirmLabel={language === "es" ? `Crear sin ${buildAttentionLabel}` : `Build without ${buildAttentionLabel}`}
         onCancel={() => {
           setBuildAttentionReviewOpen(false);
           openClarificationSession(firstBuildAttention?.mentionId);

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { EasyTButton, EasyTSelect } from './easyt-controls';
 import { MorroviaContentDialog } from './morrovia-feedback';
 import styles from './morrovia-feedback.module.css';
@@ -66,7 +66,12 @@ export function CalendarExportAction({ tripId, ownerId, savedRevision, settled }
             window.history.replaceState(window.history.state, '', url);
         }
     }, []);
-    return <><EasyTButton ref={triggerRef} size="small" variant="secondary" disabled={!ownerId || !settled} title={!ownerId || !settled ? 'Save your trip to your account first' : undefined} onClick={() => setOpen(true)}>{previous ? 'Send changes' : 'Add to calendar'}</EasyTButton>{open ? <CalendarExportDialog key={`${ownerId}:${tripId}`} tripId={tripId} ownerId={ownerId ?? ''} savedRevision={savedRevision} settled={settled} onClose={close} onPrevious={setPrevious}/> : null}</>;
+    const blockedId = useId();
+    const blockedReason = !ownerId ? 'Save this trip to your account first.' : !settled ? 'Calendar export is available after your changes are saved.' : null;
+    return <><div>
+      <EasyTButton ref={triggerRef} size="small" variant="secondary" disabled={Boolean(blockedReason)} aria-describedby={blockedReason ? blockedId : undefined} onClick={() => setOpen(true)}>{previous ? 'Send changes' : 'Add to Google Calendar'}</EasyTButton>
+      {blockedReason ? <p className={styles.inlineHint} id={blockedId}>{blockedReason}</p> : null}
+    </div>{open ? <CalendarExportDialog key={`${ownerId}:${tripId}`} tripId={tripId} ownerId={ownerId ?? ''} savedRevision={savedRevision} settled={settled} onClose={close} onPrevious={setPrevious}/> : null}</>;
 }
 export function CalendarExportDialog({ tripId, ownerId, savedRevision, settled, onClose, onPrevious = () => { } }: {
     tripId: string;
@@ -212,7 +217,7 @@ export function CalendarExportDialog({ tripId, ownerId, savedRevision, settled, 
     const canSend = Boolean(review && (calendarExportCanSend({ savedRevision, reviewRevision: review.revision, selected: selected.length, busy }) || keepOnly && !busy && review.revision === savedRevision) && settled);
     const switching = status?.bindings.some(b => b.grantId !== grantId || b.calendarId !== calendarId);
     return <MorroviaContentDialog ariaLabel="Add trip events to Google Calendar" autoFocusSelector="button" open onClose={onClose}><div className={styles.dialogForm} onKeyDownCapture={cycleStageFocus}>
-  <h2>{status?.hasPreviousSend ? 'Send calendar changes' : 'Add to calendar'}</h2><p className={styles.dialogDetail}>Review events before sending. Later trip changes are sent only when you choose.</p>
+  <h2>{status?.hasPreviousSend ? 'Send calendar changes' : 'Add to Google Calendar'}</h2><p className={styles.dialogDetail}>Review events before sending. Later trip changes are sent only when you choose.</p>
   {error ? <p role="alert" className={styles.dialogError}>{error}</p> : null}
   {busy ? <p role="status">Checking calendar…</p> : null}
   {status?.configured && !busy && !status.eligibleCount && !status.hasPreviousSend ? <p>No dated events to send. Add dates in your itinerary.</p> : null}

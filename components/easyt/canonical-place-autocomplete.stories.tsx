@@ -118,3 +118,25 @@ export const AccessibleKeyboardSelection: Story = {
     await expect(input).not.toHaveAttribute("aria-controls");
   },
 };
+
+// Pinned Kyoto record plus a synthetic, independently selectable station.
+// Wait for the station so this assertion runs after the async update.
+export const KyotoCityAndAlternatives: Story = {
+  args: {value:'Kyoto',label:'Destination'}, decorators:accessibleControlPage, parameters:strictPlaceParameters,
+  beforeEach:async()=>{
+    const original=globalThis.fetch;
+    const candidates=[
+      {canonicalPlaceId:'reference:geonames:1857910',providerId:`reference:geonames:1857910@${REFERENCE_SNAPSHOT_ID}:JP:city:135.75385:35.02107`,referenceSnapshotId:REFERENCE_SNAPSHOT_ID,name:'Kyoto',country:'Japan',placeType:'city',routability:'direct_destination',coordinates:[135.75385,35.02107],providerSourceLabel:'GeoNames'},
+      {canonicalPlaceId:'fixture:kyoto-station',providerId:'fixture:kyoto-station',name:'Kyoto Station',country:'Japan',placeType:'transport_gateway',routability:'direct_destination'},
+    ];
+    globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?Response.json({candidates}):original(input,init)) as typeof fetch;
+    return ()=>{globalThis.fetch=original;};
+  },
+  play:async({canvasElement})=>{
+    const canvas=within(canvasElement);
+    await canvas.findByRole('option',{name:/Kyoto Station/});
+    await expect(canvas.getAllByRole('option')).toHaveLength(2);
+    await expect(canvas.getByRole('option',{name:/Kyoto City · Japan/})).toBeVisible();
+    await expect(canvas.getByText('Other places')).toBeVisible();
+  },
+};

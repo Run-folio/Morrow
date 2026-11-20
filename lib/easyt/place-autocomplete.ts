@@ -40,6 +40,29 @@ export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(su
   return all.findIndex(other=>sameFacts(other,item)&&(!sameAttributionRequired||sameArray(attribution(other),attribution(item))))===index;
  });
 }
+/** Presentation-only pair reviewed against the pinned GeoNames settlement, the
+ * curated Kyoto city and the reviewed Kyoto transfer fixture. Kyoto is not a
+ * country seed. Do not add it to the seed registry or widen routing admission.
+ * Scope the preference to the exact published version; a source refresh must
+ * re-review this choice. Preserve the intact admitted provider row. */
+export function presentFreshCityChoices<T extends SuggestionLocation>(rows: T[], localRows: readonly T[], intent: string): T[] {
+ if (intent !== 'route-stop') return rows;
+ const city = (row:T) => row.name === 'Kyoto' && row.country === 'Japan' && row.placeType === 'city'
+  && row.routability === 'direct_destination' && !row.region && !row.administrativeHierarchy?.length;
+ const source = rows.find(row => localRows.includes(row) && city(row) && row.canonicalPlaceId === 'kyoto'
+  && row.coordinates === undefined && row.provenance?.length === 1 && row.provenance[0]?.id === 'morrovia-place-catalog:kyoto');
+ if (!source) return rows;
+ const id = 'reference:geonames:1857910';
+ const targets = rows.filter(row => row.canonicalPlaceId === id);
+ const target = targets[0];
+ if (targets.length !== 1 || !target || !city(target) || target.referenceSnapshotId !== '699b595afdba9be6994e'
+  || target.coordinates?.length !== 2 || target.coordinates[0] !== 135.75385 || target.coordinates[1] !== 35.02107
+  || target.provenance?.length !== 1 || target.provenance[0]?.kind !== 'provider'
+  || target.provenance[0].id !== id+'@699b595afdba9be6994e:JP:city:135.75385:35.02107'
+  || referenceSeedRetired(id) || !referenceGeographicAcceptanceMatches({...target,providerId:target.provenance[0].id})) return rows;
+ return rows.filter(row => row !== target).map(row => row === source ? target : row);
+}
+
 export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[], language:'en'|'es'='en', preferCountry = false){
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
  const sameLabel=suggestions.filter(other=>nameKey(other.name)===nameKey(item.name)

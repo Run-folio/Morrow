@@ -1,8 +1,9 @@
+import { expect, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { defaultTripIntent, type EasyTTrip } from "@/lib/easyt/trip";
 import { itineraryIdeaForActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
-import { scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import LiveActivityInventory from "./live-activity-inventory";
 
 const intent = defaultTripIntent({ stopIds: ["paris-stop"], durationDays: 1 });
@@ -36,3 +37,17 @@ const plannedTrip = scheduleItineraryIdea(trip, plannedIdea, "day-1", preferredI
 
 export const AddedState: Story = { args: { trip: plannedTrip, onRemove: () => true } };
 export const AddedStateMobile390: Story = { args: { trip: plannedTrip, onRemove: () => true }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+
+const savedIdea = itineraryIdeaForActivityInventory("paris-stop", inventory[1]!, ["food", "culture"]);
+const sharedStateTrip = saveItineraryIdea(plannedTrip, savedIdea);
+export const SharedActivityStatesMobile390: Story = {
+  ...Mobile390,
+  args: { trip: sharedStateTrip, scheduleLabel: "Choose day", onRemove: () => true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/Added to Day 1/)).toBeVisible();
+    await expect(canvas.getByText("Saved for later")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Choose day" })).toBeVisible();
+  },
+};

@@ -18,10 +18,10 @@ test("Overview uses one Next steps heading and retains card counts/actions",()=>
 });
 test("routine progress labels/visible percentages go while review and numeric accessibility remain",()=>{
  const src=source("components/easyt/trip-overview-workspace.tsx");
- assert.match(src,/status === "needs-review" \? <small/);
+ assert.match(src,/status === "needs-review" && percent !== null \? <small/);
  assert.doesNotMatch(src,/<span>\{percent\}%<\/span>/);
  assert.match(src,/role="progressbar" aria-label=\{label\} aria-valuenow=\{percent\} aria-valuemin=\{0\} aria-valuemax=\{100\}/);
- assert.match(src,/Progress to confirm/);
+ assert.doesNotMatch(src,/Progress to confirm/);
 });
 test("Transport suppresses only duplicated uncertainty and keeps booking facts",()=>{
  const src=source("components/easyt/trip-transport-workspace.tsx");

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { MotionLink } from "@/components/easyt/app-motion";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Gift, LockKeyhole } from "lucide-react";
@@ -47,9 +47,9 @@ export default async function GiftTripPage({ params }: PageProps) {
           ) : (
             <div className={styles.giftClaimActions}>
               <p className={styles.muted}>Sign in or create an account with the invited email address to add this trip to My trips.</p>
-              <Link className={styles.primaryLink} href={`/journey/login?next=${encodeURIComponent(next)}`}>
+              <MotionLink className={styles.primaryLink} href={`/journey/login?next=${encodeURIComponent(next)}`}>
                 <LockKeyhole aria-hidden="true" /> Sign in to claim
-              </Link>
+              </MotionLink>
             </div>
           )}
         </div>

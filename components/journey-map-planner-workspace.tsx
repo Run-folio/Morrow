@@ -1,4 +1,5 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import {aggregateTransferTimingLabel,transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
@@ -2831,7 +2832,7 @@ export function JourneyMapPlannerWorkspace({
       const trackBox = track.getBoundingClientRect();
       const dayBox = activeDay.getBoundingClientRect();
       const delta = (dayBox.left + dayBox.width / 2) - (trackBox.left + trackBox.width / 2);
-      track.scrollBy({ left: delta, behavior: "smooth" });
+      track.scrollBy({ left: delta, behavior: motionScrollBehavior() });
     });
     setSelectedRestaurant(undefined);
     return () => window.cancelAnimationFrame(frame);

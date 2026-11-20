@@ -166,7 +166,7 @@ test("commercial cards disclose only sourced facts and retain separate planning 
 });
 
 test("Itinerary keeps discovery secondary and links to the canonical Explore workspace", () => {
-  assert.match(itinerary, /See more ideas in Explore/);
+  assert.match(itinerary, /Explore more ideas/);
   assert.match(itinerary, /exploreWorkspaceHref\(workingTrip\.id, active\.stopId, active\.dayNumber\)/);
 });
 

@@ -157,7 +157,7 @@ export default function LoginForm({
   return <section className={styles.authPanel}>
     <h2>{backToTripHref ? "Save this trip." : mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
     {backToTripHref ? <p className={styles.muted}>Keep this exact trip and continue planning on another device.</p> : null}
-    {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
+    {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are unavailable right now. You can still plan a trip.</p>}
     <EasyTSegmentedControl
       ariaLabel="Account action"
       className={styles.tabs}
@@ -165,7 +165,7 @@ export default function LoginForm({
       onChange={(next) => { setMode(next); setError(""); setVerificationFailure(null); }}
       options={[
         { label: "Sign in", value: "sign-in" },
-        { label: "New here?", value: "sign-up" },
+        { label: "Create account", value: "sign-up" },
       ]}
     />
     {googleEnabled && <>
@@ -189,7 +189,7 @@ export default function LoginForm({
       <EasyTField label="Email" name="email" disabled={!handlerReady} type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
       <EasyTPasswordField label="Password" name="password" disabled={!handlerReady} minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder={mode === "sign-up" ? "At least 8 characters" : undefined} />
       {mode === "sign-in" && <a className={styles.forgotLink} href="/journey/forgot-password">Forgot password?</a>}
-      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!handlerReady || !configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
+      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!handlerReady || !configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts unavailable"}</EasyTButton>
       <noscript><p className={styles.muted}>Enable JavaScript to sign in securely.</p></noscript>
     </form>
     {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}

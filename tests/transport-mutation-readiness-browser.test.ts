@@ -17,8 +17,9 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
   try{
    const page=view.page;await page.setViewportSize({width:320,height:1000});
    const card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').press('Enter');
+   await card.locator("[data-transport-more-actions] > summary").press("Enter");
    const mark=card.getByRole('button',{name:language==='es'?'Marcar como reservado':'Mark as booked',exact:true});
-   const airports=card.getByRole('button',{name:language==='es'?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+   const airports=card.getByRole('button',{name:language==='es'?'Editar aeropuertos':'Edit airports',exact:true});
    assert.equal(await mark.isEnabled(),false);assert.equal(await airports.isEnabled(),false);assert.equal(writes,0);
    const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/readiness-${browserName}-${language}-pending-320.png`,fullPage:true});}
    await page.evaluate(()=>window.dispatchEvent(new Event('release-transport-auth')));
@@ -45,7 +46,8 @@ for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: gu
  const view=await renderBuilder({browserName,initialTrip:trip,path:`/journey/${trip.id}/transport`,styled:true,sourceOverrides:new Map([['fixture:auth',guestAuth],[storagePath,storage]]),accountRequest:()=>{accountWrites++;return{status:500,body:{error:'Guest must remain local'}};}});
  try{
   const page=view.page,card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').click();
-  const mark=card.getByRole('button',{name:'Mark as booked',exact:true});
+  await card.locator("[data-transport-more-actions] > summary").press("Enter");
+   const mark=card.getByRole('button',{name:'Mark as booked',exact:true});
   await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent==='Mark as booked');return b&&!b.disabled});
   await page.evaluate(()=>{localStorage.setItem('synthetic-unrelated-retained-data','preserve');const w=window as Window&{__guestWriteGate?:Promise<void>;__releaseGuestWrite?:()=>void};w.__guestWriteGate=new Promise<void>(resolve=>{w.__releaseGuestWrite=resolve})});
   await mark.click();

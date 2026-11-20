@@ -13,7 +13,7 @@ const {chromium}=require(process.env.MORROVIA_PLAYWRIGHT_MODULE??(existsSync(bun
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
 const baseUrl=process.env.MORROVIA_BASE_URL??'http://127.0.0.1:3100';
 
-for(const [type,width,feedbackOnly] of [['Return to start',390,false],['One way',1440,false],['Return to start',430,true]] as const)
+for(const [type,width,feedbackOnly] of [['Return',390,false],['One way',1440,false],['Return',430,true]] as const)
 test(feedbackOnly?'canonical night conflict reload never claims an unapplied legacy rebalance at 430px':`local homepage → Builder → autosave/reload → Build → Overview/Itinerary preserves ${type} at ${width}px`,{skip:!enabled,timeout:60000},async()=>{
  const browser=await chromium.launch({channel:process.env.MORROVIA_BROWSER_CHANNEL??'chrome',headless:true});
  const page=await browser.newPage({viewport:{width,height:900}});page.setDefaultTimeout(10000);
@@ -28,7 +28,7 @@ test(feedbackOnly?'canonical night conflict reload never claims an unapplied leg
    await route.fulfill({status:url.pathname.includes('/auth/')||['/api/journey-geocode','/api/journey-discover','/api/journey-transfer-resolution'].includes(url.pathname)?200:404,contentType:'application/json',body:JSON.stringify(body)});
   });
   await page.goto(baseUrl,{waitUntil:'domcontentloaded'});
-  if(type==='Return to start')await page.getByRole('button',{name:'One way',exact:true}).click();
+  if(type==='Return')await page.getByRole('button',{name:'One way',exact:true}).click();
   await page.getByRole('button',{name:type,exact:true}).click();
   await page.getByRole('combobox',{name:'Start from',exact:true}).fill('London');
   await page.getByRole('option',{name:/^London.*United Kingdom/}).first().click();

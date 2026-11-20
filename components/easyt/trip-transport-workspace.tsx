@@ -20,7 +20,7 @@ import type { JourneyStop } from "@/lib/journey";
 import { affiliateDisclosure, visibleAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
-import { affiliatePartners, transportAffiliateActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { affiliatePartners, canEditFlightSearchAirports, transportAffiliateActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { itineraryTransportAgenda, transportJourneyKnowledge, transportPresentationState, unmatchedTravellerTransportBookings, type ItineraryTransportAgendaLeg, type TransportPresentationState } from "@/lib/easyt/itinerary-transport-agenda";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
@@ -48,7 +48,7 @@ const copyFor = (language: Language) => language === "es" ? {
   modeAndTimeUnknown: "El modo y la duración aún necesitan confirmación.", modeUnknown: "El modo de transporte aún necesita confirmación.",
   timeUnknown: "La duración aún necesita confirmación.", bestOptionNeedsChecking: "La mejor opción de transporte aún necesita comprobarse.",
   roadEstimateNote: "Reserva tiempo adicional para las paradas y las condiciones de la carretera.", scheduledEstimateNote: "Comprueba el horario actual antes de reservar.", serviceEstimateNote: "Confirma el servicio actual antes de reservar.",
-  markBooked: "Marcar como reservado", unmarkBooked: "Deshacer marca de reserva", undoClarification: "Solo quita la marca de Morrovia; no cancela una reserva externa.", editBookingDetails: "Editar detalles", saveBookingDetails: "Guardar detalles", cancelEdit: "Cancelar edición", confirmation: "Referencia de reserva", bookingLink: "Enlace de reserva", bookingNote: "Nota", optionalDetails: "Detalles opcionales", markedByYou: "Reservado · marcado por ti", notMarkedByYou: "No reservado", routeMismatch: "La ruta o el modo cambió. Los detalles de esta reserva se conservaron para que los revises.", missingLegMismatch: "Una reserva de transporte guardada ya no coincide con un trayecto de la ruta. Sus datos se conservaron.", existingBooking: "Se conservó la reserva de transporte existente.",
+  moreActions: "Más acciones", markBooked: "Marcar como reservado", unmarkBooked: "Deshacer marca de reserva", undoClarification: "Solo quita la marca de Morrovia; no cancela una reserva externa.", editBookingDetails: "Editar detalles", saveBookingDetails: "Guardar detalles", cancelEdit: "Cancelar edición", confirmation: "Referencia de reserva", bookingLink: "Enlace de reserva", bookingNote: "Nota", optionalDetails: "Detalles opcionales", markedByYou: "Reservado · marcado por ti", notMarkedByYou: "No reservado", routeMismatch: "La ruta o el modo cambió. Los detalles de esta reserva se conservaron para que los revises.", missingLegMismatch: "Una reserva de transporte guardada ya no coincide con un trayecto de la ruta. Sus datos se conservaron.", existingBooking: "Se conservó la reserva de transporte existente.",
   openBooking: "Abrir reserva", compareCarHire: "Comparar alquiler de coche", generalOmioSearch: "Abrir búsqueda general de Omio", omioFlightSearch: "Abrir búsqueda de vuelos en Omio", omioTrainSearch: "Abrir búsqueda de trenes en Omio",
   omioDetailsNotCarried: "Abre una búsqueda general de Omio. No se transfieren la ruta, la fecha ni el número de viajeros.",
   omioFlightDetailsCarried: "Abre una búsqueda de vuelos con esta ruta y fecha. No se transfiere el número de viajeros; la disponibilidad puede variar.",
@@ -65,7 +65,7 @@ const copyFor = (language: Language) => language === "es" ? {
   modeAndTimeUnknown: "Mode and journey time still need checking.", modeUnknown: "Transport mode still needs checking.",
   timeUnknown: "Journey time still needs checking.", bestOptionNeedsChecking: "The best transport option still needs checking.",
   roadEstimateNote: "Allow extra time for stops and road conditions.", scheduledEstimateNote: "Check the current timetable before booking.", serviceEstimateNote: "Check the current service before booking.",
-  markBooked: "Mark as booked", unmarkBooked: "Undo booked mark", undoClarification: "Removes only the Morrovia mark; it does not cancel an external booking.", editBookingDetails: "Edit details", saveBookingDetails: "Save details", cancelEdit: "Cancel edit", confirmation: "Booking reference", bookingLink: "Booking link", bookingNote: "Note", optionalDetails: "Optional details", markedByYou: "Booked · marked by you", notMarkedByYou: "Not booked", routeMismatch: "The route or mode changed. These booking details were kept for you to review.", missingLegMismatch: "A saved transport booking no longer matches a journey on this route. Its details were kept.", existingBooking: "Existing transport booking preserved.",
+  moreActions: "More actions", markBooked: "Mark as booked", unmarkBooked: "Undo booked mark", undoClarification: "Removes only the Morrovia mark; it does not cancel an external booking.", editBookingDetails: "Edit details", saveBookingDetails: "Save details", cancelEdit: "Cancel edit", confirmation: "Booking reference", bookingLink: "Booking link", bookingNote: "Note", optionalDetails: "Optional details", markedByYou: "Booked · marked by you", notMarkedByYou: "Not booked", routeMismatch: "The route or mode changed. These booking details were kept for you to review.", missingLegMismatch: "A saved transport booking no longer matches a journey on this route. Its details were kept.", existingBooking: "Existing transport booking preserved.",
   openBooking: "Open booking", compareCarHire: "Compare car hire", generalOmioSearch: "Open general Omio search", omioFlightSearch: "Open Omio flight search", omioTrainSearch: "Open Omio train search",
   omioDetailsNotCarried: "Opens a general Omio search. Your route, date and traveller count aren't carried over.",
   omioFlightDetailsCarried: "Opens a flight search with this route and date. Traveller count isn't carried over; availability can vary.",
@@ -248,6 +248,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
       <EasyTButton size="small" variant="quiet" disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${booking.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, booking.id), `transport-unmark-${booking.id}`)}>{copy.unmarkBooked}</EasyTButton>
     </div>)}
 
+    <EntryReveal ready={items.length > 0} selector="[data-transport-route-name]" />
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
       <div className={styles.list} role="list" aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
         {items.map((item) => <TransportCard trip={trip} item={item} language={language} copy={copy}
@@ -289,7 +290,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
       <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
       <div className={styles.cardBody}>
-        <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
+        <h3 data-transport-route-name>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
         {duplicateUnknownMode ? null : <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{showsEstimatedTiming ? language === "es" ? "Estimado · " : "Estimated · " : ""}{transferTimingLabel(leg)} total</>}{status === copy.planningEstimate && !showsEstimatedTiming ? <><i aria-hidden="true">·</i>{copy.planningEstimate}</> : null}</p>}
       </div>
       <div className={styles.cardEnd}>
@@ -320,47 +321,51 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const visibleJourneyGaps = journeyParts.gaps.filter(gap=>gap.kind!=='departure-airport'||!searchAirports?.from.selected);
   const airportAssumption = item.booking || item.bookingMismatch || searchAirports?.from.selected || searchAirports?.to.selected || searchAirports?.to.inherited ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
   return <section className={styles.selectedDetail} aria-live="polite" aria-label={copy.journeyDetails}>
-    {airportAssumption ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
+    {airportAssumption && !canEditFlightSearchAirports(trip,leg) ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
     {journeyParts.incomplete ? <p>{copy.incompleteParts}</p> : null}
     {visibleJourneyGaps.length ? <ul className={styles.journeyGaps} aria-label={language === "es" ? "Detalles por confirmar" : "Details to check"}>{visibleJourneyGaps.map((gap, index) => <li key={`${gap.kind}-${index}`}>{journeyPartGapLabel(gap, language)}</li>)}</ul> : null}
     <TripFlightSearchAirports trip={trip} leg={leg} language={language} />
     <div className={styles.connectionActions}>
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         language={language} label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}
-      {item.bookingMismatch ? null : item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
-        pending={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)}
-        onMark={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}
-        onUnmark={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.manualBooking!.id), `transport-booking-${leg.id}`)}
-        onSave={(details) => mutation.mutateTrip((current) => updateTravellerTransportBookingDetails(current, leg.id, details), `transport-booking-${leg.id}`)} />
-        : item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton>
-          : !item.booking && isPassengerServiceLeg(leg) ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
-      <TripTransportChoiceControl onAdoptComparison={(comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
-        if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
-        const next=adoptTransportComparison(current,comparison,candidateId);
-        if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
-        return next;
-      },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={!mutation.canMutate || mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
-        onChange={(identity) => mutation.mutateTrip((current) => identity
-          ? selectTripLegTransportChoice(current, leg.id, identity)
-          : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
+      {(!item.bookingMismatch && !item.manualBooking && item.booking?.url) ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton> : null}
+      <details className={styles.moreActions} data-transport-more-actions>
+        <summary>{copy.moreActions}</summary>
+        <div className={styles.moreActionsList}>
+          {!item.bookingMismatch && (item.manualBooking ? !transportBookingMarkedByTraveller(item.manualBooking) : !item.booking && isPassengerServiceLeg(leg)) ? <EasyTButton size="small" variant="secondary" disabled={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
+          <TripTransportChoiceControl onAdoptComparison={(comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
+            if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
+            const next=adoptTransportComparison(current,comparison,candidateId);
+            if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
+            return next;
+          },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={!mutation.canMutate || mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
+            onChange={(identity) => mutation.mutateTrip((current) => identity
+              ? selectTripLegTransportChoice(current, leg.id, identity)
+              : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
+        </div>
+      </details>
     </div>
+    {!item.bookingMismatch && item.manualBooking ? <TransportManualBookingEditor booking={item.manualBooking} isMarked={transportBookingMarkedByTraveller(item.manualBooking)} leg={leg} copy={copy}
+        pending={!mutation.canMutate || mutation.isPending(`transport-booking-${leg.id}`)}
+        onUnmark={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.manualBooking!.id), `transport-booking-${leg.id}`)}
+        onSave={(details) => mutation.mutateTrip((current) => updateTravellerTransportBookingDetails(current, leg.id, details), `transport-booking-${leg.id}`)} /> : null}
     {item.bookingMismatch ? <div className={styles.bookingMismatch} role="alert"><p>{copy.routeMismatch}</p>
       <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${item.bookingMismatch.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, item.bookingMismatch!.id), `transport-unmark-${item.bookingMismatch!.id}`)}>{copy.unmarkBooked}</EasyTButton>
     </div> : null}
-    {action ? <small className={styles.partnerNote}>{visibleAffiliateDisclosure}</small> : null}
+    {action && !compactFlightSearch(action, leg) ? <small className={styles.partnerNote}>{visibleAffiliateDisclosure}</small> : null}
     <EasyTButton className={styles.journeyDetailsToggle} size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`journey-estimates-${leg.id}`} onClick={() => setDetailsOpen((open) => !open)}>{copy.journeyDetails}</EasyTButton>
     <div id={`journey-estimates-${leg.id}`} hidden={!detailsOpen} className={styles.journeyDetails}><EntryReveal active={detailsOpen} />
       {journeyParts.parts.length ? <ol className={styles.journeyParts} aria-label={copy.savedParts}>{journeyParts.parts.map((part, index) => <li key={`${part.id}-${index}`}><span>{copy.partModes[part.mode]} · {part.fromEndpoint.name} → {part.toEndpoint.name}</span><small>{transferTimingLabel(part, "total", copy.timeUnknown)}{part.scheduleNeedsChecking ? ` · ${copy.checkService}` : ""}</small></li>)}</ol> : null}
       {detailNotes.map((note) => <p key={note}>{note}</p>)}
       {leg.provider ? <p>{leg.provider}</p> : null}
-      {action ? <small>{affiliateDisclosure}</small> : null}
+      {action && !compactFlightSearch(action, leg) ? <small>{affiliateDisclosure}</small> : null}
     </div>
   </section>;
 }
 
-function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, onMark, onUnmark, onSave }: {
+function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, onUnmark, onSave }: {
   booking: NonNullable<ItineraryTransportAgendaLeg["manualBooking"]>; isMarked: boolean; leg: TripLeg; copy: ReturnType<typeof copyFor>; pending: boolean;
-  onMark: () => Promise<boolean>; onUnmark: () => Promise<boolean>; onSave: (details: { confirmation: string; url: string; note: string }) => Promise<boolean>;
+  onUnmark: () => Promise<boolean>; onSave: (details: { confirmation: string; url: string; note: string }) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmation, setConfirmation] = useState(booking.confirmation ?? "");
@@ -372,7 +377,7 @@ function TransportManualBookingEditor({ booking, isMarked, leg, copy, pending, o
     {!editing ? <div className={styles.bookingActions}>
       {booking.url ? <EasyTLinkButton href={booking.url} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="primary" size="small">{copy.openBooking}</EasyTLinkButton> : null}
       {isMarked ? <EasyTButton size="small" variant="secondary" aria-description={copy.undoClarification} disabled={pending} onClick={() => void onUnmark()}>{copy.unmarkBooked}</EasyTButton>
-        : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => void onMark()}>{copy.markBooked}</EasyTButton>}
+        : null}
       <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { resetDraft(); setEditing(true); }}>{copy.editBookingDetails}</EasyTButton>
     </div> : null}
     {!editing && (booking.confirmation || booking.notes?.length) ? <div className={styles.bookingSummary}>
@@ -397,8 +402,15 @@ function isFutureDate(value: string | null) {
   return parsed >= todayUtc;
 }
 
+function compactFlightSearch(action: ResolvedAffiliateAction, leg: TripLeg) {
+  return leg.mode === "flight" && action.category === "transport" && action.provider === "omio"
+    && !action.omioHandoffIssue && action.href !== affiliatePartners.omio.transportUrl;
+}
+
 function TransportAffiliateAction({ action, trip, leg, label, language }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string; language: Language }) {
-  return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch || action.omioHandoffIssue || action.href === affiliatePartners.omio.transportUrl ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} variant="primary" />
+  const compact = compactFlightSearch(action, leg);
+  return <div className={compact ? styles.flightAction : styles.omioAction}>
+    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch || action.omioHandoffIssue || action.href === affiliatePartners.omio.transportUrl ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} variant="primary" handoffInfoLabel={compact ? (language === "es" ? "Acerca de la búsqueda en Omio" : "About the Omio search") : undefined} />
+    {compact ? <small className={styles.partnerNote}>{language === "es" ? "Morrovia puede recibir una comisión." : "Morrovia may earn a commission."}</small> : null}
   </div>;
 }

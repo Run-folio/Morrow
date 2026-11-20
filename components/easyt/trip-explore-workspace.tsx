@@ -1,4 +1,7 @@
 "use client";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
+
+import { EntryReveal } from "./app-motion";
 
 import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";
 
@@ -642,7 +645,7 @@ export default function TripExploreWorkspace({
   return <section className={styles.workspace} aria-label="Explore recommendations">
     {notice || mutation.error ? <div className={styles.feedbackRow}>
       {notice ? <div className={styles.notice} role="status"><Check aria-hidden="true" />{notice}<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton></div> : null}
-      {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
+      {mutation.error ? <MorroviaStatusBanner tone="warning" title="Plan update needs attention" detail={mutation.error} /> : null}
     </div> : null}
 
     <div className={styles.stopNavigation}>
@@ -703,7 +706,8 @@ export default function TripExploreWorkspace({
       </section> : null}
       {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
-      {visibleResults.length ? <div className={styles.grid} id="explore-results">
+      <div className={styles.grid} id="explore-results" hidden={!visibleResults.length}>
+        <EntryReveal ready={resultsPresentation === "results"} selector="[data-explore-card]" />
         {visibleResults.map((result) => {
           const state = exploreResultState(workingTrip, result);
           const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
@@ -769,7 +773,7 @@ export default function TripExploreWorkspace({
             </div>
           </article>;
         })}
-      </div> : null}
+      </div>
       {savedGoogleReferences.length ? <section className={styles.referenceSection} aria-label="Saved Google places">
         <strong>Saved from Google Maps</strong>
         <p>Open the Google map to check current place details. These are saved ideas, not bookings.</p>
@@ -848,7 +852,7 @@ export default function TripExploreWorkspace({
             retireActionIntent({ destinationId: opportunity.stop.id, category: "for-you" });
             setDestinationId(opportunity.stop.id);
             setCategory("for-you");
-            document.getElementById("explore-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.getElementById("explore-results")?.scrollIntoView({ behavior: motionScrollBehavior(), block: "start" });
           }}>Find ideas for this time</EasyTButton>
         </section> : null}
       </>}

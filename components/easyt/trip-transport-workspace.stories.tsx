@@ -247,7 +247,10 @@ export const ModeDialogOptions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
     await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
-    const trigger = (await canvas.findAllByRole("button", { name: "Change transport mode" }))[0];
+    await expect(canvas.queryByRole("button", { name: "Change transport mode" })).not.toBeInTheDocument();
+    const more = canvas.getByText("More actions", { selector: "summary", exact: true });
+    await userEvent.click(more);
+    const trigger = await canvas.findByRole("button", { name: "Change transport mode" });
     await userEvent.click(trigger);
     const dialog = await body.findByRole("dialog", { name: "Change transport" });
     await expect(within(dialog).getByRole("radiogroup", { name: "Transport options" })).toBeVisible();
@@ -342,12 +345,12 @@ export const EditableFlightSearchAirportsMobile320: Story = {
  play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await userEvent.click((await canvas.findAllByRole('button',{name:/^View details:/}))[0]);
-  await userEvent.click(canvas.getByRole('button',{name:'Change flight-search airports'}));
-  await expect(canvas.getByRole('combobox',{name:'Departure airport'})).toBeVisible();
-  await expect(canvas.getByRole('combobox',{name:'Arrival airport'})).toBeVisible();
-  await expect(canvas.getByText(/Flight search only\./)).toBeVisible();
+  await userEvent.click(canvas.getByRole('button',{name:'Edit airports'}));
+  await expect(canvas.getByRole('group',{name:/^Departure airport ·/})).toBeVisible();
+  await expect(canvas.getByRole('group',{name:/^Arrival airport ·/})).toBeVisible();
+  await expect(canvas.getByText(/Only changes your flight search/)).toBeVisible();
   await userEvent.click(canvas.getByRole('button',{name:'Cancel'}));
-  await expect(canvas.queryByRole('combobox',{name:'Departure airport'})).not.toBeInTheDocument();
+  await expect(canvas.queryByRole('group',{name:/^Departure airport ·/})).not.toBeInTheDocument();
  },
 };
 export const EditableFlightSearchAirportsSpanishMobile320: Story = {args:{trip:flightSearchAirportsTrip,language:'es'},globals:{viewport:{value:'morrovia320',isRotated:false}}};

@@ -32,9 +32,29 @@ export function tripSyncAuthError(status: number, message?: string): EasyTTripAu
 }
 
 /** Reopen the exact device copy in its caller's editing context. */
-export function tripSyncRecoveryPath(tripId: string, context: "planner" | "builder" = "planner") {
-  if (context === "builder") return `/journey/new?trip=${encodeURIComponent(tripId)}&recover=1`;
-  return `/journey/plan?trip=${encodeURIComponent(tripId)}&save=1&recover=1`;
+export function tripSyncRecoveryPath(tripId: string, _context: "planner" | "builder" = "planner") {
+  return `/journey/new?trip=${encodeURIComponent(tripId)}&recover=1`;
+}
+
+export function activityWorkspaceReturnPath(tripId: string) {
+  return `/journey/${encodeURIComponent(tripId)}?recover=1`;
+}
+
+export function legacyPlannerTripId(params: URLSearchParams) {
+  const values=params.getAll("trip");
+  const id=values[0];
+  return values.length===1 && id && !/[/\\\u0000-\u001f\u007f]/.test(id) && id.trim()===id &&
+    !/^(?:\.|\.\.|admin|dashboard|discover|forgot-password|home|login|new|plan|plan-next|profile|trip|help|about|privacy|terms|contact|prep|passport|cookies|gift|stamped|affiliate-disclosure|my-routes|reset-password|routes)$/i.test(id) ? id : null;
+}
+
+export function legacyPlannerDestination(params: URLSearchParams, deviceEditor=false) {
+  const id=legacyPlannerTripId(params);
+  if(!id)return "/journey/new";
+  if(deviceEditor)return tripSyncRecoveryPath(id);
+  const root=`/journey/${encodeURIComponent(id)}`;
+  const stay=params.getAll("stay");
+  if(stay.length===1&&stay[0]&&params.get("recover")!=="1")return `${root}/stay?${new URLSearchParams({stop:stay[0]})}`;
+  return params.get("recover")==="1"?activityWorkspaceReturnPath(id):root;
 }
 
 export function tripSyncSignInPath(tripId: string, context: "planner" | "builder" = "planner") {

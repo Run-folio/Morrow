@@ -32,7 +32,7 @@ export const ExportUnavailable: Story = {
     render: () => <UnavailableCalendarExport />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Add to calendar' }));
+        await userEvent.click(await canvas.findByRole('button', { name: 'Add to Google Calendar' }));
         const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Add trip events to Google Calendar' });
         await expect(within(dialog).getByRole('alert')).toHaveTextContent('Calendar export is not available yet.');
         await expect(within(dialog).getByRole('button', { name: 'Close' })).toBeEnabled();

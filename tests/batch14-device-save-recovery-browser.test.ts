@@ -20,7 +20,7 @@ test('discard confirmation remains bound to the reviewed write when a different 
 });
 
 const fixture=()=>requireReadableTripDocument(canonicalTripForOwner('owner-a',canonicalRouteFixture()));
-async function add(page:any,label:string){await page.getByRole('button',{name:'Add activity',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByLabel('Add your own',{exact:true}).fill(label);await dialog.getByRole('button',{name:'Add to Morning',exact:true}).click();return dialog;}
+async function add(page:any,label:string){await page.getByRole('button',{name:'Add to morning',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByLabel('Activity name',{exact:true}).fill(label);await dialog.getByRole('button',{name:'Add to Morning',exact:true}).click();return dialog;}
 async function assertRecoveryBlocksEdit(page:any,tripId:string,writes:unknown[]){
  const read=()=>page.evaluate((id:string)=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:')&&k.includes(id)).sort().map(k=>[k,localStorage.getItem(k)]),tripId);
  const before=await read();const composer=await add(page,'Blocked while recovery remains');

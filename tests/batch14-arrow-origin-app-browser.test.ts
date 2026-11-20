@@ -35,7 +35,7 @@ for(const sequence of ['origin then prompt','prompt then origin'])test(`real hom
   await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('tab',{name:'Describe',exact:true}).click();
   if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
   await page.getByRole('button',{name:'One way',exact:true}).click();
-  const origin=page.getByRole('combobox',{name:'Start from',exact:true}),description=page.getByRole('textbox',{name:'Start your plan',exact:true});
+  const origin=page.getByRole('combobox',{name:'Start from',exact:true}),description=page.getByRole('textbox',{name:'Describe your trip',exact:true});
   const selectOrigin=async()=>{await origin.fill('City of London');await page.getByRole('option').filter({hasText:'City of London'}).first().click();};
   if(sequence==='origin then prompt'){await selectOrigin();await description.fill(prompt);}else{await description.fill(prompt);await selectOrigin();}
   assert.match(await origin.inputValue(),/City of London/,'Shared origin remains visible before submission');

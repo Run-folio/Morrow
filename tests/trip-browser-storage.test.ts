@@ -304,7 +304,7 @@ test("Open cloud copy and canonical TripShell caching preserve the sole dirty re
   const actions = tripConflictResolutionActions(dirty.id);
   assert.deepEqual(actions, {
     cloudHref: `/journey/${encodeURIComponent(dirty.id)}`,
-    deviceHref: `/journey/plan?trip=${encodeURIComponent(dirty.id)}&save=1&recover=1`,
+    deviceHref: `/journey/new?trip=${encodeURIComponent(dirty.id)}&recover=1`,
     openCloudLabel: "Open cloud copy",
     openDeviceLabel: "Open device copy",
     discardDeviceLabel: "Discard device copy",

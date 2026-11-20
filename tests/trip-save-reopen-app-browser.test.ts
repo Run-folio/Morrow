@@ -72,7 +72,7 @@ test('mounted acknowledged IndexedDB trip survives GET object order, one Flores 
     const removal = view.page.getByRole('dialog', { name: 'Remove Flores and its plan?', exact: true });
     await removal.getByRole('button', { name: 'Remove Flores', exact: true }).click();
     await removal.waitFor({ state: 'hidden', timeout: 7000 });
-    await view.page.getByRole('region', { name: 'Places you want to visit', exact: true })
+    await view.page.getByRole('region', { name: 'Destinations', exact: true })
       .getByRole('button', { name: 'Remove Flores', exact: true }).waitFor({ state: 'hidden', timeout: 7000 });
     await view.page.locator('[data-builder-root][data-builder-save-state="cloud"]').waitFor({ timeout: 7000 });
     await view.page.addScriptTag({ content: fixture });

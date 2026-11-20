@@ -210,7 +210,7 @@ export default function EasyTNavigation({
               <Link prefetch={deferPrefetch ? false : undefined} className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy" aria-current={current === "privacy" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
               {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
               <MotionButton type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></MotionButton>
-            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
+            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/login?next=%2Fjourney%2Fdashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
           </div>
         </details>
         <details ref={compactMenuRef} className={styles.compactMenu} onToggle={(event) => {
@@ -240,7 +240,7 @@ export default function EasyTNavigation({
               <Link prefetch={deferPrefetch ? false : undefined} href="/journey/privacy" aria-current={current === "privacy" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
               {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
               <MotionButton type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></MotionButton>
-            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
+            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/login?next=%2Fjourney%2Fdashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
           </div>
         </details>
       </nav>

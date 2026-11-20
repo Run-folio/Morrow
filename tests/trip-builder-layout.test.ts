@@ -652,7 +652,7 @@ browserTest("direct text capture uses the existing parser then replaces capture 
   const view = await renderBuilder();
   try {
     await view.page.getByRole("tab", {name:"Describe my trip",exact:true}).click();
-    await view.page.getByRole("textbox", { name: "Start your plan",exact:true }).fill("Tokyo for one week");
+    await view.page.getByRole("textbox", { name: "Describe your trip",exact:true }).fill("Tokyo for one week");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
     await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);

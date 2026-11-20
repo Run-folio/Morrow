@@ -1,3 +1,4 @@
+import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mkdirSync} from 'node:fs';
@@ -27,7 +28,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    await page.waitForFunction((id:string)=>document.activeElement?.closest('[data-transport-leg-id]')?.getAttribute('data-transport-leg-id')===id,plan.legId);
    assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
    assert.equal(await last.locator('a[data-affiliate-provider]').count(),0,'unknown restored transport must not become a booking search');
-   await last.getByRole('button',{name:'Change transport mode',exact:true}).waitFor();
+   await openTransportMoreActions(last); await last.getByRole('button',{name:'Change transport mode',exact:true}).waitFor();
    if(account){await page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(el=>el.textContent?.includes('Saved to your account')));assert.equal(puts,1);assert.deepEqual(JSON.parse(JSON.stringify(cloud.legs[0])),before.legs[0]);assert.deepEqual(JSON.parse(JSON.stringify(cloud.brief.bookings)),before.brief.bookings);}
    await page.reload();await page.waitForFunction(()=>document.querySelectorAll('[data-transport-leg-id]').length===2);assert.equal(await cards.count(),2);await last.locator('[data-tone="attention"]').waitFor();assert.equal(await last.getAttribute('data-presentation-state'),'needs-checking');assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
    const documents=await page.evaluate((id:string)=>Object.keys(localStorage).flatMap(key=>{try{const record=JSON.parse(localStorage.getItem(key)!);const trip=record?.trip??record;return trip?.id===id&&trip.legs?.length===2?[trip]:[];}catch{return [];}}),cloud.id);

@@ -17,8 +17,15 @@ test('secondary action uses the existing button; preview groups uncertainty and 
     const module = { exports: {} as any };
     new Function('require', 'module', 'exports', result.outputFiles[0]!.text)(createRequire(import.meta.url), module, module.exports);
     const action = renderToStaticMarkup(React.createElement(module.exports.CalendarExportAction, { tripId: 'trip', ownerId: 'owner', savedRevision: 'r', settled: true }));
-    assert.match(action, /Add to calendar/);
+    assert.match(action, /Add to Google Calendar/);
     assert.match(action, /button/);
+    const guest = renderToStaticMarkup(React.createElement(module.exports.CalendarExportAction, { tripId: 'trip', ownerId: null, savedRevision: 'r', settled: false }));
+    const unsettled = renderToStaticMarkup(React.createElement(module.exports.CalendarExportAction, { tripId: 'trip', ownerId: 'owner', savedRevision: 'r', settled: false }));
+    assert.match(guest, />Save this trip to your account first\.</);
+    assert.match(unsettled, />Calendar export is available after your changes are saved\.</);
+    assert.match(guest, /aria-describedby=/);
+    assert.match(unsettled, /aria-describedby=/);
+    assert.doesNotMatch(action, /aria-describedby=/);
     assert.doesNotMatch(action, /Connect calendar/);
     const content = renderToStaticMarkup(React.createElement(module.exports.CalendarExportReviewList, { operations: [{ id: 'a', sourceKey: 'activity:a', action: 'add', payload: { summary: 'Visit — Time not set', start: { date: '2026-10-28' }, end: { date: '2026-10-29' } } }, { id: 'b', sourceKey: 'activity:b', action: 'remove', payload: { summary: 'Old visit', start: { date: '2026-10-28' }, end: { date: '2026-10-29' } } }], selected: ['a'], onSelection: () => { } }));
     assert.match(content, /Date only/);

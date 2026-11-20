@@ -66,8 +66,8 @@ test("combined dayparts preserve legacy data, direct edits and repeated-stop ide
       const dialog = page.getByRole("dialog", { name: "Add to Morning on Day 2" });
       await dialog.waitFor({ state: "visible" });
       await page.screenshot({ path: `/tmp/morrovia-386387-add-open-${width}.png`, fullPage: true });
-      await dialog.getByRole("textbox", { name: "Add your own" }).fill(`Breakfast ${width}`);
-      assert.equal(await dialog.getByRole("textbox", { name: "Add your own" }).inputValue(), `Breakfast ${width}`);
+      await dialog.getByRole("textbox", { name: "Activity name" }).fill(`Breakfast ${width}`);
+      assert.equal(await dialog.getByRole("textbox", { name: "Activity name" }).inputValue(), `Breakfast ${width}`);
       assert.equal(await dialog.getByRole("textbox", { name: "Search ideas" }).inputValue(), "", "manual text stays out of search");
       await dialog.getByRole("button", { name: "Add to Morning" }).click();
       await planner.locator('section[data-day-part="morning"]').getByText(`Breakfast ${width}`, { exact: true }).waitFor();
@@ -97,8 +97,8 @@ test("combined dayparts preserve legacy data, direct edits and repeated-stop ide
       assert.equal(await page.locator('section[aria-label="Day 6 planner"]').getByText(`Breakfast ${width}`, { exact: true }).count(), 0);
       await page.locator('section[aria-label="Day 6 planner"]').getByRole("button", { name: /Add plan to .* evening/i }).click();
       const returnDialog = page.getByRole("dialog", { name: "Add to Evening on Day 6" });
-      await returnDialog.getByRole("textbox", { name: "Add your own" }).fill(`Return supper ${width}`);
-      assert.equal(await returnDialog.getByRole("textbox", { name: "Add your own" }).inputValue(), `Return supper ${width}`, "manual text reaches the day 6 field");
+      await returnDialog.getByRole("textbox", { name: "Activity name" }).fill(`Return supper ${width}`);
+      assert.equal(await returnDialog.getByRole("textbox", { name: "Activity name" }).inputValue(), `Return supper ${width}`, "manual text reaches the day 6 field");
       assert.equal(await returnDialog.getByRole("textbox", { name: "Search ideas" }).inputValue(), "", "manual text stays out of search");
       await returnDialog.getByRole("button", { name: "Add to Evening" }).click();
       await page.locator('section[aria-label="Day 6 planner"] section[data-day-part="evening"]').getByText(`Return supper ${width}`, { exact: true }).waitFor();

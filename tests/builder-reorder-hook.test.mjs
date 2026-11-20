@@ -65,3 +65,19 @@ test('a completed move at a boundary returns lost focus to its own still-open su
   release(true);await pending;assert.equal(focused,open);
  }
 });
+
+test('only an accepted current-scope order marks the exact moved stop',async()=>{
+  for (const outcome of [true,false,'switched']) {
+    let release;
+    const h=runner({commit:()=>new Promise(r=>{release=r})});
+    const moved=[];
+    h.options.scopeKey='first';
+    h.options.onAcceptedMove=id=>moved.push(id);
+    const pending=h.render().moveFromMenu('a',1);
+    assert.deepEqual(moved,[]);
+    if(outcome==='switched'){h.options.scopeKey='second';h.render();}
+    release(outcome!==false);
+    await pending;
+    assert.deepEqual(moved,outcome===true?['a']:[]);
+  }
+});

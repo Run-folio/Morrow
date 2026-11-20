@@ -1,7 +1,7 @@
 "use client";
 
-import { Children, forwardRef, useEffect, useRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type RefObject } from 'react';
-import { canSpring, createRevealGate, scheduleReveal } from '@/lib/easyt/app-motion';
+import { Children, forwardRef, useCallback, useState, useEffect, useRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type RefObject } from 'react';
+import { canSpring, createRevealGate, isMotionActivationKey, scheduleReveal } from '@/lib/easyt/app-motion';
 import Link from "next/link";
 
 /** A non-layout sentinel animates existing children without reparenting controls.
@@ -44,11 +44,16 @@ function useControlSpring(ref: RefObject<HTMLElement | null>, enabled: boolean) 
     let animations: Animation[] = [];
     const cancel = () => animations.forEach(a=>a.cancel());
     const play = (event: Event) => {
-      if (event instanceof KeyboardEvent && (event.repeat || !['Enter',' '].includes(event.key))) return;
+      if (event instanceof KeyboardEvent && (!isMotionActivationKey(event.key, control instanceof HTMLAnchorElement ? "link" : "button", event.repeat))) return;
       if (event instanceof PointerEvent && (!event.isPrimary || event.button !== 0)) return;
-      if (!canSpring({reduced:preference.matches,disabled:control.matches(':disabled,[aria-disabled="true"],[aria-busy="true"]'),excluded:Boolean(control.closest('[draggable="true"],[data-motion-exclude],[data-drag-handle],[data-itinerary-drag-handle]'))})) return;
+      const draggable = control.closest('[draggable="true"]');
+      // The itinerary card's drag boundary rejects presses from nested controls
+      // other than the explicit grip or drag surface. Their visual feedback is safe.
+      const excluded = Boolean(control.closest('[data-motion-exclude],[data-drag-handle],[data-itinerary-drag-handle],[data-itinerary-drag-surface]'))
+        || Boolean(draggable && (draggable === control || !draggable.matches('[data-itinerary-draggable]')));
+      if (!canSpring({reduced:preference.matches,disabled:control.matches(':disabled,[aria-disabled="true"],[aria-busy="true"]'),excluded})) return;
       cancel();
-      animations = Array.from(control.children).filter((n): n is HTMLElement | SVGElement => (n instanceof HTMLElement || n instanceof SVGElement) && typeof n.animate === 'function').map(n=>n.animate([{scale:'1',transformOrigin:'center',transformBox:'fill-box'},{scale:'.94',offset:.22},{scale:'1.025',offset:.62},{scale:'1',transformOrigin:'center',transformBox:'fill-box'}],{duration:340,easing:'ease-out'}));
+      animations = Array.from(control.children).filter((n): n is HTMLElement | SVGElement => (n instanceof HTMLElement || n instanceof SVGElement) && !n.hasAttribute('data-accepted-motion-cue') && typeof n.animate === 'function').map(n=>n.animate([{scale:'1',transformOrigin:'center',transformBox:'fill-box'},{scale:'.94',offset:.22},{scale:'1.025',offset:.62},{scale:'1',transformOrigin:'center',transformBox:'fill-box'}],{duration:340,easing:'ease-out'}));
     };
     control.addEventListener('pointerdown',play);control.addEventListener('keydown',play);preference.addEventListener('change',cancel);
     return()=>{cancel();control.removeEventListener('pointerdown',play);control.removeEventListener('keydown',play);preference.removeEventListener('change',cancel);};
@@ -71,3 +76,19 @@ export const MotionLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Li
   useControlSpring(ref,true);
   return <Link {...props} data-motion-button ref={node=>{ref.current=node;if(typeof forwardedRef==='function')forwardedRef(node);else if(forwardedRef)forwardedRef.current=node;}}>{motionLabels(children)}</Link>;
 });
+
+type AcceptedCue = {scope:string; targetId:string; version:number};
+export function useAcceptedMotionCue(scope:string) {
+  const [last,setLast]=useState<AcceptedCue|null>(null);
+  const markAccepted=useCallback((targetId:string)=>setLast(previous=>({scope,targetId,version:(previous?.version??0)+1})),[scope]);
+  useEffect(()=>{
+    if(!last)return;
+    if(last.scope!==scope){setLast(null);return;}
+    const timer=window.setTimeout(()=>setLast(current=>current===last?null:current),750);
+    return ()=>window.clearTimeout(timer);
+  },[scope,last]);
+  return {cue:last?.scope===scope?last:null,markAccepted};
+}
+export function acceptedCueValue(cue:AcceptedCue|null,id:string){
+  return cue?.targetId===id ? (cue.version%2?'a':'b') : undefined;
+}

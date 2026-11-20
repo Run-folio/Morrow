@@ -19,7 +19,7 @@ import {
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { trackEvent } from "@/lib/analytics";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
-import { tripSaveSignInHref } from "@/lib/easyt/trip-workspace-links";
+import { tripSaveSignInHref, tripSaveContinuationHref } from "@/lib/easyt/trip-workspace-links";
 import {workspaceRefusalDiagnostic, workspaceRefusalSupportCode, type WorkspaceRefusalDiagnostic, type WorkspaceRefusalPhase} from "@/lib/easyt/workspace-recovery-diagnostic";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -33,7 +33,8 @@ type Resolution =
   | { status: "loading"; identity: string }
   | { status: "found"; identity: string; trip: EasyTTrip }
   | { status: "blocked"; identity: string; kind: "protected" | "unavailable"; diagnostic: WorkspaceRefusalDiagnostic }
-  | { status: "missing"; identity: string };
+  | { status: "missing"; identity: string }
+  | { status: "guest-save-required"; identity: string };
 
 /** Client boundary for an exact local trip, with optional signed-in promotion. */
 export default function TripShellResolver({
@@ -107,6 +108,11 @@ export default function TripShellResolver({
           setResolution({status:'found',identity:requestIdentity,trip:acknowledged.trip});
           setSyncComplete(true);
           setDeviceContinuationIncomplete(acknowledged.deviceIncomplete);
+        } else if(ownerId&&searchParams.get("recover")==="1"){
+          refusalPhase="guest-read";
+          const guest=await loadTripRecovery(tripId,null);
+          if(!responseIsCurrent())return;
+          setResolution({status:guest?"guest-save-required":"missing",identity:requestIdentity});
         } else setResolution({status:'missing',identity:requestIdentity});
         return;
       }
@@ -199,6 +205,11 @@ export default function TripShellResolver({
     </section>;
   }
   if (resolution.status === "missing") notFound();
+  if (resolution.status === "guest-save-required") return <section className={styles.resolving}>
+    <MorroviaStatusBanner tone="warning" title="This trip is saved on this device"
+      detail="Save it to your account to open it here. No copy has been changed."
+      actions={<EasyTLinkButton size="small" variant="primary" href={tripSaveContinuationHref(tripId)}>Save this trip to my account</EasyTLinkButton>} />
+  </section>;
   if (resolution.status === "blocked") {
     const supportCode=workspaceRefusalSupportCode(resolution.diagnostic);
     return <section className={styles.resolving}>
@@ -219,8 +230,8 @@ export default function TripShellResolver({
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
       tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}
-      title={syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Cloud copy kept safe" : "Trip not synced yet"}
-      detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}
+      title={syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Both copies were kept" : "Trip not synced yet"}
+      detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Your account and device have different versions." : "Your trip is still safe on this device. Check your connection and try again."}
       actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId, "builder")}>Open device copy</EasyTLinkButton>}
     /> : null}
     <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen} deviceOnlyNotice={!ownerId ? <>

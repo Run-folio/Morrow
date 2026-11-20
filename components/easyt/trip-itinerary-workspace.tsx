@@ -1,4 +1,6 @@
 "use client";
+import { useAcceptedMotionCue, acceptedCueValue } from "@/components/easyt/app-motion";
+import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 import { MotionButton } from "@/components/easyt/app-motion";
 import { EntryReveal } from "@/components/easyt/app-motion";
 import {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';
@@ -109,6 +111,7 @@ import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-plann
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
+import { ItineraryActivityState, itineraryActivityLabels } from "./itinerary-activity-state";
 import ItineraryDraggableCard from "./itinerary-draggable-card";
 import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
@@ -244,7 +247,6 @@ function itineraryCopy(language: "en" | "es") {
     dayByDay: "Día a día",
     calendar: "Calendario",
     calendarHeading: "Todo tu viaje, semana a semana",
-    calendarIntro: "Una vista continua de los días, traslados, planes y estancias de este viaje.",
     weekOf: "Semana del",
     day: "Día",
     dayCount: "días",
@@ -277,7 +279,7 @@ function itineraryCopy(language: "en" | "es") {
     nextDay: "Día siguiente",
     openMap: "Abrir mapa →",
     source: "Fuente ↗",
-    itineraryEmpty: "Este itinerario aún no tiene días planificados.",
+    itineraryEmpty: "Aún no hay días planificados",
     transfer: "Traslado",
     estimate: "Estimación puerta a puerta",
     items: "elementos",
@@ -300,7 +302,8 @@ function itineraryCopy(language: "en" | "es") {
     edit: "Editar",
     remove: "Eliminar",
     removeActivity: "Eliminar actividad",
-    removeDetail: "Esta actividad se eliminará de este día cuando se guarde el cambio.",
+    removeDetail: "Las reservas vinculadas y los lugares del mapa no cambiarán.",
+    removeFromDay: (name: string, day: number) => `¿Quitar ${name} del día ${day}?`,
     keepActivity: "Mantener actividad",
     activity: "Actividad",
     note: "Nota del día",
@@ -313,8 +316,7 @@ function itineraryCopy(language: "en" | "es") {
     moveEarlier: "Mover antes",
     moveLater: "Mover después",
     moveActivity: "Mover actividad",
-    moveActivityEyebrow: "MOVER ACTIVIDAD",
-    moveActivityDetail: "Elige otro día elegible en esta parada exacta de la ruta. Los planes existentes de ese día se conservarán.",
+    moveActivityDetail: "Elige otro día en esta parada.",
     moveTo: "Mover a",
     partOfDay: "Momento del día",
     undoActivityAction: "Deshacer",
@@ -351,7 +353,6 @@ function itineraryCopy(language: "en" | "es") {
     addSuggestion: "Añadir",
     suggestionAdded: "Sugerencia añadida",
     suggestionsLoading: "Buscando lugares cercanos",
-    suggestionsLoadingDetail: "Usando la ubicación guardada de este día sin cambiar tu plan.",
     suggestionsUnavailable: "Las sugerencias no están disponibles ahora.",
     noNewSuggestions: "No hay nuevas sugerencias locales; los lugares ya planificados se han excluido.",
     addDayNote: "Añadir nota del día",
@@ -362,7 +363,6 @@ function itineraryCopy(language: "en" | "es") {
     dayByDay: "Day by day",
     calendar: "Calendar",
     calendarHeading: "Your whole trip, week by week",
-    calendarIntro: "A continuous view of this trip’s days, transfers, plans and stays.",
     weekOf: "Week of",
     day: "Day",
     dayCount: "days",
@@ -395,7 +395,7 @@ function itineraryCopy(language: "en" | "es") {
     nextDay: "Next day",
     openMap: "Open map view →",
     source: "Source ↗",
-    itineraryEmpty: "This itinerary does not have any planned days yet.",
+    itineraryEmpty: "No days planned yet",
     transfer: "Transfer",
     estimate: "Door-to-door estimate",
     items: "items",
@@ -418,7 +418,8 @@ function itineraryCopy(language: "en" | "es") {
     edit: "Edit",
     remove: "Remove",
     removeActivity: "Remove activity",
-    removeDetail: "This activity will be removed from this day when the change is saved.",
+    removeDetail: "Linked bookings and map places won’t change.",
+    removeFromDay: (name: string, day: number) => `Remove ${name} from Day ${day}?`,
     keepActivity: "Keep activity",
     activity: "Activity",
     note: "Day note",
@@ -431,8 +432,7 @@ function itineraryCopy(language: "en" | "es") {
     moveEarlier: "Move earlier",
     moveLater: "Move later",
     moveActivity: "Move activity",
-    moveActivityEyebrow: "MOVE ACTIVITY",
-    moveActivityDetail: "Choose another eligible day in this exact route stop. Existing plans on that day will be kept.",
+    moveActivityDetail: "Choose another day at this stop.",
     moveTo: "Move to",
     partOfDay: "Part of day",
     undoActivityAction: "Undo",
@@ -469,7 +469,6 @@ function itineraryCopy(language: "en" | "es") {
     addSuggestion: "Add",
     suggestionAdded: "Suggestion added",
     suggestionsLoading: "Finding places nearby",
-    suggestionsLoadingDetail: "Using this day’s saved location without changing your plan.",
     suggestionsUnavailable: "Suggestions are unavailable just now.",
     noNewSuggestions: "No new local suggestions; places already planned are excluded.",
     addDayNote: "Add day note",
@@ -708,6 +707,7 @@ export default function TripItineraryWorkspace({
   const dayListRef = useRef<HTMLDivElement>(null);
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
+  const {cue,markAccepted}=useAcceptedMotionCue(JSON.stringify([workingTrip.ownerId,workingTrip.id]));
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
   const captureActionScope = useItineraryActionScope(JSON.stringify([
     workingTrip.ownerId, workingTrip.id, activeDayId, workspaceView,
@@ -818,8 +818,8 @@ export default function TripItineraryWorkspace({
       if (!rail || !selected) return;
       const railBox = rail.getBoundingClientRect();
       const selectedBox = selected.getBoundingClientRect();
-      if (selectedBox.left < railBox.left) rail.scrollTo({ left: rail.scrollLeft + selectedBox.left - railBox.left, behavior: "smooth" });
-      else if (selectedBox.right > railBox.right) rail.scrollTo({ left: rail.scrollLeft + selectedBox.right - railBox.right, behavior: "smooth" });
+      if (selectedBox.left < railBox.left) rail.scrollTo({ left: rail.scrollLeft + selectedBox.left - railBox.left, behavior: motionScrollBehavior() });
+      else if (selectedBox.right > railBox.right) rail.scrollTo({ left: rail.scrollLeft + selectedBox.right - railBox.right, behavior: motionScrollBehavior() });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeDayId, selectedIndex, tabIdPrefix]);
@@ -941,8 +941,7 @@ export default function TripItineraryWorkspace({
     const emptyState = (
       <div className={styles.empty} aria-live="polite">
         <CalendarDays aria-hidden="true" />
-        <h2>Itinerary to confirm</h2>
-        <p>{copy.itineraryEmpty}</p>
+        <h2>{copy.itineraryEmpty}</h2>
       </div>
     );
     if (presentation === "legacy") return emptyState;
@@ -1160,6 +1159,7 @@ export default function TripItineraryWorkspace({
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
     }
+    if (addFlow.kind === "activity" && receipt) { const target=days.find(day=>day.dayNumber===addFlow.dayNumber); if(target)markAccepted(target.id); }
     if (addFlow.kind === "activity") trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: active.stopId, source: "manual", item_kind: "activity" });
     setNotice(addFlow.kind === "activity" ? addedToDayNotice(language, addFlow.dayNumber, addFlow.dayPart) : copy.noteAdded);
     setUndoReceipt(receipt);
@@ -1214,6 +1214,7 @@ export default function TripItineraryWorkspace({
     const target = workingTrip.planItems.find((day) => day.id === dayId);
     setNotice(target ? addedToDayNotice(language, target.dayNumber, scheduledPart) : copy.suggestionAdded);
     if (newItem) {
+      markAccepted(dayId);
       trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: idea.stopId, source: itineraryAddSourceForIdea(idea), item_kind: idea.category });
       trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
     }
@@ -1264,6 +1265,7 @@ export default function TripItineraryWorkspace({
           ? addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.idea.providerMetadata?.duration))
           : addedToDayNotice(language, active.dayNumber, dayPart));
         if (newItem) {
+          markAccepted(active.id);
           trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: dragged.idea.stopId, source: itineraryAddSourceForIdea(dragged.idea), item_kind: dragged.idea.category });
           trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" });
         }
@@ -1623,7 +1625,7 @@ export default function TripItineraryWorkspace({
             size="small"
             variant="quiet"
             fullWidth
-          >See more ideas in Explore</EasyTLinkButton>
+          >{language === "es" ? "Explorar más ideas" : "Explore more ideas"}</EasyTLinkButton>
         </details>
   );
 
@@ -1634,7 +1636,7 @@ export default function TripItineraryWorkspace({
         <div className={styles.dateNavigation}>
           {workspaceView === "calendar" && todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
           <EasyTButton icon={ChevronLeft} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex <= 0 : index === 0} onClick={() => navigatePeriod(-1)}>{workspaceView === "calendar" ? copy.previousWeek : copy.previousDay}</EasyTButton>
-          {mobile ? <EasyTButton className={styles.mobileDayPicker} variant="secondary" aria-label={language === "es" ? "Elegir día" : "Choose a day"} aria-describedby={`${tabIdPrefix}-selected-day`} aria-haspopup="dialog" aria-expanded={dayPickerOpen} onClick={() => setDayPickerOpen(true)}><span id={`${tabIdPrefix}-selected-day`}>{displayDayDate(active.date, language)} · {copy.day} {active.dayNumber} · {stop?.name ?? active.title}</span><ChevronDown aria-hidden="true" /></EasyTButton> : <EasyTSelect label={copy.jumpToDateDestination} labelClassName="sr-only" value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
+          {mobile ? <EasyTButton className={styles.mobileDayPicker} data-accepted-cue={acceptedCueValue(cue,active.id)} variant="secondary" aria-label={language === "es" ? "Elegir día" : "Choose a day"} aria-describedby={`${tabIdPrefix}-selected-day`} aria-haspopup="dialog" aria-expanded={dayPickerOpen} onClick={() => setDayPickerOpen(true)}><span id={`${tabIdPrefix}-selected-day`}>{displayDayDate(active.date, language)} · {copy.day} {active.dayNumber} · {stop?.name ?? active.title}</span><ChevronDown aria-hidden="true" /></EasyTButton> : <EasyTSelect label={copy.jumpToDateDestination} labelClassName="sr-only" value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
             {days.map((day) => <option key={day.id} value={day.id}>{displayDayDate(day.date, language)} · {copy.day} {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
           </EasyTSelect>}
           <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
@@ -1646,14 +1648,14 @@ export default function TripItineraryWorkspace({
         {todayIndex >= 0 ? <EasyTButton variant="secondary" icon={CalendarDays} onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
         <div className={styles.mobileDayOptions}>{days.map((day, dayIndex) => <EasyTButton key={day.id} variant={dayIndex === index ? "secondary" : "quiet"} aria-pressed={dayIndex === index} onClick={() => setSelectedIndex(dayIndex)}>{displayDayDate(day.date, language)} · {copy.day} {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</EasyTButton>)}</div>
       </TripMobileSheet>
-      <TripMobileSheet open={addChooserOpen} title={language === "es" ? "Añadir plan" : "Add a plan"} onClose={() => { mobileAddIntent.current = null; setAddChooserOpen(false); }} onReturnFocus={() => {
+      <TripMobileSheet open={addChooserOpen} title={language === "es" ? "Elige un momento del día" : "Choose a time of day"} onClose={() => { mobileAddIntent.current = null; setAddChooserOpen(false); }} onReturnFocus={() => {
         const nextDay = mobileAddIntent.current; mobileAddIntent.current = null;
         if (nextDay === active.id) openAddFlow(active.notes.length, "activity", mobileAddPart);
         else mobileAddTrigger.current?.focus({ preventScroll: true });
       }}>
         <p>{displayDayDate(active.date, language)} · {stop?.name ?? active.title} · {copy.day} {active.dayNumber}</p>
         <EasyTSegmentedControl ariaLabel={language === "es" ? "Momento del día" : "Part of day"} value={mobileAddPart} onChange={(value) => setMobileAddPart(value as typeof mobileAddPart)} options={[{value:"morning",label:itineraryDayPartLabels[language].morning},{value:"midday",label:itineraryDayPartLabels[language].midday},{value:"afternoon",label:itineraryDayPartLabels[language].afternoon},{value:"evening",label:itineraryDayPartLabels[language].evening}]} />
-        <EasyTButton variant="secondary" icon={CirclePlus} onClick={() => { mobileAddIntent.current = active.id; setAddChooserOpen(false); }}>{language === "es" ? "Nuevo plan" : "New plan"}</EasyTButton>
+        <EasyTButton variant="secondary" icon={CirclePlus} onClick={() => { mobileAddIntent.current = active.id; setAddChooserOpen(false); }}>{language === "es" ? "Buscar o añadir una actividad" : "Find or add an activity"}</EasyTButton>
         <EasyTButton variant="secondary" icon={BookOpenText} aria-expanded={mobileSavedOpen} onClick={() => setMobileSavedOpen(value => !value)}>{copy.savedIdeas}</EasyTButton>
         {mobileSavedOpen ? <div className={styles.mobileSavedIdeas}>
           {!unscheduledSavedIdeas.length ? <p>{language === "es" ? "No hay ideas guardadas para este destino." : "No saved ideas for this stop yet."}</p> : unscheduledSavedIdeas.map(idea => <EasyTButton key={idea.id} variant="quiet" disabled={dayPending || mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)} onClick={async () => {
@@ -1688,6 +1690,7 @@ export default function TripItineraryWorkspace({
             return <MotionButton
               type="button"
               role="tab"
+              data-accepted-cue={acceptedCueValue(cue,day.id)}
               aria-label={`${copy.day} ${day.dayNumber} · ${displayDayDate(day.date, language)} · ${dayStop?.name ?? day.title}${dayStop && subtitle ? ` · ${subtitle}` : ""}`}
               aria-selected={dayIndex === index}
               aria-controls={`${tabIdPrefix}-days-panel`}
@@ -1717,6 +1720,7 @@ export default function TripItineraryWorkspace({
       </nav> : null}
       {workspaceView === "calendar" ? <ItineraryCalendar
         tripId={workingTrip.id}
+        cueForDay={id=>acceptedCueValue(cue,id)}
         stopImages={presentationImages.stopById}
         onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); focusCalendarDayDetails(day.id); }}
         weeks={calendarWeeks}
@@ -2064,7 +2068,7 @@ export default function TripItineraryWorkspace({
               onSelect={() => undefined}
             /> : null}
         </MorroviaMapPreview> : null}
-        <div className={`${styles.contextSection} ${styles.secondaryAddActivity}`}><EasyTButton icon={CirclePlus} variant="secondary" size="small" fullWidth onClick={() => openAddFlow(0, "activity", "morning")}>{language === "es" ? "Añadir actividad" : "Add activity"}</EasyTButton></div>
+        <div className={`${styles.contextSection} ${styles.secondaryAddActivity}`}><EasyTButton icon={CirclePlus} variant="secondary" size="small" fullWidth onClick={() => openAddFlow(0, "activity", "morning")}>{language === "es" ? "Añadir a la mañana" : "Add to morning"}</EasyTButton></div>
         <details className={`${styles.contextSection} ${styles.dayNotesSection}`} open={!mobile}>
           <summary><span><BookOpenText aria-hidden="true" />{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
           <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
@@ -2092,7 +2096,7 @@ export default function TripItineraryWorkspace({
             const key = `explicit-visit-${mentionId}`;
             const changed = await mutateCurrentTrip((current) => scheduleExplicitVisitIntent(current, mentionId, dayId), key);
             if (!isCurrent()) return false;
-            if (changed) setNotice("Requested visit added to the itinerary");
+            if (changed) { markAccepted(dayId); setNotice("Requested visit added to the itinerary"); }
             return changed;
           }}
           onRemoveVisit={async (mentionId) => {
@@ -2165,7 +2169,7 @@ export default function TripItineraryWorkspace({
 
       <MorroviaFormDialog
         open={Boolean(moveFlow)}
-        eyebrow={copy.moveActivityEyebrow}
+        eyebrow=""
         title={moveFlow ? `${copy.moveActivity}: ${moveFlow.activity.title}` : copy.moveActivity}
         detail={copy.moveActivityDetail}
         submitLabel={copy.moveActivity}
@@ -2196,9 +2200,10 @@ export default function TripItineraryWorkspace({
 
       <MorroviaConfirmationDialog
         open={Boolean(removeTarget)}
-        title={removeTarget ? `${copy.removeActivity}: ${removeTarget.title}?` : copy.removeActivity}
+        title={removeTarget ? copy.removeFromDay(removeTarget.title, removeTarget.dayNumber) : copy.removeActivity}
         detail={copy.removeDetail}
-        consequences={["It will be removed from this day’s authored activities.", "Linked bookings and mapped places are protected and cannot be removed here."]}
+        eyebrow=""
+        consequences={[]}
         cancelLabel={copy.keepActivity}
         confirmLabel={copy.removeActivity}
         error={removeError || undefined}
@@ -2346,8 +2351,9 @@ function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "act
   return copy.flexible;
 }
 
-function ItineraryCalendar({ tripId, stopImages, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
+function ItineraryCalendar({ tripId, cueForDay, stopImages, onOpenDay, weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
   tripId: string;
+  cueForDay: (id:string)=>string|undefined;
   stopImages: Readonly<Record<string, OverviewPlaceImage | null>>;
   onOpenDay: (day: ItineraryCalendarDay) => void;
   weeks: ItineraryCalendarWeek[];
@@ -2375,6 +2381,7 @@ function ItineraryCalendar({ tripId, stopImages, onOpenDay, weeks, selectedDayId
           const previewItems = day?.items.filter(item => item.kind !== "accommodation") ?? [];
           return day ? <article
           className={styles.calendarDay}
+          data-accepted-cue={cueForDay(day.id)}
           data-selected={selectedDayId === day.id || undefined}
           data-drop-eligible={Boolean(dragItem && (dragItem.kind === "suggestion" ? dragItem.idea.stopId : dragItem.sourceStopId) === day.day.stopId) || undefined}
           key={day.id}
@@ -2528,14 +2535,15 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const interests = tripIntentForTrip(trip).preferences.interests;
   const [addPortalContainer, setAddPortalContainer] = useState<HTMLElement | null>(null);
   useEffect(() => { if (portalAddDialog) setAddPortalContainer(document.body); }, [portalAddDialog]);
+  const activityLabels = itineraryActivityLabels(language);
   const addLabels = language === "es" ? {
-    title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir", save: "Guardar para después", saved: "Guardado para después",
+    title: "Añadir actividad", close: "Cerrar", search: "Buscar ideas", own: "Nombre de la actividad", add: "Añadir",
     categories: { "for-you": "Para ti", "must-see": "Imprescindibles", culture: "Cultura", tours: "Excursiones", outdoors: "Naturaleza", food: "Comida y bebida" },
-    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "No reservado",
+    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.",
   } : {
-    title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add", save: "Save for later", saved: "Saved for later",
-    categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Nature / outdoors", food: "Food & drink" },
-    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Not booked",
+    title: "Add an activity", close: "Close", search: "Search ideas", own: "Activity name", add: "Add",
+    categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Outdoors", food: "Food & drink" },
+    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.",
   };
 
   useEffect(() => {
@@ -2796,10 +2804,9 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
           const state = stop ? ideaStateForPlace(trip, stop.id, result.idea.placeId) : null;
           const pending = isPending(result.idea.placeId);
           const productAction = viatorProductAction(result.provider, result.providerUrl);
-          const meta = [result.category, result.duration, result.price, result.rating === undefined ? null : `${result.rating.toFixed(1)} ${addLabels.rating}`, result.idea.source === "live-provider-inventory" ? `Viator · ${addLabels.planOnly}` : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null].filter(Boolean).join(" · ");
-          return <article key={result.identity} className={`${styles.contextualAddResult} ${result.image ? "" : styles.contextualAddResultNoMedia}`} data-add-result-id={result.sourceId}>
-            {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
-            <div className={styles.contextualAddResultText}><strong>{result.title}</strong><span>{meta || result.location}</span></div>
+          const meta = itinerarySuggestionMeta(result, language);
+          return <article key={result.identity} className={styles.contextualAddResult} data-add-result-id={result.sourceId}>
+            <ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} image={result.image} meta={meta || result.location} format="recommendation" />
             <div className={styles.contextualAddResultActions}>
               <EasyTButton
                 size="small"
@@ -2827,7 +2834,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                   const accepted = await onSave(result.idea);
                   if (isCurrent() && !accepted) setAddResultError(addLabels.saveError);
                 }}
-              >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
+              >{activityLabels.save}</EasyTButton> : state?.state === "saved" ? <ItineraryActivityState state="saved" language={language} /> : null}
               {productAction ? <><MorroviaAffiliateLink action={productAction} context={{ placement: "itinerary_day_experiences", tripId: trip.id, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.contextualAddResultDisclosure} provider="viator" /></> : null}
             </div>
           </article>;
@@ -2841,11 +2848,10 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     </div>
   </MorroviaContentDialog>;
   const contextualDialog = portalAddDialog && addPortalContainer ? createPortal(contextualDialogContent, addPortalContainer) : contextualDialogContent;
-  if (!results.length && loading) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>{contextualDialog}</>;
+  if (!results.length && loading) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} /></div>{contextualDialog}</>;
   if (!results.length && unsettled) return <><div className={styles.suggestionStatus}>{suggestionStatus}</div>{experienceFallback}{contextualDialog}</>;
   if (!results.length) return <><p className={styles.suggestionEmpty}>{missingDestination ? emptyAddMessage : places.length || inventory.length || filteredAtAdmission ? (language === "es" ? "Las ideas encontradas no coinciden con este día o ya están planificadas." : "The returned ideas do not match this day or are already planned.") : (language === "es" ? "No se encontraron ideas locales para este día." : "No local ideas were found for this day.")}</p>{experienceFallback}{contextualDialog}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
-    <h3>Shortlist for {stop?.name}</h3>
     <div className={styles.discoveryList}>{displayedResults.map((result) => {
       const idea = result.idea;
       const pending = isPending(idea.placeId);
@@ -2906,6 +2912,14 @@ function CompactExperienceHandoff({ action, tripId, stopId }: { action: Resolved
   </section>;
 }
 
+function itinerarySuggestionMeta(result: ExploreResult, language: "en" | "es") {
+  const rating = result.rating === undefined ? null : `${result.rating.toFixed(1)} ${language === "es" ? "valoración" : "rating"}`;
+  const source = result.idea.source === "live-provider-inventory"
+    ? language === "es" ? "Viator · No reservado" : "Viator · Not booked"
+    : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null;
+  return [result.category, result.location, result.duration, result.price, rating, source].filter(Boolean).join(" · ");
+}
+
 function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, options, preferredDayId, preferredDayPart, allowsDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onOpenDetail, onDragStart, onDragEnd }: {
   result: ExploreResult;
   tripId: string;
@@ -2931,22 +2945,20 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
   const commercial = result.idea.source === "live-provider-inventory";
   const currentDayId = state.state === "planned" ? state.day.id : null;
   const preferredDay = options.find((option) => option.day.id === preferredDayId)?.day ?? options[0]?.day ?? null;
-  const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
-  const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
+  const labels = itineraryActivityLabels(language);
+  const actionLabel = language === "es" ? `Añadir al día ${preferredDay?.dayNumber ?? ""}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
+  const meta = itinerarySuggestionMeta(result, language);
   const action = commercial ? viatorProductAction(result.provider, result.providerUrl) : null;
   const draggable = state.state !== "planned" && (allowsDayPart || isFullDayActivity(result.idea.providerMetadata?.duration)) && !pending && Boolean(onDragStart);
   return <ItineraryDraggableCard className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
-    <div className={styles.discoveryMedia}>
-      <ResilientImage src={result.image} alt="" draggable={false} fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
-      {!commercial && result.providerUrl ? <a href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : null}
-    </div>
-    <div className={styles.discoveryCopy}><div id={titleId}><ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} meta={meta} compact /></div></div>
+    <ItineraryActivityIdentity id={titleId} title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} image={result.image} meta={meta} format="rail"
+      mediaAction={!commercial && result.providerUrl ? <a className={styles.discoverySource} href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={language === "es" ? `Abrir la fuente de ${result.title}` : `Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : undefined} />
     <div className={styles.discoveryActions}>
-      <EasyTButton size="small" variant="quiet" aria-label={`Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>Details</EasyTButton>
-      {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span> : null}
-      {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
+      <EasyTButton size="small" variant="quiet" aria-label={language === "es" ? `Ver detalles de ${result.title}` : `Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>{language === "es" ? "Detalles" : "Details"}</EasyTButton>
+      {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />{language === "es" ? "Arrastra al día" : "Drag into the day"}</span> : null}
+      {state.state === "planned" ? <ItineraryActivityState state="planned" dayNumber={state.day.dayNumber} language={language} /> : null}
       {preferredDay ? <ItineraryDayPicker scopeKey={scopeKey} placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
-      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
+      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? labels.saving : labels.save}</EasyTButton> : state.state === "saved" ? <ItineraryActivityState state="saved" language={language} /> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
       {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
     </div>
   </ItineraryDraggableCard>;
@@ -3088,7 +3100,7 @@ function ItineraryDayPicker({ scopeKey, placeTitle, language, options, preferred
           aria-current={current ? "true" : undefined}
           onClick={() => void chooseDay(day.id, dayPart, current)}
         >
-          <span><strong>Day {day.dayNumber}{dayPart ? ` · ${itineraryDayPartLabels[language][dayPart]}` : " · Day level"}</strong><small>{displayDayDate(day.date, language)} · {day.title} · {itemCount} {itemCount === 1 ? "item" : "items"}</small></span>
+          <span><strong>Day {day.dayNumber}{dayPart ? ` · ${itineraryDayPartLabels[language][dayPart]}` : ""}</strong><small>{displayDayDate(day.date, language)} · {day.title} · {itemCount} {itemCount === 1 ? "item" : "items"}</small></span>
           {current ? <em>Current</em> : day.id === preferredDayId && dayPart === preferredDayPart ? <em>Suggested</em> : protectedDay && dayKind ? <em>{dayKind}</em> : null}
         </EasyTButton>;
         });
@@ -3097,32 +3109,36 @@ function ItineraryDayPicker({ scopeKey, placeTitle, language, options, preferred
 
   return <div className={styles.dayPicker}>
     <span className={styles.dayPickerSplit}>
-      <EasyTButton
+      {!currentDayId ? <EasyTButton
         size="small"
         variant="secondary"
-        icon={currentDayId ? CheckCircle2 : CirclePlus}
-        disabled={pending || choosing || Boolean(currentDayId)}
+        icon={CirclePlus}
+        disabled={pending || choosing}
         loading={choosing}
-        onClick={() => void performChoice(onDefault, false)}
-      >{label}</EasyTButton>
+        onClick={(event) => {
+          const origin = event.currentTarget;
+          const restoreFocus = document.activeElement === origin;
+          void performChoice(onDefault, false).then((accepted) => {
+            if (accepted && restoreFocus && (document.activeElement === origin || document.activeElement === document.body)) triggerRef.current?.focus();
+          });
+        }}
+      >{label}</EasyTButton> : null}
       <EasyTButton
       ref={triggerRef}
-      className={styles.dayPickerToggle}
       icon={ChevronDown}
-      iconOnly
       size="small"
       variant="secondary"
       disabled={pending || choosing}
       aria-expanded={open}
       aria-haspopup="menu"
       aria-controls={open ? menuId : undefined}
-      aria-label={allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
+      aria-label={language === "es" ? `${itineraryActivityLabels(language).chooseDay} para ${placeTitle}` : allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
       onClick={() => onOpenChange(!open)}
       onKeyDown={(event) => {
         if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange(true); }
         if (event.key === "Escape" && open) { event.preventDefault(); close(true); }
       }}
-    >Choose placement for {placeTitle}</EasyTButton>
+    >{itineraryActivityLabels(language).chooseDay}</EasyTButton>
     </span>
     {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}
   </div>;

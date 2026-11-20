@@ -269,3 +269,61 @@ test('undoing a manual booked mark restores airport editing without losing retai
  const mismatch=structuredClone(reloaded);mismatch.brief.bookings![0].transportLegBinding!.fromLabel='Earlier route';
  assert.equal(canEditFlightSearchAirports(mismatch,mismatch.legs[0]),false,'retained mismatched booking details still require review');
 });
+
+test('Tokyo and Beijing suggestions use only the reviewed city and pinned gateway identities', async()=>{
+ const {majorAirportsForCity}=await import('../lib/easyt/flight-search-airport-choice.ts');
+ const city=(id:string,name:string,country:string)=>({canonicalPlaceId:'reference:geonames:'+id,name,country});
+ assert.deepEqual(majorAirportsForCity(city('1850147','Tokyo','Japan')).map(a=>a.code),['HND','NRT']);
+ assert.deepEqual(majorAirportsForCity(city('1816670','Beijing','China')).map(a=>a.code),['PEK','PKX']);
+ assert.equal(majorAirportsForCity(city('1816670','Tokyo','Japan')).length,0);
+});
+test('Haneda and Beijing city can be saved together without editing trip stops',async()=>{
+ const {returnTripForPlaces}=await import('./fixtures/gateway-return.ts');
+ const tokyo=selectedTransferPlace('Tokyo','Japan','reference:geonames:1850147','endpoint');
+ const beijing=selectedTransferPlace('Beijing','China','reference:geonames:1816670','stop');
+ const trip=returnTripForPlaces(tokyo,[beijing]);
+ const leg=trip.legs[0]={...trip.legs[0],mode:'flight',provenance:'planning_estimate',routeMetadata:{}};
+ const haneda=airport('HND')!;
+ const next=setFlightSearchAirports(trip,leg.id,{from:haneda,to:null},flightSearchAirportBasis(trip,leg)!);
+ assert.notEqual(next,trip);
+ assert.deepEqual(next.legs,trip.legs);assert.deepEqual(next.stops,trip.stops);
+ const restored=requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(next))));
+ const plan=flightSearchAirportPlan(restored,restored.legs[0])!;
+ assert.equal(plan.from.endpoint.canonicalPlaceId,haneda.endpoint.canonicalPlaceId);
+ assert.equal(plan.to.endpoint.name,'Beijing');
+ const action=omioBookingActionForLeg(restored,restored.legs[0],new Date('2026-11-05'))!;
+ const handoff=new URL(new URL(action.href).searchParams.get('u')!);
+ assert.match(handoff.searchParams.get('departurePosTerm')!,/Haneda/);
+ assert.match(handoff.searchParams.get('arrivalPosTerm')!,/^Beijing,/);
+});
+
+test('3×3 Tokyo and Beijing search matrix sends only selected airport or canonical city text',async()=>{
+ const {returnTripForPlaces}=await import('./fixtures/gateway-return.ts');
+ const tokyo=selectedTransferPlace('Tokyo','Japan','reference:geonames:1850147','endpoint');
+ const beijing=selectedTransferPlace('Beijing','China','reference:geonames:1816670','stop');
+ const trip=returnTripForPlaces(tokyo,[beijing]);
+ const leg=trip.legs[0]={...trip.legs[0],mode:'flight',provenance:'planning_estimate',routeMetadata:{}};
+ for(const from of [null,airport('HND')!,airport('NRT')!])for(const to of [null,airport('PEK')!,airport('PKX')!]){
+  const candidate=from||to?setFlightSearchAirports(trip,leg.id,{from,to},flightSearchAirportBasis(trip,leg)!):trip;
+  if(from||to)assert.notEqual(candidate,trip);
+  const action=omioBookingActionForLeg(candidate,candidate.legs[0],new Date('2026-11-05'))!;
+  const params=new URL(new URL(action.href).searchParams.get('u')!).searchParams;
+  assert.equal(params.get('departurePosTerm'),(from?.endpoint.name??'Tokyo')+', '+(from?.endpoint.country??'Japan'));
+  assert.equal(params.get('arrivalPosTerm'),(to?.endpoint.name??'Beijing')+', '+(to?.endpoint.country??'China'));
+  assert.equal(params.get('travelMode'),'FLIGHT');
+  assert.equal(params.has('passengers'),false);
+ }
+});
+
+test('a trip already pinned to Gatwick cannot be silently overridden by Heathrow in search',async()=>{
+ const {returnTripForPlaces}=await import('./fixtures/gateway-return.ts');
+ const from=gatwick().endpoint;
+ const paris=selectedTransferPlace('Paris','France','reference:geonames:2988507','stop');
+ const trip=returnTripForPlaces({...from,coordinates:from.coordinates!},[paris]);
+ const leg=trip.legs[0]={...trip.legs[0],mode:'flight',provenance:'planning_estimate',routeMetadata:{}};
+ const basis=flightSearchAirportBasis(trip,leg)!;
+ assert.equal(setFlightSearchAirports(trip,leg.id,{from:airport('LHR')!,to:null},basis),trip);
+ const changed=setFlightSearchAirports(trip,leg.id,{from:null,to:orly()},basis);
+ assert.notEqual(changed,trip);
+ assert.equal(flightSearchAirportPlan(changed,leg)?.from.endpoint.canonicalPlaceId,from.canonicalPlaceId);
+});

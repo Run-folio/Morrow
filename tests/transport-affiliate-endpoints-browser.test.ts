@@ -26,12 +26,14 @@ for (const width of [1440, 390]) test(`future return flight in an in-progress tr
     const search = new URL(new URL(href!).searchParams.get('u')!);
     assert.equal(search.searchParams.get('departurePosTerm'), 'Madrid, Spain');
     assert.equal(search.searchParams.get('arrivalPosTerm'), 'London Heathrow Airport, United Kingdom');
-    await card.locator('[data-flight-airport-assumption]').getByText('Assumed airport: London LHR', {exact:true}).waitFor();
+    await card.getByText(/London \(default: LHR\)/).waitFor();
     assert.equal(await card.getByRole('heading', {name:'Madrid to London',exact:true}).count(),1, 'The canonical city journey is not rewritten to an assumed airport');
     assert.equal(search.searchParams.get('departureDate'), '2026-10-21');
     assert.equal(search.searchParams.get('travelMode'), 'FLIGHT');
     assert.equal(await link.getAttribute('target'), '_blank');
     assert.match((await link.getAttribute('rel'))!, /sponsored.*noopener.*noreferrer/);
+    assert.equal(await card.getByRole('button', { name: 'Mark as booked', exact: true }).count(), 0);
+    await card.locator('[data-transport-more-actions] > summary').press('Enter');
     assert.equal(await card.getByRole('button', { name: 'Mark as booked', exact: true }).count(), 1);
     assert.deepEqual(await snapshot(), before, 'expansion and link availability cannot change the saved fixture');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);

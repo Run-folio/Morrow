@@ -98,7 +98,7 @@ test('Both activity lanes distinguish settled incomplete assessments and a legac
         assert.equal(await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).count(), 0);
       }
       assert.equal(await dialog.locator('[aria-busy="true"]').count(), 0, 'the HTTP request has settled; do not create an indefinite loading state');
-      assert.equal(await dialog.getByLabel('Add your own', { exact: true }).count(), 1);
+      assert.equal(await dialog.getByLabel('Activity name', { exact: true }).count(), 1);
       await capture(page, `activity-${lane}-${retrieval}-${width}`);
       await page.close();
     }
@@ -171,7 +171,9 @@ test('Calendar ideas occupy the independently scrolling sidebar beside all three
   const { browser, page } = await open('calendar-sidebar-ideas');
   try {
     await page.locator('#itinerary-calendar').waitFor();
-    await page.getByText('Shortlist for', { exact: false }).waitFor();
+    const suggestions = page.getByRole('region', { name: 'Useful ideas for Day 1', exact: true });
+    await suggestions.waitFor();
+    assert.equal(await page.getByText('Shortlist for', { exact: false }).count(), 0);
     await capture(page, 'calendar-sidebar-1440');
     const calendar = await page.locator('#itinerary-calendar').boundingBox();
     const ideas = await page.locator('[class*="ideasSection"]').boundingBox();
@@ -183,12 +185,12 @@ test('Calendar ideas occupy the independently scrolling sidebar beside all three
     assert.equal(await page.locator('section[aria-label$=" planner"]').count(), 1);
     await page.getByRole('button', { name: 'Ideas for Day 1', exact: true }).click();
     await page.waitForFunction(() => {
-      const heading = [...document.querySelectorAll('h4')].find(node => node.textContent === 'Shortlist for Cusco');
+      const heading = [...document.querySelectorAll('summary')].find(node => node.textContent === 'Suggestions for this day');
       const rect = heading?.getBoundingClientRect();
       return rect && rect.top >= 0 && rect.bottom <= innerHeight;
     });
-    const exposed = await page.getByText('Shortlist for Cusco', { exact: true }).boundingBox();
-    assert.ok(exposed && exposed.y >= 0 && exposed.y + exposed.height <= 900, 'the visible Ideas action exposes the sidebar shortlist');
+    const exposed = await page.getByText('Suggestions for this day', { exact: true }).boundingBox();
+    assert.ok(exposed && exposed.y >= 0 && exposed.y + exposed.height <= 900, 'the visible Ideas action exposes the sidebar suggestions');
     await capture(page, 'calendar-sidebar-ideas-exposed-1440');
   } finally { await browser.close(); }
 });
@@ -299,7 +301,7 @@ test('Activity Add distinguishes discovery unavailability, request failure, genu
         await dialog.getByText('Finding ideas', { exact: true }).waitFor();
         assert.doesNotMatch(await dialog.innerText(), /No matching ideas yet|unavailable/i);
       } else if (state === 'empty') {
-        await dialog.getByText('No matching ideas yet. Search another category or add your own.', { exact: true }).waitFor();
+        await dialog.getByText('No matching ideas yet.', { exact: true }).waitFor();
         assert.doesNotMatch(await dialog.innerText(), /unavailable|Finding ideas/i);
       } else {
         await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).waitFor();

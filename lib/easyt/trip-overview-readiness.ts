@@ -142,20 +142,20 @@ export function overviewPlanningCardText(trip: EasyTTrip, category: OverviewRead
     const total = coverage.expectedDays ?? coverage.plannedDays;
     const count = shapedItineraryDayNumbers(trip).size;
     return { label: spanish ? "Días" : "Days", detail: total
-      ? spanish ? `${count} de ${total} días preparados.` : `${count} of ${total} days shaped.`
-      : spanish ? "Añade fechas o un esquema de días para ver el progreso." : "Add dates or a day outline to see progress." };
+      ? spanish ? `${count} de ${total} días con planes o notas` : `${count} of ${total} days have plans or notes`
+      : spanish ? "Añade fechas o un plan por días" : "Add dates or a day plan" };
   }
   if (category.id === "accommodation") {
     const stays = accommodationProgress(trip);
     return { label: spanish ? "Alojamientos" : "Stays", detail: category.percent === null
-      ? spanish ? "Confirma las noches para ver el progreso." : "Confirm overnight stops to see stay progress."
-      : stays.stops.length ? spanish ? `${stays.sortedCount} de ${stays.stops.length} alojamientos seleccionados.` : `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stay" : "stays"} selected.`
+      ? spanish ? "Confirma las paradas con pernoctación" : "Confirm overnight stops"
+      : stays.stops.length ? spanish ? `${stays.sortedCount} de ${stays.stops.length} alojamientos con reserva guardada` : `${stays.sortedCount} of ${stays.stops.length} stay bookings saved`
       : spanish ? "No hay alojamientos que organizar." : "No overnight stays to arrange." };
   }
   const transport = transportBookingProgress(trip);
   return { label: spanish ? "Transporte" : "Transport", detail: category.percent === null
-    ? spanish ? "Confirma los traslados para ver el progreso." : "Confirm transfers to see transport progress."
+    ? spanish ? "Confirma los traslados" : "Confirm transfers"
     : transport.total
-    ? spanish ? `${transport.sortedCount} de ${transport.total} traslados organizados.` : `${transport.sortedCount} of ${transport.total} ${transport.total === 1 ? "transfer" : "transfers"} sorted.`
+    ? spanish ? `${transport.sortedCount} de ${transport.total} traslados con reserva guardada` : `${transport.sortedCount} of ${transport.total} transport bookings saved`
     : spanish ? "No hay traslados que organizar." : "No transfers to arrange." };
 }
