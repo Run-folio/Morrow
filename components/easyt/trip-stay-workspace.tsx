@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceOrientationTarget } from "./workspace-orientation";
+
 import { EntryReveal } from "@/components/easyt/app-motion";
 
 import { BedDouble, CalendarDays, Check, Map, MapPin, Star, X } from "lucide-react";
@@ -70,6 +72,8 @@ function StayFinderSurface({
   setSelectedPlaceId: (value: string | null) => void;
   onSelectStop: (stopId: string) => void;
 }) {
+  const stopNavigationGuideRef = useWorkspaceOrientationTarget("stay", "stay-stop");
+  const browseStaysGuideRef = useWorkspaceOrientationTarget("stay", "stay-options");
   const mutation = useTripShellMutation();
   const mobile = useMobileTripWorkspace();
   const [stayQuery, setStayQuery] = useState("");
@@ -256,7 +260,7 @@ function StayFinderSurface({
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="Stay update needs attention" detail={mutation.error} /> : null}
     </div> : null}
 
-    <div className={styles.stopNavigation}>
+    <div ref={stopNavigationGuideRef} className={styles.stopNavigation}>
       <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
     </div>
 
@@ -301,7 +305,7 @@ function StayFinderSurface({
       />
 
       <details className={styles.browseStays} open={!hasShortlist || finder.status !== "ready" || Boolean(requestedPlaceId && !finder.candidates.some(place => place.id === requestedPlaceId))}>
-        <summary>{hasShortlist ? "Find more stays" : "Stay options"}</summary>
+        <summary ref={browseStaysGuideRef}>{hasShortlist ? "Find more stays" : "Stay options"}</summary>
         <section className={styles.options} aria-label={`Stay options for ${context.stop.name}`}>
         <EntryReveal ready={finder.status === "ready" && visibleCandidates.length > 0} selector="[data-stay-result-name]" />
         {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}

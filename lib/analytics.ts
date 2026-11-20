@@ -1,3 +1,4 @@
+import type { WorkspaceOrientationWorkspace } from "./easyt/workspace-orientation.ts";
 import posthog, { type CaptureResult, type Properties } from "posthog-js";
 import { clearOptionalAnalyticsStorage, hasAnalyticsConsent } from "./privacy-consent.ts";
 import { privateReplaySnapshots, privateSessionRecording, sessionReplayAllowed } from "./analytics-replay.ts";
@@ -36,9 +37,9 @@ export type LaunchAnalyticsEventMap = {
   discovery_review_reached: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; shortlist_count: number };
   discovery_confirmed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; shortlist_count: number };
   discovery_dismissed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; action: "closed" | "finish_later"; shortlist_count: number };
-  workspace_orientation_started: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number };
-  workspace_orientation_completed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
-  workspace_orientation_dismissed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
+  workspace_orientation_started: { workspace: WorkspaceOrientationWorkspace; orientation_version: number; source: "automatic" | "replay"; total_steps: number };
+  workspace_orientation_completed: { workspace: WorkspaceOrientationWorkspace; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
+  workspace_orientation_dismissed: { workspace: WorkspaceOrientationWorkspace; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
   route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" | "discovery" };
   homepage_route_viewed: { route_id: string; selection: "initial" | "change"; stop_count: number };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };

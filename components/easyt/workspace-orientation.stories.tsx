@@ -11,10 +11,27 @@ import { writeWorkspaceOrientationSeenVersion, type WorkspaceOrientationWorkspac
 import styles from "./workspace-orientation.stories.module.css";
 
 const targets: Record<WorkspaceOrientationWorkspace, { id: WorkspaceOrientationTarget; title: string; detail: string }[]> = {
+  stay: [
+    { id: "stay-stop", title: "Stay stop", detail: "Guide target" },
+    { id: "stay-shortlist", title: "Stay shortlist", detail: "Guide target" },
+    { id: "stay-options", title: "Stay options", detail: "Guide target" },
+  ],
+  explore: [
+    { id: "explore-stop", title: "Explore stop", detail: "Guide target" },
+    { id: "explore-categories", title: "Explore categories", detail: "Guide target" },
+  ],
+  today: [
+    { id: "today-header", title: "Today header", detail: "Guide target" },
+    { id: "today-content", title: "Today content", detail: "Guide target" },
+  ],
+  transport: [
+    { id: "transport-header", title: "Transport header", detail: "Guide target" },
+    { id: "transport-list", title: "Transport list", detail: "Guide target" },
+  ],
   overview: [
     { id: "overview-next", title: "Your next step", detail: "Review the route before booking transport." },
     { id: "overview-progress", title: "Planning progress", detail: "Route, stays and practical preparation in one place." },
-    { id: "workspace-navigation", title: "Overview · Map · Itinerary", detail: "Three connected views of this trip." },
+    { id: "workspace-navigation", title: "Trip sections", detail: "Move between trip workspaces." },
   ],
   map: [
     { id: "map-stop", title: "Cusco", detail: "Selected route stop." },
@@ -81,3 +98,5 @@ export const CompletedManualReplay: Story = {
   },
 };
 export const ReducedMotionStatic: Story = { parameters: { reducedMotion: "reduce" }, render: () => <OrientationStory workspace="overview" ownerId="story-reduced-motion" /> };
+
+export const StayGuide: Story = { parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-trip/stay", segments: ["stay"] } } }, render: () => <OrientationStory workspace="stay" ownerId="story-stay" /> };

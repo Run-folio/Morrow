@@ -1,4 +1,6 @@
 "use client";
+
+import { useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { EntryReveal } from "@/components/easyt/app-motion";
 import {TripFlightSearchAirports} from './trip-flight-search-airports';
 import {flightSearchAirportPlan} from '@/lib/easyt/flight-search-airport-choice';
@@ -156,6 +158,8 @@ function mapStopsForAgenda(items: ItineraryTransportAgendaLeg[], language: Langu
 }
 
 export default function TripTransportWorkspace({ trip, language = "en" }: { trip: EasyTTrip; language?: Language }) {
+  const headerGuideRef = useWorkspaceOrientationTarget("transport", "transport-header");
+  const listGuideRef = useWorkspaceOrientationTarget("transport", "transport-list");
   const mutation = useTripShellMutation();
   const copy = copyFor(language);
   const items = useMemo(() => itineraryTransportAgenda(trip), [trip]);
@@ -224,7 +228,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   }, [items, searchParams, trip]);
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
-    <header className={styles.header}>
+    <header ref={headerGuideRef} className={styles.header}>
       <div className={styles.heading}><h2 id={headingId} className={workspaceHeading.sectionTitle}>{copy.heading}</h2></div>
       {items.length ? <EasyTButton className={styles.mapToggle} icon={mapOpen ? X : MapIcon} size="small" variant="secondary"
         aria-expanded={mapOpen} aria-controls="transport-route-map" onClick={() => setMapOpen((current) => !current)}>
@@ -250,7 +254,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
 
     <EntryReveal ready={items.length > 0} selector="[data-transport-route-name]" />
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
-      <div className={styles.list} role="list" aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
+      <div ref={listGuideRef} className={styles.list} role="list" aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
         {items.map((item) => <TransportCard trip={trip} item={item} language={language} copy={copy}
           selected={item.leg.id === selected?.leg.id} forReview={orientation.reviewLegIds.includes(item.leg.id)} onSelect={() => selectJourney(item.leg.id, true)} key={item.leg.id} />)}
       </div>

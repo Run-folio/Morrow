@@ -1,7 +1,15 @@
 export const WORKSPACE_ORIENTATION_STORAGE_PREFIX = "morrovia:workspace-orientation";
 export const WORKSPACE_ORIENTATION_VERSION = 1;
 
-export type WorkspaceOrientationWorkspace = "overview" | "map" | "itinerary";
+export type WorkspaceOrientationWorkspace = "overview" | "map" | "itinerary" | "stay" | "explore" | "transport" | "today";
+
+export function workspaceFromPathname(pathname: string): WorkspaceOrientationWorkspace {
+  const section = pathname.split("/").filter(Boolean)[2];
+  switch (section) {
+    case "stay": case "explore": case "transport": case "today": case "map": case "itinerary": return section;
+    default: return "overview";
+  }
+}
 export type WorkspaceOrientationSource = "automatic" | "replay";
 
 type ReadableStorage = Pick<Storage, "getItem">;

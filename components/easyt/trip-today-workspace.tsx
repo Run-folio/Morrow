@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceOrientationTarget } from "./workspace-orientation";
+
 import { useEffect, useMemo, useState } from 'react';
 import { BedDouble, CalendarDays, ChevronRight, Route } from 'lucide-react';
 import type { EasyTTrip } from '@/lib/easyt/trip';
@@ -21,6 +23,8 @@ const parts={en:{morning:'Morning',midday:'Midday',afternoon:'Afternoon',evening
 
 /** Only display state and clock state live here; all trip edits belong to the linked workspaces. */
 export default function TripTodayWorkspace({trip,now,previewDayId,onPreviewDay,language:suppliedLanguage}:TripTodayWorkspaceProps){
+  const headerGuideRef = useWorkspaceOrientationTarget("today", "today-header");
+  const locationGuideRef = useWorkspaceOrientationTarget("today", "today-content");
  const [clock,setClock]=useState<Date|null>(now??null);
  const [localPreview,setLocalPreview]=useState<string|null>(null);
  const [language,setLanguage]=useState<'en'|'es'>(suppliedLanguage??'en');
@@ -41,12 +45,12 @@ export default function TripTodayWorkspace({trip,now,previewDayId,onPreviewDay,l
  const notes=trip&&day?trip.brief.dayNotes?.[day.dayNumber]:undefined;
  const activityRows=model.activities.map((activity,index)=>({activity,index,time:activityStartTimeLabel(activity.startsAt)})).sort((a,b)=>a.time&&b.time?a.time.localeCompare(b.time):a.time?-1:b.time?1:a.index-b.index);
  return <section className={styles.workspace} aria-labelledby="today-heading" data-today-state={model.state}>
-   <header className={styles.header}>
+   <header ref={headerGuideRef} className={styles.header}>
      <div><h2 id="today-heading">{model.state==='preview'?copy.preview:copy.today}</h2>{day?<p><time dateTime={day.date}>{date(day.date)}</time></p>:null}</div>
      {day?<span className={styles.dayLabel}>{copy.day} {day.dayNumber}</span>:null}
    </header>
    {active&&trip&&day&&stop?<>
-     <section className={styles.location} aria-label={stop.name}><h3>{stop.name}</h3><ItineraryDayPhoto image={images?.stopById[stop.id]??null} destination={stop.name} language={language} className={styles.locationPhoto} sizes="(max-width: 760px) calc(100vw - 48px), 65vw" /></section>
+     <section ref={locationGuideRef} className={styles.location} aria-label={stop.name}><h3>{stop.name}</h3><ItineraryDayPhoto image={images?.stopById[stop.id]??null} destination={stop.name} language={language} className={styles.locationPhoto} sizes="(max-width: 760px) calc(100vw - 48px), 65vw" /></section>
      <div className={styles.dateBasis}>{model.state==='preview'?copy.chosen:`${copy.basis} · ${model.timezone}`}{model.state==='preview'?<EasyTButton variant="quiet" size="small" onClick={()=>choose(null)}>{copy.return}</EasyTButton>:null}</div>
      <EasyTLinkButton className={`${styles.primaryLink} ${styles.desktopItinerary}`} href={itineraryHref} icon={CalendarDays} variant="secondary" fullWidth>{copy.itinerary}<ChevronRight aria-hidden="true"/></EasyTLinkButton>
      <div className={styles.columns}>
