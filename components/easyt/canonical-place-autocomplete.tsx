@@ -4,6 +4,7 @@ import { EntryReveal } from "@/components/easyt/app-motion";
 
 import { type CompletedPlaceSearchResult, publicPlaceQueryAllowed, submittedPublicPlaceInput } from '@/lib/easyt/public-place-search-input';
 import { MapPin, X } from "lucide-react";
+import { Fragment } from "react/jsx-runtime";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   canonicalPlaceSuggestionsForQuery,
@@ -14,7 +15,7 @@ import {
   type PlaceType,
   type PlanningParentConstraint,
 } from "@/lib/easyt/place-intelligence";
-import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions, mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail, placeSuggestionMapUrl } from "@/lib/easyt/place-autocomplete";
+import { presentFreshCityChoices, placeAutocompleteKeyAction, prioritizeRouteStopSuggestions, mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail, placeSuggestionMapUrl } from "@/lib/easyt/place-autocomplete";
 import { consolidateFreshDestinationSuggestions } from "@/lib/easyt/destination-planning-policy";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -287,11 +288,17 @@ export function CanonicalPlaceAutocomplete({
     return () => { window.clearTimeout(timer); scope.dispose(); };
   }, [allowedTypeKey, contextCountriesKey, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent, providerContextKey]);
 
-  const suggestions = useMemo(() => value !== deferredValue || value.trim().length < 2 ? [] : prioritizeRouteStopSuggestions(consolidateFreshDestinationSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...(providerQueryKey === currentQueryKey ? providerSuggestions : []), ...(completedQueryKey === currentQueryKey ? completedSuggestions : [])]
+  const suggestions = useMemo(() => value !== deferredValue || value.trim().length < 2 ? [] : prioritizeRouteStopSuggestions(presentFreshCityChoices(consolidateFreshDestinationSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...(providerQueryKey === currentQueryKey ? providerSuggestions : []), ...(completedQueryKey === currentQueryKey ? completedSuggestions : [])]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
-    ), { intent: searchIntent === "route-stop" ? "fresh-stop" : "explicit-area" })
+    ), { intent: searchIntent === "route-stop" ? "fresh-stop" : "explicit-area" }), catalogSuggestions, searchIntent)
     , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, completedSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue, value, providerQueryKey, completedQueryKey, currentQueryKey]);
+  const details = suggestions.map(row => placeSuggestionLocationDetail(row,suggestions,language,compactBuilderOrigin));
+  const confirmation = language === "es" ? "Ubicación por confirmar" : "Location to confirm";
+  const firstIsExactCity = suggestions[0]?.placeType === "city" && suggestions[0].name.toLowerCase() === deferredValue.trim().toLowerCase();
+  const sections = suggestions.map((row,i) => details[i]?.includes(confirmation) || row.placeType === "unknown" || !row.country
+    ? (language === "es" ? "Por confirmar" : "Needs confirmation")
+    : firstIsExactCity && i > 0 ? (language === "es" ? "Otros lugares" : "Other places") : null);
   const optionKeys = useMemo(() => {
     // Conflicting source tuples remain selectable even when their canonical ID
     // agrees. React identity must follow the complete choice, not that ID alone.
@@ -450,7 +457,7 @@ export function CanonicalPlaceAutocomplete({
     <EntryReveal active={menuVisible} ready={suggestions.length > 0} selector="[role=option]" />
     {menuVisible ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
       {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? <div id={listId} role="listbox" className={styles.optionsList}>{suggestions.map((suggestion, index) => (
-        <MotionButton
+        <Fragment key={optionKeys[index]}>{sections[index] && sections[index] !== sections[index-1] ? <p aria-hidden="true" className={styles.sectionLabel}>{sections[index]}</p> : null}<MotionButton
         type="button"
         role="option"
         tabIndex={-1}
@@ -460,7 +467,7 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language,compactBuilderOrigin),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></MotionButton>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[showPlaceType ? placeTypeLabel(suggestion.placeType,language):null,details[index] || (!suggestion.country ? confirmation : null)].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></MotionButton></Fragment>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onPointerDown={(event) => event.preventDefault()} onClick={() => {
         if (visibleCompletedStatus === "failed" && onFreeTextSearch) runCompletedSearch();
         else setRetryNonce((current) => current + 1);
       }}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}

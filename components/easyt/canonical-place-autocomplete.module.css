@@ -39,3 +39,4 @@
 .root[data-builder-origin-field] > .clear:hover:not(:disabled),
 .root[data-builder-origin-field] > .clear:active:not(:disabled) { transform: translateY(-50%); }
 .root[data-builder-origin-field] > .clear:focus-visible { outline-offset: -2px; }
+.optionsList > .sectionLabel { padding: 9px 10px 4px; border-top: 1px solid var(--morrovia-line); font-weight: 600; }
