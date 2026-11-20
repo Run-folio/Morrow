@@ -12,7 +12,7 @@ import { resolvedJourneyEndPlace } from "../lib/easyt/journey-endpoints.ts";
 import { placeCandidateWithinPlanningParent } from "../lib/easyt/place-intelligence.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-const home = read("app/journey/home/home-trip-starter.tsx");
+const home = read("app/journey/home/home-trip-starter.tsx") + read("app/journey/home/shared-planner-route.tsx");
 const builder = read("app/journey/new/trip-builder.tsx");
 const builderCss = read("app/journey/new/trip-builder.module.css");
 const endpoint = read("components/easyt/journey-endpoints-editor.tsx");

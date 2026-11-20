@@ -17,7 +17,8 @@ test("approved planner composition keeps origin and type visible and preflights 
   assert.match(captureSource, /planner\.originEntry/);
   assert.match(captureSource, /planner\.tripTypeControl/);
   assert.match(captureSource, /planner\.routeSummary/);
-  assert.match(homeTripStarterSource, /MorroviaConfirmationDialog/);
+  assert.match(homeTripStarterSource, /useSharedPlannerRoute/);
+  assert.match(readFileSync(new URL("../app/journey/home/shared-planner-route.tsx", import.meta.url), "utf8"), /MorroviaConfirmationDialog/);
   assert.match(homeTripStarterSource, /homepagePreflightIssues\(submitted/);
   assert.ok(homeTripStarterSource.indexOf("homepagePreflightIssues(submitted") < homeTripStarterSource.indexOf("const committed = await reservePendingDescribeHandoff"));
   assert.doesNotMatch(homeTripStarterSource, /<JourneyEndpointsEditor/);

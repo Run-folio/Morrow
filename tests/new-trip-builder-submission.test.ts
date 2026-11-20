@@ -125,7 +125,7 @@ test("missing handoff draft checks the reserved trip before declaring the receip
 test("direct Describe submission records one pending receipt in mounted Builder before capture completes", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
   const view = await renderBuilder({ captureDelayMs: 5000 });
   try {
-    await view.page.getByRole("tab", { name: "Describe my trip" }).click();
+    await view.page.getByRole("tab", { name: "Describe" }).click();
     await view.page.locator("textarea").first().fill("Tokyo and Kyoto in Japan for one week.");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
     await view.page.getByText("Tokyo and Kyoto in Japan for one week.").waitFor();
@@ -153,7 +153,7 @@ test("two mounted direct New Trip tabs adopt one pending Describe reservation", 
   try {
     await second.locator('[data-builder-root="true"]:not([aria-busy="true"])').waitFor();
     for (const page of [view.page, second]) {
-      await page.getByRole("tab", { name: "Describe my trip" }).click();
+      await page.getByRole("tab", { name: "Describe" }).click();
       await page.locator("textarea").first().fill("Tokyo and Kyoto in Japan for one week.");
     }
     await Promise.all([view.page, second].map((page) => page.getByRole("button", { name: "Plan my trip" }).click()));
