@@ -76,6 +76,9 @@
 .connectionActions { min-width: 0; display: flex; align-items: start; flex-wrap: wrap; gap: 10px; }
 /* Keep booking controls adjacent; long provider handoff text has its own row. */
 .omioAction { display: contents; }
+.flightAction { display: grid; grid-template-columns: max-content 44px; align-items: center; gap: 2px; max-width: 100%; }
+.flightAction > button { margin: 0; }
+.flightAction > small { grid-column: 1 / -1; }
 .omioAction > small { order: 1; flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; }
 .partnerNote { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .manualBooking { min-width: 0; display: grid; gap: 10px; }
@@ -161,3 +164,16 @@
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-control-surface);
 }
+.airportSummary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.airportSearch form { background: var(--morrovia-lilac); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 14px; }
+.airportFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.airportField { min-width: 0; display: grid; align-content: start; gap: 8px; }
+.selectedDetail:has(> [data-airport-editor-open]) > .connectionActions,
+.selectedDetail:has(> [data-airport-editor-open]) > .partnerNote { display: none; }
+@media (max-width: 540px) { .airportFields { grid-template-columns: minmax(0, 1fr); } }
+.airportChoices { display: grid; gap: 5px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.airportChoices legend { margin-bottom: 6px; font-weight: 650; padding: 0; }
+.airportChoice { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); overflow-wrap: anywhere; cursor: pointer; }
+.airportChoice input { accent-color: var(--morrovia-action); margin: 0; }
+.airportChoice:has(input:checked) { border-color: var(--morrovia-action); }
+.airportChoice:has(input:focus-visible) { outline: 2px solid var(--morrovia-action); outline-offset: 2px; }

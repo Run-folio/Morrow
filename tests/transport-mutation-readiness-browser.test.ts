@@ -19,7 +19,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    const card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').press('Enter');
    await card.locator("[data-transport-more-actions] > summary").press("Enter");
    const mark=card.getByRole('button',{name:language==='es'?'Marcar como reservado':'Mark as booked',exact:true});
-   const airports=card.getByRole('button',{name:language==='es'?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+   const airports=card.getByRole('button',{name:language==='es'?'Editar aeropuertos':'Edit airports',exact:true});
    assert.equal(await mark.isEnabled(),false);assert.equal(await airports.isEnabled(),false);assert.equal(writes,0);
    const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/readiness-${browserName}-${language}-pending-320.png`,fullPage:true});}
    await page.evaluate(()=>window.dispatchEvent(new Event('release-transport-auth')));

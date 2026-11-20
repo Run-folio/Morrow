@@ -7,6 +7,7 @@ import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/
 import { affiliateProviderLabel, affiliateHandoffDetail, affiliateHandoffCta, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { EasyTLinkButton } from "./easyt-controls";
 import { MorroviaContextualDisclosure } from "./morrovia-feedback";
+import { OverviewInfo } from "./overview-info";
 import styles from "./affiliate-link.module.css";
 
 export const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.";
@@ -51,6 +52,7 @@ export function MorroviaAffiliateLink({
   fullWidth = false,
   iconOnly = false,
   renderAsSurface = false,
+  handoffInfoLabel,
   children,
   onClick: onClickSupplement,
   language = "en",
@@ -64,6 +66,7 @@ export function MorroviaAffiliateLink({
   iconOnly?: boolean;
   /** Lets a product-pattern owner make its complete surface the one outbound control. */
   renderAsSurface?: boolean;
+  handoffInfoLabel?: string;
   children?: ReactNode;
   onClick?: () => void;
   language?: "en" | "es";
@@ -96,7 +99,7 @@ export function MorroviaAffiliateLink({
     target="_blank"
     rel="sponsored noopener noreferrer"
     aria-label={accessibleLabel}
-    aria-describedby={handoffDetail ? handoffId : undefined}
+    aria-describedby={handoffDetail && !handoffInfoLabel ? handoffId : undefined}
     icon={ExternalLink}
     size={size}
     variant={variant}
@@ -104,5 +107,5 @@ export function MorroviaAffiliateLink({
     iconOnly={iconOnly}
     data-affiliate-provider={action.provider}
     onClick={onClick}
-  >{children ?? cta}</EasyTLinkButton>{handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}</>;
+  >{children ?? cta}</EasyTLinkButton>{handoffDetail && handoffInfoLabel ? <OverviewInfo label={handoffInfoLabel}>{handoffDetail} {language === "es" ? "La reserva y el pago se realizan en Omio y se aplican sus condiciones." : "Booking, payment and provider terms apply on Omio’s site."}</OverviewInfo> : handoffDetail ? <small id={handoffId} className={styles.handoffDetail}>{handoffDetail}</small> : null}</>;
 }

@@ -32,8 +32,8 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    await card.locator('[data-transport-summary] button').press('Enter');
    assert.match(await card.getByRole('alert').innerText(),language==='es'?/mismo aeropuerto/:/same airport/);
    assert.equal(await card.locator('a[data-affiliate-provider="omio"]').count(),0);
-   const edit=card.getByRole('button',{name:language==='es'?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
-   await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>/^(Change flight-search airports|Cambiar aeropuertos de búsqueda)$/.test(b.textContent??'')&&!b.disabled));
+   const edit=card.getByRole('button',{name:language==='es'?'Editar aeropuertos':'Edit airports',exact:true});
+   await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>/^(Edit airports|Editar aeropuertos)$/.test(b.textContent??'')&&!b.disabled));
    assert.equal(await edit.isEnabled(),true);await edit.press('Enter');
    await card.getByRole('form',{name:language==='es'?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true}).waitFor();
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(view.errors,[]);
@@ -48,17 +48,17 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    const card=page.locator(`[data-transport-leg-id="${back.id}"]`);
    const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-summary] button');if(await button.getAttribute('aria-expanded')==='false')await button.press('Enter');};
    const inherited=()=>card.getByText(es?/igual que en la ida/:/same as outbound/);
-   const edit=()=>card.getByRole('button',{name:es?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+   const edit=()=>card.getByRole('button',{name:es?'Editar aeropuertos':'Edit airports',exact:true});
    const form=()=>card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
    const openEditor=async()=>{const button=edit();await page.waitForFunction((el:HTMLButtonElement)=>el.isConnected&&!el.disabled,await button.elementHandle());assert.equal(await button.isEnabled(),true);await button.press('Enter');await form().waitFor();};
    await open();await inherited().waitFor();assert.doesNotMatch(await card.innerText(),/Heathrow/);
    const link=card.locator('a[data-affiliate-provider="omio"]');let search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
    assert.equal(search.searchParams.get('departurePosTerm'),`${gatwick.endpoint.name}, ${gatwick.endpoint.country}`);
    assert.equal(search.searchParams.get('departureDate'),trip.startDate);assert.equal(search.searchParams.get('returnDate'),trip.endDate);
-   await openEditor();const arrival=form().getByRole('combobox',{name:es?'Aeropuerto de llegada':'Arrival airport',exact:true});
+   await openEditor();await form().getByRole('group',{name:es?/^Aeropuerto de llegada ·/:/^Arrival airport ·/}).getByRole('radio',{name:es?/Buscar otro/:/Search another/}).check();const arrival=form().getByRole('combobox',{name:es?'Aeropuerto de llegada':'Arrival airport',exact:true});
    assert.equal(await arrival.inputValue(),'');assert.equal(await arrival.getAttribute('placeholder'),gatwick.endpoint.name);
    await arrival.fill('STN');await page.getByRole('option').filter({hasText:stansted.name}).first().click();
-   await form().getByRole('button',{name:es?'Guardar aeropuertos':'Save airports',exact:true}).click();
+   await form().getByRole('button',{name:es?'Usar estos aeropuertos':'Use these airports',exact:true}).click();
    await card.getByText(new RegExp(stansted.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))).first().waitFor();assert.equal(await inherited().count(),0);
    search=new URL(new URL((await link.getAttribute('href'))!).searchParams.get('u')!);
    assert.equal(search.searchParams.get('arrivalPosTerm'),`${stansted.name}, ${stansted.country}`);assert.equal(search.searchParams.get('departureDate'),trip.endDate);assert.equal(search.searchParams.has('returnDate'),false);
@@ -84,14 +84,15 @@ for(const language of ['en','es'] as const){
       const page=view.page;await page.setViewportSize({width:320,height:1000});
       const card=page.locator('[data-transport-leg-id]').first();
       const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-summary] button');if(await button.getAttribute('aria-expanded')==='false')await button.click();};
-      const edit=()=>card.getByRole('button',{name:es?'Cambiar aeropuertos de búsqueda':'Change flight-search airports',exact:true});
+      const edit=()=>card.getByRole('button',{name:es?'Editar aeropuertos':'Edit airports',exact:true});
       await open();await edit().focus();await page.keyboard.press('Enter');
       let form=card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
       for(const [label,code,record] of [[es?'Aeropuerto de salida':'Departure airport','LGW',from],[es?'Aeropuerto de llegada':'Arrival airport','ORY',to]] as const){
+        await form.getByRole('group',{name:new RegExp('^'+label+' ·')}).getByRole('radio',{name:es?/Buscar otro/:/Search another/}).check();
         await form.getByRole('combobox',{name:label,exact:true}).fill(code);
         await page.getByRole('option').filter({hasText:record.name}).first().click();
       }
-      await form.getByRole('button',{name:es?'Guardar aeropuertos':'Save airports',exact:true}).click();
+      await form.getByRole('button',{name:es?'Usar estos aeropuertos':'Use these airports',exact:true}).click();
       await card.getByText(new RegExp(from.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))).first().waitFor();
       await page.waitForFunction(()=>!document.querySelector('form[aria-label="Flight-search airports"],form[aria-label="Aeropuertos para buscar vuelos"]'));
       assert.equal(await edit().evaluate((el:HTMLElement)=>el===document.activeElement),true);
@@ -141,3 +142,29 @@ for(const language of ['en','es'] as const){
     });
   }
 }
+
+for(const width of [1440,320])test(`Tokyo airport options support keyboard, independent arrival, and focus at ${width}px`,{skip:!builderBrowserTestsEnabled,timeout:60000},async()=>{
+ const tokyo=selectedTransferPlace('Tokyo','Japan','reference:geonames:1850147','endpoint');
+ const beijing=selectedTransferPlace('Beijing','China','reference:geonames:1816670','stop');
+ const trip=returnTripForPlaces(tokyo,[beijing]);
+ const leg=trip.legs[0]={...trip.legs[0],mode:'flight',provenance:'planning_estimate',routeMetadata:{}};
+ const view=await renderBuilder({path:`/journey/${trip.id}/transport`,initialTrip:trip});
+ try{
+  const {page}=view;await page.setViewportSize({width,height:900});
+  const card=page.locator(`[data-transport-leg-id="${leg.id}"]`);
+  await card.getByRole('button',{name:/View details/}).click();
+  const edit=card.getByRole('button',{name:'Edit airports'});
+  await edit.press('Enter');
+  const departure=card.getByRole('group',{name:/Departure airport · Tokyo/});
+  const arrival=card.getByRole('group',{name:/Arrival airport · Beijing/});
+  assert.equal(await departure.getByRole('radio',{name:/Narita/}).count(),1);
+  assert.equal(await arrival.getByRole('radio',{name:/Daxing/}).count(),1);
+  await departure.getByRole('radio',{name:/Tokyo.*city search/}).press('ArrowDown');
+  assert.equal(await departure.getByRole('radio',{name:/Haneda/}).isChecked(),true);
+  assert.equal(await arrival.getByRole('radio',{name:/Beijing.*city search/}).isChecked(),true);
+  assert.equal(await card.getByRole('link',{name:/Find flights/}).isVisible(),false);
+  await card.getByRole('button',{name:'Use these airports'}).press('Enter');
+  await card.getByText('Haneda (HND) → Beijing',{exact:true}).waitFor();
+  assert.equal(await edit.evaluate((el: Element)=>el===document.activeElement),true);
+ }finally{await view.close();}
+});
