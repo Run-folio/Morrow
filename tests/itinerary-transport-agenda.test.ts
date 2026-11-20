@@ -162,7 +162,7 @@ test("keeps known-duration road legs as planning estimates when confidence is lo
   assert.equal(transportPresentationState({ ...road, confidence: "unknown" }), "planning-estimate");
 });
 
-test("does not reuse a free-text booking for the reverse repeated-city leg", () => {
+test("repeated-city free text cannot bind even the outbound leg; an explicit leg ID stays on its exact occurrence", () => {
   const source = trip();
   source.stops.push({ ...source.stops[0]!, id: "paris-return", order: 3, arrivalDate: "2026-10-10", departureDate: "2026-10-11", nights: 1 });
   source.planItems.push({ id: "day-10", stopId: "paris-return", dayNumber: 10, date: "2026-10-10", type: "transport", title: "Return to Paris", reason: "", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null });
@@ -176,7 +176,11 @@ test("does not reuse a free-text booking for the reverse repeated-city leg", () 
   });
   source.brief.bookings = [{ id: "free-text-paris-rome", type: "transport", title: "Paris to Rome train", date: "2026-10-04", confirmation: "OUTBOUND", url: null }];
   const agenda = itineraryTransportAgenda(source);
-  assert.equal(agenda.find((item) => item.leg.id === "paris-rome")?.status, "booked");
+  assert.equal(agenda.find((item) => item.leg.id === "paris-rome")?.status, "available");
+  source.brief.bookings[0].id = "transport-paris-rome";
+  const exact = itineraryTransportAgenda(source);
+  assert.equal(exact.find(item => item.leg.id === "paris-rome")?.status, "booked");
+  assert.equal(exact.find(item => item.leg.id === "rome-paris-return")?.status, "available");
   assert.equal(agenda.find((item) => item.leg.id === "rome-paris-return")?.status, "available");
 });
 

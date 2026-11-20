@@ -153,9 +153,12 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pic
   const exact = unbound.find(booking => explicitlyBound(booking, leg));
   if (exact) return exact;
 
-  const fromName = normalise(from?.name ?? "");
-  const toName = normalise(to?.name ?? "");
+  const fromName = normalise(routeEndpointForLeg(trip, leg, "from")?.name ?? from?.name ?? "");
+  const toName = normalise(routeEndpointForLeg(trip, leg, "to")?.name ?? to?.name ?? "");
   if (!fromName || !toName || fromName === toName) return undefined;
+  // After reordering, a different occurrence can inherit the previous departure
+  // date. A repeated endpoint label can never identify its original occurrence.
+  if ([fromName, toName].some(name => trip.stops.filter(stop => normalise(stop.name) === name).length > 1)) return undefined;
   const matchesLabels = (booking: TripBooking, origin: string, destination: string) => {
     if (!origin || !destination || origin === destination) return false;
     const explicitFrom = normalise(booking.transportDetails?.from ?? "");
@@ -179,7 +182,6 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pic
   const matches = possibleBookings.filter(booking => {
     const candidates = occurrences.filter(row => matchesLabels(booking, row.origin, row.destination));
     if (booking.date == null) {
-      if ([fromName, toName].some(name => trip.stops.filter(stop => normalise(stop.name) === name).length > 1)) return false;
       return candidates.length === 1 && candidates[0].id === leg.id;
     }
     if (!parseIsoDate(booking.date) || candidates.some(row => !parseIsoDate(row.date))) return false;

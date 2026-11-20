@@ -11,27 +11,27 @@ const places = {
   p1: {name:'Paris', country:'France', coordinates:[2.35,48.85] as [number,number]},
   m1: {name:'Madrid', country:'Spain', coordinates:[-3.7,40.42] as [number,number]},
 };
-function fixture(ids: string[] = ['p1','m1','p2']) {
+function fixture(ids: string[] = ['p1','m1','p2'], nightAllocations = {p1:1,m1:2,p2:4}) {
   const stops = ids.map(id => ({id, ...(id.startsWith('p') ? places.p1 : places.m1)}));
   return requireReadableTripDocument(tripFromBuilder({id:'synthetic-edit', origin:'London', originCoordinates:[-0.13,51.5], originCountry:'United Kingdom',
     journeyEnd:{mode:'same_as_start'}, startDate:'2027-01-01', endDate:'2027-01-08', stops,
-    nightAllocations:{p1:1,m1:2,p2:4}, picks:{}, mustDo:'', pace:'slow', hotels:'few', budget:'mid', draft:[]}));
+    nightAllocations, picks:{}, mustDo:'', pace:'slow', hotels:'few', budget:'mid', draft:[]}));
 }
 const record = (date: string | null): TripBooking => ({id:'imported-synthetic-ticket', type:'transport', title:'Paris to Madrid train', date,
   confirmation:'SYNTH', url:null, transportDetails:{mode:'train',from:'Paris',to:'Madrid'}});
 const bookedRows = (t: ReturnType<typeof fixture>) => itineraryTransportAgenda(t).filter(r=>r.status==='booked').map(r=>[r.from.id,r.to.id]);
 test('reordering repeated Paris occurrences never moves an unbound January 2 booking to a January 5 departure after reopen',()=>{
   const t=fixture();const saved=record('2027-01-02');t.brief.bookings=[structuredClone(saved)];
-  assert.deepEqual(bookedRows(t),[['p1','m1']]);
+  assert.deepEqual(bookedRows(t),[]);
   const e=prepareAcceptedBuilderEdit(t,{kind:'order',stopIds:['p2','m1','p1'],source:'drag'},builderDocumentFingerprint(t));assert.ok(e.ok);
   const n=prepareBuilderNecessaryProjection(t,e.trip,e.scope);assert.ok(n.ok);
   const reopened=requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(n.trip))));
   assert.deepEqual(itineraryTransportAgenda(reopened).map(r=>[r.from.id,r.to.id,r.date]),[
     ['synthetic-edit-origin','p2','2027-01-01'],['p2','m1','2027-01-05'],['m1','p1','2027-01-07'],['p1','synthetic-edit-end','2027-01-08']]);
-  assert.deepEqual(bookedRows(reopened),[]);assert.deepEqual(reopened.brief.bookings,[saved]);assert.deepEqual(bookedRows(t),[['p1','m1']]);
+  assert.deepEqual(bookedRows(reopened),[]);assert.deepEqual(reopened.brief.bookings,[saved]);assert.deepEqual(bookedRows(t),[]);
 });
 test('a uniquely matching local departure date stays booked even when arrival falls the next day',()=>{
-  const t=fixture();t.stops[1].arrivalDate='2027-01-03';t.planItems.filter(day=>day.stopId==='m1').forEach(day=>day.date='2027-01-03');
+  const t=fixture(['p1','m1']);t.stops[1].arrivalDate='2027-01-03';t.planItems.filter(day=>day.stopId==='m1').forEach(day=>day.date='2027-01-03');
   t.brief.bookings=[record('2027-01-02')];assert.deepEqual(bookedRows(t),[['p1','m1']]);
   t.brief.bookings=[record('2027-01-03')];assert.deepEqual(bookedRows(t),[]);
 });
@@ -48,4 +48,23 @@ test('an undated legacy ticket still matches a unique unrepeated route, but neve
 test('a missing departure date on another possible occurrence cannot establish a unique dated match',()=>{
   const t=fixture(['p1','m1','p2','m2']);t.brief.bookings=[record(t.stops[0].departureDate)];
   t.stops.find(s=>s.id==='p2')!.departureDate=null;assert.deepEqual(bookedRows(t),[]);
+});
+test('a different Paris occurrence inheriting the same local date is not evidence of the original booking',()=>{
+  const t=fixture(['p1','m1','p2'],{p1:1,m1:5,p2:1});
+  const saved=record(t.stops[0].departureDate);assert.equal(saved.date,'2027-01-02');
+  t.brief.bookings=[structuredClone(saved)];
+  const e=prepareAcceptedBuilderEdit(t,{kind:'order',stopIds:['p2','m1','p1'],source:'drag'},builderDocumentFingerprint(t));assert.ok(e.ok);
+  const n=prepareBuilderNecessaryProjection(t,e.trip,e.scope);assert.ok(n.ok);
+  const reopened=requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(n.trip))));
+  assert.equal(reopened.stops[0].id,'p2');assert.equal(reopened.stops[0].departureDate,saved.date);
+  assert.deepEqual(bookedRows(reopened),[]);assert.deepEqual(reopened.brief.bookings,[saved]);
+});
+test('unique origin and return legs admit their matching local departure dates, not a neighbouring day',()=>{
+  const t=fixture(['p1','m1']);const inbound=t.legs.at(-1)!;
+  const booking=(id:string,from:string,to:string,date:string):TripBooking=>({...record(date),id,title:from+' to '+to,transportDetails:{from,to,mode:null}});
+  const origin=booking('origin-ticket','London','Paris',t.startDate!);
+  const end=booking('return-ticket','Madrid','London',t.stops.at(-1)!.departureDate!);
+  t.brief.bookings=[origin,end];
+  assert.deepEqual(bookedRows(t),[[t.legs[0].fromStopId,'p1'],['m1',inbound.toStopId]]);
+  t.brief.bookings=[{...origin,date:'2027-01-02'},{...end,date:'2027-01-03'}];assert.deepEqual(bookedRows(t),[]);
 });
