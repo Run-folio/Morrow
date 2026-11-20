@@ -589,6 +589,49 @@ const openScheduledItem = (itemId: string) => async ({ canvasElement }: { canvas
 };
 
 export const SelectedActivityDesktop: Story = { ...RichDayPlannerIntegrated, play: openScheduledItem("idea-cusco-qorikancha") };
+export const ActivityRemovalConfirmationDesktop: Story = {
+  args: {
+    trip: {
+      ...trip,
+      id: "storybook-activity-removal-confirmation",
+      brief: {
+        ...trip.brief,
+        itineraryIdeas: [{
+          id: "qa-activity", stopId: "cusco", placeId: "qa-place", title: "QA activity", category: "activity",
+          source: "destination-highlight", reasons: ["destination-significance"],
+          coordinates: [-71.981, -13.519], dayId: "day-1", dayPart: "morning",
+        }],
+      },
+    },
+    selectedDayNumber: 1,
+    language: "en",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = canvasElement.querySelector<HTMLElement>('[data-itinerary-activity-id="qa-activity"]');
+    if (!row) throw new Error("The QA activity is missing from Day 1.");
+    const menu = within(row).getByLabelText("Details and actions for QA activity");
+    const open = async () => {
+      await userEvent.click(menu);
+      await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+      return canvas.findByRole("dialog", { name: "Remove QA activity from Day 1?" });
+    };
+    const dialog = await open();
+    const keep = within(dialog).getByRole("button", { name: "Keep activity" });
+    await expect(within(dialog).getByText("Linked bookings and map places won’t change.")).toBeVisible();
+    await expect(within(dialog).getByRole("button", { name: "Remove activity" })).toBeEnabled();
+    await waitFor(() => expect(keep).toHaveFocus());
+    await userEvent.click(keep);
+    await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+    await expect(row).toBeVisible();
+    await open();
+  },
+};
+export const ActivityRemovalConfirmationMobile390: Story = {
+  ...ActivityRemovalConfirmationDesktop,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 export const DetailRailLongProviderTitle: Story = {
   args: {
     ...RichDayPlannerIntegrated.args,
