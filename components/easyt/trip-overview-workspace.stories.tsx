@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
-import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import type { ReadinessCard } from "@/lib/easyt/travel-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripOverviewWorkspace, { OverviewStepMedia } from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
@@ -99,7 +99,6 @@ const baseTrip: EasyTTrip = {
   updatedAt: "2026-08-01T10:00:00.000Z",
 };
 
-const prepProfile: TravelReadinessProfile = { nationalities: [], residenceCountry: "", passportExpiryMonth: "" };
 const coherentRouteTrip: EasyTTrip = {
   ...baseTrip,
   endDate: "2026-08-28",
@@ -238,7 +237,6 @@ const meta = {
     trip: baseTrip,
     initialPrepActions: prepActions,
     initialPrepReadinessCards: prepReadinessCards,
-    initialPrepProfile: prepProfile,
     initialPrepProviderStatus: "available",
     now: "2026-07-20",
   },
@@ -473,7 +471,7 @@ export const ReadyTrip: Story = {
 };
 
 export const AllPreparationIncomplete: Story = {
-  args: { trip: { ...baseTrip, brief: { ...baseTrip.brief, bookings: [], checklist: [] } }, initialPrepProfile: prepProfile },
+  args: { trip: { ...baseTrip, brief: { ...baseTrip.brief, bookings: [], checklist: [] } } },
 };
 
 export const InsuranceQuoteHandoff: Story = {};
@@ -493,7 +491,6 @@ export const PracticalPrep: Story = {
       connectivity: "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.",
     };
     for (const [kind, infoLabel, guide, action] of [
-      ["passport", /^More information: Passport/i, "Add nationality and residence for more useful entry guidance.", /Review traveller details/i],
       ["insurance", /^More information: Insurance$/, "Consider whether you need cover for your trip.", /Get a travel insurance quote/i],
       ["connectivity", /^More information: Connectivity$/, "Compare eSIM coverage, data amounts and validity.", /Check eSIM coverage/i],
       ["activity", /^More information: Activities$/, "Check key activities, opening days and cancellation terms before booking.", /Browse activities/i],
@@ -503,7 +500,7 @@ export const PracticalPrep: Story = {
       const info = controls.getByRole("button", { name: infoLabel });
       await expect(info).toHaveAttribute("aria-expanded", "false");
       await expect(controls.queryByText(guide, { exact: true })).not.toBeInTheDocument();
-      const primary = controls.getByRole(kind === "passport" ? "button" : "link", { name: action });
+      const primary = controls.getByRole("link", { name: action });
       await expect(primary).toBeVisible();
       const review = controls.getByRole("checkbox");
       await expect(review).toBeVisible();
@@ -569,9 +566,6 @@ export const TransportComplete: Story = {
   },
 };
 
-export const TravellerDetailsComplete: Story = {
-  args: { initialPrepProfile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "2028-08" } },
-};
 
 export const EarlyIncomplete: Story = {
   args: { trip: { ...baseTrip, planItems: baseTrip.planItems.slice(0, 2), brief: { ...baseTrip.brief, bookings: [], checklist: [] } } },
@@ -666,7 +660,7 @@ export const ApprovedPlanningAndPrep: Story = {
 };
 export const PartiallySortedPracticalPrep: Story = {
   ...ApprovedPlanningAndPrep,
-  args: { ...ApprovedPlanningAndPrep.args, trip: { ...overviewNamibiaTrip, id: "storybook-overview-namibia-partial", brief: { ...overviewNamibiaTrip.brief, checklist: [{ id: "overview-prep-insurance", label: "Travel insurance", complete: true }, { id: "overview-prep-connectivity", label: "Trip connectivity", complete: false, resolution: "not-needed" }] } }, initialPrepProfile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "" } },
+  args: { ...ApprovedPlanningAndPrep.args, trip: { ...overviewNamibiaTrip, id: "storybook-overview-namibia-partial", brief: { ...overviewNamibiaTrip.brief, checklist: [{ id: "overview-prep-insurance", label: "Travel insurance", complete: true }, { id: "overview-prep-connectivity", label: "Trip connectivity", complete: false, resolution: "not-needed" }] } } },
 };
 export const PracticalPrepSpanish: Story = { ...ApprovedPlanningAndPrep, args: { ...ApprovedPlanningAndPrep.args, language: "es" } };
 export const ApprovedPlanningMobile: Story = { ...ApprovedPlanningAndPrep, globals: { viewport: { value: "morrovia390", isRotated: false } } };

@@ -102,7 +102,7 @@ export function deriveTripPrepTasks({
   now = new Date(),
 }: {
   trip: EasyTTrip;
-  profile: TravelReadinessProfile;
+  profile?: TravelReadinessProfile;
   bookingActions: BookingReadinessAction[];
   readinessCards: ReadinessCard[];
   now?: Date;
@@ -127,36 +127,41 @@ export function deriveTripPrepTasks({
     action: { label: "Review dates", href: `/journey/new?trip=${encodeURIComponent(trip.id)}` },
   });
 
-  const passportChecklist = matchingChecklist(checklist, /passport|visa|entry/i);
-  if (passportChecklist) consumedChecklist.add(passportChecklist.id);
-  const travellerBasicsReady = Boolean(profile.nationalities.length && profile.residenceCountry);
-  const passportReady = Boolean(travellerBasicsReady && profile.passportExpiryMonth);
-  const passportStatus = checklistStatus(passportChecklist)
-    ?? (passportReady
-      ? "complete"
-      : travellerBasicsReady
-        ? "in-progress"
-        : (lifecycle.state === "upcoming" || lifecycle.state === "starts-today")
-          && lifecycle.daysUntilStart !== null && lifecycle.daysUntilStart <= 30
-          ? "urgent"
-          : "to-do");
-  tasks.push({
-    id: "traveller-passport",
-    title: passportChecklist?.label ?? "Passport and traveller details",
-    detail: passportChecklist
-      ? passportChecklist.complete
-        ? "Marked complete on your saved trip checklist. Verify official entry rules before booking."
-        : "Still on your saved trip checklist. Verify official entry rules before booking."
-      : passportReady
-        ? "Traveller context is saved; verify destination rules with the official sources before booking."
+  // Overview no longer supplies traveller context. Keep saved declarations intact,
+  // but do not reintroduce the retired built-in task as a checklist reminder.
+  if (!profile) consumedChecklist.add("overview-prep-passport");
+  if (profile) {
+    const passportChecklist = matchingChecklist(checklist, /passport|visa|entry/i);
+    if (passportChecklist) consumedChecklist.add(passportChecklist.id);
+    const travellerBasicsReady = Boolean(profile.nationalities.length && profile.residenceCountry);
+    const passportReady = Boolean(travellerBasicsReady && profile.passportExpiryMonth);
+    const passportStatus = checklistStatus(passportChecklist)
+      ?? (passportReady
+        ? "complete"
         : travellerBasicsReady
-          ? "Add a passport expiry month to make the existing validity reminder more useful."
-          : "Add nationality and residence for a more useful entry-check starting point.",
-    category: "must",
-    status: passportStatus,
-    kind: "passport",
-    action: { label: "Review traveller details", opensTravellerDetails: true },
-  });
+          ? "in-progress"
+          : (lifecycle.state === "upcoming" || lifecycle.state === "starts-today")
+            && lifecycle.daysUntilStart !== null && lifecycle.daysUntilStart <= 30
+            ? "urgent"
+            : "to-do");
+    tasks.push({
+      id: "traveller-passport",
+      title: passportChecklist?.label ?? "Passport and traveller details",
+      detail: passportChecklist
+        ? passportChecklist.complete
+          ? "Marked complete on your saved trip checklist. Verify official entry rules before booking."
+          : "Still on your saved trip checklist. Verify official entry rules before booking."
+        : passportReady
+          ? "Traveller context is saved; verify destination rules with the official sources before booking."
+          : travellerBasicsReady
+            ? "Add a passport expiry month to make the existing validity reminder more useful."
+            : "Add nationality and residence for a more useful entry-check starting point.",
+      category: "must",
+      status: passportStatus,
+      kind: "passport",
+      action: { label: "Review traveller details", opensTravellerDetails: true },
+    });
+  }
 
   const stays = accommodationProgress(trip);
   if (stays.stops.length) {
@@ -256,9 +261,9 @@ export function groupTripPrepTasks(tasks: TripPrepTask[]) {
 }
 
 export type OverviewPrepChoice = "to-review" | "sorted" | "not-needed";
-export type OverviewPrepKind = "passport" | "insurance" | "connectivity" | "activity";
+export type OverviewPrepKind = "insurance" | "connectivity" | "activity";
 export type OverviewPracticalTask = {
-  id: "passport" | OverviewPrepKind;
+  id: OverviewPrepKind;
   title: string;
   detail: string;
   status: OverviewPrepChoice | "details-added";
@@ -266,7 +271,6 @@ export type OverviewPracticalTask = {
 };
 
 const overviewPrepDefinitions = {
-  passport: { id: "overview-prep-passport", label: "Review passport and traveller details", pattern: /passport|visa|entry/i },
   insurance: { id: "overview-prep-insurance", label: "Review travel insurance", pattern: /insurance/i },
   connectivity: { id: "overview-prep-connectivity", label: "Review connectivity", pattern: /esim|data|connect/i },
   activity: { id: "overview-prep-activities", label: "Review activities", pattern: /activit/i },
@@ -286,17 +290,15 @@ export function setOverviewPrepChoice(trip: EasyTTrip, kind: OverviewPrepKind, c
 function overviewPrepChoice(trip: EasyTTrip, kind: OverviewPrepKind): OverviewPrepChoice {
   const definition = overviewPrepDefinitions[kind];
   const checklist = trip.brief.checklist ?? [];
-  // Passport review is a declaration, separate from profile fields or legacy entry checks.
   const saved = checklist.find((item) => item.id === definition.id)
-    ?? (kind === "passport" ? undefined : matchingChecklist(checklist, definition.pattern));
+    ?? matchingChecklist(checklist, definition.pattern);
   return saved?.resolution === "not-needed" ? "not-needed" : saved?.complete ? "sorted" : "to-review";
 }
 
 /** Overview-only projection: preserve the full task list and its categories for other consumers. */
-export function deriveOverviewPracticalTasks({ trip, tasks, profile, language = "en" }: {
+export function deriveOverviewPracticalTasks({ trip, tasks, language = "en" }: {
   trip: EasyTTrip;
   tasks: TripPrepTask[];
-  profile: TravelReadinessProfile;
   language?: "en" | "es";
 }): OverviewPracticalTask[] {
   const spanish = language === "es";
@@ -304,15 +306,6 @@ export function deriveOverviewPracticalTasks({ trip, tasks, profile, language = 
   const connectivityAction = tasks.find((task) => task.kind === "connectivity" && task.action?.href)?.action;
   const firstStop = [...trip.stops].sort((left, right) => left.order - right.order)[0];
   return [
-    {
-      id: "passport",
-      title: spanish ? "Pasaporte y datos del viajero" : "Passport & traveller details",
-      detail: spanish ? "Añade nacionalidad y residencia para una orientación de entrada más útil." : "Add nationality and residence for more useful entry guidance.",
-      status: overviewPrepChoice(trip, "passport") === "to-review"
-        ? profile.nationalities.some((country) => country.trim()) && profile.residenceCountry.trim() ? "details-added" : "to-review"
-        : overviewPrepChoice(trip, "passport"),
-      action: { label: spanish ? "Revisar datos del viajero" : "Review traveller details", opensTravellerDetails: true },
-    },
     {
       id: "insurance", title: spanish ? "Seguro" : "Insurance",
       detail: spanish ? "Valora si necesitas cobertura para tu viaje." : "Consider whether you need cover for your trip.",

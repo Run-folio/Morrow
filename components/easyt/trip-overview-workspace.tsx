@@ -1,5 +1,4 @@
 "use client";
-import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 
 import { EntryReveal } from "./app-motion";
 
@@ -11,7 +10,6 @@ import {
   CarFront,
   ChevronRight,
   ClipboardCheck,
-  FileCheck2,
   MapPin,
   ShieldCheck,
   Smartphone,
@@ -45,11 +43,11 @@ import { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
-import { TripPreparationCards, TripTravellerDetailsEditor } from "./trip-preparation";
+import { TripPreparationCards } from "./trip-preparation";
 import { useTripPrepReadiness, type TripPrepProviderStatus } from "./use-trip-prep-readiness";
 import { deriveOverviewReadinessCategories, overviewPlanningCardText, type OverviewReadinessCategory, type OverviewReadinessCategoryId } from "@/lib/easyt/trip-overview-readiness";
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
-import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import type { ReadinessCard } from "@/lib/easyt/travel-readiness";
 import { deriveOverviewPracticalTasks, setOverviewPrepChoice } from "@/lib/easyt/trip-prep";
 import { languageFromStorage, EASYT_LANGUAGE_CHANGE_EVENT } from "@/lib/easyt/i18n";
 import { OverviewInfo } from "./overview-info";
@@ -75,7 +73,6 @@ const progressIconByCategory: Record<OverviewReadinessCategoryId, LucideIcon> = 
   itinerary: CalendarCheck2,
   accommodation: BedDouble,
   transport: CarFront,
-  passport: FileCheck2,
   insurance: ShieldCheck,
   connectivity: Smartphone,
   checklist: ClipboardCheck,
@@ -86,7 +83,6 @@ type TripOverviewWorkspaceProps = {
   firstArrival?: boolean;
   initialPrepActions?: BookingReadinessAction[];
   initialPrepReadinessCards?: ReadinessCard[];
-  initialPrepProfile?: TravelReadinessProfile;
   initialPrepProviderStatus?: TripPrepProviderStatus;
   now?: string;
   initialGoodTasksOpen?: boolean;
@@ -149,14 +145,12 @@ export default function TripOverviewWorkspace({
   firstArrival = false,
   initialPrepActions,
   initialPrepReadinessCards,
-  initialPrepProfile,
   initialPrepProviderStatus,
   now,
   language: suppliedLanguage,
 }: TripOverviewWorkspaceProps) {
   const trip = useMemo(() => tripWithEffectiveTransportChoices(canonicalTrip), [canonicalTrip]);
   const mutation = useTripShellMutation();
-  const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
   const [language, setLanguage] = useState<"en" | "es">(suppliedLanguage ?? "en");
   useEffect(() => {
     if (suppliedLanguage) { setLanguage(suppliedLanguage); return; }
@@ -173,7 +167,6 @@ export default function TripOverviewWorkspace({
     language,
     initialActions: initialPrepActions,
     initialReadinessCards: initialPrepReadinessCards,
-    initialProfile: initialPrepProfile,
     initialProviderStatus: initialPrepProviderStatus,
     now,
   });
@@ -198,7 +191,7 @@ export default function TripOverviewWorkspace({
     providerStatus: prepProviderStatus,
   }), [prepProviderStatus, prepReadiness.tasks, trip]);
   const planningCategories = readinessCategories.filter((category) => ["itinerary", "accommodation", "transport"].includes(category.id));
-  const practicalTasks = deriveOverviewPracticalTasks({ trip: mutation.trip, tasks: prepReadiness.tasks, profile: prepReadiness.profile, language });
+  const practicalTasks = deriveOverviewPracticalTasks({ trip: mutation.trip, tasks: prepReadiness.tasks, language });
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
   const criticalRouteIssue = visibleIssues.find((issue) => issue.severity === "critical");
   const routeInsight = presentOverviewRouteInsight(visibleIssues);
@@ -374,11 +367,6 @@ export default function TripOverviewWorkspace({
     setResolvedPlaceImages(current => { if (current[cacheKey]?.src !== src) return current; const next = { ...current }; delete next[cacheKey]; delete resolvedImagesRef.current[cacheKey]; return next; });
   };
 
-  const openTravellerDetails = () => {
-    setTravellerDetailsOpen(true);
-    window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: motionScrollBehavior(), block: "nearest" }));
-  };
-
   const progressAction = (category: OverviewReadinessCategory): ReadinessTileAction | null => {
     if (category.id === "itinerary") return { href: itineraryWorkspaceHref(trip.id), label: language === "es" ? "Abrir itinerario" : "Open itinerary" };
     if (category.id === "accommodation") return {
@@ -484,7 +472,7 @@ export default function TripOverviewWorkspace({
         </section>
 
         <TripExplicitPlans trip={trip} variant="overview" />
-        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(travellerDetailsOpen || mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
+        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
           <div className={styles.sectionHeading}>
@@ -495,11 +483,10 @@ export default function TripOverviewWorkspace({
               ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a comprobar la información antes de usarla." : "Your saved trip hasn’t changed. Check again before using this guidance."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
               : <MorroviaSectionStatus title={language === "es" ? "Consultando los preparativos" : "Checking practical tasks"} detail={language === "es" ? "Las tareas guardadas siguen visibles mientras se carga la información actual." : "Your saved trip tasks remain visible while current guidance loads."} />}
           </div> : null}
-          <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language} onOpenTravellerDetails={openTravellerDetails}
+          <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language}
             isPending={(kind) => mutation.isPending(`overview-prep-${kind}`)}
             onStatusChange={(kind, choice) => mutation.mutateTrip((current) => setOverviewPrepChoice(current, kind, choice), `overview-prep-${kind}`)}
           />
-          {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} language={language} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
         </section>
       </div>
     </section>

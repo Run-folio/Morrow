@@ -113,7 +113,7 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
   assert.match(source, /useTripPrepReadiness\(\{/);
   assert.match(source, /<TripPreparationCards tasks=\{practicalTasks\}/);
   assert.doesNotMatch(source, /Must do|Good to do|Saved checklist|outstandingPrepGroups/);
-  assert.match(source, /<TripTravellerDetailsEditor/);
+  assert.doesNotMatch(source, /TripTravellerDetailsEditor|onOpenTravellerDetails/);
   assert.doesNotMatch(source, /TripPrepDetails|Detailed preparation guidance/);
   assert.match(source, /id="before-you-go"/);
   assert.doesNotMatch(source, /\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/prep/);
