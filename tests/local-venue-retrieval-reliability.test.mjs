@@ -27,8 +27,9 @@ function effectHarness({retained=false,commercial=false}={}){
  return{state,requests,timers,mutations,mount,retry(){version++;mount();},change(){city='Braga';stop='braga';mount();},expire(){for(const timer of timers)timer.controller.abort(new DOMException('controlled timeout','TimeoutError'));},async reply(i,places=[venue]){requests[i].pending.resolve({ok:true,json:async()=>({places,searchStatus:places.length?'ready':'empty'})});await tick();},async fail(i){requests[i].pending.reject(new Error('controlled offline'));await tick();},dispose(){cleanup?.();}};
 }
 
-test('Stay browser request has a finite deadline; expiry clears loading and shared retry can recover',async()=>{
- const h=effectHarness();h.mount();await tick();assert.equal(h.requests.length,1);h.expire();await tick();assert.equal(h.state.loading,false,'a stalled fetch must reach a retryable failure');assert.equal(h.state.searchUnavailable,true);h.retry();await tick();assert.equal(h.requests.length,2,'expired shared work must not trap retry');await h.reply(1);assert.equal(h.state.loading,false);assert.equal(h.state.searchUnavailable,false);assert.deepEqual(h.state.corePlaces,[venue]);h.dispose();
+test('Stay browser request has a finite deadline; expiry clears loading and shared retry can recover',async t=>{
+ t.mock.timers.enable({apis:['Date','setTimeout'],now:0});
+ const h=effectHarness();h.mount();await tick();assert.equal(h.requests.length,1);t.mock.timers.tick(10_000);await tick();assert.equal(h.state.loading,false,'a stalled fetch must reach a retryable failure');assert.equal(h.state.searchUnavailable,true);h.retry();await tick();assert.equal(h.requests.length,2,'expired shared work must not trap retry');await h.reply(1);assert.equal(h.state.loading,false);assert.equal(h.state.searchUnavailable,false);assert.deepEqual(h.state.corePlaces,[venue]);h.dispose();
 });
 test('Stay failed retry retains useful mapped results and saved selection',async()=>{
  const h=effectHarness({retained:true});h.mount();await tick();await h.fail(0);assert.equal(h.state.loading,false);assert.deepEqual(h.state.corePlaces,[venue]);assert.deepEqual(h.state.saved,venue);assert.deepEqual(h.state.chosen,venue);h.dispose();
@@ -46,8 +47,9 @@ for (const places of [[venue], []]) test(`optional commercial deadline ends load
 test('same-key Stay remount reuses pending work without aborting it',async()=>{
  const h=effectHarness();h.mount();await tick();const signal=h.requests[0].options.signal;h.mount();await tick();assert.equal(h.requests.length,1);assert.equal(signal.aborted,false);await h.reply(0);assert.equal(h.state.loading,false);assert.deepEqual(h.state.corePlaces,[venue]);h.dispose();
 });
-test('Stay deadline also bounds a stalled response body and permits retry',async()=>{
- const h=effectHarness();h.mount();await tick();const request=h.requests[0],body=deferred();request.options.signal.addEventListener('abort',()=>body.reject(request.options.signal.reason),{once:true});request.pending.resolve({ok:true,json:()=>body.promise});await tick();assert.equal(h.state.loading,true);h.expire();await tick();assert.equal(h.state.loading,false);assert.equal(h.state.searchUnavailable,true);h.retry();await tick();await h.reply(1);assert.equal(h.state.searchUnavailable,false);assert.deepEqual(h.state.corePlaces,[venue]);h.dispose();
+test('Stay deadline also bounds a stalled response body and permits retry',async t=>{
+ t.mock.timers.enable({apis:['Date','setTimeout'],now:0});
+ const h=effectHarness();h.mount();await tick();const request=h.requests[0],body=deferred();request.options.signal.addEventListener('abort',()=>body.reject(request.options.signal.reason),{once:true});request.pending.resolve({ok:true,json:()=>body.promise});await tick();assert.equal(h.state.loading,true);t.mock.timers.tick(10_000);await tick();assert.equal(h.state.loading,false);assert.equal(h.state.searchUnavailable,true);h.retry();await tick();await h.reply(1);assert.equal(h.state.searchUnavailable,false);assert.deepEqual(h.state.corePlaces,[venue]);h.dispose();
 });
 test('a manual Stay retry requests fresh provider data only for the failed scope',async()=>{
  const h=effectHarness();h.mount();await tick();assert.equal(new URL(h.requests[0].url,'http://fixture').searchParams.has('refresh'),false);await h.fail(0);h.retry();await tick();assert.equal(new URL(h.requests[1].url,'http://fixture').searchParams.get('refresh'),'1');await h.fail(1);h.change();await tick();assert.equal(new URL(h.requests[2].url,'http://fixture').searchParams.has('refresh'),false);await h.reply(2);h.dispose();

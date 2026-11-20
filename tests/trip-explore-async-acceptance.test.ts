@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
+import * as appMotion from '../lib/easyt/app-motion.ts';
 import * as explore from '../lib/easyt/explore.ts';
 import * as ideas from '../lib/easyt/itinerary-ideas.ts';
 import * as tripModel from '../lib/easyt/trip.ts';
@@ -81,6 +82,8 @@ function harness(queued = false) {
   new Function('require', 'module', 'exports', cooldownJs)(
     (id: string) => id === 'react' ? hooks : require(id), cooldownModule, cooldownModule.exports);
   const imports: Record<string, any> = {
+    '@/lib/easyt/app-motion': appMotion, './app-motion': { EntryReveal: () => null },
+    './workspace-orientation': { useWorkspaceOrientationTarget: () => ({ current: null }) },
     '@/lib/easyt/activity-client-cooldown': cooldownModule.exports,
     react: hooks, '@/lib/auth-client': { authClient: { useSession: () => ({ data: session, isPending: false }) } }, 'lucide-react': new Proxy({}, { get: () => () => null }),
     '@/lib/analytics': { trackEvent: (name: string, data: Record<string, unknown>) => events.push({ name, data }) },
