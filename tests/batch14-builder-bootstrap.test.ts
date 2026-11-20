@@ -52,7 +52,7 @@ test('Builder device recovery keeps the same draft and owner context in its edit
  for(const mounted of [false,true]){let target='';new Function('scope',`with(scope){${body}}`)({builderEditSessionRef:{current:mounted?{}:null},mountedBuilder:{snapshot:{historicalRecovery:false}},syncAction:'open-device',activeTripDocument:fixture.trip,tripSyncRecoveryPath,window:{location:{assign:(url:string)=>target=url}}});assert.equal(target,`/journey/new?trip=${fixture.trip.id}&recover=1`);}
 });
 test('completed planner recovery and sign-in retain their existing protected routing',()=>{
- const id='completed trip';assert.equal(tripSyncRecoveryPath(id),'/journey/plan?trip=completed%20trip&save=1&recover=1');assert.equal(tripSyncSignInPath(id),`/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(id))}`);
+ const id='completed trip';assert.equal(tripSyncRecoveryPath(id),'/journey/new?trip=completed%20trip&recover=1');assert.equal(tripSyncSignInPath(id),`/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(id))}`);
 });
 
 for(const change of ['missing','later-write'] as const)test(`an opened recovery cannot mount a ${change} version after hydration`,async()=>{

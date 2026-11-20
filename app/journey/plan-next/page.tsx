@@ -1,7 +1,2 @@
-import MapPlanNext from "./map-plan-next";
-
-export const dynamic = "force-dynamic";
-
-export default function NewMapPlanPage() {
-  return <MapPlanNext />;
-}
+// The experimental legacy map-first entry follows the same compatibility path.
+export { default } from "../plan/page";

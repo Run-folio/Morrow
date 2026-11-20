@@ -1,5 +1,5 @@
 import type { TripRecoveryRecord } from "./storage.ts";
-import { tripSyncRecoveryPath } from "./trip-continuity.ts";
+import { tripSyncRecoveryPath, activityWorkspaceReturnPath } from "./trip-continuity.ts";
 
 export type GuestDeviceTrip = { id: string; title: string; href: string };
 export type GuestDeviceTripsState =
@@ -21,7 +21,7 @@ export async function loadGuestDeviceTrips(
     return { kind: "ready", trips: recoveries.map(({ trip }) => ({
       id: trip.id,
       title: trip.title.trim() || "Untitled trip",
-      href: tripSyncRecoveryPath(trip.id, trip.status === "draft" ? "builder" : "planner"),
+      href: trip.status === "draft" ? tripSyncRecoveryPath(trip.id, "builder") : activityWorkspaceReturnPath(trip.id),
     })) };
   } catch {
     return isCurrent() ? { kind: "unavailable" } : { kind: "withheld" };

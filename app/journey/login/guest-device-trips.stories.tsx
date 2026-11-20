@@ -7,7 +7,7 @@ const meta = {
   parameters: { layout: "padded" },
   decorators: [Story => <main className={styles.authWrap}><Story /></main>],
   args: { onRetry: () => {}, state: { kind: "ready", trips: [
-    { id: "synthetic-one", title: "Japan and South Korea", href: "/journey/plan?trip=synthetic-one&recover=1" },
+    { id: "synthetic-one", title: "Japan and South Korea", href: "/journey/synthetic-one?recover=1" },
     { id: "synthetic-two", title: "A very long independent guest journey through destinations with long names", href: "/journey/new?trip=synthetic-two&recover=1" },
   ] } },
 } satisfies Meta<typeof GuestDeviceTripsPanel>;
