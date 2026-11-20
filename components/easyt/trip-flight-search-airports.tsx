@@ -59,7 +59,6 @@ export function TripFlightSearchAirports({trip,leg,language='en'}:{trip:EasyTTri
     {[{id:'',label:baseline},...curated.map(a=>({id:a.choice.endpoint.canonicalPlaceId!,label:`${a.label} (${a.code})`})),
       ...(value&&!curated.some(a=>a.choice.endpoint.canonicalPlaceId===valueId)?[{id:valueId,label:value.endpoint.name}]:[]),
       {id:'other',label:es?'Buscar otro aeropuerto…':'Search another airport…'}].map(option=><label key={option.id} className={styles.airportChoice}>
-     {/* morrovia-ui-audit-allow-next-line native-control -- Native radio semantics with a Morrovia-styled visible option. */}
      <input type="radio" name={`${formId}-${side}`} ref={option.id===''?(departure?fromRef:toRef):undefined} value={option.id} checked={(fallback[side]?'other':valueId)===option.id} onChange={()=>{
       const id=option.id;setError('');setFallback(prev=>({...prev,[side]:id==='other'}));
       const picked=curated.find(a=>a.choice.endpoint.canonicalPlaceId===id)?.choice??(id===valueId?value:null);
