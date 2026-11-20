@@ -13,9 +13,9 @@ test("homepage exposes one fixed sample map rather than the obsolete Builder and
   assert.doesNotMatch(source, /router\.push|localStorage|sessionStorage|indexedDB|fetch\(|trackEvent/);
 });
 
-test("the featured-route action labels the fixed preview without changing the real route handoff", () => {
+test("the featured route keeps its primary handoff and does not duplicate the standalone preview link", () => {
   const source = read("route-chapters.tsx");
-  assert.match(source, /Try the planner preview/);
+  assert.doesNotMatch(source, /Try the planner preview|href="#product"/);
   assert.match(source, /<RoutePlanLink draft=\{route.planDraft\}/);
   assert.match(read("immersive-home.tsx"), /<HomeTripStarter \/>/);
 });

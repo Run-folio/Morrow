@@ -12,27 +12,40 @@ import mobileStyles from "./easyt-product-tour-mobile.module.css";
 export const PRODUCT_TOUR_OPEN_EVENT = "easyt-open-product-tour";
 export const PRODUCT_TOUR_STATE_EVENT = "easyt-product-tour-state";
 
+const screenshots = [
+  { image: "/journey/product-shots/tour/2026-11-20/describe-trip.jpg", mobileImage: "/journey/product-shots/tour/2026-11-20/describe-trip-mobile.jpg",
+    alt: { en: "Morrovia trip starter with destination fields and trip planning controls", es: "Pantalla de inicio de Morrovia en inglés con campos de destino y controles para planificar" } },
+  { image: "/journey/product-shots/tour/2026-11-20/shape-route.jpg", mobileImage: "/journey/product-shots/tour/2026-11-20/shape-route-mobile.jpg",
+    alt: { en: "Morrovia route planner with editable overnight stops and night counts", es: "Plan de ruta de Morrovia en inglés con paradas y número de noches editables" } },
+  { image: "/journey/product-shots/tour/2026-11-20/trip-workspace.jpg", mobileImage: "/journey/product-shots/tour/2026-11-20/trip-workspace-mobile.jpg",
+    alt: { en: "Morrovia Overview showing the Peru trip route and overnight stops", es: "Resumen de Morrovia en inglés con la ruta por Perú y sus paradas nocturnas" } },
+  { image: "/journey/product-shots/tour/2026-11-20/transport-workspace.jpg", mobileImage: "/journey/product-shots/tour/2026-11-20/transport-workspace-mobile.jpg",
+    alt: { en: "Morrovia Transport listing the connections and estimated durations for an example trip", es: "Transporte de Morrovia en inglés con las conexiones y duraciones estimadas de un viaje de ejemplo" } },
+  { image: "/journey/product-shots/tour/2026-11-20/itinerary-workspace.jpg", mobileImage: "/journey/product-shots/tour/2026-11-20/itinerary-workspace-mobile.jpg",
+    alt: { en: "Morrovia Itinerary showing the day-by-day trip plan and planning controls", es: "Itinerario de Morrovia en inglés con el plan día a día y controles de planificación" } },
+] as const;
+
 const copy = {
   en: {
     trigger: "Guide", close: "Close product tour", step: "Step", of: "of", back: "Back", next: "Next", finish: "Done", skip: "Skip tour",
-    prompt: "New to Morrovia?", takeTour: "See how planning works", dismissPrompt: "Dismiss tour invitation", example: "Example trip · Peru", credits: "Image credits", creditsLabel: "Image credits (opens in a new tab)",
+    prompt: "New to Morrovia?", takeTour: "See how planning works", dismissPrompt: "Dismiss tour invitation", example: "Example product screens", credits: "Image credits", creditsLabel: "Image credits (opens in a new tab)",
     steps: [
-      { label: "01 · Home", title: "Start your trip", copy: "Add destinations or describe the trip you have in mind. Add dates if you know them.", photo: "cusco", examples: ["Destinations · Cusco, Sacred Valley, Arequipa", "Travellers · 2 adults"] },
-      { label: "02 · Route", title: "Plan your route", copy: "Reorder stops and choose how many nights to spend in each. Travel times are estimates.", photo: "sacred-valley", examples: ["Cusco · 3 nights", "Sacred Valley · 2 nights", "Arequipa · 2 nights"] },
-      { label: "03 · Overview", title: "Pick up where you left off", copy: "Open Transport, Stay or Itinerary from Overview. Your guest trip stays on this device. To use it elsewhere, sign in and save it to your account.", photo: "arequipa", examples: ["Transport · 2 connections", "Stay · 3 stops", "Itinerary · 8 days"] },
-      { label: "04 · Transport and Stay", title: "Plan connections and stays", copy: "Use Transport for travel between stops and Stay for accommodation. Where a search link is available, check availability and book on the provider’s site.", photo: "sacred-valley", examples: ["Connection · Cusco to Ollantaytambo", "Stay · 2 nights in the Sacred Valley"] },
-      { label: "05 · Itinerary", title: "Plan each day", copy: "Add activities to a day or move them when your plans change.", photo: "cusco", examples: ["Day 2 · Cusco", "Morning · San Pedro Market", "Afternoon · San Blas"] },
+      { label: "01 · Home", title: "Start your trip", copy: "Add destinations or describe the trip you have in mind. Add dates if you know them." },
+      { label: "02 · Route", title: "Plan your route", copy: "Reorder stops and choose how many nights to spend in each. Travel times are estimates." },
+      { label: "03 · Overview", title: "Pick up where you left off", copy: "Open Transport, Stay or Itinerary from Overview. Your guest trip stays on this device. To use it elsewhere, sign in and save it to your account." },
+      { label: "04 · Transport and Stay", title: "Plan connections and stays", copy: "Use Transport for travel between stops and Stay for accommodation. Where a search link is available, check availability and book on the provider’s site." },
+      { label: "05 · Itinerary", title: "Plan each day", copy: "Add activities to a day or move them when your plans change." },
     ],
   },
   es: {
     trigger: "Guía", close: "Cerrar recorrido del producto", step: "Paso", of: "de", back: "Atrás", next: "Siguiente", finish: "Listo", skip: "Omitir recorrido",
-    prompt: "¿Primera vez en Morrovia?", takeTour: "Descubre cómo planificar", dismissPrompt: "Descartar invitación al recorrido", example: "Viaje de ejemplo · Perú", credits: "Créditos de imágenes", creditsLabel: "Créditos de imágenes (se abre en otra pestaña)",
+    prompt: "¿Primera vez en Morrovia?", takeTour: "Descubre cómo planificar", dismissPrompt: "Descartar invitación al recorrido", example: "Pantallas de ejemplo del producto", credits: "Créditos de imágenes", creditsLabel: "Créditos de imágenes (se abre en otra pestaña)",
     steps: [
-      { label: "01 · Inicio del viaje", title: "Empieza tu viaje", copy: "Añade destinos o describe el viaje que tienes en mente. Si ya sabes las fechas, añádelas.", photo: "cusco", examples: ["Destinos · Cusco, Valle Sagrado, Arequipa", "Viajeros · 2 adultos"] },
-      { label: "02 · Ruta", title: "Planifica tu ruta", copy: "Ordena las paradas y elige cuántas noches pasar en cada una. Los tiempos de viaje son estimaciones.", photo: "sacred-valley", examples: ["Cusco · 3 noches", "Valle Sagrado · 2 noches", "Arequipa · 2 noches"] },
-      { label: "03 · Resumen", title: "Retoma tu viaje", copy: "Desde Resumen, abre Transporte, Alojamiento o Itinerario. Sin cuenta, tu viaje se queda en este dispositivo. Para usarlo en otro, inicia sesión y guárdalo en tu cuenta.", photo: "arequipa", examples: ["Transporte · 2 traslados", "Alojamiento · 3 paradas", "Itinerario · 8 días"] },
-      { label: "04 · Transporte y alojamiento", title: "Planifica traslados y estancias", copy: "Usa Transporte para los traslados y Alojamiento para las estancias. Cuando haya un enlace de búsqueda, consulta la disponibilidad y reserva en el sitio del proveedor.", photo: "sacred-valley", examples: ["Traslado · De Cusco a Ollantaytambo", "Estancia · 2 noches en el Valle Sagrado"] },
-      { label: "05 · Itinerario", title: "Organiza cada día", copy: "Añade actividades a un día o cámbialas de día si cambian tus planes.", photo: "cusco", examples: ["Día 2 · Cusco", "Mañana · Mercado de San Pedro", "Tarde · San Blas"] },
+      { label: "01 · Inicio del viaje", title: "Empieza tu viaje", copy: "Añade destinos o describe el viaje que tienes en mente. Si ya sabes las fechas, añádelas." },
+      { label: "02 · Ruta", title: "Planifica tu ruta", copy: "Ordena las paradas y elige cuántas noches pasar en cada una. Los tiempos de viaje son estimaciones." },
+      { label: "03 · Resumen", title: "Retoma tu viaje", copy: "Desde Resumen, abre Transporte, Alojamiento o Itinerario. Sin cuenta, tu viaje se queda en este dispositivo. Para usarlo en otro, inicia sesión y guárdalo en tu cuenta." },
+      { label: "04 · Transporte y alojamiento", title: "Planifica traslados y estancias", copy: "Usa Transporte para los traslados y Alojamiento para las estancias. Cuando haya un enlace de búsqueda, consulta la disponibilidad y reserva en el sitio del proveedor." },
+      { label: "05 · Itinerario", title: "Organiza cada día", copy: "Añade actividades a un día o cámbialas de día si cambian tus planes." },
     ],
   },
 } as const;
@@ -73,6 +86,7 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
   const dialogRef = useRef<HTMLElement>(null);
   const text = copy[language];
   const current = text.steps[step];
+  const screenshot = screenshots[step];
   const close = () => { rememberTourSeen(); setOpen(false); };
 
   useEffect(() => {
@@ -134,7 +148,7 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
     {open ? createPortal(<div className={mobileStyles.tour}><div className={styles.overlay} role="presentation" onMouseDown={close}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" aria-describedby="easyt-tour-description" onMouseDown={(event) => event.stopPropagation()}>
         <MotionButton className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></MotionButton>
-        <div className={styles.visual}><p className={styles.example}>{text.example} · <a href="/journey/product-shots/tour/credits.html" target="_blank" rel="noreferrer" aria-label={text.creditsLabel}>{text.credits}</a></p><figure className={styles.tripExample}><img src={`/journey/product-shots/tour/source/${current.photo}.jpg`} alt="" /><figcaption><ul>{current.examples.map((line) => <li key={line}>{line}</li>)}</ul></figcaption></figure></div>
+        <div className={styles.visual}><p className={styles.example}>{text.example} · <a href="/journey/product-shots/tour/credits.html" target="_blank" rel="noreferrer" aria-label={text.creditsLabel}>{text.credits}</a></p><div className={styles.mediaFrame}><div className={styles.screen}><picture><source media="(max-width: 680px)" srcSet={screenshot.mobileImage} /><img src={screenshot.image} alt={screenshot.alt[language]} /></picture></div></div></div>
         <div className={styles.content}>
           <div className={styles.stepCopy} aria-live="polite" aria-atomic="true">
           <p className={styles.label}>{current.label}</p>

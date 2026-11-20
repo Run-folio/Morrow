@@ -1,0 +1,212 @@
+{
+  "capturedAt": "2026-11-20",
+  "stagingBase": "f3751ebe3d88c55ac7cc3c92d25e3fe59f7e439a",
+  "inputArchiveSha256": {
+    "fullFrames": "53d9c87b55934776e46a33eab37f6c18e2125810d3e638459cc8f4746fbf4966",
+    "focusedFrames": "ab857dcfc0939a25f632708a91feae8b6615c1a38c3e8ca394dc887caa9d5389"
+  },
+  "source": "Exact local Storybook production components with synthetic fixtures; off-origin requests blocked. Focused captures frame production controls in-browser, with no post-processing.",
+  "captures": [
+    {
+      "step": 1,
+      "file": "describe-trip.jpg",
+      "story": "morrovia-05-product-patterns-homepage-trip-starter--first-visit",
+      "presentation": "desktop",
+      "sourceViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceSha256": "196454445b030332001d4f27821cb47766f905b5a094977e701a22b9f5ee2b05",
+      "width": 748,
+      "height": 313,
+      "sha256": "196454445b030332001d4f27821cb47766f905b5a094977e701a22b9f5ee2b05",
+      "photoKeys": [],
+      "captureMode": "Real form bounding box plus up to 14 CSS px padding",
+      "selector": "#start-building"
+    },
+    {
+      "step": 1,
+      "file": "describe-trip-mobile.jpg",
+      "story": "morrovia-05-product-patterns-homepage-trip-starter--first-visit",
+      "presentation": "mobile",
+      "sourceViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "sourceSha256": "fa849a97b0f22a342f2732aab0bff10e933d3ff468cd608a49a2b21f2fa29b0b",
+      "width": 370,
+      "height": 500,
+      "sha256": "fa849a97b0f22a342f2732aab0bff10e933d3ff468cd608a49a2b21f2fa29b0b",
+      "photoKeys": [],
+      "captureMode": "Real form bounding box plus up to 14 CSS px padding",
+      "selector": "#start-building"
+    },
+    {
+      "step": 2,
+      "file": "shape-route.jpg",
+      "story": "morrovia-05-product-patterns-builder-route-allocation--all-allocated",
+      "presentation": "desktop",
+      "sourceViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceSha256": "be4c6a7071a8b73e3bce7b42ad232a43376c5691b8212b370a1f22844ccd2d4b",
+      "width": 940,
+      "height": 298,
+      "sha256": "be4c6a7071a8b73e3bce7b42ad232a43376c5691b8212b370a1f22844ccd2d4b",
+      "photoKeys": [],
+      "captureMode": "Locator bounding box, no padding",
+      "selector": "[data-builder-route-workspace] [class*=\"builderRouteList\"]"
+    },
+    {
+      "step": 2,
+      "file": "shape-route-mobile.jpg",
+      "story": "morrovia-05-product-patterns-builder-route-allocation--all-allocated",
+      "presentation": "mobile",
+      "sourceViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "sourceSha256": "b4a6e9b6d1df4e054916ef7d750d988e809ae663e6e2f98005e2851ad9d03a3a",
+      "width": 374,
+      "height": 489,
+      "sha256": "b4a6e9b6d1df4e054916ef7d750d988e809ae663e6e2f98005e2851ad9d03a3a",
+      "photoKeys": [],
+      "captureMode": "Locator bounding box, no padding",
+      "selector": "[data-builder-route-workspace] [class*=\"builderRouteList\"]"
+    },
+    {
+      "step": 3,
+      "file": "trip-workspace.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-overview--tour-capture",
+      "presentation": "desktop",
+      "sourceViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceSha256": "7c8ca07785d0af4dcac3bcc5dd69ebe690bd07c083090216b0b59547ad8ccfa4",
+      "width": 1048,
+      "height": 330,
+      "sha256": "7c8ca07785d0af4dcac3bcc5dd69ebe690bd07c083090216b0b59547ad8ccfa4",
+      "photoKeys": [
+        "cusco-unsplash",
+        "sacred-valley-unsplash",
+        "arequipa-unsplash"
+      ],
+      "captureMode": "Locator bounding box, no padding",
+      "selector": "[aria-label=\"Trip overview\"] [class*=\"routeJourney\"]"
+    },
+    {
+      "step": 3,
+      "file": "trip-workspace-mobile.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-overview--tour-capture",
+      "presentation": "mobile",
+      "sourceViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "sourceSha256": "813a68e01da6917a892e8c88d6eb03df59d7e41232a38a7fa4b45d16929b4531",
+      "width": 374,
+      "height": 376,
+      "sha256": "813a68e01da6917a892e8c88d6eb03df59d7e41232a38a7fa4b45d16929b4531",
+      "photoKeys": [
+        "cusco-unsplash",
+        "sacred-valley-unsplash",
+        "arequipa-unsplash"
+      ],
+      "captureMode": "Locator bounding box, no padding",
+      "selector": "[aria-label=\"Trip overview\"] [class*=\"routeJourney\"]"
+    },
+    {
+      "step": 4,
+      "file": "transport-workspace.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-transport--canonical-agenda",
+      "presentation": "desktop",
+      "sourceViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceSha256": "54d00a03d8a13d190e6c3d4010c62902855fcc7b4c373451acd841f7f8b5d502",
+      "width": 1440,
+      "height": 900,
+      "sha256": "54d00a03d8a13d190e6c3d4010c62902855fcc7b4c373451acd841f7f8b5d502",
+      "photoKeys": [],
+      "captureMode": "Full viewport screenshot; no post-processing."
+    },
+    {
+      "step": 4,
+      "file": "transport-workspace-mobile.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-transport--canonical-agenda",
+      "presentation": "mobile",
+      "sourceViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "sourceSha256": "267674cee4d1dfb44407ad846479403d50dc49bc6cf759b54d0a945390fc5e27",
+      "width": 390,
+      "height": 844,
+      "sha256": "267674cee4d1dfb44407ad846479403d50dc49bc6cf759b54d0a945390fc5e27",
+      "photoKeys": [],
+      "captureMode": "Full viewport screenshot; no post-processing."
+    },
+    {
+      "step": 5,
+      "file": "itinerary-workspace.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-itinerary--tour-capture",
+      "presentation": "desktop",
+      "sourceViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceSha256": "0d5fbf8959f6ad4dd8e7b8955cdfc20d45a5af2992eb69caae9f59228a16b7a3",
+      "width": 860,
+      "height": 610,
+      "sha256": "0d5fbf8959f6ad4dd8e7b8955cdfc20d45a5af2992eb69caae9f59228a16b7a3",
+      "photoKeys": [],
+      "captureMode": "Browser viewport crop from Day 2 date line to visible activity rows, leaves out sticky navigation",
+      "selector": "[id$=\"days-panel\"]:visible",
+      "activeDay": "Day 2"
+    },
+    {
+      "step": 5,
+      "file": "itinerary-workspace-mobile.jpg",
+      "story": "morrovia-05-product-patterns-trip-workspace-itinerary--tour-capture",
+      "presentation": "mobile",
+      "sourceViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "sourceSha256": "5b063abc1b008e4693772a363615977e5857aa10f93ca26033d05e3405be06e7",
+      "width": 372,
+      "height": 600,
+      "sha256": "5b063abc1b008e4693772a363615977e5857aa10f93ca26033d05e3405be06e7",
+      "photoKeys": [],
+      "captureMode": "Browser viewport crop from Day 2 date line to visible activity rows, leaves out sticky navigation",
+      "selector": "[id$=\"days-panel\"]:visible",
+      "activeDay": "Day 2"
+    }
+  ],
+  "photographs": {
+    "cusco-unsplash": {
+      "author": "Azzedine Rouichi",
+      "license": "Unsplash License",
+      "licenseUrl": "https://unsplash.com/license",
+      "sourceUrl": "https://unsplash.com/photos/a-view-of-a-city-from-a-high-point-of-view-g9U5KGu_m3Q",
+      "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+    },
+    "sacred-valley-unsplash": {
+      "author": "Paul Daly",
+      "license": "Unsplash License",
+      "licenseUrl": "https://unsplash.com/license",
+      "sourceUrl": "https://unsplash.com/photos/rocky-mountains-hQljmSHzn4E",
+      "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+    },
+    "arequipa-unsplash": {
+      "author": "Mayur Arvind",
+      "license": "Unsplash License",
+      "licenseUrl": "https://unsplash.com/license",
+      "sourceUrl": "https://unsplash.com/photos/a-panoramic-view-of-a-city-with-a-mountain-in-the-background-hpc4DFyjY40",
+      "changes": "Resized JPEG derivative; cropped within current production components and captured for product tour."
+    }
+  }
+}

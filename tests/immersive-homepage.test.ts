@@ -231,7 +231,14 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   assert.match(hero, /href="#routes"/);
   assert.doesNotMatch(route, /Nights are a planning guide|Las noches son una guía/);
   assert.match(route, /Start with this route/);
-  assert.match(route, /Try the planner preview/);
+  assert.doesNotMatch(route, /Try the planner preview|Probar el ejemplo|Another way to go|Otra forma de viajar|route\.summary/);
+  assert.match(route, /styles\.sequence\}>\{story\.stops\}/);
+  assert.match(route, /View all routes/);
+  assert.match(css, /\.storyActions a \{ color: var\(--morrovia-ink\); background: var\(--morrovia-paper\);/);
+  assert.doesNotMatch(css, /\.storyActions a:last-child|\.storyIdea|\.alternatives \.eyebrow/);
+  assert.match(route, /querySelector<HTMLElement>\("h2"\)\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(css, /\.sequence \{[^}]*font-size: clamp\(20px,2\.1vw,28px\)[^}]*overflow-wrap: anywhere/);
+  for (const rule of css.matchAll(/\.alternativesAll(?:[:\w,-]*\.alternativesAll)?[^{}]*\{([^}]+)\}/g)) assert.doesNotMatch(rule[1], /border-top/);
   assert.match(route, /className=\{styles\.alternatives\} aria-label=/);
   assert.match(route, /className=\{styles\.alternativeRoute\}/);
   assert.match(route, /className=\{styles\.alternativesAll\}/);

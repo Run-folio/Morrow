@@ -34,7 +34,8 @@ test("Home names choice and removes filler while keeping attribution", () => {
   assert.match(sharedRoute, /Use return trip/);
   assert.match(sharedRoute, /Use one-way trip/);
   const closing = source("app/journey/home/immersive/closing-chapter.tsx");
-  assert.doesNotMatch(closing, /The best part is still ahead|Go somewhere/);
+  assert.doesNotMatch(closing, /The best part is still ahead|Lo mejor está por venir/);
+  assert.match(closing, /<h2>\{es \? "Ve a un lugar" : "Go somewhere"\}<em>\{es \? "que se quede contigo\." : "that stays with you\."\}<\/em><\/h2>(?=\s*<EasyTButton)/);
   assert.match(closing, /Image credits/);
   assert.match(closing, /Plan my trip/);
 });

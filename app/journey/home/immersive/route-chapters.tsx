@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
@@ -46,8 +46,8 @@ export default function RouteChapters({ routes, index, onChange, children }: {
     <section id="route-story" className={styles.story}>
       <div className={styles.storyPhoto}><DestinationPhoto route={route} index={storyPhotoIndex} landscape /></div>
       <div className={styles.storyShade} />
-      <div className={styles.storyMain}><span className={styles.eyebrow}>{story.eyebrow}</span><h2 tabIndex={-1} data-long-title={story.title.length > 30 || undefined}>{story.title}</h2><p className={styles.sequence}>{story.stops}</p><p className={styles.storyIdea}>{route.summary}</p><div className={styles.storyActions}><RoutePlanLink draft={route.planDraft} placement="hero">{es ? "Empezar con esta ruta" : "Start with this route"}</RoutePlanLink><EasyTLinkButton href="#product" variant="quiet" icon={ArrowDown}>{es ? "Probar el ejemplo" : "Try the planner preview"}</EasyTLinkButton></div></div>
-      <aside className={styles.alternatives} aria-label={es ? "Otros viajes" : "Other journeys"}><span className={styles.eyebrow}>{es ? "Otra forma de viajar" : "Another way to go"}</span><div className={styles.alternativeRoutes}>{routes.map((other, i) => i === index ? null : <EasyTButton className={styles.alternativeRoute} key={other.key} variant="quiet" icon={ArrowRight} onClick={() => change(i, "route-story")}><span>{homepageJourneyLabel(other.key, other.title).short}</span></EasyTButton>)}</div><EasyTLinkButton className={styles.alternativesAll} href="/journey/discover" variant="quiet" icon={ArrowRight}>{es ? "Ver todas las rutas" : "View all routes"}</EasyTLinkButton></aside>
+      <div className={styles.storyMain}><span className={styles.eyebrow}>{story.eyebrow}</span><h2 tabIndex={-1} data-long-title={story.title.length > 30 || undefined}>{story.title}</h2><p className={styles.sequence}>{story.stops}</p><div className={styles.storyActions}><RoutePlanLink draft={route.planDraft} placement="hero">{es ? "Empezar con esta ruta" : "Start with this route"}</RoutePlanLink></div></div>
+      <aside className={styles.alternatives} aria-label={es ? "Otros viajes" : "Other journeys"}><div className={styles.alternativeRoutes}>{routes.map((other, i) => i === index ? null : <EasyTButton className={styles.alternativeRoute} key={other.key} variant="quiet" icon={ArrowRight} onClick={() => change(i, "route-story")}><span>{homepageJourneyLabel(other.key, other.title).short}</span></EasyTButton>)}</div><EasyTLinkButton className={styles.alternativesAll} href="/journey/discover" variant="quiet" icon={ArrowRight}>{es ? "Ver todas las rutas" : "View all routes"}</EasyTLinkButton></aside>
     </section>
     {children?.(route, change, index)}
   </>;
