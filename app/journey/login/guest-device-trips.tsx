@@ -1,5 +1,7 @@
 "use client";
 
+import { EntryReveal } from "@/components/easyt/app-motion";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
@@ -43,12 +45,13 @@ export function GuestDeviceTripsPanel({ state, onRetry, presentation = "login", 
   if (state.kind === "withheld") return null;
   const dashboard=presentation==="dashboard";
   return <section className={styles.deviceTrips} aria-labelledby="guest-device-trips-title">
+    <EntryReveal ready={state.kind === "ready" && state.trips.length > 0} selector="[data-device-trip-name]" />
     <h2 id="guest-device-trips-title">On this device</h2>
     {state.kind === "unavailable" ? <MorroviaStatusBanner tone="warning" title="Device copies could not be checked"
       detail="Keep any open trip tabs. No copies have been changed."
       actions={<EasyTButton variant="secondary" size="small" onClick={onRetry}>Check again</EasyTButton>} />
       : state.trips.length ? <ul>{state.trips.map(trip => <li key={trip.id}>
-        <strong>{trip.title}</strong><EasyTLinkButton href={trip.href} variant="secondary" size="small" aria-label={`Open device copy: ${trip.title}`}>Open trip</EasyTLinkButton>
+        <strong data-device-trip-name>{trip.title}</strong><EasyTLinkButton href={trip.href} variant="secondary" size="small" aria-label={`Open device copy: ${trip.title}`}>Open trip</EasyTLinkButton>
       </li>)}</ul> : !dashboard ? <p>No guest trips found in this browser.</p> : null}
     {dashboard && state.kind === "ready" && state.trips.length === 0 ? <div className={styles.guestTripsEmpty}>
       <h3>No trips on this device yet</h3><p>Start a trip and come back here to pick up where you left off.</p>

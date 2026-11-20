@@ -248,6 +248,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
       <EasyTButton size="small" variant="quiet" disabled={!mutation.canMutate || mutation.isPending(`transport-unmark-${booking.id}`)} onClick={() => mutation.mutateTrip((current) => unmarkTransportBooking(current, booking.id), `transport-unmark-${booking.id}`)}>{copy.unmarkBooked}</EasyTButton>
     </div>)}
 
+    <EntryReveal ready={items.length > 0} selector="[data-transport-route-name]" />
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
       <div className={styles.list} role="list" aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
         {items.map((item) => <TransportCard trip={trip} item={item} language={language} copy={copy}
@@ -289,7 +290,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
       <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
       <div className={styles.cardBody}>
-        <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
+        <h3 data-transport-route-name>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
         {duplicateUnknownMode ? null : <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{showsEstimatedTiming ? language === "es" ? "Estimado · " : "Estimated · " : ""}{transferTimingLabel(leg)} total</>}{status === copy.planningEstimate && !showsEstimatedTiming ? <><i aria-hidden="true">·</i>{copy.planningEstimate}</> : null}</p>}
       </div>
       <div className={styles.cardEnd}>

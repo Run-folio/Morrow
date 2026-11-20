@@ -1,5 +1,7 @@
 "use client";
 
+import { EntryReveal } from "@/components/easyt/app-motion";
+
 import { BedDouble, CalendarDays, Check, Map, MapPin, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -301,6 +303,7 @@ function StayFinderSurface({
       <details className={styles.browseStays} open={!hasShortlist || finder.status !== "ready" || Boolean(requestedPlaceId && !finder.candidates.some(place => place.id === requestedPlaceId))}>
         <summary>{hasShortlist ? "Find more stays" : "Stay options"}</summary>
         <section className={styles.options} aria-label={`Stay options for ${context.stop.name}`}>
+        <EntryReveal ready={finder.status === "ready" && visibleCandidates.length > 0} selector="[data-stay-result-name]" />
         {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
@@ -324,7 +327,7 @@ function StayFinderSurface({
             </div>
             <div className={styles.cardBody}>
               <div className={styles.cardCopy}>
-                <h4>{place.name}</h4>
+                <h4 data-stay-result-name>{place.name}</h4>
                 <p><MapPin aria-hidden="true" />{place.address}</p>
                 <div className={styles.cardFacts}>
                   {place.rating !== undefined ? <span><Star aria-hidden="true" />{place.rating.toFixed(1)}{place.reviewCount !== undefined ? ` · ${place.reviewCount.toLocaleString()} reviews` : ""}</span> : null}

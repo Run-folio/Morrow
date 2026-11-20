@@ -1,5 +1,7 @@
 "use client";
 
+import { EntryReveal } from "@/components/easyt/app-motion";
+
 import FirstTripGuide from "./first-trip-guide";
 
 import Link from "next/link";
@@ -283,6 +285,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
 
         <div id="dashboard-trip-grid" className={styles.tripSections}>
+          <EntryReveal ready={visibleTrips.length > 0} selector="[data-trip-list-facts]" />
           {sort === "updated" ? <RecentlyUpdatedTrips trips={visibleTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} /> : <>
             <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
             <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
@@ -435,7 +438,7 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
     </div>
     <div className={styles.cardBody}>
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>
-      <p className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{trip.stops.length} {language === "es" ? (trip.stops.length === 1 ? "parada" : "paradas") : (trip.stops.length === 1 ? "stop" : "stops")}</span></p>
+      <p data-trip-list-facts className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{trip.stops.length} {language === "es" ? (trip.stops.length === 1 ? "parada" : "paradas") : (trip.stops.length === 1 ? "stop" : "stops")}</span></p>
       {recoveryIssue ? <div className={styles.tripRecoveryNotice} role="status">
         <strong>{recoveryIssue.tripTitle} has device changes to review</strong>
         <span>{recoveryIssue.detail}</span>
