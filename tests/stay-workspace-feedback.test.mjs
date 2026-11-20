@@ -32,8 +32,8 @@ const bundle = await build({
 const lib = { exports: {} };
 new Function("require", "module", "exports", "globalThis", bundle.outputFiles[0].text)(require, lib, lib.exports, {
   stayFixture: {
-    get mutation() { return { trip, error: scenario.error }; },
-    get finder() { return { candidates: [], selectedPlace: null, status: scenario.status }; },
+    get mutation() { return { trip, error: scenario.error, isPending: () => false }; },
+    get finder() { return { candidates: scenario.candidates ?? [], selectedPlace: null, status: scenario.status, accommodationInventoryStatus: scenario.inventory, retry: () => {} }; },
   },
 });
 
@@ -66,4 +66,43 @@ test("Explore preserves the shared mutation reason without claiming every failur
   const source = require("node:fs").readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
   assert.match(source, /mutation\.error \? <MorroviaStatusBanner[^\n]*title="Plan update needs attention" detail=\{mutation\.error\}/);
   assert.doesNotMatch(source, /This change is safe on this device/);
+});
+
+test("a failed room-availability lane is explained and retryable beside usable mapped stays", () => {
+  const candidate = { id: "synthetic-kyoto", name: "Synthetic Kyoto guesthouse", address: "Kyoto, Japan", category: "Guesthouse", coordinates: [135.7681,35.0116], mapsUrl: "https://example.invalid/stay", provider: "openstreetmap", availability: "check" };
+  const html = render({ status: "ready", inventory: "unavailable", candidates: [candidate] });
+  assert.match(html, /Couldn’t check room availability/);
+  assert.match(html, /Retry stay search/);
+  assert.match(html, /Synthetic Kyoto guesthouse/);
+  assert.match(html, /Photos unavailable/);
+  assert.doesNotMatch(html, /Couldn’t load stays|Current availability found|BOOKING.COM LIVE INFO/);
+  for (const inventory of ["unconfigured", "not-requested", "empty"]) {
+    const inactive = render({status:"ready", inventory, candidates:[candidate]});
+    assert.doesNotMatch(inactive, /Couldn’t check room availability|Retry stay search/);
+  }
+});
+
+test("Stay retry transfers focus to the mounted options region before starting retrieval", () => {
+  const fs = require("node:fs");
+  const ts = require("typescript");
+  const file = "components/easyt/trip-stay-workspace.tsx";
+  const source = fs.readFileSync(file, "utf8");
+  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let retry;
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(tree) === "retryStaySearch") retry = node.initializer;
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
+  assert.ok(retry, "a shared retry callback keeps focus stable");
+  const calls = [];
+  const activate = new Function("optionsRegionRef", "finder", `return ${retry.getText(tree)};`)(
+    { current: { focus: options => calls.push(["focus", options]) } },
+    { retry: () => calls.push(["retry"]) },
+  );
+  assert.deepEqual(calls, [], "passive rendering must not move focus");
+  activate();
+  assert.deepEqual(calls, [["focus", { preventScroll: true }], ["retry"]]);
+  assert.match(source, /<section ref=\{optionsRegionRef\} tabIndex=\{-1\} className=\{styles.options\}/);
+  assert.equal([...source.matchAll(/onRetry=\{retryStaySearch\}/g)].length, 2);
 });

@@ -44,11 +44,13 @@ test("current Omio clicks emit one event with only approved partner, placement a
 });
 
 test("Overview transport readiness navigates to its workspace or exact issue instead of the retired outbound action", () => {
-  const scope = { trip: { id: "trip" }, language: "en", visibleIssues: [] as {actionLabel: string; href: string}[], transportWorkspaceHref };
+  const scope = { trip: { id: "trip" }, language: "en", transferIssue: undefined as { href: string } | undefined, transportWorkspaceHref };
   const progressAction = evaluateDeclaration(readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8"), "progressAction", scope);
   assert.deepEqual(progressAction({ id: "transport" }), { href: "/journey/trip/transport", label: "Review transport" });
-  scope.visibleIssues.push({ actionLabel: "Review transfers", href: "/journey/trip/transport?leg=leg" });
+  scope.transferIssue = { href: "/journey/trip/transport?leg=leg" };
   assert.deepEqual(progressAction({ id: "transport" }), { href: "/journey/trip/transport?leg=leg", label: "Review transfers" });
+  scope.language = "es";
+  assert.deepEqual(progressAction({ id: "transport" }), { href: "/journey/trip/transport?leg=leg", label: "Revisar traslados" });
 });
 
 test("click regression checks reject private URL leakage and duplicate events", () => {

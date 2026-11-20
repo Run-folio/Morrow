@@ -1,7 +1,7 @@
 import type { EasyTTrip, TripCascadeStatus, TripScheduleLocks } from "./trip.ts";
 
 const DAY = 86_400_000;
-const dateAt = (value: string) => new Date(`${value}T00:00:00`);
+const dateAt = (value: string) => new Date(`${value}T00:00:00Z`);
 const iso = (value: Date) => value.toISOString().slice(0, 10);
 const addDays = (value: string, days: number) => iso(new Date(dateAt(value).getTime() + days * DAY));
 

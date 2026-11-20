@@ -56,7 +56,7 @@ import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./w
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { overviewRouteSteps } from "@/lib/easyt/trip-overview-route-steps";
 import TripExplicitPlans from "./trip-explicit-plans";
-import { overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
+import { overviewLocationThumbnail, overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveDistinctRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";
@@ -125,13 +125,14 @@ export function OverviewEndpointSummary({ label, href, transfer, warning }: { la
 }
 
 export function OverviewStepMedia({ image, name, country, meta, number, href, onImageError }: { image: OverviewPlaceImage | null; name: string; country?: string | null; meta: string; number: number; href: string; onImageError?: (src: string) => void }) {
+  const thumbnail = overviewLocationThumbnail(image?.src);
   const [displayedSrc, setDisplayedSrc] = useState<string | null>(null);
   const onDisplayState = useCallback((displayed: boolean) => setDisplayedSrc(displayed ? image?.src ?? null : null), [image?.src]);
   return <article>
       <div className={styles.stopNumber}>{number}</div>
       <div className={styles.stopPhoto}>
         <Link href={href} className={styles.stopImageLink} aria-label={`${name} · ${meta}`}>
-          <ResilientImage key={image?.src ?? "no-photo"} src={image?.src} alt={image?.alt ?? ""} onDisplayState={onDisplayState} onError={() => { if (image) onImageError?.(image.src); }} fallback={<CountryVisualFallback country={country} />} />
+          <ResilientImage key={image?.src ?? "no-photo"} src={thumbnail.src} srcSet={thumbnail.srcSet} sizes={thumbnail.srcSet ? "(max-width: 520px) 136px, (max-width: 1052px) 122px, (max-width: 1327px) 11.6vw, 154px" : undefined} alt={image?.alt ?? ""} onDisplayState={onDisplayState} onError={() => { if (image) onImageError?.(image.src); }} fallback={<CountryVisualFallback country={country} />} />
         </Link>
         {image?.scope === "country" && displayedSrc === image.src ? <CountryIllustrationLabel country={image.country} /> : null}
       {image?.sourceLabel && displayedSrc === image.src ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}

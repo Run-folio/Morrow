@@ -6,12 +6,15 @@ import {
   captureJourneyBriefWithProvider,
 } from "../lib/easyt/journey-capture.ts";
 import type { PlaceIntelligenceProvider } from "../lib/easyt/place-intelligence.ts";
-import { createHomeTripDraft, handoffRouteStops, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
+import { createHomeTripDraft, handoffRouteStops, initialHandoffRouteStops, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
 import {
   SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
   SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
   type SemanticTripIntent,
 } from "../lib/easyt/semantic-trip-intent.ts";
+import { tripFromBuilder } from "../lib/easyt/trip.ts";
+import { prepareTripDocumentForWrite, requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
+import { referencePlaceById } from "../lib/easyt/place-reference.server.ts";
 import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtures/prebeta-place-trip-state.ts";
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
@@ -375,4 +378,36 @@ test('tentative finish stays reviewable rather than becoming an explicit endpoin
   assert.equal(draft.routeIntent?.journeyEnd.mode,'unknown');assert.equal(draft.routeIntent?.destinations.some(item=>item.sourceText==='Cusco'),true);
  }
  for(const prompt of ['Start in Lima, finish in Cusco.','Start in Lima, maybe visit Puno, finish in Cusco.','Start in Lima, maybe finish in Cusco. Actually finish in Cusco.'])assert.equal(captureJourneyBrief(prompt).journeyEnd.mode,'explicit',prompt);
+});
+
+test('A09 deterministic capture binds the complete Chilean town name and its three authored nights', () => {
+  const capture = captureJourneyBrief('18 nights: Lima 2, Cusco 4, La Paz 3, Uyuni 2, San Pedro de Atacama 3, Santiago 4.');
+  const draft = createHomeTripDraft({capture, handoffId:'fixture-a09', datesExplicit:false, startDate:'2027-10-01', endDate:'2027-10-19', travellers:2, travellersExplicit:false, interests:[]});
+  const destinations = draft.routeIntent!.destinations;
+  assert.deepEqual(destinations.map(d=>[d.sourceText,d.requestedNights]),[
+    ['Lima',2],['Cusco',4],['La Paz',3],['Uyuni',2],['San Pedro de Atacama',3],['Santiago',4],
+  ]);
+  assert.equal(destinations[4]!.selectedPlace?.canonicalPlaceId,'reference:geonames:3871781');
+  assert.equal(destinations[4]!.selectedPlace?.country,'Chile');
+  const seeds = initialHandoffRouteStops(draft.locationMentions ?? [], draft.destinations ?? [], draft.journeyEnd);
+  const town = seeds.find(stop=>stop.canonicalPlaceId==='reference:geonames:3871781')!;
+  const reference = referencePlaceById('reference:geonames:3871781')!;
+  assert.ok(town.geographicBinding, 'Builder seeds retain the maintained settlement binding');
+  assert.deepEqual(town.coordinates, reference.coordinates);
+  assert.equal(town.providerId, reference.providerId);
+  assert.deepEqual(destinations[4]!.stopIds, [town.id]);
+  const trip = tripFromBuilder({id:'fixture-a09',origin:'London',originCountry:'United Kingdom',journeyEnd:draft.journeyEnd,
+    stops:seeds,startDate:'2027-10-01',endDate:'2027-10-19',picks:{},mustDo:'',pace:'slow',hotels:'few',budget:'mid',draft:[],
+    routeIntent:draft.routeIntent,nightAllocations:Object.fromEntries(seeds.map((s,i)=>[s.id,destinations[i]!.requestedNights ?? 0]))});
+  const reopened = requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(trip))));
+  assert.deepEqual(reopened.stops.map(s=>[s.id,s.nights]), seeds.map((s,i)=>[s.id,destinations[i]!.requestedNights]));
+  const savedTown = reopened.stops[4]!;
+  assert.equal(savedTown.name,'San Pedro de Atacama');
+  assert.equal(savedTown.canonicalPlaceId,town.canonicalPlaceId);
+  assert.equal(savedTown.providerId,reference.providerId);
+  assert.deepEqual(savedTown.geographicBinding,town.geographicBinding);
+  assert.deepEqual([savedTown.longitude,savedTown.latitude], reference.coordinates);
+  assert.equal(capture.structuredBrief.duration?.value,18);
+  assert.ok(!capture.mentions.some(m=>m.canonicalPlaceId==='san-pedro-belize'));
+  assert.ok(!captureJourneyBrief('San Pedro 3 nights.').mentions.some(m=>m.canonicalPlaceId==='reference:geonames:3871781'));
 });

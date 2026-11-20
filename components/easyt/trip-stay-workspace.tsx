@@ -76,6 +76,12 @@ function StayFinderSurface({
   const browseStaysGuideRef = useWorkspaceOrientationTarget("stay", "stay-options");
   const mutation = useTripShellMutation();
   const mobile = useMobileTripWorkspace();
+  const optionsRegionRef = useRef<HTMLElement | null>(null);
+  const retryStaySearch = () => {
+    // The retry button disappears while loading; keep keyboard position in Stay options.
+    optionsRegionRef.current?.focus({ preventScroll: true });
+    finder.retry();
+  };
   const [stayQuery, setStayQuery] = useState("");
   const [showAllStays, setShowAllStays] = useState(false);
   const filteredCandidates = finder.candidates.filter(place => `${place.name} ${place.address}`.toLocaleLowerCase().includes(stayQuery.trim().toLocaleLowerCase()));
@@ -247,6 +253,7 @@ function StayFinderSurface({
 
   const showRail = compact ? Boolean(detail) : finder.candidates.length > 0 || Boolean(detail);
   const inventoryLoading = finder.accommodationInventoryStatus === "loading" && finder.candidates.length > 0;
+  const inventoryUnavailable = finder.accommodationInventoryStatus === "unavailable" && finder.candidates.length > 0;
   const mapPreview = finder.candidates.length ? <MorroviaMapPreview title="Stay map" href={fullMapHref(selected)}>
     <JourneyPlannerMap stops={[]} legs={[]} selectedId="" plannerPins={[]} mapResults={mapResults} selectedMapResult={selectedMapResult} focusCoordinates={context.searchCoordinates} focusZoom={13} draftPinCoordinates={null} pinPlacementMode={false} surface={{ variant: "embedded", interaction: "selection-only" }} previewLabel={`Stay options in ${context.stop.name}`} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onMapResultSelect={(result) => {
       const place = finder.candidates.find((candidate) => candidate.id === result.sourceId);
@@ -306,12 +313,13 @@ function StayFinderSurface({
 
       <details className={styles.browseStays} open={!hasShortlist || finder.status !== "ready" || Boolean(requestedPlaceId && !finder.candidates.some(place => place.id === requestedPlaceId))}>
         <summary ref={browseStaysGuideRef}>{hasShortlist ? "Find more stays" : "Stay options"}</summary>
-        <section className={styles.options} aria-label={`Stay options for ${context.stop.name}`}>
+        <section ref={optionsRegionRef} tabIndex={-1} className={styles.options} aria-label={`Stay options for ${context.stop.name}`}>
         <EntryReveal ready={finder.status === "ready" && visibleCandidates.length > 0} selector="[data-stay-result-name]" />
         {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
+        {inventoryUnavailable ? <MorroviaSectionStatus compact state="error" title="Couldn’t check room availability" retryLabel="Retry stay search" onRetry={retryStaySearch} /> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title={`Finding stays in ${context.stop.name}…`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
-        {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
+        {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={retryStaySearch} /> : null}
         {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="Try again later." /> : null}
         {finder.candidates.length ? <div className={styles.grid}>{visibleCandidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;

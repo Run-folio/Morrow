@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {tripFromBuilder, type TripBooking} from '../lib/easyt/trip.ts';
+import {tripFromBuilder, type TripBooking, type JourneyEndSelection} from '../lib/easyt/trip.ts';
 import {requireReadableTripDocument,prepareTripDocumentForWrite} from '../lib/easyt/trip-document.ts';
 import {prepareAcceptedBuilderEdit} from '../lib/easyt/trip-builder-edit.ts';
 import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
@@ -11,10 +11,10 @@ const places = {
   p1: {name:'Paris', country:'France', coordinates:[2.35,48.85] as [number,number]},
   m1: {name:'Madrid', country:'Spain', coordinates:[-3.7,40.42] as [number,number]},
 };
-function fixture(ids: string[] = ['p1','m1','p2'], nightAllocations = {p1:1,m1:2,p2:4}) {
+function fixture(ids: string[] = ['p1','m1','p2'], nightAllocations = {p1:1,m1:2,p2:4}, journeyEnd: JourneyEndSelection = {mode:'same_as_start'}) {
   const stops = ids.map(id => ({id, ...(id.startsWith('p') ? places.p1 : places.m1)}));
   return requireReadableTripDocument(tripFromBuilder({id:'synthetic-edit', origin:'London', originCoordinates:[-0.13,51.5], originCountry:'United Kingdom',
-    journeyEnd:{mode:'same_as_start'}, startDate:'2027-01-01', endDate:'2027-01-08', stops,
+    journeyEnd, startDate:'2027-01-01', endDate:'2027-01-08', stops,
     nightAllocations, picks:{}, mustDo:'', pace:'slow', hotels:'few', budget:'mid', draft:[]}));
 }
 const record = (date: string | null): TripBooking => ({id:'imported-synthetic-ticket', type:'transport', title:'Paris to Madrid train', date,
@@ -67,4 +67,28 @@ test('unique origin and return legs admit their matching local departure dates, 
   t.brief.bookings=[origin,end];
   assert.deepEqual(bookedRows(t),[[t.legs[0].fromStopId,'p1'],['m1',inbound.toStopId]]);
   t.brief.bookings=[{...origin,date:'2027-01-02'},{...end,date:'2027-01-03'}];assert.deepEqual(bookedRows(t),[]);
+});
+
+test('new one-way connection dates and booking matches are independent of device time zone', () => {
+  const priorTz = process.env.TZ;
+  try {
+    for (const tz of ['Pacific/Honolulu', 'Pacific/Kiritimati']) {
+      process.env.TZ = tz;
+      const t = fixture(['p1', 'm1'], {p1:1,m1:6,p2:0}, {
+        mode:'explicit', place:{name:'Lisbon',country:'Portugal',coordinates:[-9.14,38.72]},
+      });
+      assert.deepEqual(t.stops.map(stop => [stop.arrivalDate, stop.departureDate]), [
+        ['2027-01-01', '2027-01-02'], ['2027-01-02', '2027-01-08'],
+      ], tz);
+      const first = {...record('2027-01-01'), id:'outbound', transportDetails:{from:'London',to:'Paris',mode:null}};
+      const last = {...record('2027-01-08'), id:'onward', transportDetails:{from:'Madrid',to:'Lisbon',mode:null}};
+      t.brief.bookings = [first, last];
+      assert.deepEqual(bookedRows(t), [[t.legs[0].fromStopId,'p1'], ['m1',t.legs.at(-1)!.toStopId]], tz);
+      t.brief.bookings = [{...first,date:'2026-12-31'},{...last,date:'2027-01-07'}];
+      assert.deepEqual(bookedRows(t), [], tz);
+    }
+  } finally {
+    if (priorTz === undefined) delete process.env.TZ;
+    else process.env.TZ = priorTz;
+  }
 });

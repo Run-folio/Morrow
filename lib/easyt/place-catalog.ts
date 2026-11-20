@@ -1,6 +1,6 @@
 import { STAMP_COUNTRIES_BY_REGION, STAMP_REGIONS } from "./stamps.ts";
 import {countries as travelJurisdictions, countryCodeFor} from './country-registry.ts';
-import {REFERENCE_COUNTRY_SEEDS, REFERENCE_RETIRED_SEEDS, referenceSeedRetired} from './place-reference.ts';
+import {REFERENCE_COUNTRY_SEEDS, REFERENCE_RETIRED_SEEDS, REFERENCE_SNAPSHOT_ID, referenceRecordKey, referenceSeedRetired} from './place-reference.ts';
 
 /**
  * Small, deterministic place and alias catalog used at the place-intelligence
@@ -510,7 +510,21 @@ export function normalizeCatalogPhrase(value: string) {
   return normalizedWithMap(value).text;
 }
 
-const catalogById = new Map(PLACE_CATALOG.map((entry) => [entry.canonicalPlaceId, entry]));
+// Only the exact full name participates in deterministic prompt capture. This
+// existing GeoNames settlement must not add a new meaning to bare “San Pedro”.
+const atacamaReference = {
+  source: 'geonames', sourceId: '3871781', countryCode: 'CL',
+  placeType: 'town', coordinates: [-68.20113, -22.9111],
+} as const;
+const atacamaProviderId = referenceRecordKey(atacamaReference, REFERENCE_SNAPSHOT_ID);
+const atacamaCapturePlace: PlaceCatalogEntry = {
+  ...town('reference:geonames:3871781', 'San Pedro de Atacama', 'Chile', [], { coordinates: atacamaReference.coordinates }),
+  referenceProviderId: atacamaProviderId,
+  provenance: { id: atacamaProviderId, label: 'GeoNames', kind: 'canonical', supports: 'Settlement identity from the maintained GeoNames reference snapshot (PPL).' },
+};
+
+const CAPTURE_PLACE_CATALOG = [...PLACE_CATALOG, atacamaCapturePlace];
+const catalogById = new Map(CAPTURE_PLACE_CATALOG.map((entry) => [entry.canonicalPlaceId, entry]));
 for(const entry of REFERENCE_RETIRED_SEEDS)catalogById.set(entry.canonicalPlaceId,entry);
 
 export function findCatalogPlaceById(canonicalPlaceId: string) {
@@ -591,7 +605,7 @@ export function findCatalogMatches(value: string): PlaceCatalogMatch[] {
   if (!normalized.text) return [];
   const grouped = new Map<string, { start: number; end: number; normalizedPhrase: string; entries: PlaceCatalogEntry[] }>();
 
-  for (const entry of PLACE_CATALOG) {
+  for (const entry of CAPTURE_PLACE_CATALOG) {
     if(entry.captureMode==='explicit-only'||referenceSeedRetired(entry.canonicalPlaceId))continue;
     for (const { label, phrase } of labelsFor(entry)) {
       if (!phrase) continue;

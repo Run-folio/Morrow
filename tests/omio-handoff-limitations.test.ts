@@ -101,13 +101,13 @@ test('limited handoff CTAs remain explicit in Spanish and preserve unrelated pro
   assert.equal(booking.affiliateHandoffCta({ ...general, provider: 'viator', cta: 'View on Viator' }, 'es'), 'View on Viator');
 });
 
-test('targeted handoffs warn that Omio can show a different mode without claiming missing services', () => {
+test('targeted handoffs ask travellers to verify mode and set count without claiming missing services', () => {
   const trip=cityReturnTrip(),action=omioBookingActionForLeg(trip,trip.legs[0],now)!;
   const before=action.href;
-  assert.match(affiliateHandoffDetail(action)!, /Omio may show other transport modes/);
-  assert.match(affiliateHandoffDetail(action)!, /check the mode and traveller count/i);
-  assert.match(affiliateHandoffDetail(action,'es')!, /otros medios de transporte/);
-  assert.match(affiliateHandoffDetail(action,'es')!, /medio de transporte y el número de viajeros/);
+  assert.match(affiliateHandoffDetail(action)!, /route and dates, not your traveller count/);
+  assert.match(affiliateHandoffDetail(action)!, /Set the count and check the transport mode before booking/);
+  assert.match(affiliateHandoffDetail(action,'es')!, /ruta y las fechas, pero no el número de viajeros/);
+  assert.match(affiliateHandoffDetail(action,'es')!, /Indica cuántas personas viajan y comprueba el medio de transporte antes de reservar/);
   assert.doesNotMatch(affiliateHandoffDetail(action)!, /no flights|no trains|guaranteed|available tickets/i);
   assert.equal(action.href,before);
   const inner=new URL(new URL(action.href).searchParams.get('u')!);
@@ -127,16 +127,18 @@ for (const roundTrip of [false, true]) test(`${roundTrip ? 'return' : 'one-way'}
     assert.equal(Boolean(action.returnSearch), roundTrip);
     const inner = new URL(new URL(action.href).searchParams.get('u')!);
     assert.equal(inner.searchParams.get('travelMode'), 'FLIGHT');
+    assert.equal(inner.searchParams.get('departurePosTerm'), roundTrip ? 'London, United Kingdom' : 'London Heathrow Airport, United Kingdom');
+    assert.equal(inner.searchParams.get('arrivalPosTerm'), roundTrip ? 'Paris, France' : 'Charles de Gaulle International Airport, France');
     assert.equal(inner.searchParams.get('departureDate'), '2026-12-11');
     assert.equal(inner.searchParams.get('returnDate'), roundTrip ? '2026-12-16' : null);
     assert.deepEqual([...inner.searchParams.keys()].sort(), [
       'arrivalPosTerm', 'currency', 'departureDate', 'departurePosTerm', 'locale',
       ...(roundTrip ? ['returnDate'] : []), 'travelMode',
     ].sort(), 'no undocumented passenger parameter should be guessed');
-    assert.match(affiliateHandoffDetail(action)!, /traveller count is not carried over/);
-    assert.match(affiliateHandoffDetail(action)!, /check the mode and traveller count before booking/i);
+    assert.match(affiliateHandoffDetail(action)!, /route and dates, not your traveller count/);
+    assert.match(affiliateHandoffDetail(action)!, /Set the count and check the transport mode before booking/);
     assert.match(affiliateHandoffDetail(action, 'es')!, /pero no el número de viajeros/);
-    assert.match(affiliateHandoffDetail(action, 'es')!, /número de viajeros antes de reservar/);
+    assert.match(affiliateHandoffDetail(action, 'es')!, /Indica cuántas personas viajan y comprueba el medio de transporte antes de reservar/);
   }
   assert.deepEqual(trip, before, 'provider limitations must not reset the saved party size');
 });

@@ -185,3 +185,11 @@ test("Overview endpoint summaries replace only endpoint photography and preserve
  assert.doesNotMatch(compact,/ResilientImage|OverviewStepMedia|<img/);assert.match(compact,/<Link href=\{href\}/);
  assert.match(source,/const overviewMapStops = useMemo<JourneyStop\[\]>/);assert.match(source,/const overviewMapLegs = useMemo\(\(\) => mapRouteLegsFromTrip\(trip\)/);
 });
+
+test("Only Overview Location media uses the responsive photo projection and keeps original failure and credit identity", () => {
+  const thumbnail = source.slice(source.indexOf("export function OverviewStepMedia"), source.indexOf("export default function TripOverviewWorkspace"));
+  assert.match(thumbnail, /overviewLocationThumbnail\(image\?\.src\)/);
+  assert.match(thumbnail, /src=\{thumbnail\.src\} srcSet=\{thumbnail\.srcSet\} sizes=\{thumbnail\.srcSet \? "[^"]*136px/);
+  assert.match(thumbnail, /onImageError\?\.\(image\.src\)/);
+  assert.match(thumbnail, /displayedSrc === image\.src/);
+});

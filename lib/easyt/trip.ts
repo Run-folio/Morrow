@@ -718,10 +718,10 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     const nights = nightNative
       ? Math.max(0, nativeAllocations?.[stop.id] ?? 0)
       : Math.max(0, allocation - 1);
-    const arrival = new Date(`${input.startDate}T00:00:00`);
-    arrival.setDate(arrival.getDate() + dayOffset);
+    const arrival = new Date(`${input.startDate}T00:00:00Z`);
+    arrival.setUTCDate(arrival.getUTCDate() + dayOffset);
     const departure = new Date(arrival);
-    departure.setDate(departure.getDate() + (nightNative ? nights : allocation));
+    departure.setUTCDate(departure.getUTCDate() + (nightNative ? nights : allocation));
     dayOffset += nightNative ? nights : allocation;
     return {
       id: stop.id,
@@ -749,8 +749,8 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     // Generated days identify an occurrence, not merely a destination name.
     // Keep name matching only for older drafts that predate occurrence IDs.
     const stop = day.stopId ? stopById.get(day.stopId) : stopByName.get(day.destination) ?? stops[0];
-    const date = new Date(`${input.startDate}T00:00:00`);
-    date.setDate(date.getDate() + index);
+    const date = new Date(`${input.startDate}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + index);
     const mappedPlace = input.placeDetails?.[stop?.id ?? ""]?.find((place) => place.title === (day.placeTitle ?? day.title));
     return {
       id: `${input.id}-day-${index + 1}-${slug(day.title) || "plan"}`,

@@ -607,5 +607,110 @@
         "bytes": 154686
       }
     ]
+  },
+  {
+    "key": "moab",
+    "place": "Moab",
+    "country": "United States",
+    "author": "Quintin Soloviev",
+    "authorUrl": "https://commons.wikimedia.org/wiki/User:Quintin_Soloviev",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Moab,_Utah_downtown.jpg",
+    "changes": "Cropped, resized and converted to WebP; display may crop further.",
+    "alt": "Main Street in downtown Moab beneath red sandstone cliffs",
+    "variants": [
+      {
+        "src": "/journey/immersive/place-moab-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 33544
+      },
+      {
+        "src": "/journey/immersive/place-moab-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 134214
+      },
+      {
+        "src": "/journey/immersive/place-moab-1280.webp",
+        "width": 1280,
+        "height": 853,
+        "bytes": 384718
+      }
+    ],
+    "intendedUses": [
+      "Canonical destination photograph"
+    ]
+  },
+  {
+    "key": "madrid",
+    "place": "Madrid",
+    "country": "Spain",
+    "author": "Álvaro Ibáñez",
+    "authorUrl": "https://www.flickr.com/people/48600106280@N01",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Gran_V%C3%ADa_%2B_Metr%C3%B3polis_(13875993993).jpg",
+    "changes": "Cropped, resized and converted to WebP; display may crop further. Derivatives retain the source licence.",
+    "alt": "The Metrópolis Building beside Gran Vía in Madrid",
+    "variants": [
+      {
+        "src": "/journey/immersive/place-madrid-384.webp",
+        "width": 384,
+        "height": 221,
+        "bytes": 18726
+      },
+      {
+        "src": "/journey/immersive/place-madrid-768.webp",
+        "width": 768,
+        "height": 441,
+        "bytes": 64800
+      },
+      {
+        "src": "/journey/immersive/place-madrid-1280.webp",
+        "width": 1280,
+        "height": 735,
+        "bytes": 152030
+      }
+    ],
+    "intendedUses": [
+      "Canonical destination photograph"
+    ]
+  },
+  {
+    "key": "taichung",
+    "place": "Taichung",
+    "country": "Taiwan",
+    "author": "Ralff Nestor Nacor",
+    "authorUrl": "https://commons.wikimedia.org/wiki/User:Ralffralff",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Taichung_Park,_Aug_2024_(1).jpg",
+    "changes": "Cropped, resized and converted to WebP; display may crop further. Derivatives retain the source licence.",
+    "alt": "The Lake Pavilion across the water in Taichung Park",
+    "variants": [
+      {
+        "src": "/journey/immersive/place-taichung-384.webp",
+        "width": 384,
+        "height": 262,
+        "bytes": 15798
+      },
+      {
+        "src": "/journey/immersive/place-taichung-768.webp",
+        "width": 768,
+        "height": 523,
+        "bytes": 67342
+      },
+      {
+        "src": "/journey/immersive/place-taichung-1280.webp",
+        "width": 1280,
+        "height": 872,
+        "bytes": 190722
+      }
+    ],
+    "intendedUses": [
+      "Canonical destination photograph"
+    ]
   }
 ]

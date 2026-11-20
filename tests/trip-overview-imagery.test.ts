@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { overviewStopImage, tripCoverImage } from "../lib/easyt/trip-overview-imagery.ts";
+import * as overviewImagery from "../lib/easyt/trip-overview-imagery.ts";
 import { routeDestinationPhoto } from "../lib/easyt/route-images.ts";
 import type { EasyTTrip, TripStop } from "../lib/easyt/trip.ts";
 
@@ -166,4 +167,16 @@ test("broken first-destination persisted imagery recovers to its own reviewed im
   assert.equal(tripCoverImage(trip, new Set(["https://example.test/broken.jpg"]))?.src, reviewed.variants.at(-1)?.src);
   assert.equal(tripCoverImage(trip, new Set(["https://example.test/broken.jpg", reviewed.variants.at(-1)!.src])), null);
   assert.equal(JSON.stringify(trip), before);
+});
+
+test("Overview location thumbnails offer smaller versions of the same reviewed image only", () => {
+  const image = overviewStopImage(tripFor(delhi), delhi)!;
+  const record = routeDestinationPhoto(delhi.name, delhi.country)!;
+  const { overviewLocationThumbnail } = overviewImagery;
+  assert.equal(typeof overviewLocationThumbnail, "function");
+  const thumb = overviewLocationThumbnail(image.src);
+  assert.equal(thumb.src, record.variants[0].src);
+  assert.equal(thumb.srcSet, record.variants.map(v => `${v.src} ${v.width}w`).join(", "));
+  assert.deepEqual(overviewLocationThumbnail("https://example.test/exact-saved.jpg"), {src: "https://example.test/exact-saved.jpg"});
+  assert.deepEqual(overviewLocationThumbnail(undefined), {src: undefined});
 });

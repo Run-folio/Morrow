@@ -2,7 +2,7 @@ import { mediaImagesForExactDestination } from "./itinerary-media.ts";
 import { curatedStopFor } from "./curated-route-knowledge.ts";
 import { findCatalogPlaceById, findCatalogPlacesByPhrase } from "./place-catalog.ts";
 import { routeFamilyByKey } from "./route-catalog.ts";
-import { routeDestinationPhoto, routeImageCredit, type RoutePhotoRecord } from "./route-images.ts";
+import { routeDestinationPhoto, routeImageCredit, routePhotoForSource, type RoutePhotoRecord } from "./route-images.ts";
 import { routeStopPhoto } from "./route-stop-photography.ts";
 import type { EasyTTrip, TripStop } from "./trip.ts";
 import type { CachedRoutePhoto } from "./route-photo-cache.ts";
@@ -24,6 +24,17 @@ export type OverviewPlaceImage = {
   fullCreditUrl?: string;
   provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
+
+/** Same reviewed asset, sized for the Overview Location cards; never reselects the photo. */
+export function overviewLocationThumbnail(src: string | undefined): { src: string | undefined; srcSet?: string } {
+  const record = src ? routePhotoForSource(src) : null;
+  const variants = record ? [...record.variants].sort((a, b) => a.width - b.width) : [];
+  if (variants.length < 2) return { src };
+  return {
+    src: variants[0].src,
+    srcSet: variants.map(variant => `${variant.src} ${variant.width}w`).join(", "),
+  };
+}
 
 export function resolvedOverviewPhoto(photo: CachedRoutePhoto): OverviewPlaceImage {
   return { scope: photo.scope, country: photo.country, src: photo.src, alt: photo.alt ?? "Destination view", sourceUrl: photo.sourceUrl, sourceLabel: photo.sourceLabel,

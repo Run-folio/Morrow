@@ -35,7 +35,12 @@ test("published routes report truthful destination coverage and use compact fall
   const korea = publicRoutePublishedFamilies().find((route) => route.key === "japan-south-korea")!;
   assert.equal(checkRouteVisualReadiness(korea).status, "fully-visual");
   const taiwan = publicRoutePublishedFamilies().find((route) => route.key === "taiwan-rail")!;
-  assert.equal(checkRouteVisualReadiness(taiwan).status, "hero-ready");
+  const taiwanReadiness = checkRouteVisualReadiness(taiwan);
+  assert.equal(taiwanReadiness.status, "fully-visual");
+  assert.equal(taiwanReadiness.destinationImageCount, taiwan.stops.length);
+  const withUnknownStop = checkRouteVisualReadiness({ key: taiwan.key, stops: [...taiwan.stops, { name: "Unpictured editorial fixture", country: "Unknown" }] });
+  assert.equal(withUnknownStop.status, "hero-ready");
+  assert.equal(withUnknownStop.fallbackBehaviour, "compact destination fallback");
 });
 
 test("readiness validation surfaces a missing hero without changing publication", () => {
