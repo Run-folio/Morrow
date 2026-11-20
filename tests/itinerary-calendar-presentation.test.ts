@@ -26,9 +26,10 @@ test("mobile day orientation stays compact and scrolls its own rail", () => {
 test("Calendar uses a sticky content Close target without a separate visible sheet heading", () => {
   assert.doesNotMatch(itinerary, /styles\.calendarSheetHeader|copy\.dayDetails/);
   assert.match(itinerary, /<h2 data-calendar-sheet-heading tabIndex=\{-1\}>/);
-  assert.match(itinerary, /mobile && incomingLeg/);
+  assert.ok(itinerary.includes("dayComposition?.transfers.some((transfer) => transfer.id === leg.id)"));
+  assert.ok(itinerary.includes("dayComposition ? null : <TransferRow leg={incomingLeg}"));
   assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
-  assert.match(itinerary, /<time dateTime=\{active\.date\}>\{displayDayDate\(active\.date, language\)\}<\/time>/);
+  assert.ok(itinerary.includes('<time dateTime={active.date}>{formatIsoDate(active.date, language, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) ?? copy.timeNotSet}</time>'));
   assert.match(itinerary, /icon=\{X\} iconOnly variant="quiet" aria-label="Close day details" onClick=\{closeCalendarSheet\}/);
   assert.match(styles, /\.calendarDaySheet\[data-dialog-presentation="modal"\] \.calendarSheetActions\s*\{[^}]*position:\s*sticky/);
   assert.match(styles, /\.calendarSheetActions button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/);
@@ -129,7 +130,8 @@ test("Calendar exposes canonical Move, item-scoped Undo, and transport or bookin
   assert.match(itinerary, /scheduleItineraryIdeaWithUndo/);
   assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo/);
   assert.match(itinerary, /undoItineraryItemAction\(current, undoReceipt\)/);
-  assert.match(itinerary, /<MorroviaFormDialog[\s\S]*eyebrow=\{copy\.moveActivityEyebrow\}/);
+  const move = itinerary.slice(itinerary.indexOf("<MorroviaFormDialog"), itinerary.indexOf("</MorroviaFormDialog>"));
+  for (const value of ['open={Boolean(moveFlow)}', 'eyebrow=""', 'title={moveFlow ? `${copy.moveActivity}: ${moveFlow.activity.title}`', 'label={copy.moveTo}', 'value={moveFlow.targetDayId}', 'onCancel={closeMoveFlow}', 'onSubmit={submitMoveFlow}']) assert.ok(move.includes(value), value);
   assert.match(itinerary, /function ItineraryLogisticsDetail/);
   assert.match(itinerary, /itineraryTransportAgenda\(workingTrip\)/);
   assert.match(itinerary, /selectedTransportAgenda \? <ItineraryLogisticsDetail/);
@@ -215,7 +217,8 @@ test("calendar imagery is location- and item-bound with an independent photo cre
  assert.match(itinerary, /itineraryCalendarItemImage\(item, day.stop\)/);
  const entry=itinerary.slice(itinerary.indexOf('const image = itineraryCalendarItemImage'),itinerary.indexOf('function OmioTransportAction'));
  assert.ok(entry.indexOf('<ItineraryDayPhoto') < entry.indexOf('<EasyTButton'));
- assert.match(itinerary, /const dayHero = presentationImages\.stopById\[active.stopId\]/);
+ assert.ok(itinerary.includes("const dayHero = presentationImages.dayById[active.id] ?? null;"));
+ assert.ok(itinerary.includes("<ItineraryDayPhoto image={dayHero} destination={stop?.name ?? active.title}"));
 });
 test("dates remain prominent beside a separate top-right Day label at both sizes",()=>{
  assert.match(itinerary,/styles\.calendarDateIdentity/);
