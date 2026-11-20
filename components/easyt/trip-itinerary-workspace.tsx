@@ -954,7 +954,7 @@ export default function TripItineraryWorkspace({
   }
 
   const stop = stopForDay(workingTrip, active);
-  const dayHero = presentationImages.stopById[active.stopId] ?? null;
+  const dayHero = presentationImages.dayById[active.id] ?? null;
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForPlanItem(workingTrip, active);
   const scheduledIdeaTitles = new Set((legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
