@@ -46,3 +46,10 @@ test('explicit JS scroll cannot inherit smooth CSS scrolling under reduced motio
  assert.equal(motionScrollBehavior(true),'instant');
  assert.equal(motionScrollBehavior(false),'smooth');
 });
+
+test('press spring is reserved for prominent actions, not selections, fields or disclosures',async()=>{
+ const {isSpringAction}=await import('../lib/easyt/app-motion.ts');
+ for(const props of [{},{type:'submit'}]) assert.equal(isSpringAction(true,props),true);
+ for(const props of [{role:'option'},{role:'combobox'},{role:'radio'},{role:'tab'},{'aria-haspopup':'listbox'},{'aria-expanded':false},{'aria-pressed':false}]) assert.equal(isSpringAction(true,props),false);
+ assert.equal(isSpringAction(false,{}),false);
+});

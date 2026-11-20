@@ -183,7 +183,7 @@ export function JourneyRestaurantFinder({ stopId, city, dayId, onSelectRestauran
       <dl><dt>Order</dt><dd>{recommendation.order}</dd></dl>
       <div className={styles.restaurantActions}>
         <a href={recommendation.mapsUrl} target="_blank" rel="noreferrer">Open in Maps <ArrowUpRight /></a>
-        <MotionButton type="button" className={styles.restaurantSave} onClick={saveRecommendation} disabled={isSavedForDay}>{isSavedForDay ? "Added to itinerary" : "Add to today"}</MotionButton>
+        <MotionButton motion type="button" className={styles.restaurantSave} onClick={saveRecommendation} disabled={isSavedForDay}>{isSavedForDay ? "Added to itinerary" : "Add to today"}</MotionButton>
         {ranked.length > 1 ? <MotionButton type="button" onClick={() => { setSavedSelections((current) => { const updated = { ...current }; delete updated[dayId]; return updated; }); setResultIndex((index) => index + 1); }}>{isSavedForDay ? "Change pick" : "Try another"}</MotionButton> : null}
         <MotionButton type="button" aria-label="Change restaurant preferences" onClick={() => saveAnswers({ meal: activeMeal })}><RotateCcw /></MotionButton>
       </div>

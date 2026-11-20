@@ -1,7 +1,7 @@
 "use client";
 
 import { Children, forwardRef, useCallback, useState, useEffect, useRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type RefObject } from 'react';
-import { canSpring, createRevealGate, isMotionActivationKey, scheduleReveal } from '@/lib/easyt/app-motion';
+import { canSpring, isSpringAction, createRevealGate, isMotionActivationKey, scheduleReveal } from '@/lib/easyt/app-motion';
 import Link from "next/link";
 
 /** A non-layout sentinel animates existing children without reparenting controls.
@@ -64,17 +64,19 @@ function motionLabels(children: ReactNode) {
   return Children.map(children,child=>(typeof child==='string' && child.trim().length>0)||typeof child==='number'?<span data-motion-label style={{display:'inline-block'}}>{child}</span>:child);
 }
 /** Class/ref/ARIA/handler-preserving adapter for native action controls. */
-export const MotionButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & {motion?: boolean}>(function MotionButton({children,motion = true,...props},forwardedRef) {
+export const MotionButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & {motion?: boolean}>(function MotionButton({children,motion = false,...props},forwardedRef) {
   const ref = useRef<HTMLButtonElement | null>(null);
-  useControlSpring(ref,motion);
+  const spring = isSpringAction(motion, props);
+  useControlSpring(ref,spring);
   // morrovia-ui-audit-allow-next-line native-control -- Shared native host preserves refs, ARIA and handlers while animating visual children only.
-  return <button {...props} data-motion-button={motion || undefined} ref={node=>{ref.current=node;if(typeof forwardedRef==='function')forwardedRef(node);else if(forwardedRef)forwardedRef.current=node;}}>{motion ? motionLabels(children) : children}</button>;
+  return <button {...props} data-motion-button={spring || undefined} ref={node=>{ref.current=node;if(typeof forwardedRef==='function')forwardedRef(node);else if(forwardedRef)forwardedRef.current=node;}}>{spring ? motionLabels(children) : children}</button>;
 });
 /** Opt-in for button-like navigation only; ordinary anchors remain untouched. */
-export const MotionLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Link>>(function MotionLink({children,...props},forwardedRef) {
+export const MotionLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Link> & {motion?: boolean}>(function MotionLink({children,motion = true,...props},forwardedRef) {
   const ref=useRef<HTMLAnchorElement|null>(null);
-  useControlSpring(ref,true);
-  return <Link {...props} data-motion-button ref={node=>{ref.current=node;if(typeof forwardedRef==='function')forwardedRef(node);else if(forwardedRef)forwardedRef.current=node;}}>{motionLabels(children)}</Link>;
+  const spring = isSpringAction(motion, props);
+  useControlSpring(ref,spring);
+  return <Link {...props} data-motion-button={spring || undefined} ref={node=>{ref.current=node;if(typeof forwardedRef==='function')forwardedRef(node);else if(forwardedRef)forwardedRef.current=node;}}>{spring ? motionLabels(children) : children}</Link>;
 });
 
 type AcceptedCue = {scope:string; targetId:string; version:number};

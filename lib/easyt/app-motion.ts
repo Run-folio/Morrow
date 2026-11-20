@@ -28,3 +28,14 @@ export function motionScrollBehavior(
 ): ScrollBehavior {
   return reduced ? "instant" : "smooth";
 }
+
+/** Spring only actions deliberately presented as buttons. ARIA field/choice
+ * semantics take precedence even if a shared primary/secondary skin is reused. */
+export function isSpringAction(prominent: boolean, props: {
+  role?: string; 'aria-haspopup'?: boolean | string; 'aria-expanded'?: boolean | string;
+  'aria-pressed'?: boolean | string; 'aria-selected'?: boolean | string;
+}) {
+  return prominent && (!props.role || props.role === 'button' || props.role === 'link')
+    && props['aria-haspopup'] !== 'listbox' && props['aria-expanded'] === undefined
+    && props['aria-pressed'] === undefined && props['aria-selected'] === undefined;
+}
