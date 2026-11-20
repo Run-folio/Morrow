@@ -20,7 +20,7 @@ function Content(props: Omit<TripStarterContentProps,"trip"|"onClose">) {
  return <><TripOverviewWorkspace trip={trip}/><MorroviaContentDialog open={open} ariaLabel="Trip starter" autoFocusSelector="button" className={`${feedback.dialog} ${styles.dialog}`} onClose={()=>setOpen(false)}><TripStarterContent {...props} trip={trip} onClose={()=>setOpen(false)}/></MorroviaContentDialog></>;
 }
 function Preview(props: Omit<TripStarterContentProps,"trip"|"onClose">) {return <TripShell trip={fixture} cacheTrip={false}><Content {...props}/></TripShell>;}
-const meta={title:"Morrovia/Workspaces/Trip starter",component:Preview,parameters:{layout:"fullscreen",nextjs:{appDirectory:true,navigation:{pathname:`/journey/${fixture.id}`,segments:[]}}}} satisfies Meta<typeof Preview>;
+const meta={id:"morrovia-workspaces-trip-starter",title:"Morrovia/05 Product Patterns/Trip starter",component:Preview,parameters:{layout:"fullscreen",nextjs:{appDirectory:true,navigation:{pathname:`/journey/${fixture.id}`,segments:[]}}}} satisfies Meta<typeof Preview>;
 export default meta;
 type Story=StoryObj<typeof meta>;
 export const Ready:Story={args:{initialStayState:stays,initialActivities:activities}};

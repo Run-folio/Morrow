@@ -22,25 +22,18 @@ test("offers the Tour only until the visitor completes or dismisses it", () => {
 
 test("the current product tour keeps five concise traveller-facing steps", () => {
   assert.equal((tourSource.match(/label: "0[1-5] ·/g) ?? []).length, 10, "English and Spanish each provide five steps");
-  assert.match(tourSource, /Start with a route that makes sense/);
-  assert.match(tourSource, /03 · See the whole trip/);
-  assert.match(tourSource, /Know what needs attention next/);
-  assert.match(tourSource, /04 · Explore the Map/);
-  assert.match(tourSource, /See how the whole trip connects/);
-  assert.match(tourSource, /05 · Shape each day/);
-  assert.match(tourSource, /Make the itinerary yours/);
-  assert.match(tourSource, /map-workspace-mobile\.jpg/);
-  assert.match(tourSource, /itinerary-workspace-mobile\.jpg/);
+  for (const phrase of ["Home", "Plan your route", "Overview", "Transport", "Stay", "Itinerary", "on this device", "provider’s site", "este dispositivo", "sitio del proveedor"]) assert.ok(tourSource.includes(phrase), phrase);
+  assert.doesNotMatch(tourSource, /Explore the Map|map-workspace-mobile\.jpg/);
   assert.doesNotMatch(tourSource, /\bPrep\b/);
   assert.doesNotMatch(tourSource, /understand the journey spatially|overnight bases|needs your judgement/);
 });
 
-test("desktop uses landscape product media and mobile keeps a dedicated compact crop", () => {
-  assert.match(tourSource, /className=\{styles\.mediaFrame\}/);
-  assert.doesNotMatch(tourSource, /styles\.device/);
-  assert.match(tourStyles, /\.screen\{aspect-ratio:16\/10/);
-  assert.match(tourStyles.replaceAll("\n", " "), /@media\(max-width:680px\).*\.screen\{aspect-ratio:3\/4/);
-  assert.match(tourStyles, /grid-template-columns:minmax\(0,1\.62fr\) minmax\(330px,1fr\)/);
+test("examples are localised, responsive and do not present historical screenshots as current UI", () => {
+  assert.match(tourSource, /current.examples.map/);
+  assert.match(tourSource, /Example trip · Peru/);
+  assert.match(tourSource, /Viaje de ejemplo · Perú/);
+  assert.doesNotMatch(tourSource, /product-shots\/tour\/current|mobileImage|Example screens/);
+  assert.match(tourStyles, /@media\(max-width:680px\)/);
 });
 
 test("all Tour capture stories consume the shared coherent Peru fixture", () => {
@@ -50,7 +43,7 @@ test("all Tour capture stories consume the shared coherent Peru fixture", () => 
   assert.doesNotMatch(builderStory, /Device edits kept safe|Your session ended/);
 });
 
-test("Tour uses current product captures in both responsive presentations", () => {
+test("Historical product capture files retain their original formats", () => {
   for (const name of ["describe-trip", "shape-route", "trip-workspace", "map-workspace", "itinerary-workspace"]) {
     for (const suffix of ["", "-mobile"]) {
       const asset = readFileSync(new URL(`../public/journey/product-shots/tour/current/${name}${suffix}.jpg`, import.meta.url));

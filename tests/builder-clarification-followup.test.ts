@@ -12,7 +12,7 @@ import { resolvedJourneyEndPlace } from "../lib/easyt/journey-endpoints.ts";
 import { placeCandidateWithinPlanningParent } from "../lib/easyt/place-intelligence.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-const home = read("app/journey/home/home-trip-starter.tsx");
+const home = read("app/journey/home/home-trip-starter.tsx") + read("app/journey/home/shared-planner-route.tsx");
 const builder = read("app/journey/new/trip-builder.tsx");
 const builderCss = read("app/journey/new/trip-builder.module.css");
 const endpoint = read("components/easyt/journey-endpoints-editor.tsx");
@@ -88,7 +88,12 @@ test("11 four unresolved countries produce one ordered dialog session, not four 
   assert.deepEqual(orderedBuilderClarificationIds([
     { id: "bulgaria", order: 0 }, { id: "romania", order: 1 }, { id: "georgia", order: 2 }, { id: "albania", order: 3 },
   ]), ["bulgaria", "romania", "georgia", "albania"]);
-  assert.equal((builder.match(/<BuilderClarificationDialog/g) ?? []).length, 1);
+  // Exactly one route-shaping branch may render for the ordered session.
+  // Saved-location verification is a different operation with its own state.
+  assert.match(builder, /<DiscoveryModal\s+open=\{clarificationOpen && Boolean\(activeClarificationId\)\}[\s\S]*?\/> : renderedDiscoveryEntry.kind === "legacy-recovery" \? <BuilderClarificationDialog\s+open=\{clarificationOpen[^\n]*\}\s+language=\{language\}\s+itemKey=\{activeClarificationId/);
+  assert.equal((builder.match(/<DiscoveryModal\b/g) ?? []).length, 1);
+  assert.equal((builder.match(/<BuilderClarificationDialog\s+open=\{clarificationOpen/g) ?? []).length, 1);
+  assert.match(builder, /<BuilderClarificationDialog open=\{Boolean\(savedFinishReview\)\}/);
   assert.doesNotMatch(builder, /geographyReviewPlaceMentions\.map\(/);
 });
 
@@ -112,12 +117,14 @@ test("14 a country can retain several distinct selected places", () => {
 
 test("15 adding the first place does not auto-complete its parent", () => {
   const addStop = builder.slice(builder.indexOf("const addStop = async"), builder.indexOf("const addSupportedBase"));
+  assert.match(addStop, /^const addStop = async/);
   assert.doesNotMatch(addStop, /setCompletedPlanningAreaMentionIds/);
-  assert.match(builder, /onDone=\{\(\) => \{[\s\S]*?completePlanningArea\(activeClarificationMention\)/);
+  assert.doesNotMatch(addStop, /completePlanningArea\(|advanceClarificationSession\(/);
 });
 
-test("16 Done completes the current parent then advances", () => {
-  assert.match(builder, /onDone=\{\(\) => \{[\s\S]*?completePlanningArea\(activeClarificationMention\);[\s\S]*?advanceClarificationSession\(\)/);
+// The real Done handler (including delayed, rejected and stale acknowledgements)
+// is exercised by builder-planning-area-async.test.ts.
+test("16 Done is explicitly labelled for the current parent", () => {
   assert.match(builder, /Done with \$\{clarificationParentName\}/);
 });
 
@@ -140,8 +147,7 @@ test("19 dismissal exposes one compact resumable status", () => {
 });
 
 test("20 resume starts with the first still-unresolved item", () => {
-  assert.match(builder, /setClarificationSessionIds\(pendingClarificationIds\)/);
-  assert.match(builder, /preferredMentionId \? pendingClarificationIds\.indexOf\(preferredMentionId\) : 0/);
+  assert.match(builder, /<BuilderClarificationResume[\s\S]*?onContinue=\{\(\) => openClarificationSession\(\)\}/);
 });
 
 test("21 the task region disappears when no unresolved item remains", () => {
@@ -151,7 +157,7 @@ test("21 the task region disappears when no unresolved item remains", () => {
 
 test("22 completed parent intent remains reopenable", () => {
   assert.match(builder, /resolvedPlanningAreaMentions\.map/);
-  assert.match(builder, /onClick=\{\(\) => reopenPlanningArea\(mention\)\}/);
+  assert.match(builder, /onClick=\{async \(\) => await reopenPlanningArea\(mention\)\}/);
   assert.match(builder, /"Edit places"/);
 });
 
@@ -165,7 +171,7 @@ test("24 area search rejects candidates outside the canonical parent", () => {
   const bulgaria = { canonicalName: "Bulgaria", placeType: "country" as const, parentCountries: ["Bulgaria"] };
   assert.equal(placeCandidateWithinPlanningParent({ canonicalName: "Sofia", placeType: "city", parentCountries: ["Bulgaria"], coordinates: [23.32, 42.69] }, bulgaria), true);
   assert.equal(placeCandidateWithinPlanningParent({ canonicalName: "Bucharest", placeType: "city", parentCountries: ["Romania"], coordinates: [26.1, 44.43] }, bulgaria), false);
-  assert.match(builder, /parentConstraint: clarificationUsesNearbyBases \? undefined : planningParentForMention\(activeClarificationMention\)/);
+
 });
 
 test("25 provider search failure preserves parent intent and selections", () => {

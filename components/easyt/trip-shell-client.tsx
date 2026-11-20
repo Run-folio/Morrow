@@ -711,7 +711,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
   const renderLink = (view: typeof views[number]) => {
     const Icon = view.icon;
     const active = activeView === view.id;
-    return <MotionLink key={view.id} prefetch={true} className={active ? styles.subnavActive : undefined}
+    return <MotionLink motion={false} key={view.id} prefetch={true} className={active ? styles.subnavActive : undefined}
       href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
       aria-current={active ? "page" : undefined}
       data-pending={(navigation?.queuedView ?? navigation?.pendingView) === view.id ? "true" : undefined}

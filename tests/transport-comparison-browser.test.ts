@@ -19,15 +19,18 @@ for(const browserName of ['chromium','webkit'] as const)test(`explicit refresh k
   transferRequest:async({legs})=>{requests++;if(requests===1)await held;return {status:200,body:await compareCanonicalTransferJourney(legs[0] as TripLeg,{provider:syntheticRoad()})};}});
  try{
   const card=view.page.locator('[data-transport-leg-id]').first();await card.getByRole('button',{name:/View details:/}).click();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();
-  const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
+  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();
+  const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
+  assert.equal(await card.getByRole('button',{name:'Change transport mode'}).count(),0);
+  assert.equal(await dialog.getByRole('radio').count(),0);
+  assert.equal(await dialog.getByRole('button',{name:/^Use /}).count(),0);
   const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
   const before=await storage();assert.equal(requests,0);
   const refresh=dialog.getByRole('button',{name:'Refresh options',exact:true});
   await refresh.click({timeout:5000});await view.page.waitForFunction(()=>document.querySelector('[data-transport-comparison-status]')?.getAttribute('data-transport-comparison-status')==='checking');
   assert.equal(await refresh.isDisabled(),true);assert.equal(requests,1);
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();release!();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();
+  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();
   assert.equal(await storage(),before,'cancelled refresh must not write storage');
   await refresh.click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
   assert.equal(requests,2);assert.equal(await storage(),before,'successful refresh must not save or change a choice');

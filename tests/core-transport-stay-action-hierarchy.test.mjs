@@ -9,7 +9,10 @@ test("only the eligible provider action precedes the transport disclosure; mark 
   assert.ok(disclosure);
   assert.ok(detail.indexOf("<TransportAffiliateAction") < detail.indexOf(disclosure));
   assert.match(disclosure, /<summary>\{copy.moreActions\}<\/summary>/);
-  assert.match(disclosure, /isPassengerServiceLeg\(leg\)/);
+  assert.match(detail, /const canMark = !item.bookingMismatch[^;]*isPassengerServiceLeg\(leg\)/);
+  assert.match(detail, /\{canMark \|\| canChange \|\| canCheck \? <details/);
+  assert.match(disclosure, /\{canMark \? <EasyTButton/);
+  assert.match(disclosure, /checkOnly=\{!canChange && canCheck\}/);
   assert.match(disclosure, /\{copy.markBooked\}/);
   assert.match(disclosure, /<TripTransportChoiceControl/);
   assert.match(detail, /\{action && !compactFlightSearch\(action, leg\) \? <small className=\{styles.partnerNote\}>\{visibleAffiliateDisclosure\}/);

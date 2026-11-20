@@ -15,7 +15,7 @@ test('C2 Import no routine success reassurance',()=>assert.doesNotMatch(imp(),/E
 test('C3 Import source filename not redundant caption',()=>{assert.doesNotMatch(imp(),/Spreadsheet ready to review/);assert.match(imp(),/proposal.sourceName/)});
 test('C4 Auth removes generic introductions, retains exact-trip purpose',()=>{assert.doesNotMatch(auth(),/Morrovia account|Open your saved plans and pick up where you left off/);assert.match(auth(),/Keep this exact trip and continue planning on another device/)});
 test('C5 Returning password guidance removed only in sign-in',()=>{assert.match(auth(),/placeholder=\{mode === "sign-up" \? "At least 8 characters" : undefined\}/);assert.match(auth(),/minLength=\{8\}/)});
-test('C6 Practical prep has one heading, no general intro',()=>{assert.doesNotMatch(overview(),/Before you go|A few useful details to sort before your trip/);assert.match(overview(),/Practical prep/)});
+test('C6 Combined planning cards have an accessible heading, no general intro',()=>{assert.doesNotMatch(overview(),/Before you go|A few useful details to sort before your trip/);assert.match(overview(),/id="overview-progress-title" className="sr-only"/)});
 test('C7 Initial settings uses useful label and current values',()=>{assert.doesNotMatch(capture(),/MorroviaPlannerFieldContent label=\{text.personalize\}/);assert.match(capture(),/value=\{personalizationSummary \|\| text.personalizeSummary\}/);assert.match(capture(),/aria-label=\{personalizationSummary \? `\$\{text.personalizeSummary\}: \$\{personalizationSummary\}` : text.personalizeSummary\}/)});
 test('B1 Import no duplicate global totals, category counts remain',()=>{assert.doesNotMatch(imp(),/className=\{styles.summaryLine\}/);assert.match(imp(),/stays.length/);assert.match(imp(),/activities.length/)});
 test('B2 Import numbered order without generic source reassurance',()=>{assert.doesNotMatch(imp(),/In the same order as your spreadsheet/);assert.match(imp(),/index \+ 1/)});
@@ -30,21 +30,21 @@ test('B10 Sign-up no benefit/name echo, labels and legal remain',()=>{assert.doe
 test('B11 Add-plan loading title without generic detail',()=>{assert.doesNotMatch(itinerary(),/Using this destination and your trip interests/);assert.match(itinerary(),/Finding ideas/)});
 test('B12 Add-plan empty result still has filters/manual action',()=>{assert.doesNotMatch(itinerary(),/Search another category or add your own/);assert.match(itinerary(),/No matching ideas yet/);assert.match(itinerary(),/Activity name/)});
 test('B13 Booking methods labelled, confirmation/guest fence retained',()=>{const a=read('components/easyt/destination-accommodation-module.tsx');assert.doesNotMatch(a,/Add it manually, check a connected calendar, or forward a confirmation/);assert.match(a,/Nothing is added until you confirm it/);assert.match(a,/Sign in to import/)});
-test('B14 Dashboard empty action retained without generic input instruction',()=>{assert.doesNotMatch(dashboard(),/Tell us the places, timing and travel style/);assert.match(dashboard(),/Where will you go first/)});
+test('B14 Dashboard empty action retained without generic input instruction',()=>{assert.doesNotMatch(dashboard(),/Tell us the places, timing and travel style/);assert.match(dashboard(),/!trips\.length \? \(isSpanish \? "Aún no hay viajes\." : "No trips yet\."\)/);assert.match(dashboard(),/<EasyTLinkButton href="\/#start-building">\{isSpanish \? "Crear un viaje" : "Start a trip"\}/)});
 test('B15 Dashboard headings/status remain without generic subtitles',()=>assert.doesNotMatch(dashboard(),/Routes decided, ready for the details|Route sketches that still have room to change|Places lived, kept close for another time/));
 test('B16 Dashboard closing marketing gone; Stamps/recovery unchanged',()=>{assert.doesNotMatch(dashboard(),/Another way to go|Somewhere else|Every journey, in its own time/);assert.match(dashboard(),/Your Stamps/);assert.match(dashboard(),/Nothing will be created or hidden while this safety check finishes/)});
 test('D1 Workspace tour opt-in in both entry defaults; existing launcher/content intact',()=>{assert.match(read('components/easyt/trip-shell.tsx'),/orientationAutoStart = false/);const w=read('components/easyt/workspace-orientation.tsx');assert.match(w,/autoStart = false/);assert.match(w,/Show me around/);assert.match(w,/Save keeps an idea/)});
 test('D2 First-trip guide ephemeral collapsed help; current step and Continue remain',()=>{const g=read('app/journey/dashboard/first-trip-guide.tsx');assert.match(g,/expanded, setExpanded\] = useState\(false\)/);assert.doesNotMatch(g,/localStorage.setItem|activeIndex \+ 1/);assert.match(g,/aria-current/);assert.match(g,/text.action/)});
-test('D3 How-it-works retained behind semantic toggle, no persistent dismissal',()=>{const h=read('app/journey/home/immersive/homepage-how-it-works.tsx');assert.match(h,/aria-expanded=\{expanded\}/);assert.match(h,/hidden=\{!expanded\}/);assert.doesNotMatch(h,/PRODUCT_TOUR_OPEN_EVENT|localStorage/);assert.match(h,/Get a suggested route to review/)});
+test('D3 How-it-works retained behind semantic toggle, no persistent dismissal',()=>{const h=read('app/journey/home/immersive/homepage-how-it-works.tsx');assert.match(h,/aria-expanded=\{expanded\}/);assert.match(h,/hidden=\{!expanded\}/);assert.doesNotMatch(h,/PRODUCT_TOUR_OPEN_EVENT|localStorage/);assert.match(h,/Reorder stops and choose how many nights to spend in each/)});
 
-test('All four compact Overview cards keep details inside their information trigger and preserve action and state', () => {
+test('All three practical Overview cards keep details inside their information trigger and preserve action and state', () => {
   const cards = prep().slice(prep().indexOf('export function TripPreparationCards'));
   assert.match(cards, /const infoDetail = isPreviewInsurance\s*\? disclosure\s*:\s*previewProvider === "saily".*: task.detail/);
   assert.match(cards, /<OverviewInfo label=\{isPreviewInsurance[\s\S]*?\}>\{infoDetail\}<\/OverviewInfo>/);
   assert.doesNotMatch(cards, /overviewPrepAdLabel/);
   const article = cards.slice(cards.indexOf('return <article'));
   assert.doesNotMatch(article, /<p>\{task.detail\}<\/p>/);
-  assert.match(article, /!previewProvider && isSponsoredLink \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
-  assert.match(article, /action\?\.opensTravellerDetails[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
+  assert.match(article, /\{!previewProvider && isSponsoredLink \? <small className=\{styles.overviewPrepDisclosure\}>\{disclosure\}<\/small>/);
+  assert.match(article, /previewProvider \? <EasyTButton[\s\S]*?<MorroviaAffiliateLink[\s\S]*?<EasyTLinkButton/);
   assert.match(article, /role="checkbox"[\s\S]*aria-checked=\{reviewed\}/);
 });

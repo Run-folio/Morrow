@@ -101,31 +101,46 @@ test("a deliberate fresh New Trip submission can start after an earlier receipt 
 
 test("direct intake stays resumable until canonical device recovery is acknowledged", () => {
   const source = builder();
-  assert.match(source, /pendingNewTripReceiptRef\.current = \{ snapshot, receipt, draft:/);
-  assert.match(source, /persistEditableHomepageInput\(\{ storage: window\.localStorage, snapshot/);
-  assert.match(source, /if \(recovery\.stored\) \{[\s\S]*const pendingReceipt = pendingNewTripReceiptRef\.current/);
-  assert.match(source, /homepageHandoffMatchesTrip\(pendingReceipt\.draft, trip\)/);
-  assert.match(source, /acknowledgePendingIntakeReceipt\(\{[\s\S]*pending: pendingReceipt\.pending/);
-  assert.match(source, /return \{ \.\.\.recovery, stored: false \};[\s\S]*const durableUrl/);
-  const recoveryWrite = source.indexOf("const recovery = saveTripRecovery(trip");
-  const receiptCompletion = source.indexOf("acknowledgePendingIntakeReceipt({", recoveryWrite);
-  assert.ok(recoveryWrite > 0 && receiptCompletion > recoveryWrite);
+  // Exercise the mounted Builder wiring; the entry-session suite exercises
+  // the real checkpoint with failed ACKs, changed owners and stale readbacks.
+  const ordered = (...steps: string[]) => {
+    let next = 0;
+    for (const step of steps) {
+      const found = source.indexOf(step, next);
+      assert.notEqual(found, -1, `Missing or out of order: ${step}`);
+      next = found + step.length;
+    }
+  };
+  ordered("intakeStorage = window.localStorage", "const frozenInput = await persistEditableHomepageInput({ storage: intakeStorage, snapshot",
+    "canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)", "activeBrowserOwnerIdRef.current === snapshot.ownerId",
+    'if (!frozenInput.ok) throw new Error("New trip input did not persist")',
+    "pendingNewTripReceiptRef.current = { snapshot, receipt, draft:", "applyNewTripIntake(projected.draft");
+  ordered("const receiptToken = pendingNewTripReceiptRef.current", "createBuilderEntrySession({ key, ownerId, candidate, receipt: receiptToken",
+    "const recovery = await entry!.checkpoint(async (candidate, pendingReceipt, generationIsCurrent)",
+    "pendingReceipt.receipt.tripId !== candidate.id || pendingReceipt.snapshot.ownerId !== ownerId",
+    '!homepageHandoffMatchesTrip(pendingReceipt.draft, candidate))) return {...refused,failureReason:"receipt-incomplete"}',
+    "return saveTripRecovery(candidate, {ownerId,replace:replacement,isCurrent:()=>generationIsCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)",
+    "intake:{pending:pendingReceipt.pending,completed:pendingReceipt.receipt,draft:pendingReceipt.draft",
+    "if (!recovery.stored) return", "const readable=await entry!.verifyReadback((id, owner) => loadTripRecovery(id, owner))",
+    "if (!generationIsCurrent()) return", "if (!readable) return {...recovery,stored:false", "if (entry!.claimCheckpoint()) {",
+    "recoveryHandleRef.current = recovery.handle", "const durableUrl = durableBuilderRecoveryUrl");
   assert.doesNotMatch(source, /window\.localStorage\.setItem\(inputKey, JSON\.stringify\(completedInput\)\)/);
 });
 
 test("missing handoff draft checks the reserved trip before declaring the receipt unavailable", () => {
   const source = builder();
-  const preflight = source.indexOf("const existingRecovery = loadTripRecovery(reservedId, activeOwnerId)");
+  const preflight = source.indexOf("const existingRecovery = await loadTripRecovery(reservedId, activeOwnerId)");
   const decision = source.indexOf("const entry = resolveNewTripEntryState({", preflight);
   assert.ok(preflight > 0);
   assert.ok(decision > preflight);
+  assert.match(source.slice(preflight, decision), /const existingTrip = existingRecovery\?\.trip \?\? await loadRequestedTrip\(reservedId, activeOwnerId\);\s*if \(!active\) return;/);
   assert.match(source.slice(decision, decision + 350), /reservedTripId: existingTrip\?\.id/);
 });
 
 test("direct Describe submission records one pending receipt in mounted Builder before capture completes", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
   const view = await renderBuilder({ captureDelayMs: 5000 });
   try {
-    await view.page.getByRole("tab", { name: "Describe my trip" }).click();
+    await view.page.getByRole("tab", { name: "Describe" }).click();
     await view.page.locator("textarea").first().fill("Tokyo and Kyoto in Japan for one week.");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
     await view.page.getByText("Tokyo and Kyoto in Japan for one week.").waitFor();
@@ -153,7 +168,7 @@ test("two mounted direct New Trip tabs adopt one pending Describe reservation", 
   try {
     await second.locator('[data-builder-root="true"]:not([aria-busy="true"])').waitFor();
     for (const page of [view.page, second]) {
-      await page.getByRole("tab", { name: "Describe my trip" }).click();
+      await page.getByRole("tab", { name: "Describe" }).click();
       await page.locator("textarea").first().fill("Tokyo and Kyoto in Japan for one week.");
     }
     await Promise.all([view.page, second].map((page) => page.getByRole("button", { name: "Plan my trip" }).click()));

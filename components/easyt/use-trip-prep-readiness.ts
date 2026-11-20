@@ -4,17 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import { privateContextScope, travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { deriveTripPrepTasks } from "@/lib/easyt/trip-prep";
 import { overviewPaidPreviewSurface, redactOverviewBookingLinks, redactOverviewReadinessLinks } from "@/lib/easyt/overview-paid-preview";
 import { parseIsoDate } from "@/lib/easyt/trip-lifecycle";
-import {
-  defaultTravelReadinessProfile,
-  type ReadinessCard,
-  type TravelReadinessProfile,
-} from "@/lib/easyt/travel-readiness";
+import type { ReadinessCard } from "@/lib/easyt/travel-readiness";
 
 export type TripPrepProviderStatus = "loading" | "available" | "unavailable";
 
@@ -23,53 +18,27 @@ type UseTripPrepReadinessInput = {
   language?: "en" | "es";
   initialActions?: BookingReadinessAction[];
   initialReadinessCards?: ReadinessCard[];
-  initialProfile?: TravelReadinessProfile;
   initialProviderStatus?: TripPrepProviderStatus;
   now?: string;
 };
 
 /**
- * Canonical client lifecycle for Overview readiness. Provider and traveller
- * profile state stay in one projection instead of being re-derived by each
- * preparation section.
+ * Overview requests destination guidance only, without a traveller profile.
  */
 export function useTripPrepReadiness({
   trip,
   language = "en",
   initialActions,
   initialReadinessCards,
-  initialProfile,
   initialProviderStatus,
   now,
 }: UseTripPrepReadinessInput) {
   const avoidDriving = tripIntentForTrip(trip).hardConstraints.avoidDriving;
-  const profileScope = privateContextScope(trip.ownerId);
-  const [profile, setProfile] = useState<TravelReadinessProfile>(initialProfile ?? defaultTravelReadinessProfile);
-  const [hydratedProfileScope, setHydratedProfileScope] = useState<string | null>(initialProfile ? profileScope : null);
   const [actions, setActions] = useState<BookingReadinessAction[]>(() => redactOverviewBookingLinks(initialActions ?? [], overviewPaidPreviewSurface));
   const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(() => redactOverviewReadinessLinks(initialReadinessCards ?? [], overviewPaidPreviewSurface));
   const [actionsStatus, setActionsStatus] = useState<TripPrepProviderStatus>(initialProviderStatus ?? (initialActions !== undefined ? "available" : "loading"));
   const [readinessStatus, setReadinessStatus] = useState<TripPrepProviderStatus>(initialProviderStatus ?? (initialReadinessCards !== undefined || !trip.stops.length ? "available" : "loading"));
   const [providerRetryVersion, setProviderRetryVersion] = useState(0);
-
-  useEffect(() => {
-    if (initialProfile) {
-      setProfile(initialProfile);
-      setHydratedProfileScope(profileScope);
-      return;
-    }
-    let nextProfile = defaultTravelReadinessProfile;
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(travelReadinessStorageKey(trip.ownerId)) ?? "null") as Partial<TravelReadinessProfile> | null;
-      if (stored && Array.isArray(stored.nationalities)) nextProfile = {
-        nationalities: stored.nationalities.filter((country): country is string => typeof country === "string"),
-        residenceCountry: typeof stored.residenceCountry === "string" ? stored.residenceCountry : "",
-        passportExpiryMonth: typeof stored.passportExpiryMonth === "string" ? stored.passportExpiryMonth : "",
-      };
-    } catch { /* Use the existing privacy-safe empty profile. */ }
-    setProfile(nextProfile);
-    setHydratedProfileScope(profileScope);
-  }, [initialProfile, profileScope, trip.ownerId]);
 
   useEffect(() => {
     if (initialActions !== undefined || initialProviderStatus !== undefined) return;
@@ -100,7 +69,6 @@ export function useTripPrepReadiness({
 
   useEffect(() => {
     if (initialReadinessCards !== undefined || initialProviderStatus !== undefined) return;
-    if (hydratedProfileScope !== profileScope) return;
     if (!trip.stops.length) {
       setReadinessCards([]);
       setReadinessStatus("available");
@@ -113,7 +81,7 @@ export function useTripPrepReadiness({
         const response = await fetch("/api/journey-readiness", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, avoidDriving, profile, language, surface: overviewPaidPreviewSurface }),
+          body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, avoidDriving, language, surface: overviewPaidPreviewSurface }),
           signal: scope.signal,
         });
         if (!response.ok) throw new Error("Travel readiness unavailable");
@@ -129,20 +97,18 @@ export function useTripPrepReadiness({
     };
     void resolve();
     return scope.dispose;
-  }, [avoidDriving, hydratedProfileScope, initialProviderStatus, initialReadinessCards, language, profile, profileScope, providerRetryVersion, trip.startDate, trip.stops]);
+  }, [avoidDriving, initialProviderStatus, initialReadinessCards, language, providerRetryVersion, trip.startDate, trip.stops]);
 
   const effectiveNow = useMemo(() => parseIsoDate(now) ?? new Date(), [now]);
   const tasks = useMemo(
-    () => deriveTripPrepTasks({ trip, profile, bookingActions: actions, readinessCards, now: effectiveNow }),
-    [actions, effectiveNow, profile, readinessCards, trip],
+    () => deriveTripPrepTasks({ trip, bookingActions: actions, readinessCards, now: effectiveNow }),
+    [actions, effectiveNow, readinessCards, trip],
   );
   const retryProviders = useCallback(() => setProviderRetryVersion((current) => current + 1), []);
   const providersAvailable = actionsStatus === "available" && readinessStatus === "available";
   const providerUnavailable = actionsStatus === "unavailable" || readinessStatus === "unavailable";
 
   return {
-    profile,
-    setProfile,
     tasks,
     providersAvailable,
     providerUnavailable,

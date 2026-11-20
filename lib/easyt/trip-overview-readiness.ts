@@ -6,7 +6,7 @@ import { deriveItineraryCoverage } from "./trip-facts.ts";
 import type { TripPrepTask, TripPrepTaskStatus } from "./trip-prep.ts";
 
 export type OverviewReadinessStatus = "complete" | "in-progress" | "to-do" | "needs-review";
-export type OverviewReadinessCategoryId = "itinerary" | "accommodation" | "transport" | "passport" | "insurance" | "connectivity" | "checklist";
+export type OverviewReadinessCategoryId = "itinerary" | "accommodation" | "transport" | "insurance" | "connectivity" | "checklist";
 
 export type OverviewReadinessCategory = {
   id: OverviewReadinessCategoryId;
@@ -74,10 +74,9 @@ export function deriveOverviewReadinessCategories({
   const unknownNights = trip.stops.length === 0 || trip.stops.some((stop) => stop.nights === null || stop.nights === undefined);
   const transport = transportBookingProgress(trip);
   const unknownTransfers = trip.stops.length === 0 || (trip.stops.length > 1 && transport.total === 0);
-  const passport = taskForKind(prepTasks, "passport");
   const insurance = taskForKind(prepTasks, "insurance");
   const connectivity = taskForKind(prepTasks, "connectivity");
-  const checklist = trip.brief.checklist ?? [];
+  const checklist = (trip.brief.checklist ?? []).filter((item) => item.id !== "overview-prep-passport");
   const checklistComplete = checklist.filter((item) => item.complete).length;
   const fallback = providerFallback(providerStatus);
 
@@ -102,13 +101,6 @@ export function deriveOverviewReadinessCategories({
       detail: unknownTransfers ? "Confirm transfers to see transport progress" : transport.total ? `${transport.sortedCount} of ${transport.total} ${transport.total === 1 ? "transfer" : "transfers"} sorted` : "No transfers to arrange",
       status: unknownTransfers ? "needs-review" : transport.complete ? "complete" : transport.sortedCount ? "in-progress" : "to-do",
       percent: unknownTransfers ? null : transport.total ? Math.round((transport.sortedCount / transport.total) * 100) : 100,
-    },
-    {
-      id: "passport",
-      label: "Passport & details",
-      detail: passport?.detail ?? "Add traveller details",
-      status: overviewStatus(passport?.status),
-      percent: passport?.status === "complete" ? 100 : null,
     },
     {
       id: "insurance",

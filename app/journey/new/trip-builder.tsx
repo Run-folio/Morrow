@@ -7531,7 +7531,7 @@ function TripBuilderDocument() {
         <div className={styles.footRight}>
           {endDateStillSuggested && <small className={styles.gate}>{language === "es" ? "Confirma las fechas arriba" : "Confirm trip dates above"}</small>}
           {gate && gateConflict?.code !== "itinerary-stop-uncovered" && <small className={styles.gate}>{gate}</small>}
-          <MotionButton type="button" className={styles.primary} disabled={endDateStillSuggested || Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
+          <MotionButton motion type="button" className={styles.primary} disabled={endDateStillSuggested || Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate || endDateStillSuggested) return;
               buildTrip();

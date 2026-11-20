@@ -112,6 +112,8 @@ export const Mobile390: Story = {
     const oneWay = controls.getByRole("button", { name: /^One way$/ });
     if (window.matchMedia("(max-width: 700px)").matches) {
       const group = toggle.getBoundingClientRect(), fields = stops.getBoundingClientRect();
+      const dates = canvas.getByRole("button", { name: /travel dates/i }).getBoundingClientRect();
+      await expect(dates.top - fields.bottom).toBeGreaterThanOrEqual(8);
       await expect(Math.abs(group.width - fields.width)).toBeLessThanOrEqual(2);
       await expect(Math.abs(group.left - fields.left)).toBeLessThanOrEqual(2);
       await expect(fields.top - group.bottom).toBeGreaterThanOrEqual(7);

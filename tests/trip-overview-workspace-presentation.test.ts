@@ -21,15 +21,15 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   const tripHeader = shellSource.indexOf('<header className={styles.tripHeader}>');
   const shellContent = shellSource.indexOf('<div className={styles.content}>{children}</div>');
   const route = source.indexOf('<section ref={nextOrientationTarget} className={styles.routeCard}');
-  const arrange = source.indexOf('<section ref={progressOrientationTarget} className={styles.arrangeCard}');
+  const arrange = source.indexOf('<section ref={progressOrientationTarget} id="before-you-go"');
   const plans = source.indexOf('<TripExplicitPlans trip={trip} variant="overview" />');
-  const beforeGo = source.indexOf('<section className={styles.beforeGo}');
+  const beforeGo = source.indexOf('<TripPreparationCards tasks=');
 
   assert.ok(tripHeader >= 0 && tripHeader < shellContent);
   assert.ok(route >= 0 && route < arrange);
   assert.ok(arrange < plans);
-  assert.ok(plans < beforeGo);
-  assert.match(source, /<h2 id="overview-route-title" className=\{workspaceHeading\.sectionTitle\}>Your route<\/h2>/);
+  assert.ok(arrange < beforeGo && beforeGo < plans);
+  assert.match(source, /<h2 id="overview-route-title" className="sr-only">[^<]*Your route[^<]*<\/h2>/);
   assert.doesNotMatch(source, /Your route is ready to shape|Here’s your trip at a glance/);
   assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
   assert.doesNotMatch(source, /Review route|Explore on map|View journey|Adjust route/);
@@ -37,7 +37,7 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.doesNotMatch(source, /Next to arrange/);
   assert.match(source, /Next steps/);
   assert.doesNotMatch(source, /Your next step|Trip health|Readiness at a glance|Planning progress/);
-  assert.match(styles, /grid-template-areas:\s*"route"\s*"arrange"\s*"plans"\s*"before"/);
+  assert.match(styles, /grid-template-areas:\s*"route"\s*"arrange"\s*"plans"/);
   assert.match(shellClientSource, /overnightAccommodationStops\(trip\)\.length/);
   assert.match(shellClientSource, /"overnight place" : "overnight places"/);
 });
@@ -65,7 +65,7 @@ test("Overview removes the decorative stay hero and leaves stay discovery to its
 
 test("material route uncertainty is contextual and keeps canonical severity", () => {
   assert.match(source, /const visibleIssues = presentOverviewIssues\(/);
-  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\)/);
+  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\.filter\(issue => issue !== transferIssue\)\)/);
   assert.match(issueProjectionSource, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
   assert.match(issueProjectionSource, /const critical = presented\.filter\(\(issue\) => issue\.severity === "critical"\)/);
   assert.match(source, /routeInsight\.title/);
@@ -75,7 +75,7 @@ test("material route uncertainty is contextual and keeps canonical severity", ()
 });
 
 test("Overview presents one calm route insight with a detailed-itinerary handoff", () => {
-  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\)/);
+  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\.filter\(issue => issue !== transferIssue\)\)/);
   assert.match(source, /data-route-insight=""/);
   assert.match(source, /routeInsight\.title/);
   assert.match(source, /routeInsight\.detail/);
@@ -113,7 +113,7 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
   assert.match(source, /useTripPrepReadiness\(\{/);
   assert.match(source, /<TripPreparationCards tasks=\{practicalTasks\}/);
   assert.doesNotMatch(source, /Must do|Good to do|Saved checklist|outstandingPrepGroups/);
-  assert.match(source, /<TripTravellerDetailsEditor/);
+  assert.doesNotMatch(source, /TripTravellerDetailsEditor|onOpenTravellerDetails/);
   assert.doesNotMatch(source, /TripPrepDetails|Detailed preparation guidance/);
   assert.match(source, /id="before-you-go"/);
   assert.doesNotMatch(source, /\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/prep/);

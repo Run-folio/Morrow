@@ -978,7 +978,7 @@ export default function TripItineraryWorkspace({
             <p className={legacyStyles.eyebrow}>{copy.draft}</p>
             <h2>{tripDisplayTitle(trip)}</h2>
           </div>
-          {onEditBrief ? <MotionButton type="button" className={legacyStyles.primary} onClick={onEditBrief}>{copy.editBrief}</MotionButton> : null}
+          {onEditBrief ? <MotionButton motion type="button" className={legacyStyles.primary} onClick={onEditBrief}>{copy.editBrief}</MotionButton> : null}
         </div>
         <div className={legacyStyles.draftSummary}>
           <span><CalendarDays /> {days.length} days</span>
@@ -991,7 +991,7 @@ export default function TripItineraryWorkspace({
             <LegacyDayContent day={active} stop={stop} image={image} index={index} days={days} setSelectedIndex={setSelectedIndex} copy={copy} language={language} />
           </section>
         </div>
-        {onOpenMap ? <div className={legacyStyles.draftFoot}><MotionButton type="button" className={legacyStyles.primary} onClick={onOpenMap}>{copy.openMap}</MotionButton></div> : null}
+        {onOpenMap ? <div className={legacyStyles.draftFoot}><MotionButton motion type="button" className={legacyStyles.primary} onClick={onOpenMap}>{copy.openMap}</MotionButton></div> : null}
       </div>
     );
   }

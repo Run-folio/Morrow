@@ -54,6 +54,7 @@ function fixture(actorPending = false) {
     builderEntryFeedbackRef: { current: null as string | null }, builderEntrySourceReceiptRef: { current: null as unknown },
     builderSeedPendingRef: { current: false }, setBuilderSeed(_seed: unknown) {},
     createBuilderEntrySession, requireReadableTripDocument,
+    builderCreationTokenRef: { current: null }, builderCreationReplayScopeRef: { current: null },
     ensureBuilderEntry: (_trip: typeof home.trip) => null as ReturnType<typeof createBuilderEntrySession> | null,
     activeBrowserOwnerId: 'owner-a', activeBrowserOwnerIdRef: { current: 'owner-a' }, language: 'en', hydratedOwnerScopeRef: { current: 'owner-a' },
     pendingNewTripReceiptRef: { current: { snapshot: home.snapshot, draft: home.draft, receipt: home.intake.completed, fromHomepage: true } },

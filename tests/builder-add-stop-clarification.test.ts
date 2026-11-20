@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { placeSuggestionLocationDetail } from "../lib/easyt/place-autocomplete.ts";
 import {
   PLACE_INTELLIGENCE_PARSER_VERSION,
   PLACE_INTELLIGENCE_VERSION,
@@ -58,7 +59,8 @@ test("3 Add Stop transitions a recognised planning area into the shared dialog o
 });
 
 test("4 Scotland base search remains hard-bound to the selected parent", () => {
-  assert.match(builder, /parentConstraint: clarificationUsesNearbyBases \? undefined : planningParentForMention\(activeClarificationMention\)/);
+  // The full constraint truth table runs in builder-planning-area-async.test.ts.
+  assert.match(builder, /parentConstraint:[^\n]*: planningParentForMention\(activeClarificationMention\)/);
   assert.match(geocode, /filter\(\(candidate\) => !planningParent \|\| placeCandidateWithinPlanningParent\(candidate, planningParent\)\)/);
 });
 
@@ -101,7 +103,10 @@ test("11 foreign candidates never satisfy the Iran parent", () => {
 test("12 Georgia country and Georgia state remain materially distinct identities", () => {
   assert.notEqual(georgiaCountry.canonicalPlaceId, georgiaState.canonicalPlaceId);
   assert.notEqual(georgiaCountry.country, georgiaState.country);
-  assert.match(autocomplete, /showPlaceType \? ` · \$\{placeTypeLabel\(suggestion\.placeType, language\)\}`/);
+  const choices = [georgiaCountry, georgiaState];
+  assert.notEqual(placeSuggestionLocationDetail(georgiaCountry, choices),
+    placeSuggestionLocationDetail(georgiaState, choices));
+  assert.match(autocomplete, /showPlaceType\s*\?\s*placeTypeLabel\(suggestion\.placeType,\s*language\):null,details\[index\]/);
 });
 
 test("13 choosing Georgia country creates a country-bound base flow", () => {
@@ -150,8 +155,12 @@ test("20 pending geography blocks Step 2 until a base or broad-area completion c
   assert.match(builder, /const pendingPlaceCount = new Set\(placeIssues\.filter\(\(issue\) => issue\.blocksRoute && !selectedMentionIds\.has\(issue\.mentionId\)\)/);
   assert.match(builder, /const nextSelection: PlaceSelection = \{[\s\S]*?mentionId: targetMentionId/);
   assert.match(builder, /setPlaceSelections\(\(current\) => \[nextSelection,/);
-  assert.match(builder, /setTransientPlanningMentionId\(\(current\) => current === targetMentionId \? null : current\)/);
-  assert.match(builder, /const completePlanningArea = \(mention: CapturedLocation, committedNow = false\) =>/);
+  // The accepted selection must precede resolving the transient marker.
+  assert.match(builder, /!await dispatchAcceptedBuilderEdits\(selectedCommands,[^\n]*return fail[^\n]*\n\s*if \(callerIsCurrent\?\.\(\) === false\) return;\s*if\(targetMentionId\)\{\s*setResolvingPlaceMentionId\(null\);\s*setTransientPlanningMentionId\(current\s*=>\s*current\s*===\s*targetMentionId\s*\?\s*null\s*:\s*current\)/);
+  assert.match(builder, /canBuildTrip\(\{[\s\S]*?placeIssues: buildPlaceIssues/);
+  assert.match(builder, /const gateConflict = buildInvariant.firstConflict/);
+  assert.match(builder, /disabled=\{endDateStillSuggested \|\| Boolean\(gate\)/);
+  assert.match(builder, /dispatchAcceptedBuilderEdit\(\{kind:"planning-area",mentionId:mention.mentionId,action:"complete"\}\) !== true \|\| !request.isCurrent\(\)/);
   assert.match(builder, /setCompletedPlanningAreaMentionIds\(\(current\) => \[\.\.\.new Set\(\[\.\.\.current, mention\.mentionId\]\)\]\)/);
 });
 
@@ -181,13 +190,18 @@ test("24 completed countries retain the existing explicit reopen path", () => {
 });
 
 test("25 sequential guidance keeps scoped search without adding another preference model", () => {
-  assert.match(builder, /parentConstraint: clarificationUsesNearbyBases \? undefined : planningParentForMention\(activeClarificationMention\)/);
+  // The full constraint truth table runs in builder-planning-area-async.test.ts.
+  assert.match(builder, /parentConstraint:[^\n]*: planningParentForMention\(activeClarificationMention\)/);
   assert.match(builder, /nearbyAnchor: clarificationUsesNearbyBases \? activeNearbyBaseAnchor : undefined/);
   assert.doesNotMatch(dialog, /toggleInterest|setTripIntent|setTravelProfile|areaGuidanceInterests/);
 });
 
 test("26 guidance uses progressive disclosure and native keyboard-operable controls", () => {
-  assert.match(dialog, /<button type="button" aria-expanded=\{reviewing\}/);
+  assert.match(dialog, /import \{ MotionButton \} from "@\/components\/easyt\/app-motion"/);
+  assert.match(dialog, /<MotionButton type="button" aria-expanded=\{reviewing\}/);
+  const motion = read("components/easyt/app-motion.tsx");
+  const button = motion.slice(motion.indexOf("export const MotionButton"), motion.indexOf("export const MotionLink"));
+  assert.match(button, /return <button \{\.\.\.props\}/);
   assert.match(dialog, /setReviewingShapeId\(reviewing \? null : shape\.id\)/);
   const dialogStyles = read("components/easyt/builder-clarification-dialog.module.css");
   assert.match(dialogStyles, /\.shapes article > button:focus-visible/);

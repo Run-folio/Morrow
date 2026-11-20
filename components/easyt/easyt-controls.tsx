@@ -69,6 +69,7 @@ export const EasyTButton = forwardRef<
   return (
     <MotionButton
       {...props}
+      motion={variant !== "quiet"}
       ref={ref}
       type={type}
       disabled={disabled || loading}
@@ -97,6 +98,7 @@ export function EasyTLinkButton({
   return (
     <MotionLink
       {...props}
+      motion={variant !== "quiet"}
       href={href}
       aria-busy={loading || undefined}
       aria-disabled={loading || undefined}

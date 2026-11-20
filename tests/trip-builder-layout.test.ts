@@ -56,7 +56,6 @@ function renderHomeDraft(draft: HomeTripDraft, snapshot: HomepageInputSnapshot =
   return renderBuilder({query:`?${query}`,draft:projected,storedInput:{snapshot,receipt}});
 }
 async function submitFirstTokyo(view: Awaited<ReturnType<typeof renderBuilder>>) {
-  await view.page.getByRole("button",{name:/Add your first stop/}).click();
   await view.page.getByRole("combobox", {name:"Destination",exact:true}).fill("Tokyo");
   await view.page.getByRole("option").filter({hasText:"Tokyo"}).first().click();
   await view.page.getByRole("button", {name:"Plan my trip",exact:true}).click();
@@ -81,9 +80,7 @@ browserTest("direct Builder entry offers capture, first place and import without
   try {
     const text = await view.page.locator("body").innerText();
     assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Set dates & nights/);
-    assert.match(text, /Describe my trip/);
-    assert.equal(await view.page.getByRole("button", {name:/Add your first stop/}).count(),1);
-    await view.page.getByRole("button", {name:/Add your first stop/}).click();
+    assert.match(text, /\bDescribe\b/);
     assert.equal(await view.page.getByRole("combobox", { name: "Destination", exact: true }).count(), 1);
     assert.equal(await view.page.getByRole("link", { name: "Import existing trip" }).getAttribute("href"), "/journey/new/import");
     assert.doesNotMatch(text, /Nights per stop|Trip at a glance/);
@@ -176,7 +173,7 @@ browserTest("homepage handoff adopts its durable recovery URL once and restores 
 browserTest("legacy step query cannot switch an empty Builder into timing and preserves other parameters", async () => {
   const view = await renderBuilder({ query: "?step=1&recover=1&view=brief&campaign=test" });
   try {
-    assert.match(await view.page.locator("body").innerText(), /Describe my trip/);
+    assert.match(await view.page.locator("body").innerText(), /\bDescribe\b/);
     const url = new URL(view.page.url());
     assert.equal(url.searchParams.has("step"), false);
     assert.equal(url.searchParams.get("recover"), "1");
@@ -595,7 +592,7 @@ browserTest("first-place selection creates route timing without requiring endpoi
   try {
     await submitFirstTokyo(view);
     await view.page.locator('[data-builder-route-workspace]').waitFor();
-    assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
+    assert.equal(await view.page.getByRole("tab", { name: "Describe", exact: true }).count(), 0);
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
     assert.equal(await view.page.getByRole("button", { name: /Build trip/ }).isDisabled(), true);
   } finally { await view.close(); }
@@ -619,7 +616,6 @@ browserTest("passive validation preserves Starting from focus while typing after
 browserTest("first-place resolution keeps the pending selection visible and prevents competing capture", async()=>{
   const view=await renderBuilder({geocodeCandidates:{"Pending City":[{name:"Pending City",country:"Japan",canonicalPlaceId:"fixture:pending-city",providerId:"fixture:pending-city-provider",placeType:"city",routability:"direct_destination"}]}});let release!:()=>void;const pending=new Promise<void>(resolve=>{release=resolve});let started!:()=>void;const requestStarted=new Promise<void>(resolve=>{started=resolve});
   try{
-    await view.page.getByRole("button",{name:/Add your first stop/}).click();
     await view.page.getByRole("combobox",{name:"Destination",exact:true}).fill("Pending City");
     await view.page.getByRole("option").filter({hasText:"Pending City"}).first().click();
     // Selection is local intent; enrichment begins after explicit submission now.
@@ -630,7 +626,7 @@ browserTest("first-place resolution keeps the pending selection visible and prev
     await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.equal(await view.page.getByText("Pending City",{exact:true}).count()>0,true,"submitted first place remains visible while enrichment is pending");
     assert.equal(await view.page.getByRole("button",{name:"Plan my trip",exact:true}).count(),0,"submitted capture is replaced, so a competing intake cannot be submitted");
-    assert.equal(await view.page.getByRole("tab",{name:"Describe my trip",exact:true}).count(),0);
+    assert.equal(await view.page.getByRole("tab",{name:"Describe",exact:true}).count(),0);
     release();await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:10000});
     await view.page.waitForFunction(()=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).some(([,raw])=>JSON.parse(raw).trip?.stops.some((stop:{canonicalPlaceId:string;longitude:number;latitude:number})=>stop.canonicalPlaceId==="fixture:pending-city"&&stop.longitude===139.6917&&stop.latitude===35.6895)),undefined,{timeout:10000});
     assert.deepEqual(view.errors,[]);
@@ -651,12 +647,12 @@ browserTest("endpoint-only handoff does not create an overnight route or timing 
 browserTest("direct text capture uses the existing parser then replaces capture with the populated route", async () => {
   const view = await renderBuilder();
   try {
-    await view.page.getByRole("tab", {name:"Describe my trip",exact:true}).click();
+    await view.page.getByRole("tab", {name:"Describe",exact:true}).click();
     await view.page.getByRole("textbox", { name: "Describe your trip",exact:true }).fill("Tokyo for one week");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
     await view.page.locator('[data-builder-route-workspace]').waitFor();
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
-    assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
+    assert.equal(await view.page.getByRole("tab", { name: "Describe", exact: true }).count(), 0);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

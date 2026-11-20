@@ -8,14 +8,14 @@ import styles from "./immersive.module.css";
 
 const steps = {
   en: [
-    { title: "Tell us where.", copy: "Choose destinations or describe the trip you have in mind.", icon: Compass },
-    { title: "We build your plan.", copy: "Get a suggested route to review, with places and travel between stops.", icon: Route },
-    { title: "Make it yours.", copy: "Refine your route, dates and details as your plans take shape.", icon: Luggage },
+    { title: "Start your trip", copy: "Choose destinations or describe the trip you have in mind.", icon: Compass },
+    { title: "Plan your route", copy: "Reorder stops and choose how many nights to spend in each.", icon: Route },
+    { title: "Open Overview", copy: "Plan connections in Transport, find accommodation in Stay and add activities in Itinerary.", icon: Luggage },
   ],
   es: [
-    { title: "Dinos adónde.", copy: "Elige destinos o describe el viaje que tienes en mente.", icon: Compass },
-    { title: "Creamos tu plan.", copy: "Recibe una ruta sugerida para revisar, con lugares y traslados entre paradas.", icon: Route },
-    { title: "Hazlo tuyo.", copy: "Ajusta la ruta, las fechas y los detalles a medida que tus planes toman forma.", icon: Luggage },
+    { title: "Empieza tu viaje", copy: "Elige destinos o describe el viaje que tienes en mente.", icon: Compass },
+    { title: "Planifica tu ruta", copy: "Ordena las paradas y elige cuántas noches pasar en cada una.", icon: Route },
+    { title: "Abre el Resumen", copy: "Planifica los traslados en Transporte, busca dónde dormir en Alojamiento y añade actividades en Itinerario.", icon: Luggage },
   ],
 };
 
@@ -30,7 +30,7 @@ export default function HomepageHowItWorks() {
     if (expanded && event.key === "Escape") { event.preventDefault(); setExpanded(false); triggerRef.current?.focus(); }
   }}>
     <header className={styles.howHeading}>
-      {expanded ? <div><span className={styles.eyebrow}>{es ? "Cómo funciona" : "How it works"}</span><h2 id="homepage-how-heading">{es ? "De idea a viaje." : "From idea to itinerary."}</h2></div> : null}
+      {expanded ? <div><h2 id="homepage-how-heading">{es ? "Cómo funciona" : "How it works"}</h2></div> : null}
       <EasyTButton ref={triggerRef} variant="quiet" icon={ChevronDown} aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded((current) => !current)}>{expanded ? es ? "Ocultar cómo funciona" : "Hide how it works" : es ? "Ver cómo funciona" : "See how it works"}</EasyTButton>
     </header>
     <div id={panelId} hidden={!expanded}><ol className={styles.howSteps}>

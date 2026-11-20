@@ -35,7 +35,7 @@ export default function TripTransportChoiceControl({
   onChange,
   onAdoptComparison,
   pending = false,
-  showUnavailable = false,
+  checkOnly = false,
   showCurrentDuration = true,
   presentation = "inline",
   departureDate,
@@ -47,7 +47,7 @@ export default function TripTransportChoiceControl({
   onChange: (identity: string | null) => void | Promise<boolean | void>;
   onAdoptComparison?: (comparison: TransportComparison, candidateId: string, isCurrent: () => boolean) => Promise<boolean>;
   pending?: boolean;
-  showUnavailable?: boolean;
+  checkOnly?: boolean;
   showCurrentDuration?: boolean;
   presentation?: "inline" | "modal";
   departureDate?: string | null;
@@ -63,8 +63,8 @@ export default function TripTransportChoiceControl({
     && candidate.candidateId !== recommendationId);
   const effectiveMinutes = effective.doorToDoorMinutes ?? effective.durationMinutes;
 
-  if (!selected && !alternatives.length && !showUnavailable) return null;
-  if (presentation === "modal") return <TransportModeDialog onAdoptComparison={onAdoptComparison} trip={trip} leg={leg} pending={pending} onChange={onChange} departureDate={departureDate} language={language} />;
+  if (!selected && !alternatives.length && !(checkOnly && presentation === "modal" && onAdoptComparison)) return null;
+  if (presentation === "modal") return <TransportModeDialog checkOnly={checkOnly} onAdoptComparison={onAdoptComparison} trip={trip} leg={leg} pending={pending} onChange={onChange} departureDate={departureDate} language={language} />;
 
   return <span className={styles.control} data-transport-choice-leg={leg.id}>
     <span className={styles.current}>
@@ -99,7 +99,8 @@ export default function TripTransportChoiceControl({
   </span>;
 }
 
-function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, departureDate, language }: {
+function TransportModeDialog({ checkOnly, trip, leg, onChange, onAdoptComparison, pending, departureDate, language }: {
+  checkOnly: boolean;
   onAdoptComparison?: (comparison: TransportComparison, candidateId: string, isCurrent: () => boolean) => Promise<boolean>;
   trip: EasyTTrip; leg: TripLeg; onChange: (identity: string | null) => void | Promise<boolean | void>; pending: boolean; departureDate?: string | null; language: "en" | "es";
 }) {
@@ -118,13 +119,16 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
   const choicesLeg = fresh.length ? {...leg, routeMetadata:{...leg.routeMetadata,multimodalResolution:{candidates:[...savedCandidates,...fresh]}}} : leg;
   const supported = supportedTransportChoicesForLeg(trip, choicesLeg).filter((option) => option.candidateId !== recommendationId);
   const baseline = { identity: null as string | null, mode: leg.mode, timing: transferTimingLabel(leg), provenance: leg.provenance, details: leg.warnings ?? [], provider: leg.provider };
-  const options = [...(leg.mode === "unknown" ? [] : [baseline]),
+  const options = [...(leg.mode === "unknown" && !selected ? [] : [baseline]),
     ...supported.map((option) => ({ identity: option.identity as string | null, mode: option.mode, timing: transferTimingLabel({ ...option, doorToDoorMinutes: option.durationMinutes }), provenance: option.provenance, details: option.reasons, provider: option.segments.map((segment) => segment.provider).filter(Boolean).join(" ") }))];
   const choice = options.find((option) => option.identity === draft) ?? options[0] ?? baseline;
   const from = routeEndpointForLeg(trip, leg, "from");
   const to = routeEndpointForLeg(trip, leg, "to");
   const routeGuidance=transportGuidanceForLeg(trip,leg.id,comparison?.routeGuidance??(leg.routeMetadata.multimodalResolution as {routeGuidance?:unknown})?.routeGuidance);
   const isSpanish = language === "es";
+  const canChoose = Boolean(selected || supported.length);
+  const checkLabel = isSpanish ? "Comprobar alternativas" : "Check for alternatives";
+  const dialogLabel = checkOnly ? checkLabel : isSpanish ? "Cambiar transporte" : "Change transport";
   const label = (mode: TripTransferMode) => isSpanish ? ({ flight: "Vuelo", train: "Tren", road: "Carretera", ferry: "Ferry", walk: "A pie", mixed: "Transporte combinado", unknown: "Transporte por confirmar" }[mode]) : mode === "train" ? "Train" : modeLabels[mode];
   const basis = (provenance: TripLeg["provenance"]) => provenance === "routing_engine" ? (isSpanish ? "Estimación de la ruta" : "Route estimate") : provenance === "canonical_schedule" ? (isSpanish ? "Estimación del horario" : "Schedule estimate") : provenance === "planning_estimate" ? (isSpanish ? "Estimación de planificación" : "Planning estimate") : provenance === "provider" ? (isSpanish ? "Estimación del proveedor" : "Provider estimate") : null;
   const close = () => { if (!pending) {refresh.cancel(); setOpen(false);} };
@@ -138,14 +142,16 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
     } catch {setApplyFailed(true);}
   };
   return <>
-    <EasyTButton size="small" variant="quiet" aria-label="Change transport mode" aria-haspopup="dialog" onClick={() => { setDraft(currentIdentity); setDetailsOpen(false); setApplyFailed(false); setOpen(true); }}>{isSpanish ? "Cambiar transporte" : "Change transport"}</EasyTButton>
-    <MorroviaContentDialog open={open} onClose={close} className={styles.modeDialog} ariaLabel={isSpanish ? "Cambiar transporte" : "Change transport"} autoFocusSelector='[data-mode-initial="true"]'>
+    <EasyTButton size="small" variant="quiet" aria-label={checkOnly ? checkLabel : "Change transport mode"} aria-haspopup="dialog" onClick={() => { setDraft(currentIdentity); setDetailsOpen(false); setApplyFailed(false); setOpen(true); }}>{dialogLabel}</EasyTButton>
+    <MorroviaContentDialog open={open} onClose={close} className={styles.modeDialog} ariaLabel={dialogLabel} autoFocusSelector='[data-mode-initial="true"]'>
       <div className={styles.dialogContent}>
         <header className={styles.dialogHeader}>
           <div>{departureDate ? <p className={styles.dialogDate}>{formatIsoDate(departureDate, language, { month: "short", day: "numeric", year: "numeric" })}</p> : null}<h2>{from?.name} <span aria-hidden="true">→</span> {to?.name}</h2></div>
-          <EasyTButton icon={X} iconOnly size="small" variant="quiet" onClick={close} aria-label={isSpanish ? "Cerrar" : "Close"} data-mode-initial={!options.length ? "true" : undefined}>Close</EasyTButton>
+          <EasyTButton icon={X} iconOnly size="small" variant="quiet" onClick={close} aria-label={isSpanish ? "Cerrar" : "Close"} data-mode-initial={!canChoose ? "true" : undefined}>Close</EasyTButton>
         </header>
-        {!options.length ? <p className={styles.prompt}>{isSpanish ? "No pudimos confirmar otra forma de viajar en este trayecto." : "We couldn’t confirm another way to travel this route."}</p> : null}
+        {!canChoose ? <p className={styles.prompt}>{checkOnly && refresh.state.status === 'idle'
+          ? (isSpanish ? "Comprueba si hay otra opción para este trayecto." : "Check whether another option is available for this route.")
+          : isSpanish ? "No pudimos confirmar otra forma de viajar en este trayecto." : "We couldn’t confirm another way to travel this route."}</p> : null}
         {onAdoptComparison ? <div>
           <EasyTButton size="small" variant="secondary" disabled={pending || !refresh.allowed || refresh.state.status === 'checking'} loading={refresh.state.status === 'checking'} onClick={() => void refresh.refresh()}>{isSpanish ? 'Actualizar opciones' : 'Refresh options'}</EasyTButton>
           <p role="status" data-transport-comparison-status={refresh.state.status}>{refresh.state.status === 'checking' ? (isSpanish ? 'Comprobando…' : 'Checking…')
@@ -157,7 +163,7 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
         {routeGuidance.length ? <div className={styles.estimateDetails} data-reviewed-route-guidance>
           {routeGuidance.map(item=><p key={item.id}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.label}</a> — {item.limitation}</p>)}
         </div> : null}
-        <div className={styles.modeCards} role="radiogroup" aria-label={isSpanish ? "Opciones de transporte" : "Transport options"}>
+        {canChoose ? <div className={styles.modeCards} role="radiogroup" aria-label={isSpanish ? "Opciones de transporte" : "Transport options"}>
           {options.map((option, index) => {
             const Icon = option.mode === "train" ? TrainFront : option.mode === "flight" ? Plane : option.mode === "road" ? CarFront : option.mode === "ferry" ? Ship : option.mode === "walk" ? Footprints : Route;
             const initialFocus = draft === option.identity || draft === null && index === 0;
@@ -173,12 +179,12 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
               {option.identity === currentIdentity ? <span className={styles.currentBadge}>{isSpanish ? "Opción actual" : "Current choice"}</span> : null}
             </EasyTButton>;
           })}
-        </div>
+        </div> : null}
         <p className={styles.planNote}>{isSpanish ? "Esto cambia tu plan, no una reserva." : "This changes your plan, not a booking."}</p>
         <EasyTButton size="small" variant="quiet" icon={ChevronDown} aria-expanded={detailsOpen} aria-controls={`${id}-estimates`} onClick={() => setDetailsOpen((value) => !value)}>{isSpanish ? "Detalles y estimaciones" : "Journey details and estimates"}</EasyTButton>
         <div id={`${id}-estimates`} hidden={!detailsOpen} className={styles.estimateDetails}><EntryReveal active={detailsOpen} />{choice.provider ? <p>{choice.provider}</p> : null}{choice.details.map((detail, index) => <p key={index}>{detail}</p>)}</div>
         {applyFailed ? <p role="alert">{isSpanish ? 'No se pudo aplicar esta opción. Actualiza las opciones antes de volver a intentarlo.' : 'Could not apply this option. Refresh options before trying again.'}</p> : null}
-        <footer className={styles.dialogFooter}><EasyTButton variant="secondary" onClick={close} disabled={pending}>{isSpanish ? "Cancelar" : "Cancel"}</EasyTButton><EasyTButton variant="primary" disabled={pending || !refresh.allowed || !options.some(option => option.identity === draft) || draft === currentIdentity} loading={pending} onClick={() => void apply()}>{isSpanish ? "Usar" : "Use"} {label(choice.mode).toLocaleLowerCase()}</EasyTButton></footer>
+        <footer className={styles.dialogFooter}><EasyTButton variant="secondary" onClick={close} disabled={pending}>{isSpanish ? "Cancelar" : "Cancel"}</EasyTButton>{canChoose ? <EasyTButton variant="primary" disabled={pending || !refresh.allowed || !options.some(option => option.identity === draft) || draft === currentIdentity} loading={pending} onClick={() => void apply()}>{isSpanish ? "Usar" : "Use"} {label(choice.mode).toLocaleLowerCase()}</EasyTButton> : null}</footer>
       </div>
     </MorroviaContentDialog>
   </>;

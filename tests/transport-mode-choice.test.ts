@@ -293,3 +293,14 @@ test("accepted Fenghuang and Hong Kong records expose qualified rail planning wi
     assert.deepEqual(unverified, before);
   }
 });
+
+test("a lone recommendation is not a change; a supported alternative or saved choice is", async () => {
+  const {hasTransportChoiceAction} = await import("../lib/easyt/transport-mode-choice.ts");
+  const value = trip(), leg = value.legs[0];
+  assert.equal(hasTransportChoiceAction(value,leg),true);
+  const resolution = leg.routeMetadata.multimodalResolution as { candidates: unknown[] };
+  resolution.candidates = resolution.candidates.slice(0,1);
+  assert.equal(hasTransportChoiceAction(value,leg),false);
+  const saved = trip("road:routed");
+  assert.equal(hasTransportChoiceAction(saved,saved.legs[0]),true);
+});

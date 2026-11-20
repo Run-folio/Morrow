@@ -1,4 +1,6 @@
 "use client";
+
+import { useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { motionScrollBehavior } from "@/lib/easyt/app-motion";
 
 import { EntryReveal } from "./app-motion";
@@ -289,6 +291,8 @@ export default function TripExploreWorkspace({
   initialProviderState = "ready",
   requestedDayNumber,
 }: TripExploreWorkspaceProps) {
+  const stopNavigationGuideRef = useWorkspaceOrientationTarget("explore", "explore-stop");
+  const categoriesGuideRef = useWorkspaceOrientationTarget("explore", "explore-categories");
   const mutation = useTripShellMutation();
   const workingTrip = mutation.trip;
   const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -648,7 +652,7 @@ export default function TripExploreWorkspace({
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="Plan update needs attention" detail={mutation.error} /> : null}
     </div> : null}
 
-    <div className={styles.stopNavigation}>
+    <div ref={stopNavigationGuideRef} className={styles.stopNavigation}>
       <JourneyRouteStopTrack
         stops={navigationStops}
         ariaLabel="Explore by trip stop"
@@ -664,7 +668,7 @@ export default function TripExploreWorkspace({
     </div>
 
     <div className={styles.main}>
-      <div className={styles.categories} role="group" aria-label="Explore categories">
+      <div ref={categoriesGuideRef} className={styles.categories} role="group" aria-label="Explore categories">
         {explorePrimaryCategories.map((item) => {
           const Icon = categoryIcons[item];
           const selected = category === item;

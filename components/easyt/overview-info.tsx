@@ -1,6 +1,6 @@
 "use client";
 
-import { Info } from "lucide-react";
+import { Info, type LucideIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { EasyTButton } from "./easyt-controls";
@@ -14,7 +14,7 @@ const clamp = (value: number, low: number, high: number) => Math.max(low, Math.m
 type Position = { left: number; top: number; width: number; maxHeight: number };
 
 /** Informational (not interactive) content. A portal avoids clipping inside Overview cards. */
-export function OverviewInfo({ label, children }: { label: string; children: ReactNode }) {
+export function OverviewInfo({ label, children, icon = Info }: { icon?: LucideIcon; label: string; children: ReactNode }) {
   const id = useId();
   const anchor = useRef<HTMLButtonElement>(null);
   const tooltip = useRef<HTMLDivElement>(null);
@@ -126,7 +126,7 @@ export function OverviewInfo({ label, children }: { label: string; children: Rea
     <EasyTButton
       ref={anchor}
       className={styles.trigger}
-      icon={Info}
+      icon={icon}
       iconOnly
       variant="quiet"
       aria-describedby={open ? id : undefined}

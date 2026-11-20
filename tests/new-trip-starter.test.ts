@@ -26,7 +26,9 @@ test("New trip uses production capture, destination and endpoint controls with o
   const implementation = source();
   assert.match(implementation, /<MorroviaTripCapture/);
   assert.match(implementation, /<HomeDestinationEditor/);
-  assert.match(implementation, /<JourneyEndpointsEditor/);
+  assert.match(implementation, /useSharedPlannerRoute/);
+  assert.match(implementation, /travellersOnly: true/);
+  assert.doesNotMatch(implementation, /<JourneyEndpointsEditor/);
   assert.match(implementation, /readDurableHomepageState\(ownerId, isCurrent\)/);
   assert.match(implementation, /pendingHomepageSubmissionForOwner/);
   assert.match(implementation, /resumableNewTripSnapshot/);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { BedDouble } from "lucide-react";
 import { shortlistedStays, removeShortlistedStay } from "@/lib/easyt/trip-starter";
 import { stayWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -20,10 +21,11 @@ export default function TripStayShortlist({ trip, stopId, places = [], onReview 
   places?: JourneyLocalPlace[];
   onReview?: (place: JourneyLocalPlace) => void;
 }) {
+  const shortlistGuideRef = useWorkspaceOrientationTarget("stay", "stay-shortlist");
   const mutation = useTripShellMutation();
   const entries = shortlistedStays(trip).filter(item => !stopId || item.stopId === stopId);
   if (!entries.length) return null;
-  return <section id="stay-shortlist" className={styles.shortlist} aria-label="Stay shortlist">
+  return <section ref={shortlistGuideRef} id="stay-shortlist" className={styles.shortlist} aria-label="Stay shortlist">
     <h2 className={heading.sectionTitle}><BedDouble aria-hidden="true" />Shortlist</h2>
     {[...trip.stops].sort((a,b) => a.order-b.order).map(stop => {
       const items = entries.filter(item => item.stopId === stop.id);

@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { reportQaPersistenceBoundary, qaNativeFailureCategory } from "@/lib/easyt/persistence-outcome";
 import { useRouter } from "next/navigation";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
-import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
+import { useSharedPlannerRoute } from "../home/shared-planner-route";
+import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
+import { homepageCapturedRouteEvidence, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "@/lib/easyt/home-route-choice";
 import { HomeDestinationEditor } from "@/app/journey/home/home-destination-editor";
-import { homepageSnapshotForStopSubmission, homepageSnapshotForDescribePrompt, homepageVisibleDateRange, persistEditableHomepageInput, persistHomepageIntakeForImport, type HomepageDestinationEntry, type HomepageInputSnapshot, pendingHomepageSubmissionForOwner, pendingHomepageHandoffForOwner, homepageSemanticInputFingerprint, type PendingIntakeReceipt, pendingIntakeContinuation } from "@/lib/easyt/home-trip-handoff";
+import { homepageCaptureWithSharedOrigin, homepageSnapshotForStopSubmission, homepageSnapshotForDescribePrompt, homepageVisibleDateRange, persistEditableHomepageInput, persistHomepageIntakeForImport, type HomepageDestinationEntry, type HomepageInputSnapshot, pendingHomepageSubmissionForOwner, pendingHomepageHandoffForOwner, homepageSemanticInputFingerprint, type PendingIntakeReceipt, pendingIntakeContinuation } from "@/lib/easyt/home-trip-handoff";
 import { readDurableHomepageState } from "@/lib/easyt/homepage-persistence";
 import { deferNewTripNavigation, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_NEW_TRIP_INPUT_CHANGE_EVENT, loadCurrentDraftRecovery } from "@/lib/easyt/storage";
-import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
-import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { resumableNewTripSnapshot } from "./new-trip-entry-state";
 import { MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
@@ -27,7 +27,7 @@ function emptyInput(ownerId: string | null): HomepageInputSnapshot {
     entries: [{ id: "destination-1", text: "", selection: null }], prompt: "",
     dates: { state: "untouched" }, budget: { state: "untouched" },
     interests: { state: "untouched" }, travellers: { state: "untouched" },
-    origin: { state: "untouched" }, journeyEnd: { state: "untouched" },
+    tripType: { state: "untouched" }, origin: { state: "untouched" }, journeyEnd: { state: "untouched" },
   };
 }
 
@@ -52,8 +52,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   type PendingSubmission = { receipt: PendingIntakeReceipt; inputRaw: string | null; draftRaw: string | null };
   const [pendingSubmission, setPendingSubmission] = useState<PendingSubmission | null>(null);
   const pendingSubmissionRef = useRef<PendingSubmission | null>(null);
-  const [startInput, setStartInput] = useState("");
-  const [endInput, setEndInput] = useState("");
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -88,8 +86,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       nextEntryId.current = Math.max(1, ...next.entries.map((entry) => Number(entry.id.match(/^destination-(\d+)$/)?.[1] ?? 0))) + 1;
       snapshotRef.current = next;
       setSnapshot(next);
-      setStartInput(next.origin.state === "selected" ? next.origin.value.name : next.originInput ?? "");
-      setEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
       readyRef.current = true;
       setReady(true);
     })().catch(error => {
@@ -151,11 +147,12 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     } finally { if (isCurrent()) setLoading(false); }
   };
 
-  const update = (change: (current: HomepageInputSnapshot) => HomepageInputSnapshot) => {
+  const update = (change: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
     if (!readyRef.current || ownerRef.current !== ownerId) return;
     submitInFlightRef.current = false;
     setLoading(false);
-    const next = { ...change(snapshotRef.current), revision: snapshotRef.current.revision + 1 };
+    let next = { ...invalidateHomepageRouteReview(snapshotRef.current, change(snapshotRef.current)), revision: snapshotRef.current.revision + 1 };
+    if (reviewedEvidence && next.tripType?.state === "selected") next = { ...next, routeReview: { version: 1, acceptedTripType: next.tripType.value, reviewedInputKey: homepageRouteReviewKey(next, reviewedEvidence) } };
     snapshotRef.current = next;
     // Retire the navigation request synchronously, including the window after
     // this child's ACK while another listener or pointer checkpoint is pending.
@@ -295,7 +292,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const interests = snapshot.interests.state === "selected" ? snapshot.interests.value
     : snapshot.interests.state === "cleared" ? [] : tripInterestsWithProfileDefaults([], travelProfile, false);
   const travellers = snapshot.travellers.state === "selected" ? snapshot.travellers.value : 2;
-  const journeyEnd: JourneyEndSelection = snapshot.journeyEnd.state === "selected" ? snapshot.journeyEnd.value : { mode: "unknown" };
   const labels = snapshot.entries.map((entry) => entry.selection?.name ?? entry.text.trim()).filter(Boolean);
   const destinationSummary = labels.length === 0 ? (language === "es" ? "Añade tu primera parada" : "Add your first stop")
     : labels.length === 1 ? labels[0] : `${labels[0]} · +${labels.length - 1} ${language === "es" ? "más" : "more"}`;
@@ -310,6 +306,11 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     try { home = Boolean(pendingHomepageHandoffForOwner(JSON.parse(pendingSubmission.draftRaw ?? "null"), ownerId, receipt.handoffId)); } catch { /* Receiver still refuses invalid sources. */ }
     return `/journey/new?${home ? "homeDraft=1&" : ""}handoff=${encodeURIComponent(receipt.handoffId)}&resumePending=1`;
   })() : "";
+
+  const {planner, confirmation} = useSharedPlannerRoute({ snapshot, snapshotRef, language, disabled: loading,
+    evidenceFor: input => input.mode === "describe" ? homepageCapturedRouteEvidence(input.prompt, homepageCaptureWithSharedOrigin(input, captureJourneyBrief(input.prompt))) : undefined,
+    updateSnapshot: update,
+  });
 
   if (!ready || snapshot.ownerId !== ownerId) return error ? <MorroviaRecoveryFeedback title={language === "es" ? "Entrada no disponible" : "Trip input unavailable"} detail={error} safety={language === "es" ? "Mantén esta pestaña abierta." : "Keep this tab open."} /> : null;
 
@@ -327,13 +328,10 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     </> : <EasyTButton variant="secondary" disabled={loading} onClick={() => { void resumePendingSubmission(); }}>{language === "es" ? "Reanudar entrada guardada" : "Resume saved submission"}</EasyTButton>}
   /> : null}<MorroviaTripCapture
     formId="new-trip-planner" progressiveDetails language={language} value={snapshot.prompt}
-    onValueChange={(prompt) => update((current) => {
-      const next = homepageSnapshotForDescribePrompt(current, prompt);
-      if (next.origin.state !== "selected") setStartInput("");
-      if (next.journeyEnd.state !== "selected") setEndInput("");
-      return next;
-    })}
+    onValueChange={(prompt) => update((current) => homepageSnapshotForDescribePrompt(current, prompt))}
     homepageEntry={{
+      travellersOnly: true,
+      planner,
       mode: snapshot.mode,
       onModeChange: (mode) => update((current) => ({ ...current, mode })),
       destinationEntry: destinationSummary,
@@ -353,16 +351,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
         update((current) => ({ ...current, dates: { state: "cleared" } }));
       },
     }}
-    endpointEntry={<JourneyEndpointsEditor
-      language={language} startValue={startInput} endValue={endInput} endSelection={journeyEnd}
-      showHeading={false} showHint={false}
-      onStartChange={(value) => { setStartInput(value); update((current) => ({ ...current, originInput: value, origin: { state: "cleared" } })); }}
-      onStartSelect={(suggestion) => { const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;setStartInput(suggestion.name); update((current) => ({ ...current, originInput: suggestion.name, origin: { state: "selected", value: place } })); }}
-      onEndChange={(value) => { setEndInput(value); update((current) => ({ ...current, journeyEnd: value.trim()
-        ? { state: "selected", value: { mode: "explicit", place: { name: value.trim() } } } : { state: "cleared" } })); }}
-      onEndSelect={(suggestion) => { const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;setEndInput(suggestion.name); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode: "explicit", place } } })); }}
-      onEndModeChange={(mode) => { setEndInput(""); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
-    />}
     startDate={startDate} endDate={endDate}
     onDatesChange={(range) => {
       updateDateTypedDraft({});
@@ -372,6 +360,7 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     interests={interests} onInterestsChange={(value: TripInterest[]) => update((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={error}
   />
+    {confirmation}
     <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}
       onClick={(event) => { event.preventDefault(); void persistBeforeImport().then((saved) => { if (saved) router.push("/journey/new/import"); }); }}>{language === "es" ? "Importar un viaje existente" : "Import existing trip"}</EasyTLinkButton></div>
   </>;

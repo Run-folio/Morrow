@@ -650,11 +650,14 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.goto(`${base}/journey/${tripId}/prep`, { waitUntil: "domcontentloaded" });
   await page.waitForURL(`${base}/journey/${tripId}`);
   await page.getByRole("region", { name: "Trip overview" }).waitFor();
-  await page.getByRole("heading", { name: /Practical prep|Before you go/i }).first().waitFor();
+  await page.getByRole("region", { name: "Next steps" }).getByRole("heading", { name: "Insurance" }).waitFor();
   for (const width of [390, 430, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${base}/journey/${tripId}`, { waitUntil: "domcontentloaded" });
     await page.getByRole("region", { name: "Trip overview" }).waitFor();
+    const cards = page.getByRole("region", { name: "Next steps" }).locator('[class*="arrangeGrid"]');
+    assert.deepEqual(await cards.locator("h3").allTextContents(), ["Days", "Stays", "Transport", "Insurance", "Connectivity", "Activities"]);
+    assert.equal(await cards.evaluate(grid => getComputedStyle(grid).gridTemplateColumns.split(" ").length), width <= 520 ? 1 : width <= 800 ? 2 : 3);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `horizontal overflow at ${width}px`);
   }
   assert.deepEqual(pageErrors, []);

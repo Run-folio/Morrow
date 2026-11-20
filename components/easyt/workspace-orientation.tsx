@@ -18,6 +18,7 @@ import {
 } from "react";
 import { trackEvent } from "@/lib/analytics";
 import {
+  workspaceFromPathname,
   clearWorkspaceOrientationSeenVersion,
   readWorkspaceOrientationSeenVersion,
   resolveWorkspaceOrientationSeenVersion,
@@ -33,6 +34,7 @@ import { PRODUCT_TOUR_OPEN_EVENT, PRODUCT_TOUR_STATE_EVENT } from "./easyt-produ
 import styles from "./workspace-orientation.module.css";
 
 export type WorkspaceOrientationTarget =
+  | "stay-stop" | "stay-shortlist" | "stay-options" | "explore-stop" | "explore-categories" | "transport-header" | "transport-list" | "today-header" | "today-content"
   | "overview-next"
   | "overview-progress"
   | "workspace-navigation"
@@ -55,7 +57,24 @@ const steps: Record<WorkspaceOrientationWorkspace, readonly OrientationStep[]> =
   overview: [
     { target: "overview-next", eyebrow: "Overview", title: "Understand your route", body: "Start with the whole journey, its timing and any route decisions that still need attention." },
     { target: "overview-progress", eyebrow: "Overview", title: "Keep planning from here", body: "Continue with your days, stays or transport, while practical preparation stays available below." },
-    { target: "workspace-navigation", eyebrow: "Overview", title: "Three views, one trip", body: "Use Map to explore places and Itinerary to organise each day. Your trip stays connected across all three views." },
+    { target: "workspace-navigation", eyebrow: "Overview", title: "Move between trip sections", body: "Switch sections to plan transport, organise days, explore places, review stays or check today’s plans." },
+  ],
+  stay: [
+    { target: "stay-stop", eyebrow: "Stay", title: "Choose an overnight stop", body: "Select a stop to see accommodation for those nights." },
+    { target: "stay-shortlist", eyebrow: "Stay", title: "Review your shortlist", body: "These are the places you’ve kept for this stop. A shortlisted stay isn’t a reservation." },
+    { target: "stay-options", eyebrow: "Stay", title: "Browse stays", body: "Open the stay options to compare places for this stop." },
+  ],
+  explore: [
+    { target: "explore-stop", eyebrow: "Explore", title: "Choose where to explore", body: "Select a stop to see ideas nearby." },
+    { target: "explore-categories", eyebrow: "Explore", title: "Narrow your search", body: "Choose a category to change the ideas shown for this stop." },
+  ],
+  transport: [
+    { target: "transport-header", eyebrow: "Transport", title: "Review your connections", body: "This section shows the journeys between your stops." },
+    { target: "transport-list", eyebrow: "Transport", title: "Open a journey", body: "Select a connection to review its details." },
+  ],
+  today: [
+    { target: "today-header", eyebrow: "Today", title: "Check the day", body: "See which trip day you’re viewing." },
+    { target: "today-content", eyebrow: "Today", title: "Find your place", body: "Check the destination for this day before reviewing your plans below." },
   ],
   map: [
     { target: "map-stop", eyebrow: "Map", title: "Focus on a destination", body: "Select a stop to explore useful places around that part of your trip." },
@@ -82,12 +101,6 @@ type WorkspaceOrientationContextValue = {
 };
 
 const WorkspaceOrientationContext = createContext<WorkspaceOrientationContextValue | null>(null);
-
-function workspaceFromPathname(pathname: string): WorkspaceOrientationWorkspace {
-  if (pathname.includes("/itinerary")) return "itinerary";
-  if (pathname.includes("/map")) return "map";
-  return "overview";
-}
 
 function visibleTarget(element: HTMLElement | undefined) {
   if (!element?.isConnected) return false;

@@ -11,7 +11,7 @@ test('actual queued adoption callback rejects a cancelled view before running it
  const comparison=validateTransportComparison(trip,trip.legs[0].id,await compareCanonicalTransferJourney(trip.legs[0],{provider:syntheticRoad()}))!;assert.ok(comparison);
  const road=comparison.candidates.find(c=>c.summaryMode==='road')!;let queued:((current:typeof trip)=>typeof trip)|undefined;let current=true;
  const js=ts.transpileModule('return ('+expression.getText(ast)+');',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const action=new Function('mutation','adoptTransportComparison','leg','pendingKey',js)({mutateTrip:(update:(current:typeof trip)=>typeof trip)=>{queued=update;return Promise.resolve(false);}},adoptTransportComparison,trip.legs[0],'fixture');
+ const action=new Function('mutation','adoptTransportComparison','leg','pendingKey','canCheck',js)({mutateTrip:(update:(current:typeof trip)=>typeof trip)=>{queued=update;return Promise.resolve(false);}},adoptTransportComparison,trip.legs[0],'fixture',true);
  await action(comparison,road.id,()=>current);current=false;
  assert.throws(()=>queued!(trip),/changed|cancelled/i);assert.equal(trip.brief.decisionSelections?.transportByLeg[trip.legs[0].id],undefined);
 });
