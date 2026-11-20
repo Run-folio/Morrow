@@ -114,6 +114,20 @@ test('Discovery confirmation does not advance or emit completion on rejected fin
   const ui=fixture(),work=ui.onConfirm();await Promise.resolve();await Promise.resolve();ui.resolve(false);await work;
   await Promise.resolve();await Promise.resolve();assert.equal(ui.view.advances,0);assert.equal(ui.view.open,true);
 });
+test('Discovery restores the stop editor and advances only after accepted completion',async()=>{
+  const ui=fixture();
+  ui.view.editor=false;
+  ui.render();
+  const work=ui.onConfirm();
+  for(let i=0;i<8&&!ui.calls;i++)await Promise.resolve();
+  assert.equal(ui.calls,1);
+  assert.equal(ui.view.editor,false);
+  assert.equal(ui.view.advances,0);
+  ui.resolve(true);
+  await work;
+  assert.equal(ui.view.editor,true);
+  assert.equal(ui.view.advances,101,'one analytics event and one advance');
+});
 test('Discovery confirmation retains a newer view during its deferred review',async()=>{
   const ui=fixture();let finish!:(value:object)=>void;ui.context.commitDiscoveryReview=()=>new Promise(resolve=>{finish=resolve});
   const work=ui.onConfirm();for(let i=0;i<8&&!finish;i++)await Promise.resolve();assert.equal(typeof finish,'function');ui.view.ids=['mention-b'];ui.render();
