@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from "typescript";
 
 const captureSource = readFileSync(new URL("../components/easyt/morrovia-trip-capture.tsx", import.meta.url), "utf8");
 const captureStyles = readFileSync(new URL("../components/easyt/morrovia-trip-capture.module.css", import.meta.url), "utf8");
@@ -58,13 +59,11 @@ test("wide capture keeps one form and one primary submit", () => {
 });
 
 test("Homepage destination intents and expanded details precede its primary action", () => {
-  const plannerStart = captureSource.indexOf('<div className={styles.plannerFields} data-home-route-fields>');
+  const plannerStart = captureSource.indexOf(' data-home-route-fields>');
   assert.ok(plannerStart >= 0, 'the connected route field owner is present');
   const planner = captureSource.slice(plannerStart, captureSource.indexOf('      </> : <>', plannerStart));
-  assert.ok(planner.indexOf("planner.originEntry") < planner.indexOf("homepageEntry.destinationEditor"));
-  assert.ok(planner.indexOf("homepageEntry.destinationEditor") < planner.indexOf("{homepageDates}"));
-  assert.ok(planner.indexOf("{homepageDates}") < planner.indexOf("{homepagePersonalize}"));
-  assert.ok(planner.indexOf("{homepagePersonalizePanel}") < planner.indexOf("{homepageAction}"));
+  const ordered = ["planner.originEntry", "homepageEntry.destinationEditor", "{homepageDates}", "{homepagePersonalize}", "{homepagePersonalizePanel}", "{homepageAction}"].map(marker => planner.indexOf(marker));
+  assert.ok(ordered.every((position, i) => position >= 0 && (!i || position > ordered[i - 1])), "all connected fields and action appear in reading order");
 });
 
 test("expanded Homepage details precede the single primary action in both modes", () => {
@@ -84,14 +83,16 @@ test("expanded Homepage details precede the single primary action in both modes"
 });
 
 test("mobile destination editor leaves clear space before Homepage dates", () => {
-  assert.match(captureStyles, /@media \(max-width: 720px\)[\s\S]*?\.wideDestinationEditor \+ \.wideDatePicker \{ margin-top: 14px; \}/);
+  assert.match(captureStyles, /@media \(max-width: 700px\)\s*\{[^@]*?\.plannerBottom\s*\{[^}]*padding: 8px 0 0;/);
+  assert.match(captureStyles, /\.wideDestinationEditor\s*\{[^}]*padding-top: 12px;/);
+  assert.match(captureStories, /dates.getBoundingClientRect\(\).top - editor.getBoundingClientRect\(\).bottom/);
 });
 
 test("wide capture stories exercise keyboard and click tabs plus retained personalization", () => {
   assert.match(captureStories, /WideHomepageCapture/);
   assert.match(captureStories, /new KeyboardEvent\("keydown", \{ key: "ArrowRight"/);
   assert.match(captureStories, /getAttribute\("aria-selected"\)/);
-  assert.match(captureStories, /retained interest/);
+  assert.match(captureStories, /getByRole\("group", \{ name: "Travellers" \}\).querySelector\("output"\)\).toHaveTextContent\("3 travellers"\)/);
   assert.match(captureStories, /retained dates/);
 });
 
@@ -108,7 +109,7 @@ test("dual-entry hero is compact on desktop and may grow with open planner panel
   assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /overflow:\s*(?:hidden|clip)/);
   assert.match(immersiveStyles, /\.heroDecorative\s*\{[^}]*overflow:\s*clip/);
   assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*width:min\(1400px,calc\(100% - 80px\)\)/);
-  assert.match(immersiveSource, /Plan your route, stays and activities, all in one place\./);
+  assert.match(immersiveSource, /className=\{styles\.planner\}><HomeTripStarter \/>/);
   assert.match(immersiveStories, /FullComposition/);
 });
 
@@ -117,7 +118,7 @@ test("#390 hero uses one heading with the approved two-part promise and no eyebr
   assert.equal((hero.match(/<h1\b/g) ?? []).length, 1);
   assert.match(hero, /<h1><span>\{es \? "Viajes con varias paradas," : "Multi-stop trips,"\}<\/span><span className=\{styles\.heroEmphasis\}>\{es \? "hechos sencillos\." : "made simple\."\}<\/span><\/h1>/);
   assert.doesNotMatch(hero, /styles\.eyebrow/);
-  assert.match(hero, /Plan your route, stays and activities, all in one place\./);
+  assert.doesNotMatch(hero, /<p\b/, "the heading leads straight into the connected planner");
   assert.match(immersiveStyles, /\.heroEmphasis\s*\{[^}]*font-family:\s*var\(--morrovia-display\)[^}]*font-style:\s*italic/);
 });
 
@@ -157,11 +158,18 @@ test("homepage stories use the real connected owner and canonical hierarchy", ()
 });
 
 test("wide capture disables every opt-in control while loading", () => {
-  assert.match(captureSource, /className=\{styles\.modeTab\}[\s\S]*disabled=\{disabled \|\| loading\}/);
-  assert.match(captureSource, /className=\{styles\.wideDatePicker\}[\s\S]*disabled=\{disabled \|\| loading\}/);
-  assert.match(captureSource, /className=\{styles\.personalizeToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
-  assert.match(captureSource, /className=\{styles\.destinationToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
-  assert.match(captureSource, /aria-pressed=\{homepageEntry\.budget === budget\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  const tree = ts.createSourceFile("capture.tsx", captureSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const tags: string[] = [];
+  function collect(node: ts.Node) {
+    if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && ["EasyTButton", "MorroviaDatePicker", "MorroviaQuantitySelector"].includes(node.tagName.getText(tree))) tags.push(node.getText(tree));
+    ts.forEachChild(node, collect);
+  }
+  collect(tree);
+  for (const marker of ["styles.modeTab", "className={styles.utilityCell} fieldPresentation=", "plannerDropdown=", "data-morrovia-planner-trigger", "styles.destinationToggle", "styles.destinationAdd", "aria-pressed={homepageEntry.budget === budget}"]) {
+    const matching = tags.filter(tag => tag.includes(marker));
+    assert.ok(matching.length, marker);
+    for (const tag of matching) assert.ok(tag.includes("disabled={disabled || loading}"), marker);
+  }
 });
 
 test("wide capture stacks its compact segment group before it overflows", () => {

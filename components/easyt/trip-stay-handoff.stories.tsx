@@ -3,7 +3,7 @@ import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import TripStayHandoff from "./trip-stay-handoff";
 
 const meta = {
-  title: "Morrovia/05 Product patterns/Stay handoff",
+  title: "Morrovia/05 Product Patterns/Stay handoff",
   component: TripStayHandoff,
   parameters: { layout: "padded" },
   decorators: [(Story) => <div style={{ maxWidth: 420 }}><Story /></div>],
