@@ -198,7 +198,7 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
         {next ? <div key={next.id} className={styles.peek} data-deck-peek aria-hidden="true">
           <ResilientImage className={styles.photo} src={next.image} alt="" draggable={false} fallback={null} />
         </div> : null}
-        <ActivityFace key={card.id} card={card} location={location} index={displayIndex} total={cards.length}
+        <ActivityFace key={card.id} card={card} location={location} index={displayIndex} total={cards.length} showHint={resolved.size === 0}
           articleRef={active} titleRef={heading} style={style} motion={motion} direction={direction}
           busy={busy || pending} schedule={() => { if (!lock.current && !pending) void onSchedule(card.idea); }}
           start={start} move={move} end={end}
@@ -218,8 +218,8 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
   </div>;
 }
 
-function ActivityFace({ card, location, index, total, articleRef, titleRef, style, motion, direction, busy, schedule, start, move, end, animationDone }: {
-  card: StarterActivityCard; location: string; index: number; total: number;
+function ActivityFace({ card, location, index, total, showHint, articleRef, titleRef, style, motion, direction, busy, schedule, start, move, end, animationDone }: {
+  card: StarterActivityCard; location: string; index: number; total: number; showHint: boolean;
   articleRef: React.Ref<HTMLElement>; titleRef: React.Ref<HTMLHeadingElement>;
   style: CSSProperties; motion: Motion; direction: Direction; busy: boolean; schedule: () => void;
   start: (event: PointerEvent<HTMLElement>) => void; move: (event: PointerEvent<HTMLElement>) => void;
@@ -248,7 +248,10 @@ function ActivityFace({ card, location, index, total, articleRef, titleRef, styl
       alt="" draggable={false} style={hasPhoto ? undefined : { visibility: "hidden" }}
       onLoad={() => setDisplayedPhoto(photoUrl)} onError={() => setFailedPhoto(photoUrl)} />
       : <span className={styles.noPhoto} aria-hidden="true"><MapPin /></span>}
-    <span className={styles.count} aria-hidden="true">{index} of {total}</span>
+    <span className={styles.count}>
+      <span aria-hidden="true">{index} of {total}{showHint ? " · " : ""}</span>
+      {showHint ? <span>{card.state === "available" ? "Swipe left to skip or right to save" : "Swipe either way to continue"}</span> : null}
+    </span>
     <div className={styles.overlay}>
       <h3 className={styles.title} tabIndex={-1} ref={titleRef}>{card.title}</h3>
       <div className={styles.details}>

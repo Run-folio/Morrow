@@ -19,7 +19,7 @@ const compiled=(await build({
   }}],
 })).outputFiles[0].text;
 
-function runner({save,reduce=false}){
+function runner({save,reduce=false,firstState="available"}){
   const values=[],pending=[];
   let i=0, mounted=false;
   const hooks={
@@ -32,7 +32,7 @@ function runner({save,reduce=false}){
   vm.runInNewContext(compiled,{module,exports:module.exports,require,hooks,document:{activeElement:null},
     window:{matchMedia:()=>({matches:reduce})},setTimeout(fn){timeouts.set(++tick,fn);return tick;},clearTimeout:id=>timeouts.delete(id)});
   const props={
-    cards:['First place','Second place'].map((title,n)=>({title,id:String(n),state:'available',idea:{id:String(n)}})),
+    cards:['First place','Second place'].map((title,n)=>({title,id:String(n),state:n===0?firstState:'available',idea:{id:String(n)}})),
     location:'Kyoto',onDeckSave:save,onUndoDeckSave:async()=>true,onSchedule:()=>true,
   };
   const render=()=>{i=0;const tree=module.exports.default(props);mounted=true;for(const effect of pending.splice(0))effect();return tree};
@@ -42,7 +42,11 @@ function runner({save,reduce=false}){
   const alert=()=>lookup(render(),x=>x.props.role==='alert')[0]?.props.children;
   const flush=()=>{for(const fn of [...timeouts.values()])fn();};
   const activeCard=()=>lookup(render(),x=>x.props.articleRef)[0]?.props.card.title;
-  return {button,status,alert,flush,activeCard};
+  const hasHint=(text="Swipe left to skip or right to save")=>{
+    const face=lookup(render(),x=>x.props.articleRef)[0];
+    return !!face && lookup(face.type(face.props),x=>x.props.children===text).length===1;
+  };
+  return {button,status,alert,flush,activeCard,hasHint};
 }
 const settle=async()=>{for(let i=0;i<4;i++)await Promise.resolve()};
 
@@ -83,4 +87,22 @@ test('reduced-motion deck completes accepted save without waiting for an animati
   await settle();
   assert.match(deck.status(),/Idea saved.*Second place/);
   assert.ok(deck.button('Undo'));
+});
+
+test('first-card swipe guidance disappears after review and returns when Undo restores the first card',async()=>{
+  const deck=runner({save:async()=> 'added',reduce:true});
+  assert.equal(deck.hasHint(),true,'first idea explains both swipe directions');
+  deck.button('Skip').props.onClick();
+  assert.equal(deck.hasHint(),false,'no repeated hint on second idea');
+  deck.button('Undo').props.onClick();
+  await settle();
+  assert.equal(deck.hasHint(),true,'undo to the first idea restores the hint');
+});
+
+test('already saved and planned first cards never promise a new save',()=>{
+  for(const firstState of ['saved','planned']){
+    const deck=runner({save:async()=> 'existing',firstState});
+    assert.equal(deck.hasHint(),false);
+    assert.equal(deck.hasHint('Swipe either way to continue'),true);
+  }
 });

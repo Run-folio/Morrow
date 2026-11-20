@@ -58,12 +58,14 @@ function ShortlistContent(){const {trip}=useTripShellMutation();return <TripStay
 
 
 // These are all the existing starter and shell components, not an alternate entry.
+const swipeHint = "Swipe left to skip or right to save";
 export const KyotoSwipeMobile:Story={...Mobile,
   render:()=> <TripShell trip={starterKyotoFixture} cacheTrip={false}><Content initialStayState={{corePlaces:[],accommodationInventoryStatus:"empty"}} initialActivities={starterKyotoCards}/></TripShell>,
   play:async({canvasElement})=>{
     const content=within(within(canvasElement.ownerDocument.body).getByRole("dialog",{name:"Trip starter"}));
     await userEvent.click(content.getByRole("button",{name:"Things to do"}));
     await expect(await content.findByRole("heading",{name:"Fushimi Inari Taisha"})).toBeVisible();
+    await expect(content.getByText(swipeHint)).toBeVisible();
   },
 };
 export const KyotoSwipeUndoMobile:Story={...KyotoSwipeMobile,play:async(ctx)=>{
@@ -71,10 +73,12 @@ export const KyotoSwipeUndoMobile:Story={...KyotoSwipeMobile,play:async(ctx)=>{
   const content=within(within(ctx.canvasElement.ownerDocument.body).getByRole("dialog",{name:"Trip starter"}));
   await userEvent.click(content.getByRole("button",{name:/^Skip$/}));
   await expect(await content.findByRole("heading",{name:"Arashiyama Bamboo Grove"})).toBeVisible();
+  await expect(content.queryByText(swipeHint)).not.toBeInTheDocument();
   await expect(content.getByText("0 stays shortlisted · 0 ideas saved")).toBeVisible();
   await userEvent.click(content.getByRole("button",{name:"Undo"}));
   const restored = await content.findByRole("heading",{name:"Fushimi Inari Taisha"});
   await expect(restored).toBeVisible();
+  await expect(content.getByText(swipeHint)).toBeVisible();
   // Undo remounts the first card with a warm photo. After the entry and
   // passive effects settle, the visible asset must retain its scrim.
   const card = restored.closest("[data-deck-card]");

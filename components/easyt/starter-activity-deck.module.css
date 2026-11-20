@@ -25,7 +25,7 @@
 .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .card[data-photo="true"] { color: var(--morrovia-control-surface); }
 .card[data-photo="true"]::after { content:""; position:absolute; inset:0; pointer-events:none; background: linear-gradient(180deg, transparent 18%,color-mix(in srgb, var(--morrovia-photo-ink) 12%, transparent) 36%,color-mix(in srgb, var(--morrovia-photo-ink) 85%, transparent) 100%); }
-.count { z-index: 2; position: absolute; top: 12px; left: 12px; padding: 4px 9px; border-radius: var(--morrovia-radius); background: var(--morrovia-control-surface); color: var(--morrovia-ink); font: var(--morrovia-type-fine-print); font-weight: 650; }
+.count { max-width: calc(100% - 24px); box-sizing: border-box; z-index: 2; position: absolute; top: 12px; left: 12px; padding: 4px 9px; border-radius: var(--morrovia-radius); background: var(--morrovia-control-surface); color: var(--morrovia-ink); font: var(--morrovia-type-fine-print); font-weight: 650; }
 .overlay { position: relative; z-index: 2; width: 100%; box-sizing: border-box; padding: 56px 14px 7px; }
 .title { margin: 0; color: inherit; font: 600 clamp(21px, 6.2vw, 26px)/1.08 var(--morrovia-display); letter-spacing: -.025em; overflow-wrap: anywhere; }
 .details { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 0 8px; font:var(--morrovia-type-fine-print); }
