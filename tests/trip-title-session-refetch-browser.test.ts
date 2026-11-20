@@ -6,7 +6,8 @@ const auth=`import{useState,useEffect}from'react';export const authClient={useSe
 for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: an enabled guest title save remains device-only during session refetch`,{skip:!builderBrowserTestsEnabled,timeout:60_000},async()=>{
  let accountWrites=0;const trip=cityReturnTrip(),view=await renderBuilder({browserName,initialTrip:trip,path:`/journey/${trip.id}/transport`,styled:true,sourceOverrides:new Map([['fixture:auth',auth]]),accountRequest:()=>{accountWrites++;return{status:500,body:{error:'Guest must remain device-only'}};}});
  try{
-  const page=view.page,card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').click();const mark=card.getByRole('button',{name:'Mark as booked',exact:true});
+  const page=view.page,card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').click();await card.locator("[data-transport-more-actions] > summary").press("Enter");
+   const mark=card.getByRole('button',{name:'Mark as booked',exact:true});
   await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent==='Mark as booked');return b&&!b.disabled});
   await page.evaluate(()=>localStorage.setItem('synthetic-retained-title-data','preserve'));
   await page.locator('#trip-shell-title').getByRole('button').click();const input=page.getByRole('textbox',{name:'Trip name',exact:true});await input.fill('Guest refetch title retained');

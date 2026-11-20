@@ -247,7 +247,10 @@ export const ModeDialogOptions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
     await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
-    const trigger = (await canvas.findAllByRole("button", { name: "Change transport mode" }))[0];
+    await expect(canvas.queryByRole("button", { name: "Change transport mode" })).not.toBeInTheDocument();
+    const more = canvas.getByText("More actions", { selector: "summary", exact: true });
+    await userEvent.click(more);
+    const trigger = await canvas.findByRole("button", { name: "Change transport mode" });
     await userEvent.click(trigger);
     const dialog = await body.findByRole("dialog", { name: "Change transport" });
     await expect(within(dialog).getByRole("radiogroup", { name: "Transport options" })).toBeVisible();

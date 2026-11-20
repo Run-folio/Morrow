@@ -1,3 +1,4 @@
+import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mkdirSync} from 'node:fs';
@@ -95,7 +96,7 @@ for(const language of ['en','es'] as const){
       await page.waitForFunction(()=>!document.querySelector('form[aria-label="Flight-search airports"],form[aria-label="Aeropuertos para buscar vuelos"]'));
       assert.equal(await edit().evaluate((el:HTMLElement)=>el===document.activeElement),true);
       await page.reload();await open();assert.ok((await card.innerText()).includes(from.name));assert.ok((await card.innerText()).includes(to.name));
-      await card.getByRole('button',{name:es?'Marcar como reservado':'Mark as booked',exact:true}).click();
+      await openTransportMoreActions(card); await card.getByRole('button',{name:es?'Marcar como reservado':'Mark as booked',exact:true}).click();
       await card.locator('[data-tone="booked"]').waitFor();assert.equal(await edit().count(),0);
       await card.getByRole('button',{name:es?'Editar detalles':'Edit details',exact:true}).click();
       await card.getByLabel(es?'Referencia de reserva':'Booking reference').fill('SYNTHETIC-INTEGRATION');

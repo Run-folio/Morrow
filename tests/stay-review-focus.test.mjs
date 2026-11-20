@@ -13,7 +13,7 @@ const compiled = (await transform(`const {useState,useRef,useEffect,useMemo}=glo
 const nodes = node => !node || typeof node !== "object" ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];
 function app() {
   const cells=[],pending=[],frames=new Map(),listeners=[];let index=0,dirty=false,nextFrame=0,tree,compact=false;
-  class Element { isConnected=true; focused=0; getAttribute(){return "Review Hotel A for Tokyo";} focus(){this.focused++;} }
+  class Element { isConnected=true; focused=0; getAttribute(){return "Details for Hotel A in Tokyo";} focus(){this.focused++;} }
   const origin=new Element(); const handoff={focused:0,scrolled:0,focus(){this.focused++;},scrollIntoView(){this.scrolled++;}};
   const trip={id:"trip",ownerId:"owner",planItems:[],brief:{}};
   const context={key:"trip:stop:2027-03-03:2027-03-06",stop:{id:"stop",name:"Tokyo"},nights:3,checkIn:null,checkOut:null,searchCoordinates:[1,2]};

@@ -135,3 +135,29 @@
 .airportSearch, .airportSearch form { min-width: 0; display: grid; gap: 12px; }
 .airportSearch > button { justify-self: start; max-width: 100%; }
 .airportSearch p { margin: 0; overflow-wrap: anywhere; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
+
+.moreActions { min-width: 0; }
+.moreActions > summary {
+  min-height: 36px;
+  padding: 0 12px;
+  align-content: center;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink);
+  background: var(--morrovia-control-surface);
+  font: var(--morrovia-type-supporting-body);
+  cursor: pointer;
+}
+.moreActions > summary:hover,
+.moreActions[open] > summary { background: var(--morrovia-lilac); }
+.moreActions > summary:focus-visible { outline: 2px solid var(--morrovia-signal); outline-offset: 2px; }
+.moreActionsList {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 6px;
+  margin-top: 4px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-control-surface);
+}

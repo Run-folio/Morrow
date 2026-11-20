@@ -1,3 +1,4 @@
+import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import test from "node:test";
@@ -107,7 +108,7 @@ test("manual booking marks and optional details survive guest save, reload, edit
     await view.page.locator(`[data-transport-leg-id="${leg.id}"]`).waitFor();
     const card = view.page.locator(`[data-transport-leg-id="${leg.id}"]`);
     await card.getByRole("button", { name: /View details/ }).click();
-    await view.page.getByRole("button", { name: "Mark as booked" }).click();
+    await openTransportMoreActions(view.page); await view.page.getByRole("button", { name: "Mark as booked" }).click();
     await view.page.locator(`[data-booked-by-traveller="true"][data-booking-leg-id="${leg.id}"]`).waitFor();
     assert.equal(await view.page.getByText("This reflects your confirmation; Morrovia does not verify or change external bookings.", { exact: true }).count(), 0);
 
@@ -196,7 +197,7 @@ test("routed road evidence stays a separate reference across Builder and Transpo
       assert.equal(await transport.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
     assert.match(await transport.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').innerText(), /no passenger service/i);
-    await transport.page.getByRole("button", { name: "Change transport mode" }).first().click();
+    await openTransportMoreActions(transport.page); await transport.page.getByRole("button", { name: "Change transport mode" }).first().click();
     assert.equal(await transport.page.getByRole("button", { name: /Road · ~6h 30m/ }).count(), 0);
     assert.equal(await transport.page.getByText("No other evidence-backed mode is currently supported for this leg.", { exact: true }).count(), 1);
     assert.deepEqual(transport.errors, []);
@@ -402,7 +403,7 @@ test("applying a different mode keeps a traveller booking as a visible mismatch 
   try {
     const card = view.page.locator(`[data-transport-leg-id="${trip.legs[0].id}"]`);
     await card.getByRole("button", { name: /View details:/ }).click();
-    await view.page.getByRole("button", { name: "Change transport mode" }).click();
+    await openTransportMoreActions(view.page); await view.page.getByRole("button", { name: "Change transport mode" }).click();
     const dialog = view.page.getByRole("dialog", { name: "Change transport", exact: true });
     await dialog.getByRole("radio", { name: /Road/ }).click();
     await dialog.getByRole("button", { name: "Use road", exact: true }).click();

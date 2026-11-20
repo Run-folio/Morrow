@@ -32,6 +32,8 @@ for (const width of [1440, 390]) test(`future return flight in an in-progress tr
     assert.equal(search.searchParams.get('travelMode'), 'FLIGHT');
     assert.equal(await link.getAttribute('target'), '_blank');
     assert.match((await link.getAttribute('rel'))!, /sponsored.*noopener.*noreferrer/);
+    assert.equal(await card.getByRole('button', { name: 'Mark as booked', exact: true }).count(), 0);
+    await card.locator('[data-transport-more-actions] > summary').press('Enter');
     assert.equal(await card.getByRole('button', { name: 'Mark as booked', exact: true }).count(), 1);
     assert.deepEqual(await snapshot(), before, 'expansion and link availability cannot change the saved fixture');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);

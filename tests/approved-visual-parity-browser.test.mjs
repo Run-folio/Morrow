@@ -26,9 +26,9 @@ test('mobile day retains direct scheduling, notes and the disclosed Add chooser'
 test('Stay review keeps a focused handoff, generic provider link and mobile dismissal', {skip:!origin}, async()=>{
  const {chromium}=require('playwright');const browser=await chromium.launch({channel:'chrome',headless:true});
  try{const page=await browser.newPage({viewport:{width:1440,height:1000}});await open(page,'morrovia-05-product-patterns-trip-workspace-stay--approved-shortlist-desktop');await page.getByRole('heading',{name:'Find your stay',exact:true}).waitFor();
- await page.getByRole('button',{name:/^Review .+ for / }).first().click();await page.waitForFunction(()=>document.activeElement?.id==='stay-handoff');
+ await page.getByRole('button',{name:/^Details for .+ in / }).first().click();await page.waitForFunction(()=>document.activeElement?.id==='stay-handoff');
  const handoff=page.locator('#stay-handoff');assert.equal(await handoff.getByRole('link',{name:/Open Trip.com/}).getAttribute('href'),'https://www.trip.com/t/pdAWQqi56W2');assert.match(await handoff.innerText(),/General search: enter/);
  for(const width of [390,320,430]){await page.setViewportSize({width,height:1000});const dialog=page.getByRole('dialog',{name:/Find your stay:/});await dialog.waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await dialog.getByRole('button',{name:'Copy stay details',exact:true}).waitFor();}
- await page.keyboard.press('Escape');await page.getByRole('dialog',{name:/Find your stay:/}).waitFor({state:'hidden'});assert.match(await page.evaluate(()=>document.activeElement?.textContent??''),/Review stay|Open details/);await page.close();
+ await page.keyboard.press('Escape');await page.getByRole('dialog',{name:/Find your stay:/}).waitFor({state:'hidden'});assert.match(await page.evaluate(()=>document.activeElement?.textContent??''),/^Details$|Open details/);await page.close();
  }finally{await browser.close();}
 });

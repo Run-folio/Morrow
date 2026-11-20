@@ -1,3 +1,4 @@
+import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import test from "node:test";
@@ -118,7 +119,7 @@ test("the transport summary is one full-row native disclosure with a status pill
         mkdirSync(process.env.MORROVIA_BROWSER_ARTIFACT_DIR, { recursive: true });
         await view.page.screenshot({ path: `${process.env.MORROVIA_BROWSER_ARTIFACT_DIR}/workspace-transport-expanded-${width}.png`, fullPage: false });
       }
-      await card.getByRole("button", { name: "Change transport mode", exact: true }).click();
+      await openTransportMoreActions(card); await card.getByRole("button", { name: "Change transport mode", exact: true }).click();
       await view.page.getByRole("dialog", { name: "Change transport", exact: true }).getByRole("button", { name: "Cancel", exact: true }).click();
       assert.equal(await trigger.getAttribute("aria-expanded"), "true", "modal action must not toggle the summary");
       await trigger.focus();

@@ -23,6 +23,7 @@ test("Transport modal keeps choices as drafts until Apply and restores the recom
     await card.getByRole("button", { name: /View details:/ }).click();
     const snapshot = () => view.page.evaluate((tripId: string) => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes(encodeURIComponent(tripId)))), trip.id);
     const before = await snapshot();
+    await view.page.locator("[data-transport-more-actions] > summary").click();
     const trigger = view.page.getByRole("button", { name: "Change transport mode" });
     const dialog = view.page.getByRole("dialog", { name: "Change transport", exact: true });
     await trigger.click();
