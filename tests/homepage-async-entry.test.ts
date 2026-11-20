@@ -322,3 +322,24 @@ test('Home masks the controlled picker draft during owner transitions without fa
  assert.deepEqual(value(false,snapshot,'owner-a',typed),{start:typed.start,end:''});
  for(const [pending,ownerId] of [[true,'owner-a'],[false,'owner-b'],[false,null]])assert.deepEqual(value(pending,snapshot,ownerId,typed),{start:'',end:''});
 });
+
+test('a held date-picker callback cannot change the draft after its owner, readiness or mounted scope expires',()=>{
+ let handler:ts.Expression|undefined;
+ const walk=(node:ts.Node)=>{if(ts.isPropertyAssignment(node)&&node.name.getText(ast)==='onDateTypedDraftChange')handler=node.initializer;ts.forEachChild(node,walk)};walk(ast);
+ assert.ok(handler);
+ const body=ts.transpileModule('const callback='+handler.getText(ast)+';', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ for(const reason of ['owner','pending','recovery','unmount','blocked','snapshot','ready']){
+  const ownerIdRef={current:'owner-a'},snapshotRef={current:{ownerId:'owner-a'}},mountedRef={current:true},homepageReadyRef={current:true},sessionPendingRef={current:false};
+  const dateTypedDraftRef={current:{start:'2027-03-06'}};
+  let cancelled=0,cleared=0;
+  const callback=new Function('scope','with(scope){'+body+'return callback;}')({ownerId:'owner-a',ownerIdRef,snapshotRef,mountedRef,homepageReadyRef,sessionPendingRef,inputBlocked:reason==='blocked',dateTypedDraftRef,cancelSubmission:()=>{cancelled++},setCaptureError:()=>{cleared++},updateDateTypedDraft:(value:typeof dateTypedDraftRef.current)=>{dateTypedDraftRef.current=value}});
+  if(reason==='owner'){ownerIdRef.current='owner-b';snapshotRef.current.ownerId='owner-b'}
+  if(reason==='snapshot')snapshotRef.current.ownerId='owner-b';
+  if(reason==='pending')sessionPendingRef.current=true;
+  if(reason==='recovery')homepageReadyRef.current=false;
+  if(reason==='unmount')mountedRef.current=false;
+  callback('start','2027-04-10');
+  assert.equal(dateTypedDraftRef.current.start,reason==='ready'?'2027-04-10':'2027-03-06',reason);
+  assert.equal(cancelled,reason==='ready'?1:0,reason);assert.equal(cleared,reason==='ready'?1:0,reason);
+ }
+});

@@ -115,7 +115,8 @@ test("typing a Search date retires an in-flight continuation before publishing t
   const body = ts.transpileModule(`const callback = ${callback.getText(ast)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   let retired = false;
   let draft: unknown;
-  const bindings = { cancelSubmission: () => { retired = true; }, dateTypedDraftRef: { current: {} }, setCaptureError: () => {}, updateDateTypedDraft: (next: unknown) => { assert.equal(retired, true); draft = next; } };
+  const bindings = { mountedRef:{current:true},inputBlocked:false,homepageReadyRef:{current:true},sessionPendingRef:{current:false},ownerId:null,ownerIdRef:{current:null},snapshotRef:{current:{ownerId:null}},
+    cancelSubmission: () => { retired = true; }, dateTypedDraftRef: { current: {} }, setCaptureError: () => {}, updateDateTypedDraft: (next: unknown) => { assert.equal(retired, true); draft = next; } };
   new Function("scope", `with(scope) { ${body} return callback; }`)(bindings)("start", "2020-01-01");
   assert.deepEqual(draft, { start: "2020-01-01" });
 });

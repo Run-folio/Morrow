@@ -498,6 +498,8 @@ export default function HomeTripStarter() {
       // Keep this picker controlled, including while the next owner is being checked.
       dateTypedDraft: { start: "", end: "", ...(!sessionPending && snapshot.ownerId === ownerId ? dateTypedDraft : {}) },
       onDateTypedDraftChange: (boundary, raw) => {
+        if (!mountedRef.current || inputBlocked || !homepageReadyRef.current || sessionPendingRef.current
+          || ownerIdRef.current !== ownerId || snapshotRef.current.ownerId !== ownerId) return;
         cancelSubmission();
         updateDateTypedDraft({ ...dateTypedDraftRef.current, [boundary]: raw });
         setCaptureError("");
