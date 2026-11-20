@@ -85,7 +85,7 @@
 
 /* Overview owns this unified practical grid; the shared legacy task rows above retain their presentation. */
 .overviewPrepGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.overviewPrepCard { min-width: 0; padding: 16px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 44px; gap: 8px; align-items: start; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.overviewPrepCard { min-width: 0; padding: 16px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 44px; gap: 8px; align-items: start; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--overview-card-surface, var(--morrovia-paper)); }
 /* morrovia-ui-audit-allow-next-line raw-radius -- Circular category medallions match the approved planning and preparation card pattern. */
 .overviewPrepIcon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: var(--morrovia-lilac-strong); color: var(--morrovia-action); }
 .overviewPrepIcon svg { width: 19px; height: 19px; }

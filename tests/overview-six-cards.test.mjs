@@ -15,3 +15,11 @@ test('transfer controls match leg IDs, support keyboard, and never substitute a 
  const info=read('overview-info.tsx');for(const event of ['onFocus','Escape','onClick','onPointerEnter','aria-describedby'])assert.ok(info.includes(event));
  assert.match(prep,/\{!previewProvider && isSponsoredLink/);
 });
+
+test('the six-card grid uses the shared white surface for both card types and preserves the surface on hover', () => {
+ const overview = read('trip-overview-workspace.module.css');
+ assert.match(overview, /\.arrangeGrid\s*\{[^}]*--overview-card-surface:\s*var\(--morrovia-control-surface\)/);
+ assert.match(overview, /\.arrangeItem\s*\{[^}]*background:\s*var\(--overview-card-surface\)/);
+ assert.doesNotMatch(overview, /\.arrangeItemInteractive:hover\s*\{[^}]*background:/);
+ assert.match(read('trip-preparation.module.css'), /\.overviewPrepCard\s*\{[^}]*background:\s*var\(--overview-card-surface, var\(--morrovia-paper\)\)/);
+});
