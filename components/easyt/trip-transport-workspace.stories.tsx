@@ -247,10 +247,9 @@ export const ModeDialogOptions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement), body = within(canvasElement.ownerDocument.body);
     await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
-    await expect(canvas.queryByRole("button", { name: "Change transport mode" })).not.toBeInTheDocument();
-    const more = canvas.getByText("More actions", { selector: "summary", exact: true });
-    await userEvent.click(more);
+    await expect(canvas.queryByText("More actions", { selector: "summary", exact: true })).not.toBeInTheDocument();
     const trigger = await canvas.findByRole("button", { name: "Change transport mode" });
+    await expect(trigger).toBeVisible();
     await userEvent.click(trigger);
     const dialog = await body.findByRole("dialog", { name: "Change transport" });
     await expect(within(dialog).getByRole("radiogroup", { name: "Transport options" })).toBeVisible();
@@ -273,15 +272,23 @@ const statusExamples:EasyTTrip={...transportTrip,id:'synthetic-transport-status-
 const markedStatusExamples=markTransportLegBooked(statusExamples,statusExamples.legs[0].id);
 async function verifyTransportStatusLayout(canvasElement:HTMLElement,language:'en'|'es'='en') {
  const canvas=within(canvasElement);
- await expect(canvas.getByText(language==='es'?'Reservado · marcado por ti':'Booked · marked by you')).toBeVisible();
- await expect(canvas.getByText(language==='es'?'No reservado':'Not booked')).toBeVisible();
+ const booking = canvas.getAllByRole('button',{name: language === 'es' ? /^Reservado:/ : /^Booked:/});
+ await expect(booking).toHaveLength(2);
+ await expect(booking[0]).toHaveAttribute('aria-pressed','true');
+ await expect(booking[1]).toHaveAttribute('aria-pressed','false');
  await expect(canvas.getByText(language==='es'?'Necesita comprobarse':'Needs checking')).toBeVisible();
  const overlaps=(a:DOMRect,b:DOMRect)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;
  for(const summary of canvasElement.querySelectorAll<HTMLElement>('[data-transport-summary]')) {
-  const badges=[...summary.querySelectorAll<HTMLElement>('[data-tone]')];
+  const badges=[...summary.querySelectorAll<HTMLElement>('[data-tone], [data-transport-booking-toggle]')];
   for(const badge of badges){
-   await expect(badge.querySelector('svg')).toHaveAttribute('aria-hidden','true');
-   await expect(badge.querySelector('svg')).toHaveAttribute('focusable','false');
+   const icon = badge.querySelector('svg');
+   if (badge.hasAttribute('data-transport-booking-toggle')) {
+    await expect(badge.querySelector('span')).toHaveAttribute('aria-hidden','true');
+    await expect(Boolean(icon)).toBe(badge.getAttribute('aria-pressed')==='true');
+   } else {
+    await expect(icon).toHaveAttribute('aria-hidden','true');
+    await expect(icon).toHaveAttribute('focusable','false');
+   }
    const bounds=badge.getBoundingClientRect(),text=badge.querySelector<HTMLElement>('span')!;
    await expect(bounds.left).toBeGreaterThanOrEqual(0);
    await expect(bounds.right).toBeLessThanOrEqual(canvasElement.ownerDocument.documentElement.clientWidth+1);

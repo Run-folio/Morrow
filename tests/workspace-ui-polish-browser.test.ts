@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import test from "node:test";
@@ -16,11 +15,11 @@ test("English and Spanish booking and route-check pills remain inside the summar
       const card = view.page.locator(`[data-transport-leg-id="${trip.legs[0].id}"]`);
       const summary = card.locator("[data-transport-summary]");
       const summaryText = await summary.innerText();
-      assert.ok(summaryText.includes(language === "es" ? "Reservado · marcado por ti" : "Booked · marked by you"), `${language}: ${summaryText}`);
+      assert.equal(await summary.locator("[data-transport-booking-toggle]").getAttribute("aria-pressed"), "true");
       assert.ok(summaryText.includes(language === "es" ? "Revisar ruta" : "Route check"), `${language}: ${summaryText}`);
       assert.equal(await summary.locator("svg.lucide-chevron-down").count(), 1);
       const row = (await summary.boundingBox())!;
-      for (const element of [card.getByText(language === "es" ? "Reservado · marcado por ti" : "Booked · marked by you", { exact: true }), card.getByText(language === "es" ? "Revisar ruta" : "Route check", { exact: true }), summary.locator("svg.lucide-chevron-down")]) {
+      for (const element of [summary.locator("[data-transport-booking-toggle]"), card.getByText(language === "es" ? "Revisar ruta" : "Route check", { exact: true }), summary.locator("svg.lucide-chevron-down")]) {
         const box = (await element.boundingBox())!;
         assert.ok(box.x >= row.x && box.x + box.width <= row.x + row.width, `${language} status and collapse affordance must not be clipped`);
       }
@@ -119,7 +118,7 @@ test("the transport summary is one full-row native disclosure with a status pill
         mkdirSync(process.env.MORROVIA_BROWSER_ARTIFACT_DIR, { recursive: true });
         await view.page.screenshot({ path: `${process.env.MORROVIA_BROWSER_ARTIFACT_DIR}/workspace-transport-expanded-${width}.png`, fullPage: false });
       }
-      await openTransportMoreActions(card); await card.getByRole("button", { name: "Change transport mode", exact: true }).click();
+      await card.getByRole("button", { name: "Change transport mode", exact: true }).click();
       await view.page.getByRole("dialog", { name: "Change transport", exact: true }).getByRole("button", { name: "Cancel", exact: true }).click();
       assert.equal(await trigger.getAttribute("aria-expanded"), "true", "modal action must not toggle the summary");
       await trigger.focus();

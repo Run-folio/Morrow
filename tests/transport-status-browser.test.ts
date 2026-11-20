@@ -40,8 +40,8 @@ for(const language of ['en','es'] as const) {
       await cards.first().waitFor();
       const first=cards.nth(0),second=cards.nth(1),third=cards.nth(2);
       const summary=(card:typeof first)=>card.locator('[data-transport-summary]');
-      assert.equal(await summary(first).locator('[data-tone="booked"]').innerText(),language==='es'?'Reservado · marcado por ti':'Booked · marked by you');
-      assert.equal(await summary(second).locator('[data-tone="not-booked"]').innerText(),language==='es'?'No reservado':'Not booked');
+      assert.equal(await summary(first).locator('[data-transport-booking-toggle]').getAttribute('aria-pressed'),'true');
+      assert.equal(await summary(second).locator('[data-transport-booking-toggle]').getAttribute('aria-pressed'),'false');
       assert.equal(await summary(third).locator('[data-tone="attention"]').innerText(),language==='es'?'Necesita comprobarse':'Needs checking');
       assert.equal(await summary(first).locator('[data-tone="attention"]').innerText(),language==='es'?'Revisar ruta':'Route check');
       assert.equal(await summary(first).locator('svg.lucide-check').count(),1);

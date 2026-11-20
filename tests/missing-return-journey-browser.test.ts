@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mkdirSync} from 'node:fs';
@@ -28,14 +27,14 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
    await page.waitForFunction((id:string)=>document.activeElement?.closest('[data-transport-leg-id]')?.getAttribute('data-transport-leg-id')===id,plan.legId);
    assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
    assert.equal(await last.locator('a[data-affiliate-provider]').count(),0,'unknown restored transport must not become a booking search');
-   await openTransportMoreActions(last); await last.getByRole('button',{name:'Change transport mode',exact:true}).waitFor();
+   await last.getByRole('button',{name:'Change transport mode',exact:true}).waitFor();
    if(account){await page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(el=>el.textContent?.includes('Saved to your account')));assert.equal(puts,1);assert.deepEqual(JSON.parse(JSON.stringify(cloud.legs[0])),before.legs[0]);assert.deepEqual(JSON.parse(JSON.stringify(cloud.brief.bookings)),before.brief.bookings);}
    await page.reload();await page.waitForFunction(()=>document.querySelectorAll('[data-transport-leg-id]').length===2);assert.equal(await cards.count(),2);await last.locator('[data-tone="attention"]').waitFor();assert.equal(await last.getAttribute('data-presentation-state'),'needs-checking');assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
    const documents=await page.evaluate((id:string)=>Object.keys(localStorage).flatMap(key=>{try{const record=JSON.parse(localStorage.getItem(key)!);const trip=record?.trip??record;return trip?.id===id&&trip.legs?.length===2?[trip]:[];}catch{return [];}}),cloud.id);
    assert.ok(documents.length,'reload must have a retained two-leg document');
    for(const document of documents){assert.equal(document.brief.bookings[0].confirmation,'KEEP-OUTBOUND');assert.equal(document.brief.bookings[0].travellerMarkedBooked,true);assert.deepEqual(document.legs[0],before.legs[0]);}
    assert.equal(puts,account?1:0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(view.errors,[]);
-   const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});const summary=last.locator('[data-transport-summary] button');if(await summary.getAttribute('aria-expanded')==='false')await summary.press('Enter');await page.screenshot({path:`${artifacts}/return-repaired-${browserName}-${language}-${account?'account':'guest'}-320.png`,fullPage:true});}
+   const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});const summary=last.locator('[data-transport-details-toggle]');if(await summary.getAttribute('aria-expanded')==='false')await summary.press('Enter');await page.screenshot({path:`${artifacts}/return-repaired-${browserName}-${language}-${account?'account':'guest'}-320.png`,fullPage:true});}
   }finally{await view.close();}
  });
 }

@@ -3,13 +3,13 @@
 .header h2 { margin: 0; font: 600 clamp(44px, 6vw, 72px)/1 var(--morrovia-display); letter-spacing: -.035em; }
 .header p { margin: 10px 0 0; color: var(--morrovia-ink-soft); font: 600 20px/1.4 var(--morrovia-ui); }
 .dayLabel { padding-top: 10px; flex: none; color: var(--morrovia-ink-soft); font: 600 18px/1.4 var(--morrovia-ui); }
-.location { position: relative; display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 2.3fr); align-items: center; gap: 20px; overflow: hidden; border-radius: var(--morrovia-control-radius); background: linear-gradient(110deg, var(--morrovia-tint), var(--morrovia-lilac)); }
-.location h3 { margin: 0; padding: 24px; font: 600 clamp(32px, 4vw, 50px)/1.1 var(--morrovia-display); overflow-wrap: anywhere; }
-.locationPhoto { height: 132px; max-height: 132px; border-radius: 0; }
-.dateBasis { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 8px 0 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
-.primaryLink { justify-content: flex-start; margin-block: 18px 24px; border-color: var(--morrovia-signal); background: var(--morrovia-tint); }
-.primaryLink > svg:last-child { margin-left: auto; }
-.mobileItinerary { display: none; }
+.workspace .previewHeader { align-items: center; padding-bottom: 0; margin-bottom: 16px; border-bottom: 0; }
+.workspace .previewHeader p { margin: 0; }
+.workspace .previewHeader .dayLabel { padding-block-start: 0; }
+.location { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 12px; margin-block-end: 20px; }
+.locationIdentity { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; min-width: 0; }
+.location h3 { min-width: 0; margin: 0; font: 600 clamp(32px, 4vw, 50px)/1.1 var(--morrovia-display); overflow-wrap: anywhere; }
+.location .locationPhoto { width: min(100%, 360px); height: auto; max-height: none; aspect-ratio: 3 / 2; }
 .columns { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; gap: 22px; }
 .plans, .context { min-width: 0; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 24px; }
 .plans > h3, .context h3 { margin: 0; padding-bottom: 16px; border-bottom: 1px solid var(--morrovia-line); }
@@ -35,6 +35,9 @@
 .contextContent h4 { margin-top: 0; }
 .contextContent > a { margin-top: 4px; }
 .empty { color: var(--morrovia-muted); margin-block: 20px; }
+.emptyPlans { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding-block-start: 14px; }
+.emptyPlans .empty { margin: 0; }
+
 .notes { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--morrovia-line); }
 .notes ul { padding-left: 20px; margin-bottom: 0; font: var(--morrovia-type-body); }
 .notes li { white-space: pre-wrap; }
@@ -42,7 +45,6 @@
 .fallback h3 { margin: 0; }
 .fallback > label { min-width: 0; max-width: 100%; }
 .fallback > a { justify-self: start; }
-.location:not(:has([data-itinerary-photo])) { grid-template-columns: minmax(0, 1fr); }
 .agenda li:not(:has([data-itinerary-photo])) { grid-template-columns: minmax(0, 1fr); }
 .agenda li:not(:has([data-itinerary-photo])) .activityText { grid-column: 1; }
 @media (max-width: 1000px) and (min-width: 761px) {
@@ -57,14 +59,9 @@
  .header h2 { font-size: 54px; }
  .header p { margin-top: 8px; font-size: 18px; color: var(--morrovia-ink); }
  .dayLabel { padding: 4px 16px; border-radius: var(--morrovia-radius); background: var(--morrovia-tint); color: var(--morrovia-ink); font-size: 16px; white-space: nowrap; }
- .location { grid-template-columns: minmax(0, 1fr); gap: 0; }
- .location h3 { padding: 20px; font-size: 36px; }
- .location:has([data-itinerary-photo]) h3 { position: absolute; z-index: 2; inset: 0 auto 0 0; display: flex; align-items: center; max-width: 100%; padding-block: 24px; color: var(--morrovia-control-surface); pointer-events: none; }
- .location:has([data-itinerary-photo])::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--morrovia-photo-ink) 65%, transparent), color-mix(in srgb, var(--morrovia-photo-ink) 45%, transparent)); pointer-events: none; }
- .locationPhoto { height: 112px; max-height: 112px; }
- .dateBasis { margin-block: 6px 18px; }
- .desktopItinerary { display: none; }
- .mobileItinerary { display: flex; width: fit-content; max-width: 100%; margin: 20px auto 0; color: var(--morrovia-signal); }
+ .workspace .previewHeader .dayLabel { padding-block-start: 4px; }
+ .location h3 { font-size: 36px; }
+ .emptyPlans { padding-block-end: 16px; }
  .columns { grid-template-columns: minmax(0, 1fr); gap: 0; }
  .plans, .context { padding: 0; border: 0; border-radius: 0; }
  .plans > h3 { padding-bottom: 16px; font: 700 26px/1.2 var(--morrovia-ui); letter-spacing: -.025em; }

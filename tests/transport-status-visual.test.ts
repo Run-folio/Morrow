@@ -11,9 +11,9 @@ const ast=ts.createSourceFile('transport.tsx',source,ts.ScriptTarget.Latest,true
 const card=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='TransportCard') as ts.FunctionDeclaration;
 const presentation=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='presentationLabel')!;
 const copy=ast.statements.find(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>d.name.getText(ast)==='copyFor'))!;
-const wanted=new Set(['durationMinutes','state','isNotBooked','status','showsEstimatedTiming','showStatus','statusTone','StatusIcon']);
+const wanted=new Set(['importedBooking','durationMinutes','state','isNotBooked','status','showsEstimatedTiming','showStatus','statusTone','StatusIcon']);
 const declarations=card.body!.statements.filter(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>wanted.has(d.name.getText(ast))));
-const script=ts.transpileModule(`${copy.getText(ast)}\n${presentation.getText(ast)}\nconst leg=item.leg,copy=copyFor(language);\n${declarations.map(d=>d.getText(ast)).join('\n')}\nreturn {status,showStatus,statusTone,icon:StatusIcon,showsEstimatedTiming};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+const script=ts.transpileModule(`${copy.getText(ast)}\n${presentation.getText(ast)}\nconst leg=item.leg,copy=copyFor(language),bookingMarked=transportBookingMarkedByTraveller(item.manualBooking);\n${declarations.map(d=>d.getText(ast)).join('\n')}\nreturn {status,showStatus,statusTone,icon:StatusIcon,showsEstimatedTiming};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
 const run=new Function('item','language','transportPresentationState','isPassengerServiceLeg','transportBookingMarkedByTraveller','transferTimingLabel','Check','Circle','AlertTriangle',script);
 function project(leg:ReturnType<typeof japanTrip>['legs'][number],booking:unknown=null,manualBooking:unknown=null,language='en'){return run({leg,booking,manualBooking},language,transportPresentationState,isPassengerServiceLeg,transportBookingMarkedByTraveller,transferTimingLabel,'check','circle','warning');}
 test('actual booked projection uses check/success and retains manual-recording qualification',()=>{

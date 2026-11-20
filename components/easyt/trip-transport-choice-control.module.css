@@ -40,3 +40,11 @@
   .currentBadge { grid-column: 2; }
   .dialogFooter > button { flex: 1; }
 }
+
+.dialogTrigger { max-width: 100%; min-width: 0; white-space: normal; }
+.comparisonFeedback { display: grid; gap: 10px; justify-items: start; }
+.comparisonFeedback p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.comparisonFeedback p:empty { display: none; }
+.comparisonFeedback p:has(strong) { width: 100%; padding: 12px 16px; border-radius: var(--morrovia-radius); background: var(--morrovia-lilac); }
+.comparisonFeedback strong, .comparisonFeedback p > span { display: block; }
+.comparisonFeedback strong { color: var(--morrovia-ink); }

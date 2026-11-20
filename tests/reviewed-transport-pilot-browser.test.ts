@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {renderBuilder,builderBrowserTestsEnabled} from './helpers/builder-render.ts';
@@ -19,7 +18,7 @@ for(const browserName of ['chromium','webkit'] as const){
   }});
   view.page.setDefaultTimeout(5000);
   try{
-   await view.page.locator('[data-transport-leg-id]').last().getByRole('button',{name:/View details:/}).click();await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
+   await view.page.locator('[data-transport-leg-id]').last().getByRole('button',{name:/View details:/}).click();await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
    await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
    await dialog.getByRole('radio',{name:/Train/}).click();await dialog.getByRole('button',{name:'Use train',exact:true}).click();await dialog.waitFor({state:'hidden'});
    await view.page.reload();await view.page.locator('[data-transport-leg-id]').last().getByText(/Rail/).first().waitFor({timeout:5000});
@@ -35,7 +34,7 @@ for(const browserName of ['chromium','webkit'] as const){
   view.page.setDefaultTimeout(5000);
   try{
    const card=view.page.locator('[data-transport-leg-id]').last();await card.getByRole('button',{name:/View details:/}).click();
-   await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
+   await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
    const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));const before=await storage();
    await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
    assert.equal(requests,1);assert.equal(await storage(),before);assert.match(await dialog.innerText(),/Flight[\s\S]*4h/);
@@ -54,7 +53,7 @@ for(const browserName of ['chromium','webkit'] as const){
   const view=await renderBuilder({path:`/journey/${trip.id}/transport`,initialTrip:trip,browserName,offlineOnly:true,transferRequest:async({legs})=>{requests++;return {status:200,body:await compareCanonicalTransferJourney(legs[0] as TripLeg)};}});
   view.page.setDefaultTimeout(5000);
   try{
-   await view.page.locator('[data-transport-leg-id]').first().getByRole('button',{name:/View details:/}).click();await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
+   await view.page.locator('[data-transport-leg-id]').first().getByRole('button',{name:/View details:/}).click();await view.page.getByRole('button',{name:'Check for alternatives'}).click();const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
    const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));const before=await storage();
    await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
    const guidance=dialog.locator('[data-reviewed-route-guidance]');await guidance.waitFor();assert.match(await guidance.innerText(),/Clark.*total time need checking/);

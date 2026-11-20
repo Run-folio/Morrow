@@ -13,28 +13,35 @@ const driver=readFileSync(driverPath,'utf8').replace('export async function brow
 for(const browserName of ['chromium','webkit'] as const)for(const language of ['en','es'] as const){
  test(`${browserName} ${language}: transport waits for auth and recovery, then one activation persists`,{skip:!builderBrowserTestsEnabled,timeout:90_000},async()=>{
   let cloud=canonicalTripForOwner('owner-a',cityReturnTrip()),writes=0;
-  const view=await renderBuilder({browserName,ownerId:'owner-a',shellCanonicalTrip:cloud,seedRecovery:false,styled:true,language,path:`/journey/${cloud.id}/transport`,sourceOverrides:new Map([['fixture:auth',auth],[driverPath,driver]]),accountRequest:({method,trip})=>{if(method==='GET')return{status:200,body:{trip:cloud}};writes++;cloud=requireReadableTripDocument({...trip as object,updatedAt:nextTripUpdatedAt(cloud.updatedAt)});return{status:200,body:{trip:cloud}};}});
+  let releaseAck: () => void = () => undefined;
+  const ackGate = new Promise<void>(resolve => { releaseAck = resolve; });
+  const view=await renderBuilder({browserName,ownerId:'owner-a',shellCanonicalTrip:cloud,seedRecovery:false,styled:true,language,path:`/journey/${cloud.id}/transport`,sourceOverrides:new Map([['fixture:auth',auth],[driverPath,driver]]),accountRequest:async({method,trip})=>{if(method==='GET')return{status:200,body:{trip:cloud}};writes++;if(writes===1)await ackGate;cloud=requireReadableTripDocument({...trip as object,updatedAt:nextTripUpdatedAt(cloud.updatedAt)});return{status:200,body:{trip:cloud}};}});
   try{
    const page=view.page;await page.setViewportSize({width:320,height:1000});
-   const card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').press('Enter');
-   await card.locator("[data-transport-more-actions] > summary").press("Enter");
-   const mark=card.getByRole('button',{name:language==='es'?'Marcar como reservado':'Mark as booked',exact:true});
+   const card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-details-toggle]').press('Enter');
+   const mark=card.locator('[data-transport-booking-toggle]');
    const airports=card.getByRole('button',{name:language==='es'?'Editar aeropuertos':'Edit airports',exact:true});
    assert.equal(await mark.isEnabled(),false);assert.equal(await airports.isEnabled(),false);assert.equal(writes,0);
    const artifacts=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifacts){mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/readiness-${browserName}-${language}-pending-320.png`,fullPage:true});}
    await page.evaluate(()=>window.dispatchEvent(new Event('release-transport-auth')));
    assert.equal(await mark.isEnabled(),false,'recovery is still held after auth resolves');assert.equal(writes,0);
    await page.evaluate(()=>window.dispatchEvent(new Event('release-transport-recovery')));
-   await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>/^(Mark as booked|Marcar como reservado)$/.test(b.textContent??''));return b&&!b.disabled});assert.equal(await airports.isEnabled(),true);
-   await mark.press('Enter');await card.locator('[data-tone="booked"]').waitFor();
+   await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.hasAttribute('data-transport-booking-toggle'));return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true'});assert.equal(await airports.isEnabled(),true);
+   assert.equal(await mark.getAttribute('aria-pressed'),'false');
+   await mark.press('Enter');
+   await card.locator('[data-transport-booking-toggle][aria-disabled="true"]').waitFor();
+   assert.equal(await mark.getAttribute('aria-pressed'),'false','a device write alone must not surface Booked for an account trip');
+   assert.equal(await card.locator('[data-transport-details-toggle]').getAttribute('aria-expanded'),'true','booking activation must not collapse the card');
+   releaseAck();
+   await card.locator('[data-transport-booking-toggle][aria-pressed="true"]').waitFor();
    await page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(el=>el.textContent?.includes('Saved to your account')));
    assert.equal(writes,1);assert.equal(cloud.brief.bookings?.[0]?.travellerMarkedBooked,true);
-   await card.getByRole('button',{name:language==='es'?'Deshacer marca de reserva':'Undo booked mark',exact:true}).press('Space');
-   await card.locator('[data-tone="not-booked"]').waitFor();await page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(el=>el.textContent?.includes('Saved to your account')));
+   await card.locator('[data-transport-booking-toggle]').press('Space');
+   await card.locator('[data-transport-booking-toggle][aria-pressed="false"]').waitFor();await page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(el=>el.textContent?.includes('Saved to your account')));
    assert.equal(writes,2);assert.equal(cloud.brief.bookings?.[0]?.travellerMarkedBooked,false);assert.equal(await airports.isEnabled(),true);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(view.errors,[]);
    if(artifacts)await page.screenshot({path:`${artifacts}/readiness-${browserName}-${language}-settled-320.png`,fullPage:true});
-  }finally{await view.close()}
+  }finally{releaseAck();await view.close()}
  });
 }
 
@@ -45,24 +52,23 @@ for(const browserName of ['chromium','webkit'] as const)test(`${browserName}: gu
  const storage=readFileSync(storagePath,'utf8').replace('  const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=',`  await (window as Window & {__guestWriteGate?:Promise<void>}).__guestWriteGate;\n  const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=`);
  const view=await renderBuilder({browserName,initialTrip:trip,path:`/journey/${trip.id}/transport`,styled:true,sourceOverrides:new Map([['fixture:auth',guestAuth],[storagePath,storage]]),accountRequest:()=>{accountWrites++;return{status:500,body:{error:'Guest must remain local'}};}});
  try{
-  const page=view.page,card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-summary] button').click();
-  await card.locator("[data-transport-more-actions] > summary").press("Enter");
-   const mark=card.getByRole('button',{name:'Mark as booked',exact:true});
-  await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent==='Mark as booked');return b&&!b.disabled});
+  const page=view.page,card=page.locator('[data-transport-leg-id]').first();await card.locator('[data-transport-details-toggle]').click();
+  const mark=card.locator('[data-transport-booking-toggle]');
+  await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.hasAttribute('data-transport-booking-toggle'));return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true'});
   await page.evaluate(()=>{localStorage.setItem('synthetic-unrelated-retained-data','preserve');const w=window as Window&{__guestWriteGate?:Promise<void>;__releaseGuestWrite?:()=>void};w.__guestWriteGate=new Promise<void>(resolve=>{w.__releaseGuestWrite=resolve})});
   await mark.click();
   await page.evaluate(()=>window.dispatchEvent(new Event('guest-refetch-start')));
   await page.getByText('Checking this trip…',{exact:true}).waitFor();
   assert.equal(await mark.isEnabled(),false);
   await page.evaluate(()=>(window as Window&{__releaseGuestWrite?:()=>void}).__releaseGuestWrite?.());
-  await card.locator('[data-tone="booked"]').waitFor();
-  const undo=card.getByRole('button',{name:'Undo booked mark',exact:true});
+  await card.locator('[data-transport-booking-toggle][aria-pressed="true"]').waitFor();
+  const undo=card.locator('[data-transport-booking-toggle]');
   assert.equal(await undo.isEnabled(),false,'new transport actions still wait while the accepted guest write finishes');
   await page.getByText('Checking this trip…',{exact:true}).waitFor();
   await page.evaluate(()=>window.dispatchEvent(new Event('guest-refetch-end')));
   await page.getByText('Checking this trip…',{exact:true}).waitFor({state:'hidden'});
-  await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent==='Undo booked mark');return b&&!b.disabled});
-  await undo.click();await card.locator('[data-tone="not-booked"]').waitFor();
+  await page.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.hasAttribute('data-transport-booking-toggle'));return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true'});
+  await undo.click();await card.locator('[data-transport-booking-toggle][aria-pressed="false"]').waitFor();
   assert.equal(accountWrites,0);assert.equal(await page.evaluate(()=>localStorage.getItem('synthetic-unrelated-retained-data')),'preserve');assert.deepEqual(view.errors,[]);
  }finally{await view.close()}
 });

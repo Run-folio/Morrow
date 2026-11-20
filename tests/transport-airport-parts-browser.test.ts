@@ -1,4 +1,3 @@
-import { openTransportMoreActions } from "./helpers/transport-more-actions.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mkdirSync} from 'node:fs';
@@ -29,7 +28,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
   const view=await renderBuilder({initialTrip:trip,path:`/journey/${trip.id}/transport`,browserName,styled:true,offlineOnly:true,language});
   try{
    const page=view.page;await page.setViewportSize({width:320,height:1000});const card=page.locator('[data-transport-leg-id]').last();
-   await card.locator('[data-transport-summary] button').press('Enter');
+   await card.locator('[data-transport-details-toggle]').press('Enter');
    assert.match(await card.getByRole('alert').innerText(),language==='es'?/mismo aeropuerto/:/same airport/);
    assert.equal(await card.locator('a[data-affiliate-provider="omio"]').count(),0);
    const edit=card.getByRole('button',{name:language==='es'?'Editar aeropuertos':'Edit airports',exact:true});
@@ -46,7 +45,7 @@ for(const browserName of ['chromium','webkit'] as const)for(const language of ['
   try{
    const page=view.page;await page.setViewportSize({width:320,height:1000});
    const card=page.locator(`[data-transport-leg-id="${back.id}"]`);
-   const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-summary] button');if(await button.getAttribute('aria-expanded')==='false')await button.press('Enter');};
+   const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-details-toggle]');if(await button.getAttribute('aria-expanded')==='false')await button.press('Enter');};
    const inherited=()=>card.getByText(es?/igual que en la ida/:/same as outbound/);
    const edit=()=>card.getByRole('button',{name:es?'Editar aeropuertos':'Edit airports',exact:true});
    const form=()=>card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
@@ -83,7 +82,7 @@ for(const language of ['en','es'] as const){
     try{
       const page=view.page;await page.setViewportSize({width:320,height:1000});
       const card=page.locator('[data-transport-leg-id]').first();
-      const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-summary] button');if(await button.getAttribute('aria-expanded')==='false')await button.click();};
+      const open=async()=>{await card.waitFor();const button=card.locator('[data-transport-details-toggle]');if(await button.getAttribute('aria-expanded')==='false')await button.click();};
       const edit=()=>card.getByRole('button',{name:es?'Editar aeropuertos':'Edit airports',exact:true});
       await open();await edit().focus();await page.keyboard.press('Enter');
       let form=card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
@@ -97,14 +96,14 @@ for(const language of ['en','es'] as const){
       await page.waitForFunction(()=>!document.querySelector('form[aria-label="Flight-search airports"],form[aria-label="Aeropuertos para buscar vuelos"]'));
       assert.equal(await edit().evaluate((el:HTMLElement)=>el===document.activeElement),true);
       await page.reload();await open();assert.ok((await card.innerText()).includes(from.name));assert.ok((await card.innerText()).includes(to.name));
-      await openTransportMoreActions(card); await card.getByRole('button',{name:es?'Marcar como reservado':'Mark as booked',exact:true}).click();
-      await card.locator('[data-tone="booked"]').waitFor();assert.equal(await edit().count(),0);
+      await card.locator('[data-transport-booking-toggle]').click();
+      await card.locator('[data-tone="booked"], [data-transport-booking-toggle][aria-pressed="true"]').waitFor();assert.equal(await edit().count(),0);
       await card.getByRole('button',{name:es?'Editar detalles':'Edit details',exact:true}).click();
       await card.getByLabel(es?'Referencia de reserva':'Booking reference').fill('SYNTHETIC-INTEGRATION');
       await card.getByLabel(es?'Nota':'Note').fill('Preserve this synthetic booking note');
       await card.getByRole('button',{name:es?'Guardar detalles':'Save details',exact:true}).click();
       await card.getByText(/SYNTHETIC-INTEGRATION/).waitFor();
-      await card.getByRole('button',{name:es?'Deshacer marca de reserva':'Undo booked mark',exact:true}).click();
+      await card.locator('[data-transport-booking-toggle]').click();
       await edit().waitFor();await page.reload();await open();await edit().click();
       form=card.getByRole('form',{name:es?'Aeropuertos para buscar vuelos':'Flight-search airports',exact:true});
       await form.getByRole('button',{name:es?'Restablecer aeropuertos':'Reset search airports',exact:true}).click();
@@ -124,13 +123,13 @@ for(const language of ['en','es'] as const){
       const trip=savedJourneyPartsTrip(complete,booked),view=await renderBuilder({initialTrip:trip,path:`/journey/${trip.id}/transport`,styled:true,offlineOnly:true,language});
       try{
         const page=view.page,card=page.locator('[data-transport-leg-id]').first();
-        await card.locator('[data-transport-summary] button').click();
+        await card.locator('[data-transport-details-toggle]').click();
         const details=card.getByRole('button',{name:es?'Detalles del trayecto':'Journey details',exact:true});
         await details.focus();await page.keyboard.press('Space');
         const parts=card.getByRole('list',{name:es?'Tramos guardados':'Saved journey parts',exact:true});
         assert.equal(await parts.getByRole('listitem').count(),complete?3:1);
         assert.equal(await card.getByRole('list',{name:es?'Detalles por confirmar':'Details to check',exact:true}).count(),complete?0:1);
-        if(booked){assert.equal(await card.locator('[data-tone="booked"]').count(),1);assert.equal(await card.locator('a[data-affiliate-provider="omio"]').count(),0);}
+        if(booked){assert.equal(await card.locator('[data-tone="booked"], [data-transport-booking-toggle][aria-pressed="true"]').count(),1);assert.equal(await card.locator('a[data-affiliate-provider="omio"]').count(),0);}
         for(const width of [320,1440]){
           await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
           assert.equal(await parts.evaluate((el:HTMLElement)=>el.scrollWidth<=el.clientWidth+1),true);
@@ -156,7 +155,7 @@ for(const width of [1440,320])test(`Tokyo airport options support keyboard, inde
   const edit=card.getByRole('button',{name:'Edit airports'});
   const action=card.getByRole('link',{name:/Find flights/});
   const disclosure=card.getByText('Morrovia may earn a commission.',{exact:true});
-  const more=card.locator('[data-transport-more-actions] > summary');
+  const more=card.getByRole('button',{name:/Change transport mode|Check for alternatives/});
   await action.waitFor();await disclosure.waitFor();await more.waitFor();
   assert.equal(await card.getByRole('button',{name:'About the Omio search'}).isVisible(),true);
   await edit.press('Enter');

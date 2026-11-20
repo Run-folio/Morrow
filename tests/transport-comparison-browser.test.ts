@@ -7,7 +7,7 @@ import {compareCanonicalTransferJourney} from '../lib/easyt/multimodal-transfer-
 import {syntheticRoad} from './fixtures/transport-comparison.ts';
 import type {TripLeg} from '../lib/easyt/trip.ts';
 
-for(const browserName of ['chromium','webkit'] as const)test(`explicit refresh keeps saved choice until Use, then survives reopen (${browserName})`,{skip:!builderBrowserTestsEnabled,timeout:45_000},async()=>{
+for(const browserName of ['chromium','webkit'] as const)test(`Check for alternatives starts immediately and keeps saved choice until Use, then survives reopen (${browserName})`,{skip:!builderBrowserTestsEnabled,timeout:45_000},async()=>{
  const trip=japanTrip();
  // Baseline has one saved rail recommendation. The refreshed road is genuinely new;
  // a changed same-ID saved road must remain protected (covered by adoption test).
@@ -19,20 +19,24 @@ for(const browserName of ['chromium','webkit'] as const)test(`explicit refresh k
   transferRequest:async({legs})=>{requests++;if(requests===1)await held;return {status:200,body:await compareCanonicalTransferJourney(legs[0] as TripLeg,{provider:syntheticRoad()})};}});
  try{
   const card=view.page.locator('[data-transport-leg-id]').first();await card.getByRole('button',{name:/View details:/}).click();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();
+  const trigger=view.page.getByRole('button',{name:'Check for alternatives'});
+  if(!await trigger.isVisible())await openTransportMoreActions(view.page);
+  const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
+  const before=await storage();assert.equal(requests,0,'nothing checks before the button click');
+  await trigger.click();
   const dialog=view.page.getByRole('dialog',{name:'Check for alternatives',exact:true});
   assert.equal(await card.getByRole('button',{name:'Change transport mode'}).count(),0);
   assert.equal(await dialog.getByRole('radio').count(),0);
   assert.equal(await dialog.getByRole('button',{name:/^Use /}).count(),0);
-  const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
-  const before=await storage();assert.equal(requests,0);
-  const refresh=dialog.getByRole('button',{name:'Refresh options',exact:true});
-  await refresh.click({timeout:5000});await view.page.waitForFunction(()=>document.querySelector('[data-transport-comparison-status]')?.getAttribute('data-transport-comparison-status')==='checking');
-  assert.equal(await refresh.isDisabled(),true);assert.equal(requests,1);
+  await dialog.locator('[data-transport-comparison-status="checking"]').waitFor({timeout:5000});
+  assert.match(await dialog.innerText(),/Checking alternatives…/);
+  assert.equal(await dialog.getByRole('button',{name:'Refresh options',exact:true}).count(),0);
+  assert.equal(await dialog.getByRole('button',{name:'Check again',exact:true}).count(),0);
+  assert.equal(requests,1);
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();release!();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Check for alternatives'}).click();
-  assert.equal(await storage(),before,'cancelled refresh must not write storage');
-  await refresh.click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
+  assert.equal(await storage(),before,'cancelled check must not write storage');
+  if(!await trigger.isVisible())await openTransportMoreActions(view.page);
+  await trigger.click();await dialog.locator('[data-transport-comparison-status="ready"]').waitFor();
   assert.equal(requests,2);assert.equal(await storage(),before,'successful refresh must not save or change a choice');
   assert.match(await dialog.innerText(),/Road[\s\S]*8h/);
   await dialog.getByRole('radio',{name:/Road.*8h/}).click({timeout:5000});assert.equal(await storage(),before,'draft selection must not save');
@@ -51,7 +55,7 @@ test('refresh failure permits one manual retry; account transition discards a pe
  }});
  try{
   await view.page.locator('[data-transport-leg-id]').first().getByRole('button',{name:/View details:/}).click();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
+  const trigger=view.page.getByRole('button',{name:'Change transport mode'});if(!await trigger.isVisible())await openTransportMoreActions(view.page);await trigger.click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
   const storage=()=>view.page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));const before=await storage();
   await dialog.getByRole('button',{name:'Refresh options',exact:true}).click();await dialog.locator('[data-transport-comparison-status="error"]').waitFor({timeout:5000});
   assert.equal(requests,1);assert.equal(await storage(),before);
@@ -70,7 +74,7 @@ test('signing in does not disable an existing guest transport choice or silently
  const view=await renderBuilder({path:`/journey/${trip.id}/transport`,initialTrip:trip,offlineOnly:true,accountRequest:()=>{accountWrites++;return {status:500,body:{error:'unexpected-account-write'}};}});
  try{
   await view.page.locator('[data-transport-leg-id]').first().getByRole('button',{name:/View details:/}).click();
-  await openTransportMoreActions(view.page); await view.page.getByRole('button',{name:'Change transport mode'}).click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
+  const trigger=view.page.getByRole('button',{name:'Change transport mode'});if(!await trigger.isVisible())await openTransportMoreActions(view.page);await trigger.click();const dialog=view.page.getByRole('dialog',{name:'Change transport',exact:true});
   await view.page.evaluate(()=>{(window as any).__BUILDER_TEST_OWNER__='signed-in-owner';window.dispatchEvent(new Event('builder-test-owner'));});
   await dialog.getByRole('radio',{name:/Road/}).click();
   assert.equal(await dialog.getByRole('button',{name:'Use road',exact:true}).isDisabled(),false,'guest choice remains a device edit after sign-in');
