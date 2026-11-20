@@ -91,3 +91,36 @@
 .card .copy small {
   font-size: .72rem;
 }
+
+.recommendation {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+.recommendation .media, .recommendation .icon {
+  width: 64px;
+  height: 58px;
+}
+.rail {
+  display: grid;
+  grid-template-columns: var(--morrovia-activity-rail-columns, minmax(0, 1fr));
+  gap: 0;
+}
+.rail .media {
+  position: relative;
+  width: 100%;
+  height: var(--morrovia-activity-rail-photo-height, 112px);
+  border-radius: calc(var(--morrovia-control-radius) - 1px) calc(var(--morrovia-control-radius) - 1px) 0 0;
+}
+.rail .copy { padding: 10px 11px 0; }
+.ideaState {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--morrovia-action);
+  font: var(--morrovia-type-metadata);
+}
+.ideaState[data-activity-state="planned"] { color: var(--morrovia-success); }
+.ideaState svg { width: 13px; height: 13px; flex: none; }
+@media (max-width: 390px) {
+  .recommendation { grid-template-columns: 52px minmax(0, 1fr); }
+  .recommendation .media, .recommendation .icon { width: 52px; height: 50px; }
+}

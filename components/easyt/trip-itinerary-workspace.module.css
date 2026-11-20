@@ -1404,13 +1404,8 @@
 
 .contextualAddResults { display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
 .contextualAddResults > p { margin: 0; color: var(--morrovia-muted); font-size: 13px; }
-.contextualAddResult { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: center; min-width: 0; padding: 9px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
-.contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr); }
-.contextualAddResult > img { width: 72px; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); }
-.contextualAddResult > .contextualAddResultText { min-width: 0; display: grid; gap: 3px; }
-.contextualAddResult strong { overflow-wrap: anywhere; font-size: 13px; }
-.contextualAddResult span { color: var(--morrovia-muted); font-size: 11px; }
-.contextualAddResultActions { grid-column: 1 / -1; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-start; }
+.contextualAddResult { display: grid; gap: 8px; min-width: 0; padding: 9px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.contextualAddResultActions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-start; }
 .contextualAddResultDisclosure { flex-basis: 100%; min-width: 0; }
 .contextualAddResultActions button { min-height: 40px; }
 .contextualAddManual { display: flex; align-items: end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--morrovia-line); }
@@ -1419,9 +1414,6 @@
 @media (max-width: 640px) {
   .contextualAddDialog { width: 100vw; max-width: 100vw; max-height: min(92dvh, 900px); margin: auto 0 0; border-radius: var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0; }
   .contextualAddBody { padding: 16px; }
-  .contextualAddResult { grid-template-columns: 56px minmax(0, 1fr); }
-  .contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr); }
-  .contextualAddResult > img { width: 56px; height: 56px; }
   .contextualAddManual { flex-wrap: wrap; }
   .contextualAddManual > :first-child { flex-basis: 100%; }
 }
@@ -1458,72 +1450,7 @@
   transform: translateY(-2px) scale(.99);
 }
 
-.discoveryMedia {
-  position: relative;
-  height: 112px;
-  overflow: hidden;
-  border-radius: calc(var(--morrovia-control-radius) - 1px) calc(var(--morrovia-control-radius) - 1px) 0 0;
-  background: var(--morrovia-lilac);
-}
-
-.discoveryMedia > img,
-.discoveryFallback {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  background: var(--morrovia-lilac);
-  object-fit: cover;
-}
-
-.discoveryFallback svg {
-  width: 24px;
-  color: var(--morrovia-signal);
-}
-
-.discoveryCopy {
-  min-width: 0;
-  padding: 10px 11px 0;
-  display: grid;
-  gap: 4px;
-}
-
-.discoveryCopy > small {
-  color: var(--morrovia-signal);
-  font: 750 8px/1.35 var(--morrovia-meta);
-  overflow-wrap: anywhere;
-}
-
-.discoveryCopy > strong {
-  display: -webkit-box;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  color: var(--morrovia-ink);
-  font-size: 12px;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.discoveryCopy > p {
-  margin: 0;
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--morrovia-muted);
-  font-size: 9px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.discoveryCopy > .interestReason {
-  display: block;
-  color: var(--morrovia-ink-soft);
-  font: 700 8px/1.4 var(--morrovia-meta);
-}
-
-.discoveryCard > .discoveryActions {
+.discoveryActions {
   min-width: 0;
   padding: 10px 11px 11px;
   display: flex;
@@ -1566,22 +1493,9 @@
 
 .dayPickerSplit {
   min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.dayPickerSplit > button:first-child {
-  width: 100%;
-  border-radius: var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius);
-  justify-content: flex-start;
-}
-
-.dayPickerSplit > .dayPickerToggle {
-  width: 40px;
-  min-width: 40px;
-  padding-inline: 0;
-  border-left: 0;
-  border-radius: 0 var(--morrovia-control-radius) var(--morrovia-control-radius) 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .dayPickerSplit button svg {
@@ -1643,24 +1557,7 @@
   background: var(--morrovia-lilac);
 }
 
-.plannedState {
-  flex-basis: 100%;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--morrovia-ink-soft);
-  font: 750 8px/1.35 var(--morrovia-meta);
-}
-
-.plannedState svg { width: 14px; height: 14px; color: var(--morrovia-success); }
-
-.savedIdeaState {
-  padding-inline: 6px;
-  color: var(--morrovia-ink-soft);
-  font: 750 8px/1.35 var(--morrovia-meta);
-}
-
-.discoveryMedia > a {
+.discoverySource {
   position: absolute;
   top: 7px;
   right: 7px;
@@ -1673,12 +1570,12 @@
   color: var(--morrovia-ink-soft);
 }
 
-.discoveryMedia > a:focus-visible {
+.discoverySource:focus-visible {
   outline: 3px solid var(--morrovia-focus-ring);
   outline-offset: 2px;
 }
 
-.discoveryMedia > a svg {
+.discoverySource svg {
   width: 14px;
 }
 
@@ -1871,12 +1768,12 @@
   .contextSection { padding: 14px 12px; }
   .contextSection > summary { min-height: 44px; }
   .contextRail { padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom))); }
-  .discoveryMedia > a,
+  .discoverySource,
   .bookingCard > a { min-width: 44px; min-height: 44px; }
   .savedIdeas button,
   .savedIdeasSection > summary { min-height: 44px; }
   .dragHint { display: none; }
-  .discoveryMedia { height: 124px; }
+  .discoveryCard { --morrovia-activity-rail-photo-height: 124px; }
   .dayPickerPanel {
     position: fixed;
     z-index: 40;
@@ -2145,7 +2042,8 @@
 .calendarItemDialog[data-dialog-presentation="modal"] .logisticsDetailClose { display: none; }
 
 .calendarWorkspace .ideasSection .discoveryCard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 8px; }
-.calendarWorkspace .ideasSection .discoveryMedia { height: 72px; }
+.calendarWorkspace .ideasSection .discoveryCard { --morrovia-activity-rail-photo-height: 72px; --morrovia-activity-rail-columns: 72px minmax(0, 1fr); }
+.calendarWorkspace .ideasSection .discoveryCard > :first-child { grid-column: 1 / -1; }
 .calendarWorkspace .ideasSection .discoveryActions { grid-column: 1 / -1; }
 .calendarItemDialog[data-dialog-presentation="modal"] .calendarItemBody { padding: 16px; }
 .calendarItemDialog[data-dialog-presentation="modal"] .calendarEmbeddedDetail { padding: 0; }

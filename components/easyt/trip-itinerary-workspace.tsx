@@ -109,6 +109,7 @@ import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-plann
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
+import { ItineraryActivityState, itineraryActivityLabels } from "./itinerary-activity-state";
 import ItineraryDraggableCard from "./itinerary-draggable-card";
 import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
@@ -2528,14 +2529,15 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const interests = tripIntentForTrip(trip).preferences.interests;
   const [addPortalContainer, setAddPortalContainer] = useState<HTMLElement | null>(null);
   useEffect(() => { if (portalAddDialog) setAddPortalContainer(document.body); }, [portalAddDialog]);
+  const activityLabels = itineraryActivityLabels(language);
   const addLabels = language === "es" ? {
-    title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir", save: "Guardar para después", saved: "Guardado para después",
+    title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir",
     categories: { "for-you": "Para ti", "must-see": "Imprescindibles", culture: "Cultura", tours: "Excursiones", outdoors: "Naturaleza", food: "Comida y bebida" },
-    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "No reservado",
+    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.",
   } : {
-    title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add", save: "Save for later", saved: "Saved for later",
+    title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add",
     categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Nature / outdoors", food: "Food & drink" },
-    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Not booked",
+    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.",
   };
 
   useEffect(() => {
@@ -2796,10 +2798,9 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
           const state = stop ? ideaStateForPlace(trip, stop.id, result.idea.placeId) : null;
           const pending = isPending(result.idea.placeId);
           const productAction = viatorProductAction(result.provider, result.providerUrl);
-          const meta = [result.category, result.duration, result.price, result.rating === undefined ? null : `${result.rating.toFixed(1)} ${addLabels.rating}`, result.idea.source === "live-provider-inventory" ? `Viator · ${addLabels.planOnly}` : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null].filter(Boolean).join(" · ");
-          return <article key={result.identity} className={`${styles.contextualAddResult} ${result.image ? "" : styles.contextualAddResultNoMedia}`} data-add-result-id={result.sourceId}>
-            {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
-            <div className={styles.contextualAddResultText}><strong>{result.title}</strong><span>{meta || result.location}</span></div>
+          const meta = itinerarySuggestionMeta(result, language);
+          return <article key={result.identity} className={styles.contextualAddResult} data-add-result-id={result.sourceId}>
+            <ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} image={result.image} meta={meta || result.location} format="recommendation" />
             <div className={styles.contextualAddResultActions}>
               <EasyTButton
                 size="small"
@@ -2827,7 +2828,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                   const accepted = await onSave(result.idea);
                   if (isCurrent() && !accepted) setAddResultError(addLabels.saveError);
                 }}
-              >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
+              >{activityLabels.save}</EasyTButton> : state?.state === "saved" ? <ItineraryActivityState state="saved" language={language} /> : null}
               {productAction ? <><MorroviaAffiliateLink action={productAction} context={{ placement: "itinerary_day_experiences", tripId: trip.id, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.contextualAddResultDisclosure} provider="viator" /></> : null}
             </div>
           </article>;
@@ -2906,6 +2907,14 @@ function CompactExperienceHandoff({ action, tripId, stopId }: { action: Resolved
   </section>;
 }
 
+function itinerarySuggestionMeta(result: ExploreResult, language: "en" | "es") {
+  const rating = result.rating === undefined ? null : `${result.rating.toFixed(1)} ${language === "es" ? "valoración" : "rating"}`;
+  const source = result.idea.source === "live-provider-inventory"
+    ? language === "es" ? "Viator · No reservado" : "Viator · Not booked"
+    : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null;
+  return [result.category, result.location, result.duration, result.price, rating, source].filter(Boolean).join(" · ");
+}
+
 function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, options, preferredDayId, preferredDayPart, allowsDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onOpenDetail, onDragStart, onDragEnd }: {
   result: ExploreResult;
   tripId: string;
@@ -2931,22 +2940,20 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
   const commercial = result.idea.source === "live-provider-inventory";
   const currentDayId = state.state === "planned" ? state.day.id : null;
   const preferredDay = options.find((option) => option.day.id === preferredDayId)?.day ?? options[0]?.day ?? null;
-  const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
-  const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
+  const labels = itineraryActivityLabels(language);
+  const actionLabel = language === "es" ? `Añadir al día ${preferredDay?.dayNumber ?? ""}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
+  const meta = itinerarySuggestionMeta(result, language);
   const action = commercial ? viatorProductAction(result.provider, result.providerUrl) : null;
   const draggable = state.state !== "planned" && (allowsDayPart || isFullDayActivity(result.idea.providerMetadata?.duration)) && !pending && Boolean(onDragStart);
   return <ItineraryDraggableCard className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
-    <div className={styles.discoveryMedia}>
-      <ResilientImage src={result.image} alt="" draggable={false} fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
-      {!commercial && result.providerUrl ? <a href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : null}
-    </div>
-    <div className={styles.discoveryCopy}><div id={titleId}><ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} meta={meta} compact /></div></div>
+    <ItineraryActivityIdentity id={titleId} title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} image={result.image} meta={meta} format="rail"
+      mediaAction={!commercial && result.providerUrl ? <a className={styles.discoverySource} href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={language === "es" ? `Abrir la fuente de ${result.title}` : `Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : undefined} />
     <div className={styles.discoveryActions}>
-      <EasyTButton size="small" variant="quiet" aria-label={`Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>Details</EasyTButton>
-      {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span> : null}
-      {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
+      <EasyTButton size="small" variant="quiet" aria-label={language === "es" ? `Ver detalles de ${result.title}` : `Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>{language === "es" ? "Detalles" : "Details"}</EasyTButton>
+      {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />{language === "es" ? "Arrastra al día" : "Drag into the day"}</span> : null}
+      {state.state === "planned" ? <ItineraryActivityState state="planned" dayNumber={state.day.dayNumber} language={language} /> : null}
       {preferredDay ? <ItineraryDayPicker scopeKey={scopeKey} placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
-      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
+      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? labels.saving : labels.save}</EasyTButton> : state.state === "saved" ? <ItineraryActivityState state="saved" language={language} /> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
       {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
     </div>
   </ItineraryDraggableCard>;
@@ -3097,32 +3104,36 @@ function ItineraryDayPicker({ scopeKey, placeTitle, language, options, preferred
 
   return <div className={styles.dayPicker}>
     <span className={styles.dayPickerSplit}>
-      <EasyTButton
+      {!currentDayId ? <EasyTButton
         size="small"
         variant="secondary"
-        icon={currentDayId ? CheckCircle2 : CirclePlus}
-        disabled={pending || choosing || Boolean(currentDayId)}
+        icon={CirclePlus}
+        disabled={pending || choosing}
         loading={choosing}
-        onClick={() => void performChoice(onDefault, false)}
-      >{label}</EasyTButton>
+        onClick={(event) => {
+          const origin = event.currentTarget;
+          const restoreFocus = document.activeElement === origin;
+          void performChoice(onDefault, false).then((accepted) => {
+            if (accepted && restoreFocus && (document.activeElement === origin || document.activeElement === document.body)) triggerRef.current?.focus();
+          });
+        }}
+      >{label}</EasyTButton> : null}
       <EasyTButton
       ref={triggerRef}
-      className={styles.dayPickerToggle}
       icon={ChevronDown}
-      iconOnly
       size="small"
       variant="secondary"
       disabled={pending || choosing}
       aria-expanded={open}
       aria-haspopup="menu"
       aria-controls={open ? menuId : undefined}
-      aria-label={allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
+      aria-label={language === "es" ? `${itineraryActivityLabels(language).chooseDay} para ${placeTitle}` : allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
       onClick={() => onOpenChange(!open)}
       onKeyDown={(event) => {
         if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange(true); }
         if (event.key === "Escape" && open) { event.preventDefault(); close(true); }
       }}
-    >Choose placement for {placeTitle}</EasyTButton>
+    >{itineraryActivityLabels(language).chooseDay}</EasyTButton>
     </span>
     {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}
   </div>;

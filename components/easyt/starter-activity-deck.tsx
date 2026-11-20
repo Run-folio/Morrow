@@ -7,6 +7,7 @@ import type { ItineraryIdea } from "@/lib/easyt/trip";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
+import { itineraryActivityLabels } from "./itinerary-activity-state";
 import styles from "./starter-activity-deck.module.css";
 
 export type StarterActivityCard = {
@@ -32,6 +33,7 @@ type Motion = "idle" | "dragging" | "exiting" | "entering";
 type Operation = { card: StarterActivityCard; kind: "saved" | "skipped" | "existing" };
 type Gesture = { id: number; x: number; y: number; width: number; axis: StarterSwipeAxis };
 
+const activityLabels = itineraryActivityLabels();
 const reducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export default function StarterActivityDeck({ cards, location, onDeckSave, onUndoDeckSave, onSchedule, isPending }: DeckProps) {
@@ -194,7 +196,7 @@ export default function StarterActivityDeck({ cards, location, onDeckSave, onUnd
       </div>
       <div className={styles.actions}>
         <EasyTButton variant="secondary" icon={ArrowLeft} aria-disabled={busy} onClick={() => { if (!lock.current) void advance("skip"); }}>Skip</EasyTButton>
-        <EasyTButton variant="secondary" icon={card.state === "available" ? Bookmark : Check} aria-disabled={busy || pending || card.state !== "available"} onClick={() => { if (!lock.current && !pending && card.state === "available") void advance("save"); }}>{card.state === "available" ? "Save" : card.state === "planned" ? "Planned" : "Saved"}</EasyTButton>
+        <EasyTButton variant="secondary" icon={card.state === "available" ? Bookmark : Check} aria-disabled={busy || pending || card.state !== "available"} onClick={() => { if (!lock.current && !pending && card.state === "available") void advance("save"); }}>{card.state === "available" ? activityLabels.save : card.state === "planned" ? "Planned" : activityLabels.saved}</EasyTButton>
       </div>
       {card.affiliate ? <div className={styles.partner}>{card.affiliate}</div> : null}
     </> : <MorroviaSectionStatus title="No more ideas for this stop" />}
@@ -241,7 +243,7 @@ function ActivityFace({ card, location, index, total, articleRef, titleRef, styl
       <h3 className={styles.title} tabIndex={-1} ref={titleRef}>{card.title}</h3>
       <div className={styles.details}>
         <div className={styles.location}>{location}{card.meta ? <> · {card.meta}</> : null}</div>
-        {card.state !== "planned" ? <EasyTButton className={styles.schedule} variant="quiet" size="small" icon={CalendarDays} aria-disabled={busy} onClick={schedule}>Choose day</EasyTButton> : card.stateLabel ? <span>{card.stateLabel}</span> : null}
+        {card.state !== "planned" ? <EasyTButton className={styles.schedule} variant="quiet" size="small" icon={CalendarDays} aria-disabled={busy} onClick={schedule}>{activityLabels.chooseDay}</EasyTButton> : card.stateLabel ? <span>{card.stateLabel}</span> : null}
       </div>
     </div>
   </article>;

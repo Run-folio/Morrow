@@ -1,11 +1,11 @@
 "use client";
 
-import { CheckCircle2, Clock3, MapPin, Star } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
-import ResilientImage from "./resilient-image";
+import ItineraryActivityIdentity from "./itinerary-activity-identity";
+import { ItineraryActivityState, itineraryActivityLabels } from "./itinerary-activity-state";
 import StarterActivityDeck, { type StarterActivityCard } from "./starter-activity-deck";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, viatorProductAction, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -41,6 +41,8 @@ type LiveActivityInventoryProps = {
 function durationLabel(duration: ActivityInventoryItem["duration"]) {
   return faithfulActivityDurationLabel(duration);
 }
+
+const activityLabels = itineraryActivityLabels();
 
 function priceLabel(price: ActivityInventoryItem["price"]) {
   if (!price) return null;
@@ -171,7 +173,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, sche
       const price = priceLabel(item.price);
       const details = [item.rating === undefined ? null : `★ ${item.rating.toFixed(1)}${item.reviewCount === undefined ? "" : ` (${item.reviewCount})`}`, duration, price].filter(Boolean).join(" · ");
       return { id, title: item.title, image: item.image, idea: itineraryIdeaForActivityInventory(stop.id, item, interests),
-        state: state.state, stateLabel: state.state === "planned" ? `Day ${state.day.dayNumber}${state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}` : undefined,
+        state: state.state, stateLabel: state.state === "planned" ? `${activityLabels.added(state.day.dayNumber)}${state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}` : undefined,
         meta: details || undefined, affiliate: action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : undefined };
     });
     return <section className={styles.group} aria-label="Live experiences">
@@ -192,18 +194,14 @@ export default function LiveActivityInventory({ trip, stop, day, placement, sche
       const price = priceLabel(item.price);
       const action = viatorProductAction(item.provider, item.productUrl);
       return <article key={identity} data-provider-product-id={item.providerProductId}>
-        <ResilientImage className={styles.image} src={item.image} alt="" fallback={<span className={styles.imageFallback}><MapPin aria-hidden="true" /></span>} />
-        <div className={styles.copy}><strong>{item.title}</strong><div className={styles.meta}>
-          {item.rating !== undefined ? <span><Star aria-hidden="true" />{item.rating.toFixed(1)}{item.reviewCount !== undefined ? ` (${item.reviewCount})` : ""}</span> : null}
-          {duration ? <span><Clock3 aria-hidden="true" />{duration}</span> : null}
-          {price ? <span>{price}</span> : null}
-        </div></div>
+        <ItineraryActivityIdentity title={item.title} category="activity" image={item.image} format="recommendation"
+          meta={[stop.name, item.rating === undefined ? null : `★ ${item.rating.toFixed(1)}${item.reviewCount === undefined ? "" : ` (${item.reviewCount})`}`, duration, price].filter(Boolean).join(" · ")} />
         <div className={styles.actions}>
           {state.state === "planned" ? <>
-            <span className={styles.state}><CheckCircle2 aria-hidden="true" />Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}</span>
+            <ItineraryActivityState state="planned" dayNumber={state.day.dayNumber} detail={state.idea.dayPart ? state.idea.dayPart[0]!.toUpperCase() + state.idea.dayPart.slice(1) : "Placement to review"} />
             {onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(state.idea, onRemove); }}>Remove</EasyTButton> : null}
           </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => { void performAction(idea, onSchedule); }}>{scheduleLabel ?? `Add to Day ${day.dayNumber}`}</EasyTButton>}
-          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(idea, onSave); }}>Save for later</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved for later</span> : null}
+          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(idea, onSave); }}>{activityLabels.save}</EasyTButton> : state.state === "saved" ? <ItineraryActivityState state="saved" /> : null}
           {action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : null}
         </div>
       </article>;
