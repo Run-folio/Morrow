@@ -656,7 +656,8 @@ test('signed-in Transport refuses repeated quota without an exact device witness
  let refused=true,attempts=0;
  const native={get length(){return records.size},key:(i:number)=>[...records.keys()][i]??null,getItem:(k:string)=>records.get(k)??null,removeItem:(k:string)=>{records.delete(k)},setItem:(k:string,v:string)=>{attempts++;if(refused)throw new DOMException('synthetic full store','QuotaExceededError');records.set(k,v)}};
  const driver=new MemoryRecoveryDriver();
- const broker=createTwoStoreTripPersistence(native,driver,{ownerId:'owner-a',isCurrent:()=>true,overflowEnabled:true,accountOverflowQualified:true});
+ const context=(ownerId:string)=>({ownerId,isCurrent:()=>true,overflowEnabled:true,accountOverflowQualified:true});
+ const broker=createTwoStoreTripPersistence(native,driver,context('owner-a'));
  let cloud=structuredClone(base),puts=0,acks=0;
  const h=mutationHarness({
    saveTripRecovery:(trip:any,{isCurrent,ownerId,...options}:any)=>{assert.equal(isCurrent(),true);assert.equal(ownerId,base.ownerId);return broker.save(trip,options)},
@@ -671,16 +672,16 @@ test('signed-in Transport refuses repeated quota without an exact device witness
  h.setInitial(base);h.render();await tick();
  const click=()=>h.render().mutateTrip((current:any)=>markTransportLegBooked(current,base.legs[0].id),'transport-booking-'+base.legs[0].id);
  for(let i=0;i<2;i++){
-  const previous=attempts;assert.equal(await click(),false);assert.ok(attempts>previous, JSON.stringify([h.render().error,h.render().canMutate,base.legs[0].mode,base.brief.bookings]));
+  const previous=attempts;assert.equal(await click(),false);assert.ok(attempts>previous,'each retry attempts a fresh checkpoint');
   const state=h.render();assert.equal(state.saveState,'error');assert.match(state.error,/Browser storage is unavailable, so this change was not applied/);
   assert.equal(state.canMutate,true);assert.deepEqual(state.trip,base);assert.equal(puts,0);assert.equal(acks,0);
   assert.deepEqual([...records],original);assert.equal(driver.heads.size,0);assert.equal(driver.generations.size,0);assert.equal(driver.acknowledgements.size,0);
  }
  refused=false;assert.equal(await click(),true);await h.render().waitForPending();
  assert.equal(puts,1);assert.equal(acks,1);assert.equal(h.render().saveState,'saved');assert.equal(cloud.brief.bookings?.[0]?.travellerMarkedBooked,true);
- const cold=await createTwoStoreTripPersistence(native,driver,{ownerId:'owner-a',isCurrent:()=>true}).read(base.id);
+ const cold=await createTwoStoreTripPersistence(native,driver,context('owner-a')).read(base.id);
  assert.equal(cold.kind,'found');if(cold.kind==='found')assert.deepEqual(JSON.parse(JSON.stringify(cold.trip)),JSON.parse(JSON.stringify(cloud)));
- const separate=await createTwoStoreTripPersistence(native,driver,{ownerId:'owner-b',isCurrent:()=>true}).read(foreign.id);
+ const separate=await createTwoStoreTripPersistence(native,driver,context('owner-b')).read(foreign.id);
  assert.equal(separate.kind,'found');if(separate.kind==='found'){assert.equal(separate.trip.ownerId,'owner-b');assert.equal(separate.trip.brief.bookings?.[0]?.travellerMarkedBooked,undefined)}
  for(const [key,value] of original)assert.equal(records.get(key),value);
 });
