@@ -29,6 +29,7 @@ import { useTripShellMutation } from "./trip-shell-client";
 import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
 import TripStayShortlist from "./trip-stay-shortlist";
+import TripStay22Pilot from "./trip-stay22-pilot";
 
 export type TripStayWorkspaceProps = {
   trip: EasyTTrip;
@@ -286,6 +287,16 @@ function StayFinderSurface({
         <p>{savedGoogleStays.length} stay {savedGoogleStays.length === 1 ? "reference" : "references"} saved for this stop. No accommodation is booked by saving a place.</p>
         <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, null, null, stayWorkspaceHref(workingTrip.id, context.stop.id))}>View on map</EasyTLinkButton>
       </section> : null}
+
+      <TripStay22Pilot
+        key={JSON.stringify([actionIdentity, context.key, context.stop.longitude, context.stop.latitude, workingTrip.travellers])}
+        stopName={context.stop.name}
+        longitude={context.stop.longitude}
+        latitude={context.stop.latitude}
+        checkIn={context.checkIn}
+        checkOut={context.checkOut}
+        travellers={workingTrip.travellers}
+      />
 
       <details className={styles.browseStays} open={!hasShortlist || finder.status !== "ready" || Boolean(requestedPlaceId && !finder.candidates.some(place => place.id === requestedPlaceId))}>
         <summary>{hasShortlist ? "Find more stays" : "Stay options"}</summary>

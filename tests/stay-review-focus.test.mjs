@@ -8,7 +8,7 @@ const { transform } = require("esbuild");
 const source = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
 // Exercise the production Stay surface with deterministic React hooks and DOM timing.
 const surface = source.slice(source.indexOf("function StayFinderSurface("), source.indexOf("export default function TripStayWorkspace("));
-const names = ["trackEvent", "useTripShellMutation", "useMobileTripWorkspace", "useJourneyLocalPlacePhotos", "stayBookingForStop", "savedGoogleStayReferencesForStop", "getCurrentPartnerAction", "shortlistedStays", "recommendationDetailForStayResult", "stayIsSelected", "stayHandoffDetails", "mapResultForLocalPlace", "mapResultSelectionId", "mapWorkspaceHref", "mapResultHandoffForLocalPlace", "stayWorkspaceHref", "hasBookingLiveInformation", "stayCandidateFit", "stayWorkspaceContext", "MorroviaMapPreview", "JourneyPlannerMap", "MorroviaBriefNotice", "EasyTButton", "MorroviaStatusBanner", "JourneyRouteStopTrack", "TripStayShortlist", "EasyTSelect", "EasyTLinkButton", "EasyTField", "MorroviaSectionStatus", "MorroviaSkeleton", "JourneyLocalPlacePhotoMedia", "MorroviaContentDialog", "TripStayHandoff", "ItineraryItemDetail", "MapPin", "BedDouble", "CalendarDays", "Star", "Check", "Map", "X"];
+const names = ["trackEvent", "useTripShellMutation", "useMobileTripWorkspace", "useJourneyLocalPlacePhotos", "stayBookingForStop", "savedGoogleStayReferencesForStop", "getCurrentPartnerAction", "shortlistedStays", "recommendationDetailForStayResult", "stayIsSelected", "stayHandoffDetails", "mapResultForLocalPlace", "mapResultSelectionId", "mapWorkspaceHref", "mapResultHandoffForLocalPlace", "stayWorkspaceHref", "hasBookingLiveInformation", "stayCandidateFit", "stayWorkspaceContext", "MorroviaMapPreview", "JourneyPlannerMap", "MorroviaBriefNotice", "EasyTButton", "MorroviaStatusBanner", "JourneyRouteStopTrack", "TripStayShortlist", "TripStay22Pilot", "EasyTSelect", "EasyTLinkButton", "EasyTField", "MorroviaSectionStatus", "MorroviaSkeleton", "JourneyLocalPlacePhotoMedia", "MorroviaContentDialog", "TripStayHandoff", "ItineraryItemDetail", "MapPin", "BedDouble", "CalendarDays", "Star", "Check", "Map", "X"];
 const compiled = (await transform(`const {useState,useRef,useEffect,useMemo}=globalThis.hooks; const {${names.join(",")}}=globalThis.deps; const styles=new Proxy({}, {get:(_,key)=>key}); const workspaceHeading={sectionTitle:"title"}; const formattedPrice=()=>null; export default ${surface}`, {loader:"tsx",format:"cjs",jsx:"automatic"})).code;
 const nodes = node => !node || typeof node !== "object" ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];
 function app() {
@@ -75,4 +75,21 @@ test("existing exact-stop hash handoff still focuses once and consumes only its 
   a.select();a.flush();assert.equal(a.handoff.focused,1);
   const url=new URL(a.window.location.href);assert.equal(url.hash,"");assert.equal(url.searchParams.get("result"),"stay:stop:hotel-a");
   a.resize(true);a.flush();assert.equal(a.handoff.focused,1);
+});
+
+test("Stay22 mount identity changes with stop occurrence, dates, coordinates and group size", () => {
+  const a = app();
+  const pilotKey = () => a.render().find(n => n.type === "TripStay22Pilot").key;
+  const before = pilotKey();
+  a.context.stop.id = "next";
+  const nextStop = pilotKey();
+  assert.notEqual(nextStop, before);
+  a.context.key = "trip:next:2027-03-06:2027-03-09";
+  const newDates = pilotKey();
+  assert.notEqual(newDates, nextStop);
+  a.context.stop.latitude = 19;
+  const newPosition = pilotKey();
+  assert.notEqual(newPosition, newDates);
+  a.trip.travellers = 3;
+  assert.notEqual(pilotKey(), newPosition);
 });
