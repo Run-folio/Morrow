@@ -638,3 +638,49 @@ test('known separate recovery disables mutation without pretending classificatio
  assert.equal(state.historicalRecovery,true);assert.equal(state.mutationReady,false);assert.equal(state.preparing,false);
  assert.equal(await state.mutateTrip((trip:any)=>({...trip,title:'Unsafe replacement'}),'trip-title'),false);assert.equal(h.written.length,0);assert.equal(h.cloud.length,0);
 });
+
+import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
+import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
+import {cityReturnTrip} from './fixtures/omio-return.ts';
+import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
+import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
+import {markTransportLegBooked} from '../lib/easyt/transport-booking.ts';
+import {tripRecoveryStorageKey} from '../lib/easyt/storage.ts';
+
+test('signed-in Transport refuses repeated quota without an exact device witness, then saves the explicitly retried booking only after verified device storage',async()=>{
+ const base=canonicalTripForOwner('owner-a',cityReturnTrip());
+ const foreign=canonicalTripForOwner('owner-b',cityReturnTrip());
+ const foreignRaw=JSON.stringify({version:2,ownerId:'owner-b',tripId:foreign.id,writeId:'separate',state:'pending',trip:foreign,savedAt:foreign.updatedAt});
+ const records=new Map([[tripRecoveryStorageKey('owner-b',foreign.id,'separate'),foreignRaw],['unrelated','preserve']]);
+ const original=[...records];
+ let refused=true,attempts=0;
+ const native={get length(){return records.size},key:(i:number)=>[...records.keys()][i]??null,getItem:(k:string)=>records.get(k)??null,removeItem:(k:string)=>{records.delete(k)},setItem:(k:string,v:string)=>{attempts++;if(refused)throw new DOMException('synthetic full store','QuotaExceededError');records.set(k,v)}};
+ const driver=new MemoryRecoveryDriver();
+ const broker=createTwoStoreTripPersistence(native,driver,{ownerId:'owner-a',isCurrent:()=>true,overflowEnabled:true,accountOverflowQualified:true});
+ let cloud=structuredClone(base),puts=0,acks=0;
+ const h=mutationHarness({
+   saveTripRecovery:(trip:any,{isCurrent,ownerId,...options}:any)=>{assert.equal(isCurrent(),true);assert.equal(ownerId,base.ownerId);return broker.save(trip,options)},
+   saveTripRecoveryToEasyT:async(trip:any,handle:any)=>{
+     const checkpoint=await broker.read(base.id);assert.equal(checkpoint.kind,'found');
+     if(checkpoint.kind==='found'){assert.equal(checkpoint.trip.ownerId,'owner-a');assert.equal(checkpoint.trip.brief.bookings?.[0]?.travellerMarkedBooked,true)}
+     assert.equal(handle.ownerId,'owner-a');puts++;
+     return cloud={...trip,updatedAt:nextTripUpdatedAt(base.updatedAt)};
+   },
+   acknowledgeTripBuildSave:async(...args:Parameters<typeof broker.acknowledge>)=>{const out=await broker.acknowledge(...args);if(out.accountAcknowledged)acks++;return out;}
+ });
+ h.setInitial(base);h.render();await tick();
+ const click=()=>h.render().mutateTrip((current:any)=>markTransportLegBooked(current,base.legs[0].id),'transport-booking-'+base.legs[0].id);
+ for(let i=0;i<2;i++){
+  const previous=attempts;assert.equal(await click(),false);assert.ok(attempts>previous, JSON.stringify([h.render().error,h.render().canMutate,base.legs[0].mode,base.brief.bookings]));
+  const state=h.render();assert.equal(state.saveState,'error');assert.match(state.error,/Browser storage is unavailable, so this change was not applied/);
+  assert.equal(state.canMutate,true);assert.deepEqual(state.trip,base);assert.equal(puts,0);assert.equal(acks,0);
+  assert.deepEqual([...records],original);assert.equal(driver.heads.size,0);assert.equal(driver.generations.size,0);assert.equal(driver.acknowledgements.size,0);
+ }
+ refused=false;assert.equal(await click(),true);await h.render().waitForPending();
+ assert.equal(puts,1);assert.equal(acks,1);assert.equal(h.render().saveState,'saved');assert.equal(cloud.brief.bookings?.[0]?.travellerMarkedBooked,true);
+ const cold=await createTwoStoreTripPersistence(native,driver,{ownerId:'owner-a',isCurrent:()=>true}).read(base.id);
+ assert.equal(cold.kind,'found');if(cold.kind==='found')assert.deepEqual(JSON.parse(JSON.stringify(cold.trip)),JSON.parse(JSON.stringify(cloud)));
+ const separate=await createTwoStoreTripPersistence(native,driver,{ownerId:'owner-b',isCurrent:()=>true}).read(foreign.id);
+ assert.equal(separate.kind,'found');if(separate.kind==='found'){assert.equal(separate.trip.ownerId,'owner-b');assert.equal(separate.trip.brief.bookings?.[0]?.travellerMarkedBooked,undefined)}
+ for(const [key,value] of original)assert.equal(records.get(key),value);
+});
