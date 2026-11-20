@@ -253,7 +253,7 @@ function StayFinderSurface({
   return <div className={`${styles.layout} ${showRail ? "" : styles.layoutNoRail}`}>
     {notice || mutation.error ? <div className={styles.feedbackRow}>
       {notice ? <MorroviaBriefNotice title={notice} onDismiss={() => setNotice(null)} action={<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton>} /> : null}
-      {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
+      {mutation.error ? <MorroviaStatusBanner tone="warning" title="Stay update needs attention" detail={mutation.error} /> : null}
     </div> : null}
 
     <div className={styles.stopNavigation}>
@@ -306,9 +306,9 @@ function StayFinderSurface({
         <EntryReveal ready={finder.status === "ready" && visibleCandidates.length > 0} selector="[data-stay-result-name]" />
         {requestedPlaceId && finder.status !== "loading" && finder.accommodationInventoryStatus !== "loading" && !finder.candidates.some(place => place.id === requestedPlaceId) ? <MorroviaSectionStatus title="This stay is not in the current results" /> : null}
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
-        {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
+        {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title={`Finding stays in ${context.stop.name}…`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
         {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
-        {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No mapped stays came back for this stop. Try again later." /> : null}
+        {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="Try again later." /> : null}
         {finder.candidates.length ? <div className={styles.grid}>{visibleCandidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;
           const isChosen = stayIsSelected(workingTrip, context, place);
@@ -323,7 +323,7 @@ function StayFinderSurface({
               {hasImage
                 ? <JourneyLocalPlacePhotoMedia place={place} photo={photos[place.id]} fallback={imageFallback} onError={() => setUnavailablePhotoSources((current) => ({ ...current, [place.id]: imageSource ?? "" }))} />
                 : imageFallback}
-              {isChosen ? <span className={styles.chosenBadge}><Check aria-hidden="true" />Chosen</span> : null}
+              {!mobile && isChosen ? <span className={styles.chosenBadge}><Check aria-hidden="true" />Chosen</span> : null}
             </div>
             <div className={styles.cardBody}>
               <div className={styles.cardCopy}>
@@ -339,7 +339,7 @@ function StayFinderSurface({
             </div>
             <EasyTButton type="button" className={styles.cardOpen} variant="quiet" aria-label={`Open details for ${place.name}`} aria-pressed={isSelected} onClick={() => selectPlace(place)}>Open details for {place.name}</EasyTButton>
             <div className={styles.cardActions}>
-              {mobile && isChosen ? <p className={styles.mobileStayState}><Check aria-hidden="true" />Chosen · {booking?.confirmation?.trim() ? "Booking details saved" : "Not booked"}</p> : null}
+              {mobile && isChosen ? <p className={styles.mobileStayState}><Check aria-hidden="true" />{booking?.confirmation?.trim() ? "Booking details saved" : "Not booked"}</p> : null}
               <EasyTButton fullWidth loading={mutation.isPending(chooseKey)} disabled={isChosen} aria-pressed={isChosen} variant={isChosen ? "secondary" : "primary"} onClick={() => chooseStay(place)}>{isChosen ? "Chosen" : "Choose stay"}</EasyTButton>
             </div>
           </article>;

@@ -230,8 +230,8 @@ export default function TripShellResolver({
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
       tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}
-      title={syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Cloud copy kept safe" : "Trip not synced yet"}
-      detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}
+      title={syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Both copies were kept" : "Trip not synced yet"}
+      detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Your account and device have different versions." : "Your trip is still safe on this device. Check your connection and try again."}
       actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId, "builder")}>Open device copy</EasyTLinkButton>}
     /> : null}
     <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen} deviceOnlyNotice={!ownerId ? <>

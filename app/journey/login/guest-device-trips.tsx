@@ -54,11 +54,11 @@ export function GuestDeviceTripsPanel({ state, onRetry, presentation = "login", 
         <strong data-device-trip-name>{trip.title}</strong><EasyTLinkButton href={trip.href} variant="secondary" size="small" aria-label={`Open device copy: ${trip.title}`}>Open trip</EasyTLinkButton>
       </li>)}</ul> : !dashboard ? <p>No guest trips found in this browser.</p> : null}
     {dashboard && state.kind === "ready" && state.trips.length === 0 ? <div className={styles.guestTripsEmpty}>
-      <h3>No trips on this device yet</h3><p>Start a trip and come back here to pick up where you left off.</p>
+      <h3>No trips on this device yet</h3>
       <EasyTLinkButton href="/journey/new" variant="primary" size="small">Plan a trip</EasyTLinkButton>
     </div> : null}
     {dashboard && accountAvailable && state.kind === "ready" ? <div className={styles.guestSyncPrompt}>
-      <p>{state.trips.length ? "To sync a trip, open it and choose to save it to your account." : "Already have trips in your account?"}</p>
+      <p>{state.trips.length ? "Open a trip to save it to your account." : "Already have trips in your account?"}</p>
       <EasyTLinkButton href="/journey/login?next=%2Fjourney%2Fdashboard" variant="quiet" size="small">Sign in</EasyTLinkButton>
     </div> : null}
   </section>;

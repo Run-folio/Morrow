@@ -94,7 +94,7 @@ export default function TripTransportChoiceControl({
         {candidate.mode === effective.mode ? <Check aria-hidden="true" /> : null}
         {modeLabels[candidate.mode]} · {transferTimingLabel({...candidate,doorToDoorMinutes:candidate.durationMinutes})} total
       </EasyTButton>)}
-      {!alternatives.length ? <span>No other evidence-backed mode is currently supported for this leg.</span> : null}
+      {!alternatives.length ? <span>We couldn’t confirm another way to travel this route.</span> : null}
     </span> : null}
   </span>;
 }
@@ -145,8 +145,7 @@ function TransportModeDialog({ trip, leg, onChange, onAdoptComparison, pending, 
           <div>{departureDate ? <p className={styles.dialogDate}>{formatIsoDate(departureDate, language, { month: "short", day: "numeric", year: "numeric" })}</p> : null}<h2>{from?.name} <span aria-hidden="true">→</span> {to?.name}</h2></div>
           <EasyTButton icon={X} iconOnly size="small" variant="quiet" onClick={close} aria-label={isSpanish ? "Cerrar" : "Close"} data-mode-initial={!options.length ? "true" : undefined}>Close</EasyTButton>
         </header>
-        <p className={styles.prompt}>{isSpanish ? "¿Cómo quieres viajar?" : "How would you like to travel?"}</p>
-        {!options.length ? <p className={styles.prompt}>{isSpanish ? "No hay otro modo de transporte verificado para este trayecto." : "No other evidence-backed mode is currently supported for this leg."}</p> : null}
+        {!options.length ? <p className={styles.prompt}>{isSpanish ? "No pudimos confirmar otra forma de viajar en este trayecto." : "We couldn’t confirm another way to travel this route."}</p> : null}
         {onAdoptComparison ? <div>
           <EasyTButton size="small" variant="secondary" disabled={pending || !refresh.allowed || refresh.state.status === 'checking'} loading={refresh.state.status === 'checking'} onClick={() => void refresh.refresh()}>{isSpanish ? 'Actualizar opciones' : 'Refresh options'}</EasyTButton>
           <p role="status" data-transport-comparison-status={refresh.state.status}>{refresh.state.status === 'checking' ? (isSpanish ? 'Comprobando…' : 'Checking…')

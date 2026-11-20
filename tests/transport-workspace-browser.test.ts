@@ -199,7 +199,7 @@ test("routed road evidence stays a separate reference across Builder and Transpo
     assert.match(await transport.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').innerText(), /no passenger service/i);
     await openTransportMoreActions(transport.page); await transport.page.getByRole("button", { name: "Change transport mode" }).first().click();
     assert.equal(await transport.page.getByRole("button", { name: /Road · ~6h 30m/ }).count(), 0);
-    assert.equal(await transport.page.getByText("No other evidence-backed mode is currently supported for this leg.", { exact: true }).count(), 1);
+    assert.equal(await transport.page.getByText("We couldn’t confirm another way to travel this route.", { exact: true }).count(), 1);
     assert.deepEqual(transport.errors, []);
   } finally { await transport.close(); }
 

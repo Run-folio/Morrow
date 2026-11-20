@@ -31,7 +31,9 @@ test('rendered guest trips put device copies before account sign-in and distingu
  assert.ok(ready.indexOf('Open device copy: Tokyo and Beijing')>0);
  assert.ok(ready.indexOf('Open device copy: Tokyo and Beijing')<ready.indexOf('Sign in'));
  assert.match(ready,/href="\/journey\/trip-a\?recover=1"/);
- assert.match(render({kind:'ready',trips:[]}),/No trips on this device yet.*Plan a trip/);
+ const empty=render({kind:'ready',trips:[]});
+ assert.match(empty,/No trips on this device yet.*Plan a trip/);
+ assert.doesNotMatch(empty,/come back here to pick up/);
  const unavailable=render({kind:'unavailable'});
  assert.match(unavailable,/Check again/);assert.doesNotMatch(unavailable,/Plan a trip|Sign in/);
 });

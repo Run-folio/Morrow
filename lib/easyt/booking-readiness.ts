@@ -138,8 +138,8 @@ export function affiliateHandoffDetail(
       ? "Esta fecha está fuera del plazo habitual de venta de 15 días. Comprueba cuándo salen los billetes y el número de viajeros en Omio."
       : "This date is beyond the usual 15-day ticket-sale window. Check release dates and traveller count on Omio.";
     return language === "es"
-      ? "Se transfieren la ruta y las fechas, pero no el número de viajeros. Omio puede mostrar otros medios de transporte. Comprueba el medio de transporte y el número de viajeros antes de reservar."
-      : "Route and dates are sent; traveller count is not carried over. Omio may show other transport modes. Check the mode and traveller count before booking.";
+      ? "Omio recibe tu ruta y las fechas, pero no el número de viajeros. Indica cuántas personas viajan y comprueba el medio de transporte antes de reservar."
+      : "Omio gets your route and dates, not your traveller count. Set the count and check the transport mode before booking.";
   }
   if (action.provider === "trip.com" && action.category === "accommodation"
     && action.href === affiliatePartners.tripCom.accommodationUrl) return language === "es"

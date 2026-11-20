@@ -644,7 +644,7 @@ export default function TripExploreWorkspace({
   return <section className={styles.workspace} aria-label="Explore recommendations">
     {notice || mutation.error ? <div className={styles.feedbackRow}>
       {notice ? <div className={styles.notice} role="status"><Check aria-hidden="true" />{notice}<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton></div> : null}
-      {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
+      {mutation.error ? <MorroviaStatusBanner tone="warning" title="Plan update needs attention" detail={mutation.error} /> : null}
     </div> : null}
 
     <div className={styles.stopNavigation}>
