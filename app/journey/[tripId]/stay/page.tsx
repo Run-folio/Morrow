@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Stay22TesterPreview from "@/components/easyt/stay22-tester-preview";
 import TripStayWorkspace from "@/components/easyt/trip-stay-workspace";
 import { TripWorkspaceCommit, useTripShellTrip } from "@/components/easyt/trip-shell-client";
 import { parseStayWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
@@ -13,5 +14,5 @@ export default function TripStayWorkspacePage() {
   const selectedPlaceId = resultPrefix && target.resultSelectionId?.startsWith(resultPrefix)
     ? target.resultSelectionId.slice(resultPrefix.length)
     : null;
-  return <TripWorkspaceCommit view="stay"><TripStayWorkspace key={JSON.stringify([trip.id,trip.ownerId,target.stopId,selectedPlaceId])} trip={trip} initialStopId={target.stopId} initialSelectedPlaceId={selectedPlaceId} /></TripWorkspaceCommit>;
+  return <TripWorkspaceCommit view="stay"><TripStayWorkspace key={JSON.stringify([trip.id,trip.ownerId,target.stopId,selectedPlaceId])} trip={trip} initialStopId={target.stopId} initialSelectedPlaceId={selectedPlaceId} /><Stay22TesterPreview /></TripWorkspaceCommit>;
 }

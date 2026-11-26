@@ -1,0 +1,9 @@
+.launcher {
+  position: fixed;
+  inset-inline-start: max(1rem, env(safe-area-inset-left));
+  inset-block-end: max(1rem, env(safe-area-inset-bottom));
+  z-index: 20;
+}
+.content { display: grid; gap: 0.75rem; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.map { width: 100%; height: min(58dvh, 36rem); border: 0; }
