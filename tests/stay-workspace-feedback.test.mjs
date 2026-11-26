@@ -14,38 +14,44 @@ const bundle = await build({
     setup(builder) {
       const stubs = {
         "next/navigation": "export const useRouter = () => ({}); export const usePathname = () => '/journey/japan-trip/stay';",
-        "@/components/journey-local-finder": "export const JourneyLocalFinder = ({render}) => render(globalThis.stayFixture.finder);",
+        "@/components/journey-local-finder": "export const JourneyLocalFinder = ({render}) => { globalThis.stayFixture.catalogMounts++; return render(globalThis.stayFixture.finder); };",
+        "./stay22-tester-preview": `import {createElement} from "react"; export const useStay22TesterAffiliateId = () => globalThis.stayFixture.testerAffiliateId;
+          export default function Stay22TesterPreview(props) { globalThis.stayFixture.preview = props; return createElement("section", null, "Stay22 fixture"); }`,
         "@/components/journey-planner-map": "export const JourneyPlannerMap = () => null;",
         "@/components/journey-planner-strip": "export const JourneyRouteStopTrack = () => null;",
         "@/lib/analytics": "export const trackEvent = () => {};",
         "./trip-shell-client": "export const useTripShellMutation = () => globalThis.stayFixture.mutation;",
         "./trip-stay-shortlist": "export default function TripStayShortlist() { return null; }",
         "./journey-local-place-photo": "export const JourneyLocalPlacePhotoMedia = () => null; export const useJourneyLocalPlacePhotos = () => ({});",
-        "./trip-mobile-sheet": "export const useMobileTripWorkspace = () => false;",
+        "./trip-mobile-sheet": "export const useMobileTripWorkspace = () => globalThis.stayFixture.mobile;",
         "./itinerary-item-detail": "export default function ItineraryItemDetail() { return null; }",
       };
       builder.onResolve({ filter: /./ }, ({path}) => Object.hasOwn(stubs, path) || path.endsWith(".css") ? { path, namespace: "stay-fixture" } : undefined);
-      builder.onLoad({ filter: /./, namespace: "stay-fixture" }, ({path}) => ({ contents: stubs[path] ?? "export default {};" }));
+      builder.onLoad({ filter: /./, namespace: "stay-fixture" }, ({path}) => ({ contents: stubs[path] ?? "export default {};", resolveDir: process.cwd() }));
     },
   }],
 });
 const lib = { exports: {} };
-new Function("require", "module", "exports", "globalThis", bundle.outputFiles[0].text)(require, lib, lib.exports, {
-  stayFixture: {
-    get mutation() { return { trip, error: scenario.error, isPending: () => false }; },
-    get finder() { return { candidates: scenario.candidates ?? [], selectedPlace: null, status: scenario.status, accommodationInventoryStatus: scenario.inventory, retry: () => {} }; },
-  },
-});
+const stayFixture = {
+  get testerAffiliateId() { return scenario.tester === "pending" ? undefined : scenario.tester ?? null; },
+  get mobile() { return scenario.mobile ?? false; },
+  preview: null, catalogMounts: 0,
+  get mutation() { return { trip: scenario.trip ?? trip, error: scenario.error, isPending: () => false }; },
+  get finder() { return { candidates: scenario.candidates ?? [], selectedPlace: null, status: scenario.status, accommodationInventoryStatus: scenario.inventory, retry: () => {} }; },
+};
+new Function("require", "module", "exports", "globalThis", bundle.outputFiles[0].text)(require, lib, lib.exports, { stayFixture });
 
 const trip = {
-  id: "japan-trip", ownerId: null, title: "Japan", startDate: "2027-03-06", endDate: "2027-03-09",
+  id: "japan-trip", ownerId: null, title: "Japan", travellers: 3, currency: "GBP", startDate: "2027-03-06", endDate: "2027-03-09",
   brief: { origin: "London" }, legs: [], planItems: [], recommendations: [],
   stops: [{ id: "kyoto", order: 0, name: "Kyoto", country: "Japan", canonicalPlaceId: "kyoto", latitude: 35.0116, longitude: 135.7681, arrivalDate: "2027-03-06", departureDate: "2027-03-09", nights: 3 }],
 };
 let scenario;
 const render = (options) => {
   scenario = options;
-  return renderToStaticMarkup(createElement(lib.exports.default, { trip }));
+  stayFixture.catalogMounts = 0;
+  stayFixture.preview = null;
+  return renderToStaticMarkup(createElement(lib.exports.default, { trip: options.trip ?? trip, initialStopId: options.stopId }));
 };
 
 test("a refused Stay edit tells the traveller it was not applied, without implying a device save", () => {
@@ -105,4 +111,44 @@ test("Stay retry transfers focus to the mounted options region before starting r
   assert.deepEqual(calls, [["focus", { preventScroll: true }], ["retry"]]);
   assert.match(source, /<section ref=\{optionsRegionRef\} tabIndex=\{-1\} className=\{styles.options\}/);
   assert.equal([...source.matchAll(/onRetry=\{retryStaySearch\}/g)].length, 2);
+});
+
+test("the tester accommodation workspace never mounts the legacy finder, even when results are supplied", () => {
+  const tripWithSavedStay = {
+    ...trip,
+    brief: { ...trip.brief, bookings: [{id: "stay-kyoto", type: "stay", title: "Saved Kyoto Inn"}] },
+  };
+  const html = render({ status: "ready", tester: "fixture", trip: tripWithSavedStay });
+  assert.match(html, /Stay22 fixture/);
+  assert.match(html, /Saved stay: Saved Kyoto Inn/);
+  assert.match(html, /href="\/journey\/japan-trip\/itinerary"/);
+  assert.doesNotMatch(html, /Stay options|Stay map|Trip.com/);
+  assert.equal(stayFixture.catalogMounts, 0);
+  assert.deepEqual(stayFixture.preview, {
+    testerAffiliateId: "fixture", stopName: "Kyoto", longitude: 135.7681, latitude: 35.0116,
+    checkIn: "2027-03-06", checkOut: "2027-03-09", travellers: 3, currency: "GBP",
+  });
+  const pending = render({status:"ready", tester:"pending"});
+  assert.match(pending, /Loading stays/);
+  assert.doesNotMatch(pending, /Stay22 fixture|Stay options/);
+  assert.equal(stayFixture.catalogMounts, 0);
+});
+
+test("ineligible users retain the normal Stay catalog without the tester feature", () => {
+  const html = render({ status: "ready" });
+  assert.match(html, /Stay options/);
+  assert.doesNotMatch(html, /Stay22 fixture/);
+  assert.equal(stayFixture.catalogMounts, 1);
+});
+
+test("tester mobile stop selection shows all overnight visits, including undated or unmapped stops", () => {
+  const tripWithSecondStop = { ...trip, endDate: "2027-03-10", stops: [
+    ...trip.stops, { ...trip.stops[0], id: "tokyo", name: "Tokyo", order:1, latitude:null, longitude:null, arrivalDate:"2027-03-09", departureDate:"2027-03-10", nights:1 },
+  ] };
+  const html = render({ status:"ready", tester:"fixture", mobile:true, trip:tripWithSecondStop, stopId:"tokyo" });
+  assert.match(html, /<select[^>]*>[\s\S]*<option value="kyoto">Kyoto/);
+  assert.match(html, /<option value="tokyo" selected="">Tokyo/);
+  assert.equal(stayFixture.catalogMounts,0);
+  assert.equal(stayFixture.preview.stopName,"Tokyo");
+  assert.equal(stayFixture.preview.latitude,null);
 });

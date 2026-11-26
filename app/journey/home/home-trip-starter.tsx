@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { HomeBuilderHandoffStatus } from "@/components/easyt/home-builder-handoff-status";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { useSharedPlannerRoute } from "./shared-planner-route";
 import { MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
@@ -520,6 +521,7 @@ export default function HomeTripStarter() {
     onInterestsChange={(value: TripInterest[]) => updateSnapshot((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={recoveryBlocked ? "" : captureError}
   />
+  {loading && !captureError ? <HomeBuilderHandoffStatus floating title={language === "es" ? "Preparando tu ruta…" : "Preparing your route…"} /> : null}
   {confirmation}
   </>;
 }

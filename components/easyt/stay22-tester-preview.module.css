@@ -17,6 +17,8 @@
 .actions > :first-child { min-width: 5rem; }
 .disclosure { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .disclosure p + p { margin-top: 6px; }
+.view { justify-self: start; }
+.view > button { min-height: 44px; }
 .map { display: block; width: 100%; min-width: 0; height: clamp(650px, 73dvh, 860px); border: 0; border-radius: var(--morrovia-control-radius); }
 @media (max-width: 720px) {
   .map { height: clamp(440px, 68dvh, 650px); }

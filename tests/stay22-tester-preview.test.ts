@@ -22,26 +22,27 @@ test("only the configured verified account is eligible", () => {
 });
 test("preview sends the active stop, dates, and chosen adult count without trip identifiers", () => {
   const capeTown = { affiliateId: "morrovia", currency: "EUR", latitude: -33.9249, longitude: 18.4241, checkIn: "2026-12-02", checkOut: "2026-12-07", adults: 3 };
-  for (const [width, view] of [[1000, "all"], [375, "listview"]] as const) {
-    const result = stay22TesterSearch(capeTown, width, "2026-11-26");
+  for (const view of ["all", "map", "listview"] as const) {
+    const result = stay22TesterSearch(capeTown, view, "2026-11-26");
     assert.ok(result);
     const url = new URL(result);
     assert.equal(url.origin, "https://www.stay22.com");
     assert.equal(url.searchParams.get("viewmode"), view);
     assert.equal(url.searchParams.get("maincolor"), "3025ce");
     assert.equal(url.searchParams.get("currency"), "EUR");
+    assert.equal(url.searchParams.get("hideallezbutton"), "true");
     assert.equal(url.searchParams.get("lat"), "-33.9249");
     assert.equal(url.searchParams.get("lng"), "18.4241");
     assert.equal(url.searchParams.get("checkin"), "2026-12-02");
     assert.equal(url.searchParams.get("checkout"), "2026-12-07");
     assert.equal(url.searchParams.get("adults"), "3");
-    assert.deepEqual([...url.searchParams.keys()].sort(), ["adults", "aid", "checkin", "checkout", "currency", "lat", "lng", "maincolor", ...(view === "all" ? ["listviewexpand"] : []), "viewmode", "zoom"].sort());
+    assert.deepEqual([...url.searchParams.keys()].sort(), ["adults", "aid", "checkin", "checkout", "currency", "hideallezbutton", "lat", "lng", "maincolor", ...(view === "all" ? ["listviewexpand"] : []), "viewmode", "zoom"].sort());
   }
   for (const currency of ["XYZ", "test-account-or-secret", ""]) {
-    assert.equal(new URL(stay22TesterSearch({...capeTown, currency}, 900, "2026-11-26")!).searchParams.get("currency"), null);
+    assert.equal(new URL(stay22TesterSearch({...capeTown, currency}, "all", "2026-11-26")!).searchParams.get("currency"), null);
   }
   for (const invalid of [{latitude: null}, {checkIn: null}, {checkIn: "2026-11-25"}, {checkOut: "2026-12-02"}, {affiliateId: undefined}, {adults: 0}]) {
-    assert.equal(stay22TesterSearch({...capeTown, ...invalid}, 375, "2026-11-26"), null);
+    assert.equal(stay22TesterSearch({...capeTown, ...invalid}, "map", "2026-11-26"), null);
   }
 });
 test("legacy and partial consent do not authorize the rehearsal", () => {

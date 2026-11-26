@@ -1,11 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createRequire } from "node:module";
+import { runInThisContext } from "node:vm";
 import { build } from "esbuild";
 import { chromium } from "playwright";
 
 const root = new URL("../", import.meta.url).pathname;
 const appOrigin = "https://staging.morrovia.com";
 const capture = process.env.MORROVIA_STAY22_TEST_CAPTURE_DIR;
+
+test("server rendering keeps normal stays visible outside the canonical staging build", async () => {
+  const require = createRequire(import.meta.url);
+  for (const [origin, expected] of [
+    ["https://morrovia.com", "Normal stays"],
+    ["https://staging.morrovia.com", "Checking eligibility"],
+  ]) {
+    const {outputFiles} = await build({
+      absWorkingDir: root, bundle: true, write: false, platform: "node", packages: "external",
+      format: "cjs", jsx: "automatic", loader: {".module.css": "empty"},
+      define: {"process.env.NEXT_PUBLIC_APP_URL": JSON.stringify(origin)},
+      stdin: {loader: "tsx", resolveDir: root, contents: `
+        import {renderToString} from "react-dom/server";
+        import {useStay22TesterAffiliateId} from "./components/easyt/stay22-tester-preview";
+        function Eligibility() {
+          return <p>{useStay22TesterAffiliateId() === undefined ? "Checking eligibility" : "Normal stays"}</p>;
+        }
+        export const markup=renderToString(<Eligibility/>);
+      `},
+    });
+    const module = {exports: {}};
+    runInThisContext(`(function(require, module, exports) {${outputFiles[0].text}\n})`)(require, module, module.exports);
+    assert.equal(module.exports.markup, `<p>${expected}</p>`);
+  }
+});
 
 // Real component + controls, both the same-origin gate and provider are intercepted.
 // No live trips, network requests, credentials or affiliate visits are used.
@@ -15,15 +42,20 @@ test("inline Stay22 shares only the selected search, after consent and an explic
     entryNames: "app", jsx: "automatic", banner: {js: "const process = { env: {} };"}, define: {"process.env.NODE_ENV": '"production"'},
     stdin: {loader: "tsx", resolveDir: root, contents: `
       import {createRoot} from "react-dom/client";
-      import Search from "./components/easyt/stay22-tester-preview";
+      import Search, {useStay22TesterAffiliateId} from "./components/easyt/stay22-tester-preview";
       import {createPrivacyConsentRecord,PRIVACY_CONSENT_STORAGE_KEY as key,PRIVACY_CONSENT_CHANGE_EVENT as event} from "./lib/privacy-consent";
       import "./app/journey/journey-design.css";
       const root=createRoot(document.getElementById("root"));
       const cape={stopName:"Cape Town", latitude:-33.9249, longitude:18.4241, checkIn:"2090-12-02", checkOut:"2090-12-07", travellers:3, currency:"EUR"};
       window.consent=(analytics,affiliateTracking)=>{localStorage.setItem(key,JSON.stringify(createPrivacyConsentRecord({analytics,affiliateTracking})));window.dispatchEvent(new Event(event));};
-      window.renderStop=(props=cape)=>root.render(<main style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:12,margin:"16px auto",maxWidth:1200}}>
+      function Fixture({props}) {
+        const affiliateId=useStay22TesterAffiliateId();
+        return <main style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:12,margin:"16px auto",maxWidth:1200}}>
         <header style={{gridColumn:"1/-1"}}><h2>{props.stopName}</h2></header>
-        <Search key={JSON.stringify(props)} {...props}/><article>Other stay options</article></main>);
+        {affiliateId ? <Search key={JSON.stringify(props)} {...props} testerAffiliateId={affiliateId}/> : null}
+        <article>Other stay options</article></main>;
+      }
+      window.renderStop=(props=cape)=>root.render(<Fixture props={props}/>);
       window.renderStop();
     `},
   });
@@ -31,11 +63,13 @@ test("inline Stay22 shares only the selected search, after consent and an explic
   const js = outputFiles.find(f=>f.path.endsWith(".js")).text;
   const browser = await chromium.launch({executablePath:process.env.MORROVIA_CHROMIUM_EXECUTABLE || undefined});
   try {
-    for (const width of [1440,390]) {
-      const page = await browser.newPage({viewport:{width,height:900},serviceWorkers:"block"});
+    for (const width of [1440,390,430]) {
+      const mobile=width<720;
+      const page = await browser.newPage({viewport:{width,height:900},hasTouch:mobile,isMobile:mobile,serviceWorkers:"block"});
       const requests=[]; const errors=[];
       page.on("pageerror", error => errors.push(error.message));
       let eligible=true;
+      let gateRequests=0;
       await page.route("**/*", async route => {
         const url=new URL(route.request().url());
         if(url.origin==="https://www.stay22.com" && url.pathname==="/embed/gm") {
@@ -43,10 +77,13 @@ test("inline Stay22 shares only the selected search, after consent and an explic
           return route.fulfill({contentType:"text/html",body:"<p>Test fixture only. Live provider results are not displayed.</p>"});
         }
         if(url.origin!==appOrigin) return route.abort();
-        if(url.pathname==="/api/easyt/stay22-tester") return route.fulfill({status:eligible?200:404,json:eligible?{affiliateId:"fixture"}:null});
+        if(url.pathname==="/api/easyt/stay22-tester") {
+          gateRequests++;
+          return route.fulfill({status:eligible?200:404,json:eligible?{affiliateId:"fixture"}:null});
+        }
         if(url.pathname==="/app.css") return route.fulfill({contentType:"text/css",body:css});
         if(url.pathname==="/app.js") return route.fulfill({contentType:"application/javascript",body:js});
-        if(url.pathname==="/") return route.fulfill({contentType:"text/html",body:'<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/app.css"><div id="root"></div><script src="/app.js"></script>'});
+        if(url.pathname==="/") return route.fulfill({contentType:"text/html",body:'<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"><div id="root"></div><script src="/app.js"></script>'});
         return route.abort();
       });
       await page.goto(appOrigin);
@@ -61,22 +98,46 @@ test("inline Stay22 shares only the selected search, after consent and an explic
       await page.evaluate(()=>window.consent(true,true));
       await page.waitForFunction(()=>document.querySelector("button:not([disabled])"));
       assert.equal(requests.length,0);
+      assert.equal(await page.getByRole("group",{name:"Accommodation view"}).count(),0);
       if(capture) await page.screenshot({path:`${capture}/stay22-inline-${width}-before.png`});
       await show.click();
       await frame.waitFor();
       await page.waitForFunction(()=>document.querySelector("iframe")?.contentWindow!=null);
       const first=new URL(await frame.getAttribute("src"));
-      assert.equal(first.searchParams.get("viewmode"),width===1440?"all":"listview");
+      assert.equal(first.searchParams.get("viewmode"),mobile?"map":"all");
       assert.equal(first.searchParams.get("adults"),"3");
       assert.equal(first.searchParams.get("currency"),"EUR");
       assert.equal(first.searchParams.get("maincolor"),"3025ce");
+      assert.equal(first.searchParams.get("hideallezbutton"),"true");
       assert.equal(first.searchParams.get("lat"),"-33.9249");
       assert.equal(first.searchParams.get("checkin"),"2090-12-02");
       assert.equal(await frame.getAttribute("referrerpolicy"),"no-referrer");
       const rect=await frame.boundingBox();
-      assert.ok(rect.width>=(width===1440?1100:320));
-      assert.ok(rect.height>=(width===1440?650:440));
+      assert.ok(rect.width>=(mobile?320:1100));
+      assert.ok(rect.height>=(mobile?440:650));
       assert.equal(await page.getByRole("dialog").count(),0);
+      const view=page.getByRole("group",{name:"Accommodation view"});
+      if(!mobile) {
+        assert.equal(await view.count(),0);
+      } else {
+        const map=view.getByRole("button",{name:"Map",exact:true});
+        const list=view.getByRole("button",{name:"List",exact:true});
+        await map.waitFor({timeout:3000});
+        assert.equal(await map.getAttribute("aria-pressed"),"true");
+        assert.equal(await list.getAttribute("aria-pressed"),"false");
+        assert.ok((await list.boundingBox()).height>=44);
+        await list.focus();
+        await list.press("Enter");
+        assert.equal(await list.getAttribute("aria-pressed"),"true");
+        assert.equal(await list.evaluate(el=>el===document.activeElement),true);
+        const listSearch=new URL(await frame.getAttribute("src"));
+        assert.equal(listSearch.searchParams.get("viewmode"),"listview");
+        listSearch.searchParams.set("viewmode","map");
+        assert.equal(listSearch.href,first.href);
+        await map.tap();
+        assert.equal(await map.getAttribute("aria-pressed"),"true");
+        assert.equal(await frame.getAttribute("src"),first.href);
+      }
       if(capture) await page.screenshot({path:`${capture}/stay22-inline-${width}-test-frame.png`});
       await page.getByRole("combobox",{name:"Adults"}).selectOption("4");
       await frame.waitFor({state:"detached"});
@@ -97,8 +158,11 @@ test("inline Stay22 shares only the selected search, after consent and an explic
       await page.evaluate(()=>window.renderStop({stopName:"Undated stop",latitude:null,longitude:null,checkIn:null,checkOut:null,travellers:2,currency:"GBP"}));
       await page.getByText(/needs a mapped stop/).waitFor();
       assert.equal(await show.count(),0);
+      assert.equal(gateRequests,1);
       eligible=false;
+      const denied=page.waitForResponse(response=>new URL(response.url()).pathname==="/api/easyt/stay22-tester" && response.status()===404);
       await page.reload();
+      await denied;
       await page.getByText("Other stay options").waitFor();
       assert.equal(await show.count(),0);
       assert.deepEqual(errors,[]);

@@ -1,0 +1,26 @@
+.inline, .floating {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-supporting-body);
+  padding: .75rem 1rem;
+}
+.inline { min-height: 5.75rem; }
+.inline p { margin: .25rem 0 0; overflow-wrap: anywhere; color: var(--morrovia-ink-soft); }
+.floating {
+  position: fixed;
+  z-index: 12;
+  bottom: max(env(safe-area-inset-bottom), 1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2rem);
+  width: max-content;
+  pointer-events: none;
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+.plane { display: block; width: 5.5rem; height: 5.5rem; flex: none; object-fit: contain; }
+@media (prefers-reduced-motion: reduce) { .plane { display: none; } }

@@ -128,6 +128,7 @@ import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
+import { HomeBuilderHandoffStatus } from "@/components/easyt/home-builder-handoff-status";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { curatedStopFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "@/lib/easyt/curated-route-knowledge";
@@ -6122,7 +6123,9 @@ function TripBuilderDocument() {
     </div>;
   }
   if (!hydrated || ownerScopeMismatch || (hydratedCanonicalTripRef.current?.id === tripId && !mountedBuilder && !tripUnavailable && !deviceRecoveryBlocked && !deviceStorageBlocked)) {
-    return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
+    return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true">{!hydrated && builderSearchParams.get("homeDraft") === "1" && builderSearchParams.has("handoff")
+      ? <HomeBuilderHandoffStatus title={language === "es" ? "Abriendo tu ruta…" : "Opening your route…"} />
+      : <div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div>}</div>;
   }
   if (tripUnavailable) {
     if (hydrationIssue) return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback {...builderHydrationFeedback(hydrationIssue, language)} /></div>;
@@ -6244,7 +6247,12 @@ function TripBuilderDocument() {
                     : (language === "es" ? "Empieza tu viaje." : "Start your trip.")}</h1>
                 {(hasRouteSkeleton || hasPromptContext) && (visibleSaveState === "saving" || visibleSaveState === "error" || saveNeedsAttention) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
-              {pendingInterpretation ? <MorroviaSectionStatus
+              {pendingInterpretation?.fromHomepage && !tripBriefCaptureError ? <HomeBuilderHandoffStatus
+                title={language === "es" ? "Preparando tu ruta" : "Preparing your route"}
+                detail={pendingInterpretation.receipt.frozenSnapshot.mode === "describe"
+                  ? pendingInterpretation.receipt.frozenSnapshot.prompt
+                  : language === "es" ? "Tus lugares y preferencias se han guardado en este dispositivo." : "Your places and preferences are saved on this device."}
+              /> : pendingInterpretation ? <MorroviaSectionStatus
                 state={tripBriefCaptureError ? "error" : "loading"}
                 title={tripBriefCaptureError || (language === "es" ? "Preparando tu ruta" : "Preparing your route")}
                 detail={pendingInterpretation.receipt.frozenSnapshot.mode === "describe"

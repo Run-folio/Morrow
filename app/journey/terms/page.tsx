@@ -84,6 +84,7 @@ export default function TermsOfUsePage() {
           <p>You retain your rights in trip prompts, notes, photos and other content you provide. You give {morroviaLegalIdentity.legalOperator} a non-exclusive, royalty-free licence to host, copy, organise, analyse, transform, display and transmit that content only as reasonably necessary to provide, secure and support the Morrovia service you use, including through the processors described in the <Link href="/journey/privacy">Privacy Notice</Link>.</p>
           <p>You must have the right to provide that content and must not include unlawful material or another person's confidential or personal information without an appropriate basis. The licence ends when the content is deleted from active systems, subject to reasonable technical backups and records Morrovia must retain by law or for legitimate security and dispute purposes.</p>
           <p>Morrovia and its licensors own the software, product design, branding and Morrovia-created content. These Terms let you use the service for personal travel planning; they do not transfer Morrovia intellectual property to you.</p>
+          <p>The route-loading illustration is adapted from <a href="https://lottiefiles.com/free-animation/plane-travel-rddLMe8nhp">plane travel by jstory</a> and is distributed under the <a href="/journey/motion/plane-travel-LICENSE.txt">Lottie Simple License</a>.</p>
         </section>
 
         <section id="accounts" className={readingStyles.section} aria-labelledby="accounts-title">

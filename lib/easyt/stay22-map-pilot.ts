@@ -18,7 +18,9 @@ function isCalendarDate(value: string | null): value is string {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-export function buildStay22MapUrl(input: Stay22MapInput, view: "all" | "listview"): string | null {
+export type Stay22MapView = "all" | "map" | "listview";
+
+export function buildStay22MapUrl(input: Stay22MapInput, view: Stay22MapView): string | null {
   const { affiliateId, approved, latitude, longitude, checkIn, checkOut, adults } = input;
   if (!approved || !hasStay22PilotId(affiliateId) || latitude == null || longitude == null
     || !Number.isFinite(latitude) || Math.abs(latitude) > 90 || !Number.isFinite(longitude) || Math.abs(longitude) > 180

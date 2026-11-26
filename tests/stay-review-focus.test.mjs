@@ -9,7 +9,7 @@ const source = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx
 // Exercise the production Stay surface with deterministic React hooks and DOM timing.
 const surface = source.slice(source.indexOf("function StayFinderSurface("), source.indexOf("export default function TripStayWorkspace("));
 const names = ["useWorkspaceOrientationTarget", "trackEvent", "useTripShellMutation", "useMobileTripWorkspace", "useJourneyLocalPlacePhotos", "stayBookingForStop", "savedGoogleStayReferencesForStop", "getCurrentPartnerAction", "shortlistedStays", "recommendationDetailForStayResult", "stayIsSelected", "stayHandoffDetails", "mapResultForLocalPlace", "mapResultSelectionId", "mapWorkspaceHref", "mapResultHandoffForLocalPlace", "stayWorkspaceHref", "hasBookingLiveInformation", "stayCandidateFit", "stayWorkspaceContext", "MorroviaMapPreview", "JourneyPlannerMap", "MorroviaBriefNotice", "EasyTButton", "MorroviaStatusBanner", "JourneyRouteStopTrack", "TripStayShortlist", "TripStay22Pilot", "Stay22TesterPreview", "EntryReveal", "EasyTSelect", "EasyTLinkButton", "EasyTField", "MorroviaSectionStatus", "MorroviaSkeleton", "JourneyLocalPlacePhotoMedia", "MorroviaContentDialog", "TripStayHandoff", "ItineraryItemDetail", "MapPin", "BedDouble", "CalendarDays", "Star", "Check", "Map", "X"];
-const compiled = (await transform(`const {useState,useRef,useEffect,useMemo}=globalThis.hooks; const {${names.join(",")}}=globalThis.deps; const styles=new Proxy({}, {get:(_,key)=>key}); const workspaceHeading={sectionTitle:"title"}; const formattedPrice=()=>null; export default ${surface}`, {loader:"tsx",format:"cjs",jsx:"automatic"})).code;
+const compiled = (await transform(`const {useState,useRef,useEffect,useMemo}=globalThis.hooks; const {${names.join(",")}}=globalThis.deps; const styles=new Proxy({}, {get:(_,key)=>key}); const workspaceHeading={sectionTitle:"title"}; const formattedPrice=()=>null; ${surface}; export default StayFinderSurface; export { Stay22ProviderSurface };`, {loader:"tsx",format:"cjs",jsx:"automatic"})).code;
 const nodes = node => !node || typeof node !== "object" ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];
 function app() {
   const cells=[],pending=[],frames=new Map(),listeners=[];let index=0,dirty=false,nextFrame=0,tree,compact=false;
@@ -33,7 +33,8 @@ function app() {
   sandbox.exports=sandbox.module.exports;vm.runInNewContext(compiled,sandbox);
   const render=()=>{let turns=0;do{dirty=false;index=0;tree=sandbox.module.exports.default(props);while(pending.length)pending.shift()();if(++turns>10)throw Error("render loop");}while(dirty);return nodes(tree);};
   render();
-  return {trip,context,place,finder,origin,handoff,window,render,review:()=>render().find(n=>n.type==="TripStayShortlist").props.onReview(place),select:()=>{finder.selectedPlace=place;render();},flush:()=>{const batch=[...frames.values()];frames.clear();batch.forEach(fn=>fn());render();},resize:value=>{compact=value;listeners.forEach(fn=>fn());render();},close:()=>render().find(n=>n.type==="MorroviaContentDialog").props.onClose()};
+  const renderProvider = () => nodes(sandbox.module.exports.Stay22ProviderSurface({...props, testerAffiliateId:"fixture"}));
+  return {trip,context,place,finder,origin,handoff,window,render,renderProvider,review:()=>render().find(n=>n.type==="TripStayShortlist").props.onReview(place),select:()=>{finder.selectedPlace=place;render();},flush:()=>{const batch=[...frames.values()];frames.clear();batch.forEach(fn=>fn());render();},resize:value=>{compact=value;listeners.forEach(fn=>fn());render();},close:()=>render().find(n=>n.type==="MorroviaContentDialog").props.onClose()};
 }
 
 test("desktop Review stay waits for the selected handoff, focuses once, and returns to its trigger",()=>{
@@ -99,11 +100,11 @@ test("inline tester shares the real stop context and remounts before transmittin
   Object.assign(a.context.stop, {latitude: -33.92, longitude: 18.42, name: "Cape Town"});
   Object.assign(a.context, {checkIn: "2027-04-02", checkOut: "2027-04-05"});
   Object.assign(a.trip, {travellers: 3, currency: "GBP"});
-  const search = () => a.render().find(n => n.type === "Stay22TesterPreview");
+  const search = () => a.renderProvider().find(n => n.type === "Stay22TesterPreview");
   const props = search().props;
   assert.deepEqual([props.stopName,props.latitude,props.longitude,props.checkIn,props.checkOut,props.travellers,props.currency],
     ["Cape Town",-33.92,18.42,"2027-04-02","2027-04-05",3,"GBP"]);
-  for (const change of [() => {a.context.stop.id = "return-visit";}, () => {a.context.key += ":new-dates";},
+  for (const change of [() => {a.context.stop.id = "return-visit";}, () => {a.context.checkIn = "2027-04-03";},
     () => {a.context.stop.longitude = 19;}, () => {a.trip.currency = "EUR";}, () => {a.trip.travellers = 4;},
     () => {a.trip.ownerId = "other-owner";}]) {
     const before = search().key;

@@ -33,7 +33,7 @@ import { useTripShellMutation } from "./trip-shell-client";
 import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
 import TripStayShortlist from "./trip-stay-shortlist";
-import Stay22TesterPreview from "./stay22-tester-preview";
+import Stay22TesterPreview, { useStay22TesterAffiliateId } from "./stay22-tester-preview";
 import TripStay22Pilot from "./trip-stay22-pilot";
 
 export type TripStayWorkspaceProps = {
@@ -236,9 +236,7 @@ function StayFinderSurface({
     );
   };
 
-  const dateSummary = context.checkIn && context.checkOut
-    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(new Date(`${context.checkIn}T12:00:00Z`), new Date(`${context.checkOut}T12:00:00Z`))
-    : "Dates to confirm";
+  const dateSummary = stayWorkspaceDateSummary(context);
   const handoffSummary = selected && detail ? <div className={styles.handoffSummary}>
     <p className={styles.handoffLocation}><MapPin aria-hidden="true" />{context.stop.name}</p>
     <div className={styles.handoffProperty}>
@@ -272,21 +270,7 @@ function StayFinderSurface({
       <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
     </div>
 
-    <header className={styles.intro}>
-      <h2 className={workspaceHeading.sectionTitle}>{context.stop.name}</h2>
-      <p><CalendarDays aria-hidden="true" />{dateSummary} · {context.nights} {context.nights === 1 ? "night" : "nights"}</p>
-    </header>
-
-    <Stay22TesterPreview
-      key={JSON.stringify([actionIdentity, context.key, context.stop.longitude, context.stop.latitude, workingTrip.travellers, workingTrip.currency])}
-      stopName={context.stop.name}
-      longitude={context.stop.longitude}
-      latitude={context.stop.latitude}
-      checkIn={context.checkIn}
-      checkOut={context.checkOut}
-      travellers={workingTrip.travellers}
-      currency={workingTrip.currency}
-    />
+    {stayStopHeading(context, dateSummary)}
 
     <div className={styles.main}>
       <TripStayShortlist trip={workingTrip} stopId={context.stop.id} places={finder.candidates} onReview={reviewPlace} />
@@ -407,8 +391,68 @@ function StayFinderSurface({
   </div>;
 }
 
+function stayWorkspaceDateSummary({ checkIn, checkOut }: StayWorkspaceContext) {
+  return checkIn && checkOut
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(new Date(`${checkIn}T12:00:00Z`), new Date(`${checkOut}T12:00:00Z`))
+    : "Dates to confirm";
+}
+
+function stayStopHeading(context: StayWorkspaceContext, dateSummary: string) {
+  return <header className={styles.intro}>
+    <h2 className={workspaceHeading.sectionTitle}>{context.stop.name}</h2>
+    <p><CalendarDays aria-hidden="true" />{dateSummary} · {context.nights} {context.nights === 1 ? "night" : "nights"}</p>
+  </header>;
+}
+
+function Stay22ProviderSurface({ testerAffiliateId, workingTrip, context, navigationStops, onSelectStop }: {
+  testerAffiliateId: string;
+  workingTrip: EasyTTrip;
+  context: StayWorkspaceContext;
+  navigationStops: JourneyPlannerStripStop[];
+  onSelectStop: (stopId: string) => void;
+}) {
+  const stopNavigationGuideRef = useWorkspaceOrientationTarget("stay", "stay-stop");
+  const mobile = useMobileTripWorkspace();
+  // Keep a definite, already saved stay readable without opening the legacy finder or map.
+  const savedStay = workingTrip.brief.bookings?.find(booking => booking.type === "stay" && booking.id === `stay-${context.stop.id}`);
+  return <div className={`${styles.layout} ${styles.layoutNoRail}`}>
+    {mobile ? navigationStops.length > 1 ? <div ref={stopNavigationGuideRef} className={styles.mobileStayToolbar}>
+      <EasyTSelect label="Overnight stop" labelClassName="sr-only" value={context.stop.id} onChange={event => onSelectStop(event.target.value)}>
+        {navigationStops.map(stop => {
+          const scope = stayWorkspaceContext(workingTrip, stop.id);
+          if (!scope) return null;
+          return <option key={stop.id} value={stop.id}>{scope.stop.name} · {scope.dateLabel}</option>;
+        })}
+      </EasyTSelect>
+    </div> : null : <div ref={stopNavigationGuideRef} className={styles.stopNavigation}>
+      <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
+    </div>}
+
+    {stayStopHeading(context, stayWorkspaceDateSummary(context))}
+
+    {savedStay ? <MorroviaStatusBanner
+      tone="success"
+      title={`Saved stay: ${savedStay.title}`}
+      actions={<EasyTLinkButton size="small" variant="secondary" href={`/journey/${encodeURIComponent(workingTrip.id)}/itinerary`}>Manage in itinerary</EasyTLinkButton>}
+    /> : null}
+
+    <Stay22TesterPreview
+      key={JSON.stringify([workingTrip.ownerId, workingTrip.id, context.stop.id, context.checkIn, context.checkOut, context.stop.longitude, context.stop.latitude, workingTrip.travellers, workingTrip.currency, testerAffiliateId])}
+      testerAffiliateId={testerAffiliateId}
+      stopName={context.stop.name}
+      longitude={context.stop.longitude}
+      latitude={context.stop.latitude}
+      checkIn={context.checkIn}
+      checkOut={context.checkOut}
+      travellers={workingTrip.travellers}
+      currency={workingTrip.currency}
+    />
+  </div>;
+}
+
 export default function TripStayWorkspace({ trip, initialStopId, initialSelectedPlaceId, initialFinderState }: TripStayWorkspaceProps) {
   const router = useRouter();
+  const testerAffiliateId = useStay22TesterAffiliateId();
   const mutation = useTripShellMutation();
   const workingTrip = mutation.trip.id === trip.id ? mutation.trip : trip;
   const overnightStops = useMemo(() => [...workingTrip.stops].filter((stop) => (stop.nights ?? 0) > 0).sort((left, right) => left.order - right.order), [workingTrip.stops]);
@@ -425,6 +469,22 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
 
   const context = selectedStopId ? stayWorkspaceContext(workingTrip, selectedStopId) : null;
   const navigationStops = useMemo(() => selectedStopId ? routeTimelineStopsForTrip(workingTrip, { scopeId: selectedStopId }).filter((item) => item.kind === "stop" && overnightStops.some((stop) => stop.id === item.id)) : [], [overnightStops, selectedStopId, workingTrip]);
+
+  const selectStop = (stopId: string) => {
+    setSelectedStopId(stopId);
+    setSelectedPlaceId(null);
+    router.replace(stayWorkspaceHref(workingTrip.id, stopId), { scroll: false });
+  };
+
+  // This branch intentionally does not mount the legacy finder, even before the partner iframe loads.
+  if (context && testerAffiliateId === undefined) {
+    return <section className={styles.workspace} aria-label="Stay planning"><MorroviaSectionStatus compact title="Loading stays…" /></section>;
+  }
+  if (context && testerAffiliateId) {
+    return <section className={styles.workspace} aria-label={`Stay planning for ${context.stop.name}`}>
+      <Stay22ProviderSurface testerAffiliateId={testerAffiliateId} workingTrip={workingTrip} context={context} navigationStops={navigationStops} onSelectStop={selectStop} />
+    </section>;
+  }
 
   if (!context || !context.searchCoordinates) {
     return <section className={styles.workspace} aria-label="Stay planning"><TripStayShortlist trip={workingTrip} /><MorroviaStatusBanner title={overnightStops.length ? "This stop needs a mapped location" : "No overnight stays to plan"} detail={overnightStops.length ? "Add a trustworthy destination location before searching for accommodation." : "Add an overnight destination to the route before choosing accommodation."} actions={overnightStops.length ? <EasyTLinkButton size="small" variant="secondary" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : undefined} /></section>;
@@ -450,11 +510,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
       candidateLimit={6}
       autoSelectFirst={false}
       analyticsSurface="stay"
-      render={(finder) => <StayFinderSurface finder={finder} requestedPlaceId={selectedPlaceId} workingTrip={workingTrip} context={context} navigationStops={navigationStops} notice={notice} setNotice={setNotice} setSelectedPlaceId={setSelectedPlaceId} onSelectStop={(stopId) => {
-        setSelectedStopId(stopId);
-        setSelectedPlaceId(null);
-        router.replace(stayWorkspaceHref(workingTrip.id, stopId), { scroll: false });
-      }} />}
+      render={(finder) => <StayFinderSurface finder={finder} requestedPlaceId={selectedPlaceId} workingTrip={workingTrip} context={context} navigationStops={navigationStops} notice={notice} setNotice={setNotice} setSelectedPlaceId={setSelectedPlaceId} onSelectStop={selectStop} />}
     />
   </section>;
 }

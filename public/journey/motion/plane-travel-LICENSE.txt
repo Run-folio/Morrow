@@ -1,0 +1,24 @@
+plane travel — jstory, via LottieFiles
+Source: https://lottiefiles.com/free-animation/plane-travel-rddLMe8nhp
+License: Lottie Simple License, https://lottiefiles.com/page/license
+Both the original and the derived plane-travel.webp are distributed under that same license.
+
+Verified original public dotLottie archive:
+https://assets-v2.lottiefiles.com/a/3ffdd86a-1165-11ee-be72-2f871fae3610/oFnsH4UYTl.lottie
+SHA-256:
+2b9b22770d6448b4d59b5a2b65027688898a32ab25b4f45f725f3d9259bbf7e8
+
+Morrovia adaptation: local transparent animated WebP rendered using lottie-web
+5.13.0, downsampled to 112px. The original loop is phase-shifted so a plane is
+visible at the start of a short handoff. No animation player or third-party host
+is requested by the app.
+
+Lottie Simple License
+
+Copyright © 2021 Design Barn Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of the public animation files available for download at the LottieFiles site (“Files”) to download, reproduce, modify, publish, distribute, publicly display, and publicly digitally perform such Files, including for commercial purposes, provided that any display, publication, performance, or distribution of Files must contain (and be subject to) the same terms and conditions of this license. Modifications to Files are deemed derivative works and must also be expressly distributed under the same terms and conditions of this license. You may not purport to impose any additional or different terms or conditions on, or apply any technical measures that restrict exercise of, the rights granted under this license. This license does not include the right to collect or compile Files from LottieFiles to replicate or develop a similar or competing service.
+
+Use of Files without attributing the creator(s) of the Files is permitted under this license, though attribution is strongly encouraged. If attributions are included, such attributions should be visible to the end user.
+
+FILES ARE PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. EXCEPT TO THE EXTENT REQUIRED BY APPLICABLE LAW, IN NO EVENT WILL THE CREATOR(S) OF FILES OR DESIGN BARN, INC. BE LIABLE ON ANY LEGAL THEORY FOR ANY SPECIAL, INCIDENTAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES ARISING OUT OF THIS LICENSE OR THE USE OF SUCH FILES.
