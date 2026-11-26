@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createPrivacyConsentRecord } from "../lib/privacy-consent.ts";
-import { isStay22TesterHost, isStay22Tester, stay22TesterSample, mayLoadStay22TesterMap } from "../lib/easyt/stay22-tester-preview.ts";
+import { isStay22TesterHost, isStay22Tester, stay22TesterSearch, mayLoadStay22TesterMap } from "../lib/easyt/stay22-tester-preview.ts";
 
 const origin = "https://staging.morrovia.com";
 const email = "tester@example.test";
@@ -20,20 +20,29 @@ test("only the configured verified account is eligible", () => {
   assert.equal(isStay22Tester({ ...user, email: "other@example.test" }, email), false);
   assert.equal(isStay22Tester(user, undefined), false);
 });
-test("rehearsal sends only a fixed future Kyoto sample for two adults", () => {
-  const result = stay22TesterSample("morrovia", new Date("2026-11-26T02:00:00Z"));
-  assert.ok(result);
-  assert.equal(result.checkIn, "2026-12-26");
-  assert.equal(result.checkOut, "2026-12-28");
-  for (const [view, href] of [["all", result.wideUrl], ["listview", result.narrowUrl]]) {
-    const url = new URL(href);
+test("preview sends the active stop, dates, and chosen adult count without trip identifiers", () => {
+  const capeTown = { affiliateId: "morrovia", currency: "EUR", latitude: -33.9249, longitude: 18.4241, checkIn: "2026-12-02", checkOut: "2026-12-07", adults: 3 };
+  for (const [width, view] of [[1000, "all"], [375, "listview"]] as const) {
+    const result = stay22TesterSearch(capeTown, width, "2026-11-26");
+    assert.ok(result);
+    const url = new URL(result);
     assert.equal(url.origin, "https://www.stay22.com");
     assert.equal(url.searchParams.get("viewmode"), view);
-    assert.equal(url.searchParams.get("lat"), "35.0116");
-    assert.equal(url.searchParams.get("adults"), "2");
-    assert.deepEqual([...url.searchParams.keys()].sort(), ["adults", "aid", "checkin", "checkout", "lat", "lng", ...(view === "all" ? ["listviewexpand"] : []), "viewmode", "zoom"].sort());
+    assert.equal(url.searchParams.get("maincolor"), "3025ce");
+    assert.equal(url.searchParams.get("currency"), "EUR");
+    assert.equal(url.searchParams.get("lat"), "-33.9249");
+    assert.equal(url.searchParams.get("lng"), "18.4241");
+    assert.equal(url.searchParams.get("checkin"), "2026-12-02");
+    assert.equal(url.searchParams.get("checkout"), "2026-12-07");
+    assert.equal(url.searchParams.get("adults"), "3");
+    assert.deepEqual([...url.searchParams.keys()].sort(), ["adults", "aid", "checkin", "checkout", "currency", "lat", "lng", "maincolor", ...(view === "all" ? ["listviewexpand"] : []), "viewmode", "zoom"].sort());
   }
-  assert.equal(stay22TesterSample(undefined), null);
+  for (const currency of ["XYZ", "test-account-or-secret", ""]) {
+    assert.equal(new URL(stay22TesterSearch({...capeTown, currency}, 900, "2026-11-26")!).searchParams.get("currency"), null);
+  }
+  for (const invalid of [{latitude: null}, {checkIn: null}, {checkIn: "2026-11-25"}, {checkOut: "2026-12-02"}, {affiliateId: undefined}, {adults: 0}]) {
+    assert.equal(stay22TesterSearch({...capeTown, ...invalid}, 375, "2026-11-26"), null);
+  }
 });
 test("legacy and partial consent do not authorize the rehearsal", () => {
   const raw = (analytics: boolean, affiliateTracking: boolean) => JSON.stringify(createPrivacyConsentRecord({ analytics, affiliateTracking }));

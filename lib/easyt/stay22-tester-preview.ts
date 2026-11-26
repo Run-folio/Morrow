@@ -1,5 +1,5 @@
 import { parsePrivacyConsent } from "../privacy-consent.ts";
-import { buildStay22MapUrl } from "./stay22-map-pilot.ts";
+import { buildStay22MapUrl, type Stay22MapInput } from "./stay22-map-pilot.ts";
 
 export const STAY22_TESTER_ORIGIN = "https://staging.morrovia.com";
 
@@ -15,14 +15,19 @@ export function isStay22Tester(
   return Boolean(approved && user?.id && user.emailVerified === true && user.email?.trim().toLowerCase() === approved);
 }
 
-export type Stay22TesterSample = { checkIn: string; checkOut: string; wideUrl: string; narrowUrl: string };
+// UI theme from --morrovia-action; provider accepts six hex digits without the hash.
+const MAP_ACCENT = "3025ce";
+const currencies = new Set<string>(typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("currency") : ["GBP", "EUR", "USD"]);
 
-export function stay22TesterSample(affiliateId: string | undefined, now = new Date()): Stay22TesterSample | null {
-  const date = (days: number) => new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10);
-  const checkIn = date(30), checkOut = date(32);
-  const sample = { approved: true, affiliateId, latitude: 35.0116, longitude: 135.7681, checkIn, checkOut, adults: 2 };
-  const wideUrl = buildStay22MapUrl(sample, "all"), narrowUrl = buildStay22MapUrl(sample, "listview");
-  return wideUrl && narrowUrl ? { checkIn, checkOut, wideUrl, narrowUrl } : null;
+/** The same validated trip search in both layouts; width only changes the provider's view. */
+export function stay22TesterSearch(input: Omit<Stay22MapInput, "approved"> & { currency: string }, width: number, today = new Date().toISOString().slice(0, 10)) {
+  if (!input.checkIn || input.checkIn < today) return null;
+  const baseUrl = buildStay22MapUrl({ ...input, approved: true }, width >= 720 ? "all" : "listview");
+  if (!baseUrl) return null;
+  const url = new URL(baseUrl);
+  url.searchParams.set("maincolor", MAP_ACCENT);
+  if (currencies.has(input.currency)) url.searchParams.set("currency", input.currency);
+  return url.href;
 }
 
 export function mayLoadStay22TesterMap(raw: string | null) {

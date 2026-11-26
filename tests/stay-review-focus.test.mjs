@@ -8,7 +8,7 @@ const { transform } = require("esbuild");
 const source = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
 // Exercise the production Stay surface with deterministic React hooks and DOM timing.
 const surface = source.slice(source.indexOf("function StayFinderSurface("), source.indexOf("export default function TripStayWorkspace("));
-const names = ["useWorkspaceOrientationTarget", "trackEvent", "useTripShellMutation", "useMobileTripWorkspace", "useJourneyLocalPlacePhotos", "stayBookingForStop", "savedGoogleStayReferencesForStop", "getCurrentPartnerAction", "shortlistedStays", "recommendationDetailForStayResult", "stayIsSelected", "stayHandoffDetails", "mapResultForLocalPlace", "mapResultSelectionId", "mapWorkspaceHref", "mapResultHandoffForLocalPlace", "stayWorkspaceHref", "hasBookingLiveInformation", "stayCandidateFit", "stayWorkspaceContext", "MorroviaMapPreview", "JourneyPlannerMap", "MorroviaBriefNotice", "EasyTButton", "MorroviaStatusBanner", "JourneyRouteStopTrack", "TripStayShortlist", "TripStay22Pilot", "EntryReveal", "EasyTSelect", "EasyTLinkButton", "EasyTField", "MorroviaSectionStatus", "MorroviaSkeleton", "JourneyLocalPlacePhotoMedia", "MorroviaContentDialog", "TripStayHandoff", "ItineraryItemDetail", "MapPin", "BedDouble", "CalendarDays", "Star", "Check", "Map", "X"];
+const names = ["useWorkspaceOrientationTarget", "trackEvent", "useTripShellMutation", "useMobileTripWorkspace", "useJourneyLocalPlacePhotos", "stayBookingForStop", "savedGoogleStayReferencesForStop", "getCurrentPartnerAction", "shortlistedStays", "recommendationDetailForStayResult", "stayIsSelected", "stayHandoffDetails", "mapResultForLocalPlace", "mapResultSelectionId", "mapWorkspaceHref", "mapResultHandoffForLocalPlace", "stayWorkspaceHref", "hasBookingLiveInformation", "stayCandidateFit", "stayWorkspaceContext", "MorroviaMapPreview", "JourneyPlannerMap", "MorroviaBriefNotice", "EasyTButton", "MorroviaStatusBanner", "JourneyRouteStopTrack", "TripStayShortlist", "TripStay22Pilot", "Stay22TesterPreview", "EntryReveal", "EasyTSelect", "EasyTLinkButton", "EasyTField", "MorroviaSectionStatus", "MorroviaSkeleton", "JourneyLocalPlacePhotoMedia", "MorroviaContentDialog", "TripStayHandoff", "ItineraryItemDetail", "MapPin", "BedDouble", "CalendarDays", "Star", "Check", "Map", "X"];
 const compiled = (await transform(`const {useState,useRef,useEffect,useMemo}=globalThis.hooks; const {${names.join(",")}}=globalThis.deps; const styles=new Proxy({}, {get:(_,key)=>key}); const workspaceHeading={sectionTitle:"title"}; const formattedPrice=()=>null; export default ${surface}`, {loader:"tsx",format:"cjs",jsx:"automatic"})).code;
 const nodes = node => !node || typeof node !== "object" ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];
 function app() {
@@ -92,4 +92,22 @@ test("Stay22 mount identity changes with stop occurrence, dates, coordinates and
   assert.notEqual(newPosition, newDates);
   a.trip.travellers = 3;
   assert.notEqual(pilotKey(), newPosition);
+});
+
+test("inline tester shares the real stop context and remounts before transmitting any changed search", () => {
+  const a = app();
+  Object.assign(a.context.stop, {latitude: -33.92, longitude: 18.42, name: "Cape Town"});
+  Object.assign(a.context, {checkIn: "2027-04-02", checkOut: "2027-04-05"});
+  Object.assign(a.trip, {travellers: 3, currency: "GBP"});
+  const search = () => a.render().find(n => n.type === "Stay22TesterPreview");
+  const props = search().props;
+  assert.deepEqual([props.stopName,props.latitude,props.longitude,props.checkIn,props.checkOut,props.travellers,props.currency],
+    ["Cape Town",-33.92,18.42,"2027-04-02","2027-04-05",3,"GBP"]);
+  for (const change of [() => {a.context.stop.id = "return-visit";}, () => {a.context.key += ":new-dates";},
+    () => {a.context.stop.longitude = 19;}, () => {a.trip.currency = "EUR";}, () => {a.trip.travellers = 4;},
+    () => {a.trip.ownerId = "other-owner";}]) {
+    const before = search().key;
+    change();
+    assert.notEqual(search().key, before);
+  }
 });

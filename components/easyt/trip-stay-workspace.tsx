@@ -33,6 +33,7 @@ import { useTripShellMutation } from "./trip-shell-client";
 import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
 import TripStayShortlist from "./trip-stay-shortlist";
+import Stay22TesterPreview from "./stay22-tester-preview";
 import TripStay22Pilot from "./trip-stay22-pilot";
 
 export type TripStayWorkspaceProps = {
@@ -275,6 +276,17 @@ function StayFinderSurface({
       <h2 className={workspaceHeading.sectionTitle}>{context.stop.name}</h2>
       <p><CalendarDays aria-hidden="true" />{dateSummary} · {context.nights} {context.nights === 1 ? "night" : "nights"}</p>
     </header>
+
+    <Stay22TesterPreview
+      key={JSON.stringify([actionIdentity, context.key, context.stop.longitude, context.stop.latitude, workingTrip.travellers, workingTrip.currency])}
+      stopName={context.stop.name}
+      longitude={context.stop.longitude}
+      latitude={context.stop.latitude}
+      checkIn={context.checkIn}
+      checkOut={context.checkOut}
+      travellers={workingTrip.travellers}
+      currency={workingTrip.currency}
+    />
 
     <div className={styles.main}>
       <TripStayShortlist trip={workingTrip} stopId={context.stop.id} places={finder.candidates} onReview={reviewPlace} />
