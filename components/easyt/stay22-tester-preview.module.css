@@ -23,3 +23,9 @@
 @media (max-width: 720px) {
   .map { height: clamp(440px, 68dvh, 650px); }
 }
+
+.booking { grid-column: 1 / -1; min-width: 0; }
+.booking summary { width: fit-content; cursor: pointer; padding-block: 12px; color: var(--morrovia-ink); font: var(--morrovia-type-body); }
+.bookingForm { display: grid; gap: 12px; max-width: 32rem; padding-block: 4px 12px; }
+.bookingForm p { color: var(--morrovia-ink-soft); font: var(--morrovia-type-body); margin: 0; }
+.bookingForm button { justify-self: start; }

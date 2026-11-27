@@ -152,3 +152,15 @@ test("tester mobile stop selection shows all overnight visits, including undated
   assert.equal(stayFixture.preview.stopName,"Tokyo");
   assert.equal(stayFixture.preview.latitude,null);
 });
+
+test("manual return from a booking site stays explicit, per stop and absent from the regular workspace", () => {
+  const tester = render({tester:"fixture",status:"ready"});
+  assert.match(tester,/Add a booked stay to Kyoto/);
+  assert.match(tester,/Property name/);
+  assert.match(tester,/Browsing or opening a booking site does not save anything/);
+  assert.doesNotMatch(render({status:"ready"}),/Add a booked stay/);
+  const legacy = {...trip, brief: {...trip.brief, bookings:[{id:"legacy", type:"stay", title:"Other inn", date:"2027-03-06"}]}};
+  const blocked = render({tester:"fixture",status:"ready",trip:legacy});
+  assert.match(blocked,/Review the existing itinerary entry/);
+  assert.doesNotMatch(blocked,/Save booked stay|Saved stay: Other inn/);
+});

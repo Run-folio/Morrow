@@ -87,3 +87,16 @@ test('exact_guest_promotion_ack_stops_ownerless_source_shadowing_promoted_cache'
  const edited=requireReadableTripDocument(legacy);edited.title='Promoted edit';const recovery=saveTripRecoveryToStorage(storage,edited,{writeId:'guest-edit'});const promoted={...edited,ownerId:'owner-a'};
  assert.equal(cacheCanonicalTripWithRecoveryToStorage(storage,promoted,recovery.handle).recoveryResolved,true);assert.equal(loadLocalTripFromStorage(storage,legacy.id,'owner-a')?.title,promoted.title);assert.equal(loadActiveTripFromStorage(storage,'owner-b'),null);assert.equal(loadActiveTripFromStorage(storage,null),null);assert.equal(storage.getItem(EASYT_ACTIVE_TRIP_KEY),raw);
 });
+
+test("a manually recorded accommodation survives a canonical write and fresh owner-scoped storage read", async()=>{
+  const {manualStayVisitKey, recordBookedStayForVisit, stayBookingForStop}=await import("../lib/easyt/accommodation.ts");
+  const trip=canonicalRouteFixture();
+  trip.brief.bookings=[];
+  const stop=trip.stops.find(item=>item.nights)!;
+  const saved=recordBookedStayForVisit(trip,stop.id,manualStayVisitKey(trip,stop.id)!,"Hotel from my reservation");
+  const storage=new MemoryStorage();
+  assert.equal(cacheCanonicalTripWithRecoveryToStorage(storage,saved).stored,true);
+  const fresh=loadCachedTripFromStorage(storage,trip.id,trip.ownerId)!;
+  assert.equal(stayBookingForStop(fresh,stop)?.title,"Hotel from my reservation");
+  assert.equal(loadCachedTripFromStorage(storage,trip.id,"different-owner"),null);
+});

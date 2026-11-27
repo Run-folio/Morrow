@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { PRIVACY_CONSENT_CHANGE_EVENT, PRIVACY_CONSENT_STORAGE_KEY } from "@/lib/privacy-consent";
 import { hasStay22PilotId, type Stay22MapInput, type Stay22MapView } from "@/lib/easyt/stay22-map-pilot";
 import { mayLoadStay22TesterMap, stay22TesterSearch, STAY22_TESTER_ORIGIN } from "@/lib/easyt/stay22-tester-preview";
-import { EasyTButton, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "./easyt-controls";
+import { EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "./easyt-controls";
 import styles from "./stay22-tester-preview.module.css";
 
 type Props = Pick<Stay22MapInput, "latitude" | "longitude" | "checkIn" | "checkOut"> & { travellers: number; stopName: string; currency: string; testerAffiliateId: string };
@@ -51,12 +51,10 @@ export function useStay22TesterAffiliateId(): string | null | undefined {
 export default function Stay22TesterPreview({ stopName, travellers, testerAffiliateId: affiliateId, ...stay }: Props) {
   const region = useRef<HTMLElement>(null);
   const [adults, setAdults] = useState(Number.isSafeInteger(travellers) && travellers >= 1 && travellers <= 12 ? travellers : null);
-  const [loaded, setLoaded] = useState(false);
   const [width, setWidth] = useState(0);
   const [compactView, setCompactView] = useState<CompactView>("map");
   const resultsId = useId();
   const allowed = useSyncExternalStore(subscribe, consent, noConsent);
-  useEffect(() => { if (!allowed) setLoaded(false); }, [allowed]);
   useEffect(() => {
     const el = region.current;
     if (!el) return;
@@ -68,21 +66,19 @@ export default function Stay22TesterPreview({ stopName, travellers, testerAffili
   const view = compact ? compactView : "all";
   const search = stay22TesterSearch({ ...stay, affiliateId, adults: adults ?? 0 }, view);
   const available = Boolean(stay22TesterSearch({ ...stay, affiliateId, adults: 1 }, view));
-  const showFrame = allowed && loaded && Boolean(search);
+  const showFrame = allowed && width > 0 && Boolean(search);
   return <section ref={region} className={styles.panel} aria-label={`Accommodation search in ${stopName}`}>
     <div className={styles.toolbar}>
       <div className={styles.heading}>
         <h3>Find accommodation</h3>
-        <p>{available ? "Compare stays with Stay22." : "This search needs a mapped stop with upcoming check-in and check-out dates."}</p>
+        <p>{available ? "Compare stays with Stay22. Property links open the booking site in a new tab." : "This search needs a mapped stop with upcoming check-in and check-out dates."}</p>
       </div>
       {available ? <div className={styles.actions}>
-        <EasyTSelect label="Adults" value={adults ?? ""} onChange={event => { setLoaded(false); setAdults(Number(event.target.value)); }}>
+        <EasyTSelect label="Adults" value={adults ?? ""} onChange={event => setAdults(Number(event.target.value))}>
           {adults === null ? <option value="" disabled>Select</option> : null}
           {Array.from({ length: 12 }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
         </EasyTSelect>
-        {showFrame
-          ? <EasyTButton type="button" variant="secondary" onClick={() => setLoaded(false)}>Hide results</EasyTButton>
-          : <EasyTButton type="button" disabled={!allowed || !search || width <= 0} onClick={() => { if (consent() && search) setLoaded(true); }}>Show stays</EasyTButton>}
+
       </div> : null}
     </div>
     {available ? <div className={styles.disclosure}>

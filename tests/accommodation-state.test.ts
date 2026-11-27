@@ -63,3 +63,25 @@ test("invalid or missing stop accommodation writes fail closed", () => {
   assert.equal(upsertStayBooking(source, "rome", { title: "  " }), source);
   assert.equal(removeStayBooking(source, "rome"), source);
 });
+
+test("manual confirmed stay is create-only and bound to the rendered owner, trip, visit and dates", async () => {
+  const { manualStayVisitKey, recordBookedStayForVisit } = await import("../lib/easyt/accommodation.ts");
+  const source = trip(), key = manualStayVisitKey(source, "rome")!;
+  const add = (value = source, title = "  Hotel  Roma  ") => recordBookedStayForVisit(value, "rome", key, title);
+  const saved = add();
+  assert.equal(saved.brief.bookings?.length, 1);
+  assert.deepEqual(saved.brief.bookings?.[0], { id: "stay-rome", type: "stay", title: "Hotel Roma", date: "2026-10-03", confirmation: null, url: null, location: null });
+  assert.equal(add(saved), saved);
+  assert.equal(add(source,"   "), source);
+  assert.equal(add(source,"x".repeat(161)), source);
+  for (const changed of [
+    {...source, id: "different"}, {...source, ownerId: "other"}, {...source, stops: []},
+    {...source, stops: source.stops.map(stop => ({...stop, arrivalDate:"2026-10-04"}))},
+    {...source, stops: source.stops.map(stop => ({...stop, name:"Other city"}))},
+    {...source, stops: source.stops.map(stop => ({...stop, nights:0}))},
+    {...source, brief:{...source.brief, bookings:[{id:"old",type:"stay" as const,title:"Imported inn",date:"2026-10-04",url:null,confirmation:"REF"}]}},
+    {...source, brief:{...source.brief, bookings:[{id:"stay-rome",type:"transport" as const,title:"Existing transfer",date:null,url:null,confirmation:null}]}},
+  ]) assert.equal(add(changed),changed);
+  const repeated = {...source,stops:[...source.stops, {...source.stops[1], id:"rome-again",arrivalDate:"2026-10-08",departureDate:"2026-10-10"}]};
+  assert.equal(recordBookedStayForVisit(repeated,"rome-again",key,"New inn"),repeated);
+});

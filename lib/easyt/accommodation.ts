@@ -84,6 +84,23 @@ export function upsertStayBooking(trip: EasyTTrip, stopId: string, draft: StayBo
   };
 }
 
+/** Identity of the overnight visit shown by the manual booking form, not a provider property ID. */
+export function manualStayVisitKey(trip: EasyTTrip, stopId: string): string | null {
+  const stop = trip.stops.find(item => item.id === stopId && (item.nights ?? 0) > 0);
+  if (!stop) return null;
+  return JSON.stringify([trip.ownerId, trip.id, stop.id, stop.name, stop.country, stop.canonicalPlaceId,
+    stop.providerId, stop.latitude, stop.longitude, stop.arrivalDate, stop.departureDate, stop.nights, trip.startDate, trip.endDate]);
+}
+
+/** Traveller explicitly reports an external booking. Never infer a booking, edit an
+ * existing record, or adopt a legacy date/name match on return from a partner. */
+export function recordBookedStayForVisit(trip: EasyTTrip, stopId: string, expectedVisit: string, title: string): EasyTTrip {
+  const stop = trip.stops.find(item => item.id === stopId);
+  if (!stop || manualStayVisitKey(trip, stopId) !== expectedVisit || !title.trim() || title.length > 160
+    || stayBookingForStop(trip, stop) || trip.brief.bookings?.some(item => item.id === `stay-${stopId}`)) return trip;
+  return upsertStayBooking(trip, stopId, {title});
+}
+
 export function removeStayBooking(trip: EasyTTrip, stopId: string): EasyTTrip {
   const stop = trip.stops.find((candidate) => candidate.id === stopId);
   if (!stop || !stayBookingForStop(trip, stop)) return trip;

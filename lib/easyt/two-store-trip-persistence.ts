@@ -636,7 +636,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         const key = builderInputDraftKey(ownerId,tripId), raw = prepared.envelope.raw;
         const priorInput = readBuilderInputDraft({getItem:()=>raw},before,ownerId);
         const nextInput = readBuilderInputDraft({getItem:()=>raw},candidate,ownerId);
-        if ((acknowledgedDomain?!samePersistedTripDocument(comparable,before):JSON.stringify(comparable) !== JSON.stringify(before)) || before.ownerId !== candidate.ownerId
+        // An account ACK may reorder JSON object keys. Match both verified ACK backends by
+        // full persisted value; the witnessed raw cache, pointers and input stay byte-guarded.
+        if (((acknowledgedDomain || acknowledgedProjection) ? !samePersistedTripDocument(comparable,before) : JSON.stringify(comparable) !== JSON.stringify(before)) || before.ownerId !== candidate.ownerId
           || priorInput.kind !== 'readable' || nextInput.kind !== 'readable'
           || priorInput.draft.inputRevision !== revision.inputRevision
           || JSON.stringify(priorInput.draft) !== JSON.stringify(nextInput.draft)

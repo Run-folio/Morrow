@@ -34,6 +34,7 @@ import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
 import TripStayShortlist from "./trip-stay-shortlist";
 import Stay22TesterPreview, { useStay22TesterAffiliateId } from "./stay22-tester-preview";
+import Stay22BookedStay from "./stay22-booked-stay";
 import TripStay22Pilot from "./trip-stay22-pilot";
 
 export type TripStayWorkspaceProps = {
@@ -413,8 +414,6 @@ function Stay22ProviderSurface({ testerAffiliateId, workingTrip, context, naviga
 }) {
   const stopNavigationGuideRef = useWorkspaceOrientationTarget("stay", "stay-stop");
   const mobile = useMobileTripWorkspace();
-  // Keep a definite, already saved stay readable without opening the legacy finder or map.
-  const savedStay = workingTrip.brief.bookings?.find(booking => booking.type === "stay" && booking.id === `stay-${context.stop.id}`);
   return <div className={`${styles.layout} ${styles.layoutNoRail}`}>
     {mobile ? navigationStops.length > 1 ? <div ref={stopNavigationGuideRef} className={styles.mobileStayToolbar}>
       <EasyTSelect label="Overnight stop" labelClassName="sr-only" value={context.stop.id} onChange={event => onSelectStop(event.target.value)}>
@@ -430,11 +429,8 @@ function Stay22ProviderSurface({ testerAffiliateId, workingTrip, context, naviga
 
     {stayStopHeading(context, stayWorkspaceDateSummary(context))}
 
-    {savedStay ? <MorroviaStatusBanner
-      tone="success"
-      title={`Saved stay: ${savedStay.title}`}
-      actions={<EasyTLinkButton size="small" variant="secondary" href={`/journey/${encodeURIComponent(workingTrip.id)}/itinerary`}>Manage in itinerary</EasyTLinkButton>}
-    /> : null}
+    <Stay22BookedStay key={JSON.stringify([workingTrip.ownerId, workingTrip.id, context.stop, context.checkIn, context.checkOut])}
+      trip={workingTrip} stop={context.stop} />
 
     <Stay22TesterPreview
       key={JSON.stringify([workingTrip.ownerId, workingTrip.id, context.stop.id, context.checkIn, context.checkOut, context.stop.longitude, context.stop.latitude, workingTrip.travellers, workingTrip.currency, testerAffiliateId])}
@@ -454,7 +450,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
   const router = useRouter();
   const testerAffiliateId = useStay22TesterAffiliateId();
   const mutation = useTripShellMutation();
-  const workingTrip = mutation.trip.id === trip.id ? mutation.trip : trip;
+  const workingTrip = mutation.trip.id === trip.id && mutation.trip.ownerId === trip.ownerId ? mutation.trip : trip;
   const overnightStops = useMemo(() => [...workingTrip.stops].filter((stop) => (stop.nights ?? 0) > 0).sort((left, right) => left.order - right.order), [workingTrip.stops]);
   const requestedStop = overnightStops.some((stop) => stop.id === initialStopId) ? initialStopId! : overnightStops[0]?.id ?? null;
   const [selectedStopId, setSelectedStopId] = useState<string | null>(requestedStop);

@@ -82,9 +82,9 @@ function assessment(session,componentSource){
  };
  return {render,state,wait};
 }
-async function harness(mode,browserOwner=null){
+async function harness(mode,browserOwner=null,makeFixture=fixture){
  const storage=new Storage(),model=new IndexedDbModel(),driver=await openIndexedDbRecoveryDriver(model.factory());
- const initial=fixture(),ownerId=browserOwner;let owner=ownerId;
+ const initial=makeFixture(),ownerId=browserOwner;let owner=ownerId;
  const control={gate:null,providerError:false,storageError:false,noResults:false};
  const context=isCurrent=>({ownerId,isCurrent,overflowEnabled:true,accountOverflowQualified:true});
  const broker=guard=>createTwoStoreTripPersistence(storage,driver,context(guard));
@@ -110,6 +110,7 @@ async function harness(mode,browserOwner=null){
   readDraft:(trip)=>input(trip,()=>true).read(),
   writeDraft:(trip,draft,_owner,guard)=>input(trip,guard?.isCurrent??(()=>true)).write(draft),
   saveRecovery:async(trip,meta)=>{
+   if(meta.projectionOnly && control.changedAuthoredValue)trip={...trip,title:'Unexpected replacement title'};
    let projection=structuredClone(meta.projectionOnly);
    if(projection&&control.proof==='missing')projection={acceptedRevision:projection.acceptedRevision,inputRevision:projection.inputRevision};
    if(projection&&control.proof==='foreign')projection.acknowledged.ownerId='owner-b';
@@ -127,7 +128,7 @@ async function harness(mode,browserOwner=null){
    return result;
   },
   reconcile:async(request,signal)=>{trace.reconcileCalls++;if(control.gate)await control.gate;if(control.providerError)throw Error('Synthetic provider unavailable');if(control.noResults)return {...request,results:[],legs:[]};const response=await reconcile(request,signal);const merge=mergeBuilderProjectionResponse(request.trip,response,request);trace.merges.push({ok:merge.ok,reason:merge.reason,changes:merge.ok?differences(request.trip,merge.trip):[]});return response;},
-  persistAccount:async trip=>{trace.accountWrites++;return {...structuredClone(trip),updatedAt:'2026-10-26T00:02:00.000Z'};},
+  persistAccount:async trip=>{trace.accountWrites++;const result={...structuredClone(trip),updatedAt:'2026-10-26T00:02:00.000Z'};return control.reorderAck ? reorderJsonKeys(result) : result;},
   acknowledgeRecovery:async(reviewed,canonical,handle,guard)=>{const result=await broker(guard.isCurrent).acknowledge(reviewed,canonical,handle);trace.ack=result.outcome;return result;},
   now:()=> '2026-10-19T00:01:00.000Z',schedule:(callback,delay)=>{const timer={callback,delay,active:true};trace.timers.push(timer);return ()=>{timer.active=false;};}});
  return {session,trace,storage,driver,model,broker,input,control,rotate:()=>{owner='other-owner';},
@@ -161,6 +162,50 @@ test('account ACK before transfer completion admits only the acknowledged projec
   assert.deepEqual(reopened.trip,h.session.getSnapshot().trip);assert.equal(builderDetailsStatus(reopened.trip,'en').state,'saved');
   const count=h.trace.providerCalls;await h.session.resumeNecessaryWork();await h.run();assert.equal(h.trace.providerCalls,count,'no repeat request after completion');
  } finally {release();h.close();}
+});
+// Simulate an ordinary JSON-column round trip: preserve all values and array
+// positions, but return nested objects in a different key insertion order.
+function reorderJsonKeys(value) {
+ const visit = item => Array.isArray(item) ? item.map(visit) : item !== null && typeof item === 'object'
+  ? Object.fromEntries(Object.keys(item).sort((a,b)=>a.length-b.length || (a<b?-1:a>b?1:0)).map(k=>[k,visit(item[k])])) : item;
+ return visit(JSON.parse(JSON.stringify(value)));
+}
+function sixStopRoundTrip() {
+ const verify=(name,country,coordinates,role='stop')=>{
+  const p={name,country,coordinates,providerId:'synthetic:'+name};
+  return acceptedGeographicPlace(p,{...p,placeType:role==='endpoint'?'transport_gateway':'city',routability:'direct_destination'},role);
+ };
+ const origin=verify('London Gatwick Airport','United Kingdom',[-0.1821,51.1537],'endpoint');
+ const stops=[['Perth','Australia',[115.86,-31.95],2],['Sydney','Australia',[151.21,-33.87],2],
+  ['Darwin','Australia',[130.84,-12.46],2],['Kyoto','Japan',[135.77,35.01],2],
+  ['Kanazawa','Japan',[136.65,36.56],3],['Nikko','Japan',[139.6,36.75],3]]
+  .map(([name,country,coords,nights],i)=>({id:'stop-'+i,...verify(name,country,coords),nights}));
+ const t=tripFromBuilder({id:'date-edit-native-ack',origin:origin.name,originProviderId:origin.providerId,
+  originCountry:origin.country,originCoordinates:origin.coordinates,journeyEnd:{mode:'same_as_start'},stops,
+  startDate:'2026-10-10',endDate:'2026-10-24',nightAllocations:Object.fromEntries(stops.map(s=>[s.id,s.nights])),
+  manualNightStopIds:stops.map(s=>s.id),picks:{},mustDo:'',pace:'slow',hotels:'few',budget:'mid',draft:[]});
+ t.brief.intent.route.origin=origin;
+ return requireReadableTripDocument({...projectBuilderCalendar(t,t).trip,ownerId:'owner-a'});
+}
+for(const changed of [false,true])test(`six-stop date edit after reordered native ACK: ${changed?'rejects changed traveller value':'saves completed route checks'}`,{timeout:15000},async()=>{
+ const h=await harness('native','owner-a',sixStopRoundTrip);let release;
+ h.control.reorderAck=true;h.control.transferGate=new Promise(resolve=>{release=resolve;});
+ try {
+  const before=h.session.getSnapshot();
+  assert.equal((await h.session.accept({kind:'dates',startDate:'2027-02-10',endDate:'2027-02-24'},before.inputRevision)).ok,true);
+  await h.run();assert.equal(h.trace.providerCalls,1);await accountAck(h);
+  const acknowledged=h.session.getSnapshot();assert.equal(h.trace.ack,'acknowledged');
+  assert.equal(acknowledged.recovery,null);assert.equal(acknowledged.pendingUnits.filter(u=>u.kind==='leg').length,7);
+  const retained=copies(h);h.control.changedAuthoredValue=changed;await releaseWork(h,release);
+  const final=h.session.getSnapshot();assert.equal(h.trace.merges.at(-1).ok,true);
+  assert.equal(final.routeWorkBlocked,changed);assert.equal(h.trace.writes.at(-1).result.stored,!changed);
+  if(changed){assert.deepEqual(copies(h),retained);assert.deepEqual(final.trip,acknowledged.trip);return;}
+  assert.equal(final.pendingUnits.some(u=>u.kind!=='recommendation'),false);assert.equal(final.failedUnits.length,0);
+  assert.equal(final.transferAssessments.length,7);assert.deepEqual(final.trip.stops,acknowledged.trip.stops);
+  assert.deepEqual([final.trip.startDate,final.trip.endDate],['2027-02-10','2027-02-24']);
+  await accountAck(h);const reopened=await h.broker(()=>true).read(final.trip.id);
+  assert.equal(reopened.kind,'found');assert.deepEqual(reopened.trip,h.session.getSnapshot().trip);
+ }finally{release();h.close();}
 });
 test('deferred route work is presented as terminal review without changing pending records',async()=>{
  const h=await harness('native','owner-a');try{await prepare(h);const before=structuredClone(h.session.getSnapshot().trip);const status=builderDetailsStatus(before,'en',[],true);assert.notEqual(status.state,'saving');assert.deepEqual(h.session.getSnapshot().trip,before);}finally{h.close();}
